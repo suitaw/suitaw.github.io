@@ -6,59 +6,60 @@
 <title>军队文职 · 练习测试</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&display=swap');
-  :root {
-    --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
-    --accent:#e8a84c;--accent-dim:rgba(232,168,76,0.12);
-    --text:#e8e9f0;--text-dim:#8890a8;
-    --correct:#4caf82;--correct-bg:rgba(76,175,130,0.12);
-    --wrong:#e85c5c;--wrong-bg:rgba(232,92,92,0.12);
-    --radius:12px;--shadow:0 2px 16px rgba(0,0,0,0.3);
-  }
-  body.day {
-    --bg:#f4f5f7;--surface:#fff;--surface2:#eef0f5;--border:#d8dce8;
-    --accent:#c47f1a;--accent-dim:rgba(196,127,26,0.10);
-    --text:#1a1d2e;--text-dim:#6b7080;
-    --correct:#2e8f5e;--correct-bg:rgba(46,143,94,0.10);
-    --wrong:#c0392b;--wrong-bg:rgba(192,57,43,0.10);
-    --shadow:0 2px 16px rgba(0,0,0,0.08);
-  }
+  :root{--bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;--accent:#e8a84c;--accent-dim:rgba(232,168,76,0.12);--text:#e8e9f0;--text-dim:#8890a8;--correct:#4caf82;--correct-bg:rgba(76,175,130,0.12);--wrong:#e85c5c;--wrong-bg:rgba(232,92,92,0.12);--radius:12px;--shadow:0 2px 16px rgba(0,0,0,0.3);}
+  body.day{--bg:#f4f5f7;--surface:#fff;--surface2:#eef0f5;--border:#d8dce8;--accent:#c47f1a;--accent-dim:rgba(196,127,26,0.10);--text:#1a1d2e;--text-dim:#6b7080;--correct:#2e8f5e;--correct-bg:rgba(46,143,94,0.10);--wrong:#c0392b;--wrong-bg:rgba(192,57,43,0.10);--shadow:0 2px 16px rgba(0,0,0,0.08);}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:'Noto Sans SC',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;transition:background .3s,color .3s;}
-  .topbar{width:100%;max-width:680px;padding:20px 20px 0;display:flex;justify-content:space-between;align-items:flex-start;}
+  .topbar{width:100%;max-width:720px;padding:18px 20px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
   .header-label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:500;}
-  .topbar-left h1{font-family:'Noto Serif SC',serif;font-size:20px;font-weight:700;margin-top:2px;}
-  .theme-btn{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:13px;color:var(--text-dim);cursor:pointer;transition:all .2s;font-family:'Noto Sans SC',sans-serif;margin-top:4px;}
-  .theme-btn:hover{border-color:var(--accent);color:var(--accent);}
-  .progress-wrap{width:100%;max-width:680px;padding:16px 20px 0;}
+  .topbar-left h1{font-family:'Noto Serif SC',serif;font-size:19px;font-weight:700;margin-top:2px;}
+  .top-actions{display:flex;gap:6px;margin-top:4px;}
+  .icon-btn{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12px;color:var(--text-dim);cursor:pointer;transition:all .2s;font-family:'Noto Sans SC',sans-serif;white-space:nowrap;}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .icon-btn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+  .tab-nav{width:100%;max-width:720px;padding:14px 20px 0;display:flex;gap:6px;flex-wrap:wrap;}
+  .tab-btn{padding:8px 18px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:13px;color:var(--text-dim);cursor:pointer;font-family:'Noto Sans SC',sans-serif;transition:all .18s;position:relative;}
+  .tab-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+  .tab-badge{display:inline-block;min-width:17px;height:17px;line-height:17px;padding:0 5px;border-radius:9px;background:var(--wrong);color:#fff;font-size:10px;margin-left:5px;vertical-align:middle;}
+  .tab-btn.active .tab-badge{background:rgba(255,255,255,.3);}
+  .progress-wrap{width:100%;max-width:720px;padding:16px 20px 0;}
   .progress-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:8px;}
   .progress-bar{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;}
   .progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .4s ease;}
-  main{width:100%;max-width:680px;padding:16px 20px 40px;flex:1;}
-  .api-banner{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-  .api-banner label{font-size:13px;color:var(--text-dim);white-space:nowrap;}
-  .api-banner input{flex:1;min-width:180px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);font-family:monospace;outline:none;transition:border-color .2s;}
-  .api-banner input:focus{border-color:var(--accent);}
+  main{width:100%;max-width:720px;padding:16px 20px 40px;flex:1;}
+  /* API panel - collapsible */
+  .api-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;display:none;}
+  .api-panel.open{display:block;}
+  .api-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
+  .api-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .api-row label{font-size:13px;color:var(--text-dim);white-space:nowrap;min-width:64px;}
+  .api-row input,.api-row select{flex:1;min-width:160px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);outline:none;transition:border-color .2s;font-family:'Noto Sans SC',sans-serif;}
+  .api-row input{font-family:monospace;}
+  .api-row input:focus,.api-row select:focus{border-color:var(--accent);}
   .api-status{font-size:12px;padding:4px 10px;border-radius:12px;white-space:nowrap;}
   .api-status.ok{background:var(--correct-bg);color:var(--correct);}
   .api-status.no{background:var(--wrong-bg);color:var(--wrong);}
+  .api-hint{font-size:11px;color:var(--text-dim);line-height:1.6;opacity:.8;}
   #start-screen{display:flex;flex-direction:column;align-items:center;text-align:center;padding:24px 0 32px;gap:16px;}
   #start-screen .big-icon{font-size:52px;}
   #start-screen h2{font-family:'Noto Serif SC',serif;font-size:22px;font-weight:700;}
-  #start-screen p{color:var(--text-dim);font-size:14px;line-height:1.7;max-width:320px;}
-  .stats-row{display:flex;gap:10px;width:100%;max-width:360px;}
+  #start-screen p{color:var(--text-dim);font-size:14px;line-height:1.7;max-width:330px;}
+  .stats-row{display:flex;gap:10px;width:100%;max-width:380px;}
   .stat-box{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
   .stat-num{font-size:22px;font-weight:700;color:var(--accent);font-family:'Noto Serif SC',serif;}
   .stat-label{font-size:11px;color:var(--text-dim);margin-top:2px;}
-  .config-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;width:100%;max-width:360px;}
+  .config-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;width:100%;max-width:380px;}
   .config-row label{font-size:14px;color:var(--text-dim);flex:1;text-align:left;}
   .config-row select{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:14px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;outline:none;}
   .section-label{font-size:11px;color:var(--text-dim);letter-spacing:.08em;text-align:center;margin:4px 0 8px;}
-  .chapter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:360px;}
+  .chapter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:380px;}
   .ch-tag{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:13px;color:var(--text-dim);cursor:pointer;transition:all .15s;text-align:left;}
   .ch-tag.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
   .ch-count{font-size:11px;opacity:.7;margin-top:2px;}
   .btn-start{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:14px 48px;font-size:16px;font-weight:700;font-family:'Noto Serif SC',serif;cursor:pointer;transition:opacity .15s;margin-top:4px;}
   .btn-start:hover{opacity:.88;}
+  .wrong-only-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);cursor:pointer;}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px 20px;box-shadow:var(--shadow);}
   .q-number{font-size:11px;color:var(--accent);letter-spacing:.1em;font-weight:500;margin-bottom:12px;}
   .q-text{font-family:'Noto Serif SC',serif;font-size:16px;line-height:1.8;color:var(--text);margin-bottom:20px;}
@@ -71,6 +72,13 @@
   .option-btn.correct .option-letter{background:var(--correct);color:#fff;}
   .option-btn.wrong{border-color:var(--wrong);background:var(--wrong-bg);}
   .option-btn.wrong .option-letter{background:var(--wrong);color:#fff;}
+  .option-btn.picked{border-color:var(--accent);background:var(--accent-dim);}
+  .option-btn.picked .option-letter{background:var(--accent);color:#fff;}
+  .option-btn.missed{border-color:var(--correct);background:var(--correct-bg);border-style:dashed;}
+  .option-btn.missed .option-letter{background:var(--correct);color:#fff;}
+  .multi-tip{font-size:12px;color:var(--accent);margin:2px 0 4px;}
+  .btn-submit{margin-top:12px;width:100%;padding:11px;border:none;border-radius:10px;background:var(--accent);color:#fff;font-size:14px;font-weight:600;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:opacity .15s;}
+  .btn-submit:disabled{opacity:.4;cursor:default;}
   .exp-box{margin-top:14px;padding:14px 16px;border-radius:10px;font-size:13px;line-height:1.7;display:none;border-left:3px solid var(--border);background:var(--surface2);color:var(--text-dim);}
   .exp-box.show{display:block;}
   .exp-box.fb-correct{border-left-color:var(--correct);}
@@ -81,8 +89,22 @@
   .exp-loading{display:flex;align-items:center;gap:8px;color:var(--text-dim);font-size:13px;}
   .exp-spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
   @keyframes spin{to{transform:rotate(360deg);}}
-  .actions{margin-top:14px;display:flex;justify-content:flex-end;}
-  .btn-next{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 26px;font-size:14px;font-weight:600;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:opacity .15s;display:none;}
+  .followup-area{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
+  .followup-title{font-size:11px;color:var(--text-dim);letter-spacing:.06em;margin-bottom:8px;}
+  .followup-history{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+  .fu-bubble{padding:10px 13px;border-radius:10px;font-size:13px;line-height:1.6;}
+  .fu-user{background:var(--accent-dim);border:1px solid var(--accent);color:var(--text);border-radius:10px 10px 2px 10px;align-self:flex-end;max-width:88%;}
+  .fu-ai{background:var(--surface);border:1px solid var(--border);color:var(--text-dim);border-radius:10px 10px 10px 2px;align-self:flex-start;max-width:95%;}
+  .followup-input-row{display:flex;gap:8px;}
+  .followup-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);font-family:'Noto Sans SC',sans-serif;outline:none;transition:border-color .2s;}
+  .followup-input:focus{border-color:var(--accent);}
+  .followup-send{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;white-space:nowrap;transition:opacity .15s;}
+  .followup-send:hover{opacity:.85;}
+  .followup-send:disabled{opacity:.4;cursor:not-allowed;}
+  .actions{margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .btn-skip{background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:11px 18px;font-size:13px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:all .15s;}
+  .btn-skip:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-next{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 26px;font-size:14px;font-weight:600;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:opacity .15s;display:none;margin-left:auto;}
   .btn-next:hover{opacity:.88;}
   .btn-next.show{display:block;}
   #result-screen{display:none;flex-direction:column;align-items:center;text-align:center;padding:32px 0;gap:18px;}
@@ -91,7 +113,7 @@
   .score-num{font-family:'Noto Serif SC',serif;font-size:34px;font-weight:700;color:var(--accent);line-height:1;}
   .score-label{font-size:12px;color:var(--text-dim);margin-top:4px;}
   .score-detail{font-size:14px;color:var(--text-dim);line-height:1.8;}
-  .review-list{width:100%;max-width:640px;text-align:left;display:flex;flex-direction:column;gap:8px;}
+  .review-list{width:100%;max-width:680px;text-align:left;display:flex;flex-direction:column;gap:8px;}
   .review-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.65;}
   .review-item.ri-correct{border-left:3px solid var(--correct);}
   .review-item.ri-wrong{border-left:3px solid var(--wrong);}
@@ -101,6 +123,88 @@
   .ri-correct-ans{color:var(--correct);}
   .btn-restart{background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:10px;padding:12px 36px;font-size:15px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:all .15s;}
   .btn-restart:hover{background:var(--accent-dim);}
+  .result-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+  /* Chat / Wrong page share */
+  #chat-page,#wrong-page{display:none;flex-direction:column;}
+  #chat-page{height:calc(100dvh - 210px);min-height:340px;}
+  .chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-bottom:8px;-webkit-overflow-scrolling:touch;}
+  .chat-messages::-webkit-scrollbar{width:4px;}
+  .chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .chat-bubble{padding:12px 15px;border-radius:12px;font-size:14px;line-height:1.7;max-width:88%;}
+  .chat-user{background:var(--accent-dim);border:1px solid var(--accent);color:var(--text);align-self:flex-end;border-radius:12px 12px 2px 12px;}
+  .chat-ai{background:var(--surface);border:1px solid var(--border);color:var(--text);align-self:flex-start;border-radius:12px 12px 12px 2px;max-width:95%;}
+  .chat-ai-name{font-size:11px;color:var(--accent);font-weight:600;margin-bottom:5px;}
+  .chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 20px;color:var(--text-dim);}
+  .chat-empty .icon{font-size:48px;margin-bottom:16px;line-height:1;}
+  .chat-empty .empty-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;}
+  .chat-empty .empty-sub{font-size:13px;line-height:1.7;margin-bottom:18px;max-width:280px;}
+  .chat-empty .empty-hint{font-size:12px;opacity:.7;padding:7px 16px;border:1px solid var(--border);border-radius:18px;}
+  .chat-input-wrap{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);margin-top:8px;flex-shrink:0;background:var(--bg);position:sticky;bottom:0;}
+  .chat-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;color:var(--text);font-family:'Noto Sans SC',sans-serif;outline:none;resize:none;line-height:1.55;max-height:120px;transition:border-color .2s;}
+  .chat-input:focus{border-color:var(--accent);}
+  .chat-send{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px 20px;font-size:14px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:opacity .15s;align-self:flex-end;white-space:nowrap;}
+  .chat-send:hover{opacity:.85;}
+  .chat-send:disabled{opacity:.4;cursor:not-allowed;}
+  .spinner{width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;}
+  /* Wrong book */
+  .wrong-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+  .wrong-head h2{font-family:'Noto Serif SC',serif;font-size:20px;}
+  .wrong-clear{background:transparent;border:1px solid var(--wrong);color:var(--wrong);border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'Noto Sans SC',sans-serif;transition:all .15s;}
+  .wrong-clear:hover{background:var(--wrong-bg);}
+  .wrong-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--wrong);border-radius:10px;padding:16px;margin-bottom:10px;}
+  .wrong-q{font-family:'Noto Serif SC',serif;font-size:15px;line-height:1.7;margin-bottom:10px;}
+  .wrong-opts{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
+  .wrong-opt{font-size:13px;color:var(--text-dim);padding:6px 10px;border-radius:6px;background:var(--surface2);}
+  .wrong-opt.is-correct{color:var(--correct);background:var(--correct-bg);font-weight:500;}
+  .wrong-opt.is-yours{color:var(--wrong);background:var(--wrong-bg);}
+  .wrong-meta{font-size:12px;color:var(--text-dim);display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;}
+  .wrong-actions{display:flex;gap:8px;}
+  .wrong-remove{background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:'Noto Sans SC',sans-serif;}
+  .wrong-remove:hover{border-color:var(--wrong);color:var(--wrong);}
+  .wrong-empty{text-align:center;padding:48px 20px;color:var(--text-dim);}
+  .wrong-empty .icon{font-size:44px;margin-bottom:14px;}
+  /* toggle switch */
+  .switch-wrap{position:relative;display:inline-block;width:44px;height:24px;flex:0 0 auto;cursor:pointer;}
+  .switch-wrap input{opacity:0;width:0;height:0;}
+  .switch-ui{position:absolute;inset:0;background:var(--surface2);border:1px solid var(--border);border-radius:24px;transition:.2s;}
+  .switch-ui:before{content:'';position:absolute;height:16px;width:16px;left:3px;top:3px;background:var(--text-dim);border-radius:50%;transition:.2s;}
+  .switch-wrap input:checked + .switch-ui{background:var(--accent-dim);border-color:var(--accent);}
+  .switch-wrap input:checked + .switch-ui:before{transform:translateX(20px);background:var(--accent);}
+  /* done page */
+  #done-page{display:none;flex-direction:column;}
+  .done-filter{display:flex;gap:8px;margin-bottom:12px;}
+  .done-filter-btn{flex:1;padding:7px 0;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-dim);font-size:13px;cursor:pointer;font-family:'Noto Sans SC',sans-serif;}
+  .done-filter-btn.on{border-color:var(--accent);color:var(--accent);background:var(--surface2);font-weight:500;}
+  .done-ch{margin-bottom:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);}
+  .done-ch-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text);}
+  .done-ch-head .meta{font-size:12px;color:var(--text-dim);font-weight:400;}
+  .done-ch-body{display:none;padding:0 14px 8px;}
+  .done-ch.open .done-ch-body{display:block;}
+  .done-ch-head .arrow{transition:transform .2s;color:var(--text-dim);}
+  .done-ch.open .done-ch-head .arrow{transform:rotate(90deg);}
+  .done-item{border-top:1px solid var(--border);padding:11px 0;font-size:13px;line-height:1.6;}
+  .done-q{color:var(--text);margin-bottom:6px;}
+  .done-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  .done-pill{font-size:11px;padding:2px 9px;border-radius:10px;}
+  .pill-mastered{background:var(--correct-bg);color:var(--correct);}
+  .pill-review{background:var(--wrong-bg);color:var(--wrong);}
+  .done-back{background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:'Noto Sans SC',sans-serif;}
+  .done-back:hover{border-color:var(--accent);color:var(--accent);}
+  .done-toggle{background:transparent;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;padding:4px 0;font-family:'Noto Sans SC',sans-serif;}
+  .done-toggle:hover{color:var(--accent);}
+  .done-opts{display:none;flex-direction:column;gap:5px;margin-top:8px;}
+  .done-item.open .done-opts{display:flex;}
+  .done-item.open .done-toggle .arrow{transform:rotate(90deg);}
+  .mark-review-btn{background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:8px 14px;font-size:13px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;margin-top:10px;transition:all .15s;}
+  .mark-review-btn:hover{background:var(--accent-dim);}
+  .mark-review-btn.marked{border-color:var(--correct);color:var(--correct);cursor:default;}
+  /* image upload */
+  .img-upload-btn{flex:0 0 auto;width:40px;height:40px;border:1px solid var(--border);background:var(--surface2);border-radius:10px;font-size:18px;cursor:pointer;align-items:center;justify-content:center;display:none;}
+  .img-upload-btn:hover{border-color:var(--accent);}
+  #chat-img-preview img{max-height:90px;border-radius:8px;border:1px solid var(--border);}
+  .img-pic-wrap{position:relative;display:inline-block;}
+  .img-pic-del{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--wrong);color:#fff;border:none;font-size:13px;cursor:pointer;line-height:1;}
+  .chat-bubble img{max-width:180px;border-radius:8px;margin-top:6px;display:block;}
 </style>
 </head>
 <body>
@@ -110,7 +214,17 @@
     <div class="header-label">军队文职 · 备考练习</div>
     <h1>精准刷题，逐题突破</h1>
   </div>
-  <button class="theme-btn" id="theme-btn">☀️ 白天</button>
+  <div class="top-actions">
+    <button class="icon-btn" id="api-toggle" onclick="toggleApi()">🔑 设置</button>
+    <button class="icon-btn" id="theme-btn">☀️ 白天</button>
+  </div>
+</div>
+
+<div class="tab-nav">
+  <button class="tab-btn active" id="tab-quiz" onclick="switchTab('quiz')">📋 刷题练习</button>
+  <button class="tab-btn" id="tab-chat" onclick="switchTab('chat')">💬 AI 问答</button>
+  <button class="tab-btn" id="tab-wrong" onclick="switchTab('wrong')">📕 错题集<span class="tab-badge" id="wrong-badge" style="display:none">0</span></button>
+  <button class="tab-btn" id="tab-done" onclick="switchTab('done')">✅ 已做题<span class="tab-badge" id="done-badge" style="display:none">0</span></button>
 </div>
 
 <div class="progress-wrap" id="progress-wrap" style="display:none">
@@ -122,140 +236,499 @@
 </div>
 
 <main>
-  <div class="api-banner">
-    <label>🔑 API Key</label>
-    <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off">
-    <span class="api-status no" id="api-status">未设置</span>
+  <div class="api-panel" id="api-panel">
+    <div class="api-body">
+      <div class="api-row">
+        <label>🏷️ 服务商</label>
+        <select id="provider-select">
+          <option value="deepseek">DeepSeek（纯文本·性价比）</option>
+          <option value="anthropic">Anthropic Claude（支持读图）</option>
+          <option value="doubao">豆包 / 火山方舟（支持读图）</option>
+        </select>
+      </div>
+      <div class="api-row">
+        <label>🔑 API Key</label>
+        <input type="password" id="api-key-input" placeholder="填入对应服务商的 API Key" autocomplete="off">
+        <span class="api-status no" id="api-status">未设置</span>
+      </div>
+      <div class="api-row" id="model-row" style="display:none">
+        <label>🤖 模型</label>
+        <select id="model-select"></select>
+      </div>
+      <div class="api-row" id="ep-row" style="display:none">
+        <label>🔌 接入点</label>
+        <input type="text" id="ep-input" placeholder="火山方舟推理接入点 ID，如 ep-xxxx 或模型名" autocomplete="off">
+      </div>
+      <div class="api-hint" id="api-hint">先选服务商再填对应 Key。Key 仅保存在本机浏览器，不会上传。豆包/Claude 支持上传图片让 AI 读图。</div>
+    </div>
   </div>
 
-  <div id="start-screen">
-    <div class="big-icon">📋</div>
-    <h2>开始练习测试</h2>
-    <p>从内置题库随机出题，填入 Anthropic API Key 后 AI 自动生成解析。</p>
-    <div class="stats-row">
-      <div class="stat-box"><div class="stat-num" id="total-q-count">0</div><div class="stat-label">题库总题数</div></div>
-      <div class="stat-box"><div class="stat-num" id="total-ch-count">0</div><div class="stat-label">章节数</div></div>
+  <!-- 刷题页 -->
+  <div id="quiz-page">
+    <div id="start-screen">
+      <div id="resume-banner" style="display:none;width:100%;max-width:380px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:10px;padding:12px 16px;text-align:left;">
+        <div style="font-size:14px;color:var(--text);margin-bottom:8px;">📌 有未完成的测试</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-submit" id="btn-resume" style="margin:0;flex:1;">继续上次</button>
+          <button class="btn-skip" id="btn-discard" style="flex:0 0 auto;">放弃</button>
+        </div>
+      </div>
+      <div class="big-icon">📋</div>
+      <h2>开始练习测试</h2>
+      <p>从内置题库随机出题。填入 API Key 后，AI 自动生成解析并支持针对题目追问。</p>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num" id="total-q-count">0</div><div class="stat-label">题库总题数</div></div>
+        <div class="stat-box"><div class="stat-num" id="done-count-stat">0</div><div class="stat-label">已做题数</div></div>
+        <div class="stat-box"><div class="stat-num" id="wrong-count-stat">0</div><div class="stat-label">错题数</div></div>
+      </div>
+      <div class="config-row">
+        <label>每次题目数量</label>
+        <select id="q-count">
+          <option value="10">10 题</option>
+          <option value="20">20 题</option>
+          <option value="50">50 题</option>
+          <option value="999">全部</option>
+        </select>
+      </div>
+      <div class="config-row">
+        <label>只抽未做过的题</label>
+        <label class="switch-wrap"><input type="checkbox" id="unanswered-only"><span class="switch-ui"></span></label>
+      </div>
+      <div class="section-label">选择章节（可多选）</div>
+      <div class="chapter-grid" id="chapter-grid"></div>
+      <button class="btn-start" id="btn-start">开始测试 →</button>
     </div>
-    <div class="config-row">
-      <label>每次题目数量</label>
-      <select id="q-count">
-        <option value="10">10 题</option>
-        <option value="20">20 题</option>
-        <option value="50">50 题</option>
-      </select>
+
+    <div id="quiz-screen" style="display:none">
+      <div class="card" id="quiz-card"></div>
+      <div class="actions">
+        <button class="btn-skip" id="btn-skip" onclick="quitQuiz()">退出</button>
+        <button class="btn-skip" id="btn-prev" style="display:none">← 上一题</button>
+        <button class="btn-next" id="btn-next">下一题 →</button>
+      </div>
     </div>
-    <div class="section-label">选择章节（可多选）</div>
-    <div class="chapter-grid" id="chapter-grid"></div>
-    <button class="btn-start" id="btn-start">开始测试 →</button>
+
+    <div id="result-screen">
+      <h2>测试完成 🎉</h2>
+      <div class="score-circle">
+        <div class="score-num" id="res-score">0</div>
+        <div class="score-label">/ <span id="res-total">10</span> 题</div>
+      </div>
+      <div class="score-detail" id="res-detail"></div>
+      <div id="review-points" style="width:100%;max-width:680px;text-align:left;display:none;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.7;color:var(--text-dim);"></div>
+      <div class="review-list" id="review-list"></div>
+      <div class="result-btns">
+        <button class="btn-restart" id="btn-review-points">📝 生成复习要点</button>
+        <button class="btn-restart" id="btn-restart">再来一轮</button>
+      </div>
+    </div>
   </div>
 
-  <div id="quiz-screen" style="display:none">
-    <div class="card" id="quiz-card"></div>
-    <div class="actions"><button class="btn-next" id="btn-next">下一题 →</button></div>
+  <!-- AI 问答页 -->
+  <div id="chat-page">
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-empty" id="chat-empty">
+        <div class="icon">🤖</div>
+        <div class="empty-title">AI 备考助手</div>
+        <div class="empty-sub">随时提问军队文职考试相关知识，也可针对刷过的题目深入追问。用豆包或 Claude 时可上传图片让 AI 读图。</div>
+        <div class="empty-hint">填入 API Key（右上角 🔑 设置）后开始对话</div>
+      </div>
+    </div>
+    <div id="chat-img-preview" style="display:none;padding:8px 12px 0;"></div>
+    <div class="chat-input-wrap">
+      <button class="img-upload-btn" id="chat-img-btn" type="button" title="上传图片" style="display:none">🖼️</button>
+      <input type="file" id="chat-img-input" accept="image/*" style="display:none">
+      <textarea class="chat-input" id="chat-input" placeholder="" rows="1"></textarea>
+      <button class="chat-send" id="chat-send" disabled>发送</button>
+    </div>
   </div>
 
-  <div id="result-screen">
-    <h2>测试完成 🎉</h2>
-    <div class="score-circle">
-      <div class="score-num" id="res-score">0</div>
-      <div class="score-label">/ <span id="res-total">100</span> 分</div>
+  <!-- 错题集页 -->
+  <div id="wrong-page">
+    <div class="wrong-head">
+      <h2>📕 错题集</h2>
+      <button class="wrong-clear" onclick="clearWrong()">清空错题</button>
     </div>
-    <div class="score-detail" id="res-detail"></div>
-    <div class="review-list" id="review-list"></div>
-    <button class="btn-restart" id="btn-restart">再来一轮</button>
+    <div id="wrong-list"></div>
+  </div>
+
+  <!-- 已做题页 -->
+  <div id="done-page">
+    <div class="wrong-head">
+      <h2>✅ 已做题</h2>
+      <button class="wrong-clear" onclick="clearDone()">清空记录</button>
+    </div>
+    <div class="done-filter">
+      <button class="done-filter-btn on" data-f="all" onclick="setDoneFilter('all')">全部</button>
+      <button class="done-filter-btn" data-f="review" onclick="setDoneFilter('review')">🤔 需复习</button>
+      <button class="done-filter-btn" data-f="mastered" onclick="setDoneFilter('mastered')">✓ 已掌握</button>
+    </div>
+    <div id="done-list"></div>
   </div>
 </main>
 
+<script src="questions.js"></script>
 <script>
-// ══════════════════════════════════════════════
+
+// ══════════════════════════════════════
 // 题库 — 在此追加题目即可扩展
 // { ch:'章节', q:'题干', opts:[{l,t}], ans:'A' }
-// ══════════════════════════════════════════════
-const QUESTION_BANK = [
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'《为人民服务》是1944年毛泽东在延安悼念（　）的讲演。',opts:[{l:'A',t:'张思德'},{l:'B',t:'白求恩'},{l:'C',t:'董存瑞'},{l:'D',t:'刘胡兰'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'我国新民主主义革命的性质是（　）。',opts:[{l:'A',t:'无产阶级社会主义革命'},{l:'B',t:'共产主义革命'},{l:'C',t:'资产阶级民主主义革命'},{l:'D',t:'无产阶级专政'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'党章是党的总章程，是党的根本大法，集中体现了党的理论和（　），规定了党的重要制度。',opts:[{l:'A',t:'路线方针政策'},{l:'B',t:'组织路线'},{l:'C',t:'干部路线'},{l:'D',t:'群众路线'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'近代中国的民主革命经历了旧民主主义革命与新民主主义革命两个阶段，区别新民主主义革命与旧民主主义革命的根本标志是革命（　）不同。',opts:[{l:'A',t:'指导思想'},{l:'B',t:'领导权'},{l:'C',t:'前途'},{l:'D',t:'对象'}],ans:'B'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'毛泽东在1957年2月所作报告中，强调社会主义国家政治生活的主题是（　）。',opts:[{l:'A',t:'正确区分和处理两类不同性质的矛盾'},{l:'B',t:'正确处理敌我矛盾'},{l:'C',t:'正确处理人民内部矛盾'},{l:'D',t:'正确认识和处理阶级斗争'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'（　）是我们党的根本工作路线，也是我们党的根本领导作风和工作方法。',opts:[{l:'A',t:'政治路线'},{l:'B',t:'群众路线'},{l:'C',t:'组织路线'},{l:'D',t:'改革路线'}],ans:'B'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'（　）通过的《中国共产党章程》把毛泽东思想确立为党必须长期坚持的指导思想。',opts:[{l:'A',t:'党的六届七中全会'},{l:'B',t:'党的七届二中全会'},{l:'C',t:'党的八大'},{l:'D',t:'党的七大'}],ans:'D'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'毛泽东在（　）中提出了"没有调查，没有发言权"的著名论断。',opts:[{l:'A',t:'《共产党人》发刊词'},{l:'B',t:'《湖南农民运动考察报告》'},{l:'C',t:'《反对本本主义》'},{l:'D',t:'《改造我们的学习》'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'在（　）时期，毛泽东提出把马克思列宁主义基本原理同中国具体实际进行"第二次结合"。',opts:[{l:'A',t:'土地革命战争'},{l:'B',t:'社会主义革命和建设'},{l:'C',t:'新民主主义革命'},{l:'D',t:'抗日战争'}],ans:'B'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'毛泽东思想初步形成的标志是提出并阐述了（　）。',opts:[{l:'A',t:'农村包围城市、武装夺取政权的思想'},{l:'B',t:'官兵平等'},{l:'C',t:'新民主主义革命理论'},{l:'D',t:'新民主主义革命的总路线'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'（　）提出了"把国内外一切积极因素调动起来，为社会主义事业服务"的中心思想。',opts:[{l:'A',t:'《论十大关系》'},{l:'B',t:'《论新阶段》'},{l:'C',t:'《论人民民主专政》'},{l:'D',t:'《论联合政府》'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'1929年12月，《古田会议决议》确立了（　）的原则。',opts:[{l:'A',t:'一切行动听指挥'},{l:'B',t:'官兵平等'},{l:'C',t:'党指挥枪'},{l:'D',t:'拥政爱民'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'我国社会主义基本制度确立的标志是（　）。',opts:[{l:'A',t:'1956年，社会主义改造基本完成'},{l:'B',t:'1953年，提出过渡时期总路线'},{l:'C',t:'1954年，第一届全国人民代表大会召开'},{l:'D',t:'1956年，党的第八次全国代表大会召开'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'一切从实际出发，理论联系实际，（　），在实践中检验和发展真理。',opts:[{l:'A',t:'群众路线'},{l:'B',t:'以人为本'},{l:'C',t:'主观能动'},{l:'D',t:'实事求是'}],ans:'D'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'下列对三种作战形式的表述中，错误的是（　）。',opts:[{l:'A',t:'运动战是正规兵团的作战形式，著名战役有四渡赤水'},{l:'B',t:'阵地战通过防守或夺取阵地来实现战斗目的'},{l:'C',t:'游击战是分散流动的作战形式，是一种群众性的武装斗争形式'},{l:'D',t:'游击战的指导方针是"避敌主力，诱敌深入，集中优势兵力，各个歼灭敌人"'}],ans:'D'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'"三个代表"重要思想中，加深了对建设什么样的党、怎样建设党和（　）的认识。',opts:[{l:'A',t:'实现什么样的发展、怎样发展'},{l:'B',t:'建设什么样的国家、怎样建设国家'},{l:'C',t:'什么是社会主义、怎样建设社会主义'},{l:'D',t:'建设什么样的文化、怎样建设文化'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'党的十二大提出（　）重大命题。',opts:[{l:'A',t:'"党和国家领导制度的改革"'},{l:'B',t:'"一个中心，两个基本点"'},{l:'C',t:'"建设有中国特色的社会主义"'},{l:'D',t:'"三步走"发展战略'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'两岸关系的政治基础是（　）。',opts:[{l:'A',t:'反对"台独"'},{l:'B',t:'"两岸一家亲"理念'},{l:'C',t:'交流合作'},{l:'D',t:'一个中国原则'}],ans:'D'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'党的十一届三中全会决定，把全党的工作重心转移到（　）上来。',opts:[{l:'A',t:'解放思想'},{l:'B',t:'全面拨乱反正'},{l:'C',t:'社会主义现代化建设'},{l:'D',t:'社会主义民主制度建设'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'中华人民共和国成立初期，主要任务是继续完成（　），进而对生产资料私有制进行社会主义改造。',opts:[{l:'A',t:'国防建设'},{l:'B',t:'土地革命'},{l:'C',t:'新民主主义革命'},{l:'D',t:'整风运动'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'过渡时期的总路线，采取的方针中不包括（　）。',opts:[{l:'A',t:'继续以阶级斗争为纲'},{l:'B',t:'迈向社会主义工业化'},{l:'C',t:'"一化三改"'},{l:'D',t:'"一体两翼"'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'建立中国共产党、（　），推进改革开放和中国特色社会主义事业，是五四运动以来三大历史性事件。',opts:[{l:'A',t:'打败日本帝国主义'},{l:'B',t:'成立中华人民共和国'},{l:'C',t:'完成土地改革'},{l:'D',t:'建立社会主义制度'}],ans:'B'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'1937年《实践论》是为了用马克思主义认识论去揭露党内的（　）。',opts:[{l:'A',t:'逃跑主义和官僚主义'},{l:'B',t:'教条主义和经验主义'},{l:'C',t:'机会主义和官僚主义'},{l:'D',t:'主观主义和悲观主义'}],ans:'B'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'（　）提出了"中国特色社会主义理论体系"的科学概念。',opts:[{l:'A',t:'党的十六届三中全会'},{l:'B',t:'党的十六大'},{l:'C',t:'党的十七大'},{l:'D',t:'党的十七届三中全会'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'让人民群众有更多获得感，这要求国家的发展必须坚持（　）。',opts:[{l:'A',t:'创新发展'},{l:'B',t:'协调发展'},{l:'C',t:'共享发展'},{l:'D',t:'绿色发展'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'中华民族精神的核心是（　）。',opts:[{l:'A',t:'爱国主义'},{l:'B',t:'团结统一'},{l:'C',t:'爱护和平'},{l:'D',t:'自强不息'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'1938年5月，毛泽东在（　）中科学预见抗日战争将经过三个阶段。',opts:[{l:'A',t:'《抗日游击战争的战略问题》'},{l:'B',t:'《论持久战》'},{l:'C',t:'《战争和战略问题》'},{l:'D',t:'《论联合政府》'}],ans:'B'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'（　）是中华民族精神之魂，是我们立党立国的重要原则。',opts:[{l:'A',t:'独立自主'},{l:'B',t:'胸怀天下'},{l:'C',t:'开拓创新'},{l:'D',t:'敢于斗争'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'（　）是关系中华民族永续发展的根本大计。',opts:[{l:'A',t:'生态文明建设'},{l:'B',t:'经济建设'},{l:'C',t:'政治建设'},{l:'D',t:'文化建设'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'下列关于建设世界一流军队说法正确的是（　）。',opts:[{l:'A',t:'改革强军是立军之本'},{l:'B',t:'科技兴军是立军之本'},{l:'C',t:'依法治军是立军之本'},{l:'D',t:'政治建军是立军之本'}],ans:'D'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'关于邓小平同志的表述，正确的是（　）。',opts:[{l:'A',t:'他推动实现了马克思主义中国化新的飞跃'},{l:'B',t:'在党的十四大上，他提出"走自己的道路，建设有中国特色的社会主义"'},{l:'C',t:'在党的十二大上系统论述了社会主义初级阶段理论'},{l:'D',t:'党的十四大把邓小平理论确立为党的指导思想'}],ans:'D'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'在新时代，体现"亲仁善邻、协和万邦"处世之道的治国理念是（　）。',opts:[{l:'A',t:'构建人类命运共同体的理念'},{l:'B',t:'金山银山的理念'},{l:'C',t:'绿色发展的理念'},{l:'D',t:'自由贸易的理念'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'做好新时代党的民族工作，必须以（　）为主线。',opts:[{l:'A',t:'铸牢中华民族共同体意识'},{l:'B',t:'构建人类命运共同体意识'},{l:'C',t:'筑牢中国共产党人精神谱系'},{l:'D',t:'增强发展生态文明意识'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'关于对外开放和自力更生的关系，下列说法错误的是（　）。',opts:[{l:'A',t:'对外开放和自力更生能够有效避免金融危机'},{l:'B',t:'对外开放必须以自力更生为基础和前提'},{l:'C',t:'坚持独立自主、自力更生，绝不是闭关锁国'},{l:'D',t:'对外开放和自力更生是相辅相成、相互促进的'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'党的十一届三中全会后，把党和国家的工作重心真正转移到（　）上来。',opts:[{l:'A',t:'经济建设'},{l:'B',t:'作风建设'},{l:'C',t:'组织建设'},{l:'D',t:'军事建设'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'在"四个自信"中，更基础、更广泛、更深厚的自信是（　）。',opts:[{l:'A',t:'道路自信'},{l:'B',t:'理论自信'},{l:'C',t:'制度自信'},{l:'D',t:'文化自信'}],ans:'D'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'下列关于党的领导的表述正确的是（　）。',opts:[{l:'A',t:'党的领导是中国特色社会主义最本质的特征'},{l:'B',t:'党的领导是国家长治久安的重要保障'},{l:'C',t:'党的领导主要是政治、经济、思想、文化等领导'},{l:'D',t:'坚持党的领导根本的是坚持人民当家作主'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'我国的基本民族政策是（　）。',opts:[{l:'A',t:'实现各民族共同繁荣'},{l:'B',t:'实行民族区域自治'},{l:'C',t:'民族平等'},{l:'D',t:'民族团结'}],ans:'B'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'科学发展观形成的现实依据是（　）。',opts:[{l:'A',t:'我国社会主义初级阶段的基本国情'},{l:'B',t:'我国经济社会发展的阶段性特征'},{l:'C',t:'我国社会主义建设和改革开放的实践经验'},{l:'D',t:'国外的发展经验和先进发展理念'}],ans:'B'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'新民主主义革命的直接目标是（　）。',opts:[{l:'A',t:'反对外国侵略和本国封建统治'},{l:'B',t:'推翻三座大山'},{l:'C',t:'建立资产阶级专政的国家和资本主义社会'},{l:'D',t:'建立革命阶级联合专政的国家和新民主主义社会'}],ans:'D'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'对外开放迈出的第一步是（　）。',opts:[{l:'A',t:'设立经济特区'},{l:'B',t:'设立沿海开放城市'},{l:'C',t:'开辟沿海经济开发区'},{l:'D',t:'开发和开放浦东'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'在哪部著作中，毛泽东提出"兵民是胜利之本"等论断？（　）',opts:[{l:'A',t:'《论持久战》'},{l:'B',t:'《时局问题及其他》'},{l:'C',t:'《大兴调查研究之风》'},{l:'D',t:'《矛盾论》'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'经济体制改革的核心问题是（　）。',opts:[{l:'A',t:'处理好政府和市场的关系'},{l:'B',t:'处理好竞争和垄断的关系'},{l:'C',t:'处理好积累与消费的关系'},{l:'D',t:'处理好出口与进口的关系'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'以"两个务必"为核心的（　），是中国共产党人精神谱系的重要组成部分。',opts:[{l:'A',t:'西柏坡精神'},{l:'B',t:'井冈山精神'},{l:'C',t:'大别山精神'},{l:'D',t:'南泥湾精神'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'以下对党的基本路线认识不正确的是（　）。',opts:[{l:'A',t:'党的基本路线是党和国家的生命线、人民的幸福线'},{l:'B',t:'坚持党的基本路线不动摇的关键是坚持以经济建设为中心不动摇'},{l:'C',t:'1978年党的十一届三中全会提出了党的基本路线'},{l:'D',t:'坚持党的基本路线一百年不动摇'}],ans:'C'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'下列有关毛泽东思想说法正确的是（　）。',opts:[{l:'A',t:'中华人民共和国的成立标志着中国已进入社会主义社会'},{l:'B',t:'《新民主主义论》完整地提出了新民主主义革命的总路线'},{l:'C',t:'农村包围城市理论提出标志着毛泽东思想的成熟'},{l:'D',t:'《论十大关系》标志着中国共产党人开始探索中国社会主义建设道路'}],ans:'D'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'以下内容属于《中国社会各阶级的分析》的是（　）。',opts:[{l:'A',t:'无产阶级最广大、最忠实的同盟军是农民'},{l:'B',t:'农民问题乃国民革命的中心问题'},{l:'C',t:'第一次明确提出"工农武装割据"思想'},{l:'D',t:'提出了"农村包围城市、武装夺取政权"的道路理论'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'我国社会主义民主政治最根本的特点是（　）。',opts:[{l:'A',t:'坚持党的领导、人民当家作主和依法治国三者的有机统一'},{l:'B',t:'发展社会主义民主政治，建设社会主义政治文明'},{l:'C',t:'社会主义民主更加完善、法制更加完备'},{l:'D',t:'人民的政治、经济和文化权益得到切实尊重和保障'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'关于统一战线下列说法正确的是（　）。',opts:[{l:'A',t:'土地革命战争时期统一战线的主体是工人、农民、小资产阶级'},{l:'B',t:'抗日民族统一战线和人民民主统一战线均以国共合作为基础'},{l:'C',t:'国民革命统一战线和工农民主统一战线均以国民党为主要斗争对象'},{l:'D',t:'社会主义制度建立后形成了新时期的爱国统一战线'}],ans:'D'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'《论持久战》中，毛泽东指出抗日战争最困难的时期是（　）。',opts:[{l:'A',t:'战略防御阶段'},{l:'B',t:'战略相持阶段'},{l:'C',t:'战略反攻阶段'},{l:'D',t:'大决战阶段'}],ans:'B'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'我国对外政策的基本立场是（　）。',opts:[{l:'A',t:'独立自主'},{l:'B',t:'促进世界和平与发展'},{l:'C',t:'和平共处五项原则'},{l:'D',t:'坚持对外开放，加强国际交往'}],ans:'A'},
-  {ch:'毛泽东思想与中国特色社会主义理论体系',q:'党的（　）把"三个代表"重要思想确立为党必须长期坚持的指导思想。',opts:[{l:'A',t:'十六大'},{l:'B',t:'十六届三中全会'},{l:'C',t:'十七大'},{l:'D',t:'十七届三中全会'}],ans:'A'},
-];
+// ══════════════════════════════════════
+// 题库已外置到 questions.js（通过上方 <script src="questions.js"> 载入 QUESTION_BANK）
+// ══════════════════════════════════════
+// State
+// ══════════════════════════════════════
+const state = {
+  apiKey:'', model:'', provider:'', endpoint:'',
+  totalQ:10, selectedChapters:new Set(), pool:[], order:[], current:0, results:[], score:0,
+  currentQ:null, fuHistory:[], chatHistory:[], multiPick:new Set(), answered:[],
+  wrongOnly:false,
+};
+const LS_KEY='jdwz_apikey', LS_MODEL='jdwz_model', LS_WRONG='jdwz_wrongbook', LS_DONE='jdwz_donebook', LS_SESSION='jdwz_session', LS_PROVIDER='jdwz_provider', LS_ENDPOINT='jdwz_endpoint';
 
-// ══════════════════════════════════════════════
-const state={apiKey:'',totalQ:10,selectedChapters:new Set(),pool:[],order:[],current:0,results:[],score:0};
+const MODELS={
+  anthropic:[['claude-sonnet-4-6','Claude Sonnet 4.6（均衡）'],['claude-opus-4-8','Claude Opus 4.8（最强）'],['claude-haiku-4-5-20251001','Claude Haiku 4.5（快速）']],
+  deepseek:[['deepseek-v4-flash','DeepSeek-V4 Flash（快速·性价比）'],['deepseek-v4-pro','DeepSeek-V4 Pro（最强推理）'],['deepseek-chat','旧名 chat（兼容，将停用）'],['deepseek-reasoner','旧名 reasoner（兼容，将停用）']],
+  doubao:[['doubao-seed-1-6-250615','豆包 Seed 1.6（多模态·读图）'],['doubao-1-5-vision-pro-250328','豆包 1.5 Vision Pro（读图）'],['__custom__','自定义（用下方接入点）']]
+};
+const VISION_PROVIDERS=['anthropic','doubao'];   // 支持图片输入的服务商
 
-// Theme
-let isDark=true;
-document.getElementById('theme-btn').addEventListener('click',()=>{
-  isDark=!isDark;
+// ── API helpers ──
+function guessProvider(k){
+  if(!k) return null;
+  if(k.startsWith('sk-ant-')) return 'anthropic';
+  if(k.startsWith('sk-')&&k.length>10) return 'deepseek';
+  return null;
+}
+// 当前服务商：以用户显式选择为准，未选则按前缀猜，再不行默认 deepseek
+function curProvider(){ return state.provider||guessProvider(state.apiKey)||'deepseek'; }
+function getApiType(k){ return state.apiKey ? curProvider() : null; }
+function visionEnabled(){ return VISION_PROVIDERS.includes(getApiType(state.apiKey)); }
+
+function refreshModelOptions(){
+  const t=curProvider();
+  const sel=document.getElementById('model-select');
+  const list=MODELS[t]||[];
+  document.getElementById('model-row').style.display='flex';
+  let chosen=state.model;
+  if(!list.some(m=>m[0]===chosen)) chosen=list[0][0];
+  sel.innerHTML=list.map(m=>'<option value="'+m[0]+'"'+(m[0]===chosen?' selected':'')+'>'+m[1]+'</option>').join('');
+  state.model=chosen;
+  localStorage.setItem(LS_MODEL,chosen);
+  document.getElementById('ep-row').style.display = t==='doubao' ? 'flex' : 'none';
+}
+
+// 豆包选「自定义」时用接入点输入框的值作为模型名
+function resolveModel(t){
+  if(t==='doubao') return state.model==='__custom__' ? (state.endpoint||'').trim() : state.model;
+  return state.model||MODELS[t][0][0];
+}
+
+async function callAI(messages, maxTokens=500, images=null){
+  const t=getApiType(state.apiKey);
+  if(!t) throw new Error('未设置 API Key');
+  const model=resolveModel(t);
+  if(t==='doubao' && !model) throw new Error('请填写火山方舟接入点 ID（ep-xxxx）');
+  if(images&&images.length&&!VISION_PROVIDERS.includes(t)) throw new Error('当前服务商不支持图片，请切换到豆包或 Claude');
+  if(t==='anthropic'){
+    // 把图片拼到最后一条 user 消息（Anthropic 格式：source.base64）
+    let msgs=messages;
+    if(images&&images.length){
+      msgs=messages.map(m=>({...m}));
+      const last=msgs[msgs.length-1];
+      const blocks=images.map(d=>({type:'image',source:{type:'base64',media_type:d.mime,data:d.b64}}));
+      blocks.push({type:'text',text:typeof last.content==='string'?last.content:''});
+      last.content=blocks;
+    }
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model,max_tokens:maxTokens,messages:msgs})
+    });
+    const d=await r.json();
+    if(d.error) throw new Error(d.error.message);
+    const text=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+    if(text) return text;
+    if(d.stop_reason==='max_tokens') throw new Error('回答超长被截断，请把问题问得更具体或缩小范围');
+    return '（无返回内容）';
+  } else {
+    // DeepSeek 与 豆包 均走 OpenAI 兼容接口，仅地址不同
+    const url = t==='doubao'
+      ? 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
+      : 'https://api.deepseek.com/v1/chat/completions';
+    let msgs=messages;
+    if(images&&images.length){
+      // OpenAI 兼容格式：content 为数组，image_url 用 data URL
+      msgs=messages.map(m=>({...m}));
+      const last=msgs[msgs.length-1];
+      const parts=[{type:'text',text:typeof last.content==='string'?last.content:''}];
+      images.forEach(d=>parts.push({type:'image_url',image_url:{url:'data:'+d.mime+';base64,'+d.b64}}));
+      last.content=parts;
+    }
+    const r=await fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.apiKey},
+      body:JSON.stringify({model,max_tokens:maxTokens,messages:msgs})
+    });
+    const d=await r.json();
+    if(d.error) throw new Error(d.error.message);
+    const ch=d.choices&&d.choices[0];
+    const msg=ch&&ch.message||{};
+    const text=(msg.content||'').trim();
+    if(text) return text;
+    if((msg.reasoning_content||'').trim() && ch.finish_reason==='length')
+      throw new Error('推理占满了 token 上限，正文被截断；换快速模型或把问题问得更具体');
+    if(ch&&ch.finish_reason==='length') throw new Error('回答超长被截断，请把问题问得更具体或缩小范围');
+    return '（无返回内容）';
+  }
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
+
+// ── Wrong book (localStorage) ──
+function loadWrong(){try{return JSON.parse(localStorage.getItem(LS_WRONG)||'[]');}catch(e){return [];}}
+function saveWrong(arr){localStorage.setItem(LS_WRONG,JSON.stringify(arr));updateWrongBadge();}
+function wrongKey(q){return q.ch+'|'+q.q;}
+function addWrong(q,userAnswer){
+  const arr=loadWrong();
+  const k=wrongKey(q);
+  const ex=arr.find(w=>w.key===k);
+  if(ex){ex.count++;ex.userAnswer=userAnswer;ex.time=Date.now();}
+  else arr.push({key:k,ch:q.ch,q:q.q,opts:q.opts,ans:q.ans,userAnswer,count:1,time:Date.now()});
+  saveWrong(arr);
+}
+function removeWrong(k){saveWrong(loadWrong().filter(w=>w.key!==k));renderWrong();}
+function clearWrong(){if(confirm('确定清空所有错题？')){saveWrong([]);renderWrong();}}
+function updateWrongBadge(){
+  const n=loadWrong().length;
+  const b=document.getElementById('wrong-badge');
+  b.textContent=n; b.style.display=n?'inline-block':'none';
+  const st=document.getElementById('wrong-count-stat'); if(st)st.textContent=n;
+}
+
+// ── Done book（已做题，按 ch|q 唯一存储，天然按章节区分） ──
+// 结构：{ "ch|q": {ch,q,opts,ans,userAnswer,ok,status,time} }
+// status: 'mastered'(答对未标) / 'review'(答错·不熟·追问过)
+function loadDone(){try{return JSON.parse(localStorage.getItem(LS_DONE)||'{}');}catch(e){return {};}}
+function saveDone(map){localStorage.setItem(LS_DONE,JSON.stringify(map));}
+function doneKey(q){return q.ch+'|'+q.q;}
+function markDone(q,userAnswer,ok){
+  const map=loadDone();
+  const k=doneKey(q);
+  const prev=map[k];
+  // 答错→review；答对→mastered（但若之前已是 review，保留 review）
+  let status=ok?'mastered':'review';
+  if(prev&&prev.status==='review')status='review';
+  map[k]={ch:q.ch,q:q.q,opts:q.opts,ans:q.ans,userAnswer,ok,status,time:Date.now()};
+  saveDone(map);
+}
+function setReview(k){const m=loadDone();if(m[k]){m[k].status='review';saveDone(m);}}
+function removeDone(k){const m=loadDone();delete m[k];saveDone(m);renderDone();updateDoneBadge();}
+function isDone(q){return !!loadDone()[doneKey(q)];}
+function updateDoneBadge(){
+  const map=loadDone();
+  const n=Object.keys(map).length;
+  const b=document.getElementById('done-badge');
+  if(b){b.textContent=n;b.style.display=n?'inline-block':'none';}
+}
+
+// ── Session 持久化（本轮进度，刷新可续） ──
+function saveSession(){
+  if(!state.pool.length){localStorage.removeItem(LS_SESSION);return;}
+  const sess={
+    poolKeys:state.pool.map(q=>doneKey(q)),
+    order:state.order, current:state.current, totalQ:state.totalQ,
+    answered:state.answered.map(a=>a?{letter:a.letter,ok:a.ok,expText:a.expText,fuHistory:a.fuHistory}:null),
+    results:state.results.map(r=>({key:doneKey(r.q),userAnswer:r.userAnswer,ok:r.ok})),
+  };
+  localStorage.setItem(LS_SESSION,JSON.stringify(sess));
+}
+function clearSession(){localStorage.removeItem(LS_SESSION);}
+function loadSession(){try{return JSON.parse(localStorage.getItem(LS_SESSION)||'null');}catch(e){return null;}}
+
+function renderWrong(){
+  const list=document.getElementById('wrong-list');
+  const arr=loadWrong().sort((a,b)=>b.time-a.time);
+  if(!arr.length){
+    list.innerHTML='<div class="wrong-empty"><div class="icon">🎉</div><p>暂无错题，继续保持！<br><span style="font-size:12px;opacity:.6">答错的题目会自动收录到这里</span></p></div>';
+    return;
+  }
+  list.innerHTML=arr.map(w=>
+    '<div class="wrong-card">'+
+    '<div class="wrong-meta"><span>'+w.ch+'</span><span>答错 '+w.count+' 次</span></div>'+
+    '<div class="wrong-q">'+escHtml(w.q)+'</div>'+
+    '<div class="wrong-opts">'+w.opts.map(o=>{
+      const ansSet=new Set((w.ans||'').split('')), pickSet=new Set((w.userAnswer||'').split(''));
+      let cls='wrong-opt',tag='';
+      if(ansSet.has(o.l)){cls+=' is-correct';tag='  ✓正确';}
+      if(pickSet.has(o.l)&&!ansSet.has(o.l)){cls+=' is-yours';tag='  ✗你选';}
+      return '<div class="'+cls+'">'+o.l+'. '+escHtml(o.t)+tag+'</div>';
+    }).join('')+'</div>'+
+    '<div class="wrong-actions"><button class="wrong-remove" onclick="removeWrong(\''+w.key.replace(/'/g,"\\'")+'\')">移出错题集</button></div>'+
+    '</div>'
+  ).join('');
+}
+
+// ── Done page：按章节折叠展示已做题 ──
+function clearDone(){if(confirm('确定清空所有已做记录？章节进度会归零。')){saveDone({});renderDone();updateDoneBadge();}}
+function toggleDoneCh(el){el.parentElement.classList.toggle('open');}
+function toggleDoneItem(el){el.closest('.done-item').classList.toggle('open');}
+let doneFilter='all';
+function setDoneFilter(f){
+  doneFilter=f;
+  document.querySelectorAll('.done-filter-btn').forEach(b=>b.classList.toggle('on',b.dataset.f===f));
+  renderDone();
+}
+function renderDone(){
+  const list=document.getElementById('done-list');
+  const map=loadDone();
+  let arr=Object.entries(map).map(([k,v])=>({key:k,...v}));
+  if(doneFilter==='review')arr=arr.filter(d=>d.status==='review');
+  else if(doneFilter==='mastered')arr=arr.filter(d=>d.status!=='review');
+  if(!arr.length){
+    const msg=doneFilter==='review'?'没有需复习的题':doneFilter==='mastered'?'没有已掌握的题':'还没有做过的题';
+    list.innerHTML='<div class="wrong-empty"><div class="icon">📭</div><p>'+msg+'<br><span style="font-size:12px;opacity:.6">答过的题会自动收录到这里，可随时移回题库重做</span></p></div>';
+    return;
+  }
+  // 按章节分组
+  const byCh={};
+  arr.forEach(d=>{(byCh[d.ch]=byCh[d.ch]||[]).push(d);});
+  const chs=Object.keys(byCh).sort((a,b)=>(CH_NUM[a]||99)-(CH_NUM[b]||99));
+  list.innerHTML=chs.map(ch=>{
+    const items=byCh[ch].sort((a,b)=>b.time-a.time);
+    const total=CH_TOTAL[ch]||0, rev=items.filter(d=>d.status==='review').length;
+    const body=items.map(d=>{
+      const ansSet=new Set((d.ans||'').split(''));
+      const opts=(d.opts||[]).map(o=>{
+        let cls='wrong-opt';
+        if(ansSet.has(o.l)){cls+=' is-correct';}
+        return '<div class="'+cls+'">'+o.l+'. '+escHtml(o.t)+(ansSet.has(o.l)?'  ✓正确':'')+'</div>';
+      }).join('');
+      return '<div class="done-item">'+
+      '<div class="done-q">'+escHtml(d.q)+'</div>'+
+      '<div class="done-row">'+
+        '<span class="done-pill '+(d.status==='review'?'pill-review':'pill-mastered')+'">'+(d.status==='review'?'🤔 需复习':'✓ 已掌握')+'　正确答案 '+d.ans+'</span>'+
+        '<button class="done-back" onclick="removeDone(\''+d.key.replace(/'/g,"\\'")+'\')">移回题库</button>'+
+      '</div>'+
+      '<button class="done-toggle" onclick="toggleDoneItem(this)"><span class="arrow">▶</span> 展开选项</button>'+
+      '<div class="done-opts">'+opts+'</div>'+
+      '</div>';
+    }).join('');
+    return '<div class="done-ch">'+
+      '<div class="done-ch-head" onclick="toggleDoneCh(this)"><span>'+escHtml(chLabel(ch))+'</span>'+
+      '<span class="meta">已做 '+items.length+' / 共 '+total+(rev?'　·　需复习 '+rev:'')+' <span class="arrow">▶</span></span></div>'+
+      '<div class="done-ch-body">'+body+'</div></div>';
+  }).join('');
+}
+
+// ── Theme：默认跟随系统，可手动切换 ──
+let isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+function applyTheme(){
   document.body.classList.toggle('day',!isDark);
   document.getElementById('theme-btn').textContent=isDark?'☀️ 白天':'🌙 夜间';
+}
+applyTheme();
+document.getElementById('theme-btn').addEventListener('click',()=>{
+  isDark=!isDark;
+  applyTheme();
 });
+// 系统主题变化时，若用户未手动锁定则跟随
+if(window.matchMedia){
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',e=>{
+    isDark=e.matches; applyTheme();
+  });
+}
 
-// API Key
+// ── API panel toggle ──
+function toggleApi(){
+  const p=document.getElementById('api-panel');
+  p.classList.toggle('open');
+  document.getElementById('api-toggle').classList.toggle('on',p.classList.contains('open'));
+}
+
+// ── API Key input ──
+const PROVIDER_LABEL={anthropic:'✓ Anthropic',deepseek:'✓ DeepSeek',doubao:'✓ 豆包'};
+function syncApiStatus(){
+  const s=document.getElementById('api-status');
+  const t=getApiType(state.apiKey);
+  if(t){s.className='api-status ok';s.textContent=PROVIDER_LABEL[t]||'✓ 已设置';}
+  else{s.className='api-status no';s.textContent='未设置';}
+  document.getElementById('chat-send').disabled=!t;
+  refreshModelOptions();
+  updateImageUploadVisibility();
+}
+// 选了支持读图的服务商（豆包/Claude）才显示图片上传
+function updateImageUploadVisibility(){
+  const show=visionEnabled();
+  document.querySelectorAll('.img-upload-btn').forEach(b=>b.style.display=show?'inline-flex':'none');
+}
+document.getElementById('provider-select').addEventListener('change',function(){
+  state.provider=this.value;
+  localStorage.setItem(LS_PROVIDER,this.value);
+  state.model='';                 // 切服务商后重置模型，由 refresh 选默认
+  syncApiStatus();
+});
 document.getElementById('api-key-input').addEventListener('input',function(){
   state.apiKey=this.value.trim();
-  const s=document.getElementById('api-status');
-  if(state.apiKey.startsWith('sk-ant-')){s.className='api-status ok';s.textContent='✓ 已设置';}
-  else if(state.apiKey){s.className='api-status no';s.textContent='格式有误';}
-  else{s.className='api-status no';s.textContent='未设置';}
+  localStorage.setItem(LS_KEY,state.apiKey);
+  syncApiStatus();
+});
+document.getElementById('model-select').addEventListener('change',function(){
+  state.model=this.value;
+  localStorage.setItem(LS_MODEL,this.value);
+  document.getElementById('ep-row').style.display=(curProvider()==='doubao')?'flex':'none';
+});
+document.getElementById('ep-input').addEventListener('input',function(){
+  state.endpoint=this.value.trim();
+  localStorage.setItem(LS_ENDPOINT,state.endpoint);
 });
 
-// Build chapters
+// ── Tab ──
+function switchTab(tab){
+  ['quiz','chat','wrong','done'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('active',t===tab));
+  document.getElementById('quiz-page').style.display=tab==='quiz'?'block':'none';
+  document.getElementById('chat-page').style.display=tab==='chat'?'flex':'none';
+  document.getElementById('wrong-page').style.display=tab==='wrong'?'flex':'none';
+  document.getElementById('done-page').style.display=tab==='done'?'flex':'none';
+  const inQuiz=document.getElementById('quiz-screen').style.display!=='none';
+  document.getElementById('progress-wrap').style.display=(tab==='quiz'&&inQuiz)?'block':'none';
+  if(tab==='wrong')renderWrong();
+  if(tab==='done')renderDone();
+  if(tab==='quiz'&&!inQuiz)refreshChapterProgress();
+}
+
+// ── Chapter list ──
+// 章节固定顺序与编号（用于显示「第N章」）；未在表中的章节按出现顺序续编
+const CHAPTER_ORDER=[
+  '马克思主义基本原理',
+  '毛泽东思想与中国特色社会主义理论体系',
+  '中国共产党的基本知识',
+  '道德',
+  '新时代中国特色社会主义思想相关知识',
+  '马克思主义政治经济学',
+  '中国历史',
+  '文化常识',
+];
+const CH_NUM={};
 (function(){
-  const chapters={};
-  QUESTION_BANK.forEach(q=>{chapters[q.ch]=(chapters[q.ch]||0)+1;});
+  const seen=[];
+  QUESTION_BANK.forEach(q=>{ if(!seen.includes(q.ch)) seen.push(q.ch); });
+  // 先按固定顺序编号，再追加表外章节
+  const ordered=[...CHAPTER_ORDER.filter(c=>seen.includes(c)), ...seen.filter(c=>!CHAPTER_ORDER.includes(c))];
+  ordered.forEach((c,i)=>{ CH_NUM[c]=i+1; });
+})();
+const CN_NUM=['零','一','二','三','四','五','六','七','八','九','十','十一','十二','十三','十四','十五'];
+function chLabel(ch){ const n=CH_NUM[ch]; return n?('第'+(CN_NUM[n]||n)+'章 '+ch):ch; }
+
+const CH_TOTAL={};
+(function(){
+  QUESTION_BANK.forEach(q=>{CH_TOTAL[q.ch]=(CH_TOTAL[q.ch]||0)+1;});
   const grid=document.getElementById('chapter-grid');
-  Object.entries(chapters).forEach(([ch,cnt])=>{
-    state.selectedChapters.add(ch);
+  // 按编号顺序展示
+  Object.entries(CH_TOTAL).sort((a,b)=>(CH_NUM[a[0]]||99)-(CH_NUM[b[0]]||99)).forEach(([ch,cnt])=>{
     const d=document.createElement('div');
-    d.className='ch-tag active';d.dataset.ch=ch;
-    d.innerHTML=ch+'<div class="ch-count">'+cnt+' 题</div>';
+    d.className='ch-tag';d.dataset.ch=ch;   // 默认不选中
+    d.innerHTML=escHtml(chLabel(ch))+'<div class="ch-count" data-ch="'+escHtml(ch)+'">'+cnt+' 题</div>';
     d.addEventListener('click',()=>{
       d.classList.toggle('active');
       if(d.classList.contains('active'))state.selectedChapters.add(ch);
@@ -264,106 +737,437 @@ document.getElementById('api-key-input').addEventListener('input',function(){
     grid.appendChild(d);
   });
   document.getElementById('total-q-count').textContent=QUESTION_BANK.length;
-  document.getElementById('total-ch-count').textContent=Object.keys(chapters).length;
 })();
 
-// Start
+// 刷新每章「已做 X / 共 Y」与统计框
+function refreshChapterProgress(){
+  const done=loadDone();
+  const doneByCh={};
+  Object.values(done).forEach(d=>{doneByCh[d.ch]=(doneByCh[d.ch]||0)+1;});
+  document.querySelectorAll('.ch-count[data-ch]').forEach(el=>{
+    const ch=el.dataset.ch, total=CH_TOTAL[ch]||0, dn=doneByCh[ch]||0;
+    el.textContent = dn ? ('已做 '+dn+' / 共 '+total) : (total+' 题');
+  });
+  const ds=document.getElementById('done-count-stat'); if(ds)ds.textContent=Object.keys(done).length;
+  updateWrongBadge(); updateDoneBadge();
+}
+
+// ── Start ──
 document.getElementById('btn-start').addEventListener('click',()=>{
   if(!state.selectedChapters.size){alert('请至少选择一个章节');return;}
-  state.pool=QUESTION_BANK.filter(q=>state.selectedChapters.has(q.ch));
+  let pool=QUESTION_BANK.filter(q=>state.selectedChapters.has(q.ch));
+  if(document.getElementById('unanswered-only').checked){
+    const done=loadDone();
+    pool=pool.filter(q=>!done[doneKey(q)]);
+    if(!pool.length){alert('所选章节的题已全部做过；关闭「只抽未做过的题」可重做。');return;}
+  }
+  state.pool=pool;
   if(!state.pool.length){alert('所选章节暂无题目');return;}
-  state.totalQ=Math.min(parseInt(document.getElementById('q-count').value),state.pool.length);
+  const want=parseInt(document.getElementById('q-count').value);
+  state.totalQ=Math.min(want,state.pool.length);
   const idx=[...Array(state.pool.length).keys()];
   for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
-  state.order=idx.slice(0,state.totalQ);
-  state.current=0;state.results=[];state.score=0;
+  let picked=idx.slice(0,state.totalQ);
+  // 排序：单选在前、多选在后；组内保持已打乱的随机顺序
+  picked.sort((a,b)=>{
+    const ma=state.pool[a].ans.length>1?1:0, mb=state.pool[b].ans.length>1?1:0;
+    return ma-mb;
+  });
+  state.order=picked;
+  state.current=0;state.results=[];state.score=0;state.answered=[];
   document.getElementById('start-screen').style.display='none';
+  document.getElementById('result-screen').style.display='none';
   document.getElementById('quiz-screen').style.display='block';
   document.getElementById('progress-wrap').style.display='block';
+  saveSession();
   updateProgress();renderQuestion();
 });
 
-function renderQuestion(){
-  const q=state.pool[state.order[state.current]];
-  document.getElementById('btn-next').classList.remove('show');
-  document.getElementById('quiz-card').innerHTML=
-    '<div class="q-number">第'+(state.current+1)+'题 · 单选 · '+q.ch+'</div>'+
-    '<div class="q-text">'+q.q+'</div>'+
-    '<div class="options">'+q.opts.map(o=>'<button class="option-btn" data-l="'+o.l+'"><span class="option-letter">'+o.l+'</span><span>'+o.t+'</span></button>').join('')+'</div>'+
-    '<div class="exp-box" id="exp-box"></div>';
-  document.querySelectorAll('.option-btn').forEach(b=>b.addEventListener('click',()=>handleAnswer(b.dataset.l,q)));
+function quitQuiz(){
+  if(!confirm('确定退出本次测试？已答的题已计入「已做题」，但本轮进度不再保留。'))return;
+  clearSession();
+  state.pool=[];
+  document.getElementById('quiz-screen').style.display='none';
+  document.getElementById('progress-wrap').style.display='none';
+  document.getElementById('start-screen').style.display='flex';
+  refreshChapterProgress();
 }
 
-async function handleAnswer(letter,q){
+// ── Render question ──
+function renderQuestion(){
+  const q=state.pool[state.order[state.current]];
+  state.currentQ=q; state.fuHistory=[];
+  const isMulti=q.ans.length>1;
+  state.multiPick=new Set();
+  document.getElementById('btn-next').classList.remove('show');
+  // 上一题按钮：非第一题时显示
+  document.getElementById('btn-prev').style.display = state.current>0 ? 'block' : 'none';
+  document.getElementById('quiz-card').innerHTML=
+    '<div class="q-number">第'+(state.current+1)+'题 · '+(isMulti?'多选':'单选')+' · '+escHtml(chLabel(q.ch))+'</div>'+
+    '<div class="q-text">'+escHtml(q.q)+'</div>'+
+    (isMulti?'<div class="multi-tip">多选题，选完后点「提交答案」</div>':'')+
+    '<div class="options">'+q.opts.map(o=>'<button class="option-btn" data-l="'+o.l+'"><span class="option-letter">'+o.l+'</span><span>'+escHtml(o.t)+'</span></button>').join('')+'</div>'+
+    (isMulti?'<button class="btn-submit" id="btn-submit" disabled>提交答案</button>':'')+
+    '<div class="exp-box" id="exp-box"></div>';
+  const saved=state.answered[state.current];
+  if(saved){ restoreAnswered(q,saved); return; }   // 已答过：恢复展示，可继续来回切换
+  if(isMulti){
+    document.querySelectorAll('.option-btn').forEach(b=>b.addEventListener('click',()=>togglePick(b)));
+    document.getElementById('btn-submit').addEventListener('click',()=>handleAnswer([...state.multiPick].sort().join(''),q));
+  }else{
+    document.querySelectorAll('.option-btn').forEach(b=>b.addEventListener('click',()=>handleAnswer(b.dataset.l,q)));
+  }
+}
+
+// 恢复已答题的可视状态（只读），并回填解析/追问
+function restoreAnswered(q,saved){
+  const ansSet=new Set(q.ans.split('')), pickSet=new Set((saved.letter||'').split(''));
+  const sb=document.getElementById('btn-submit'); if(sb)sb.style.display='none';
   document.querySelectorAll('.option-btn').forEach(b=>{
     b.disabled=true;
-    if(b.dataset.l===q.ans)b.classList.add('correct');
-    else if(b.dataset.l===letter&&letter!==q.ans)b.classList.add('wrong');
+    const l=b.dataset.l, inAns=ansSet.has(l), inPick=pickSet.has(l);
+    if(inAns&&inPick)b.classList.add('correct');
+    else if(!inAns&&inPick)b.classList.add('wrong');
+    else if(inAns&&!inPick)b.classList.add('missed');
   });
-  const ok=letter===q.ans;
-  if(ok)state.score+=2;
+  const fb=saved.ok?'fb-correct':'fb-wrong';
+  const hdr=saved.ok?'✓ 回答正确':'✗ 正确答案是 '+q.ans;
+  const exp=document.getElementById('exp-box');
+  exp.className='exp-box show '+fb;
+  if(saved.expText!=null){
+    state.fuHistory=saved.fuHistory||[];
+    exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div id="exp-text">'+escHtml(saved.expText)+'</div>'+reviewBtnHtml(q)+fuHtml();
+    bindFu(exp,q); bindReviewBtn(exp,q);
+    const histEl=exp.querySelector('#fu-history');
+    if(histEl&&state.fuHistory.length){
+      histEl.innerHTML=state.fuHistory.map(m=>'<div class="fu-bubble '+(m.role==='user'?'fu-user':'fu-ai')+'">'+escHtml(m.content)+'</div>').join('');
+    }
+  } else {
+    exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>填入 API Key（点右上角 🔑 设置）后可获取 AI 解析与追问。'+reviewBtnHtml(q);
+    bindReviewBtn(exp,q);
+  }
+  document.getElementById('btn-next').textContent=state.current+1>=state.totalQ?'查看结果 →':'下一题 →';
+  document.getElementById('btn-next').classList.add('show');
+}
+
+function togglePick(b){
+  const l=b.dataset.l;
+  if(state.multiPick.has(l)){state.multiPick.delete(l);b.classList.remove('picked');}
+  else{state.multiPick.add(l);b.classList.add('picked');}
+  document.getElementById('btn-submit').disabled=state.multiPick.size===0;
+}
+
+// ── Handle answer ──
+async function handleAnswer(letter,q){
+  const isMulti=q.ans.length>1;
+  const ansSet=new Set(q.ans.split(''));
+  const pickSet=new Set(letter.split(''));
+  const sb=document.getElementById('btn-submit'); if(sb)sb.style.display='none';
+  document.querySelectorAll('.option-btn').forEach(b=>{
+    b.disabled=true; b.classList.remove('picked');
+    const l=b.dataset.l, inAns=ansSet.has(l), inPick=pickSet.has(l);
+    if(inAns&&inPick)b.classList.add('correct');        // 正确选中
+    else if(!inAns&&inPick)b.classList.add('wrong');    // 错误选中
+    else if(inAns&&!inPick)b.classList.add('missed');   // 漏选（多选）
+  });
+  const ok = isMulti ? (pickSet.size===ansSet.size && [...ansSet].every(x=>pickSet.has(x))) : letter===q.ans;
+  if(!ok) addWrong(q,letter);
+  markDone(q,letter,ok);                 // 计入已做题（答错→review，答对→mastered）
   state.results.push({q,userAnswer:letter,ok});
+  // 记录已答状态，供「上一题/下一题」来回切换时恢复
+  const saved={letter,ok,expText:null,fuHistory:state.fuHistory};
+  state.answered[state.current]=saved;
   const fb=ok?'fb-correct':'fb-wrong';
   const hdr=ok?'✓ 回答正确':'✗ 正确答案是 '+q.ans;
   const exp=document.getElementById('exp-box');
   exp.className='exp-box show '+fb;
-  exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div class="exp-loading"><div class="exp-spinner"></div> AI 解析中…</div>';
-  const btn=document.getElementById('btn-next');
-  btn.textContent=state.current+1>=state.totalQ?'查看结果 →':'下一题 →';
-  btn.classList.add('show');
+  document.getElementById('btn-next').textContent=state.current+1>=state.totalQ?'查看结果 →':'下一题 →';
+  document.getElementById('btn-next').classList.add('show');
   updateProgress();
-  if(state.apiKey.startsWith('sk-ant-')){
+  saveSession();
+
+  if(getApiType(state.apiKey)){
+    exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div class="exp-loading"><div class="exp-spinner"></div> AI 解析中…</div>';
+    const userMsg='题目：'+q.q+'\n选项：'+q.opts.map(o=>o.l+'.'+o.t).join('；')+'\n正确答案：'+q.ans+'\n考生选择：'+letter+'（'+(ok?'正确':'错误')+'）';
+    const sysMsg='你是军队文职考试辅导老师，请给出简明解析（2-3句，直接讲知识点，不重复题干，不要开场白）。';
     try{
-      const res=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:300,messages:[{role:'user',content:'你是军队文职考试辅导老师。给出以下题目的简明解析（2-3句，直接讲知识点，不重复题干，不要开场白）：\n题目：'+q.q+'\n选项：'+q.opts.map(o=>o.l+'.'+o.t).join('；')+'\n正确答案：'+q.ans+'\n考生选择：'+letter+'（'+(ok?'正确':'错误')+'）'}]})
-      });
-      const data=await res.json();
-      const txt=data.content?.find(b=>b.type==='text')?.text||'（解析获取失败）';
-      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>'+txt;
+      const txt=await callAI([{role:'user',content:sysMsg+'\n\n'+userMsg}],300);
+      state.fuHistory.length=0;
+      state.fuHistory.push({role:'user',content:userMsg},{role:'assistant',content:txt});
+      saved.expText=txt;
+      saveSession();
+      if(state.current===state.answered.indexOf(saved)){
+        exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div id="exp-text">'+escHtml(txt)+'</div>'+reviewBtnHtml(q)+fuHtml();
+        bindFu(exp,q); bindReviewBtn(exp,q);
+      }
     }catch(e){
-      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>网络错误，解析获取失败。';
+      saved.expText='解析获取失败（'+e.message+'）。';
+      saveSession();
+      if(state.current===state.answered.indexOf(saved)){
+        exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>解析获取失败（'+escHtml(e.message)+'）。'+reviewBtnHtml(q)+fuHtml();
+        bindFu(exp,q); bindReviewBtn(exp,q);
+      }
     }
-  }else{
-    exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>填入 Anthropic API Key 后可获取 AI 解析。';
+  } else {
+    exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>填入 API Key（点右上角 🔑 设置）后可获取 AI 解析与追问。'+reviewBtnHtml(q);
+    bindReviewBtn(exp,q);
   }
+}
+
+// 「标记为不熟」按钮：答对的题才需要（答错的已自动进 review）
+function reviewBtnHtml(q){
+  const d=loadDone()[doneKey(q)];
+  if(d&&d.status==='review') return '<div style="margin-top:10px"><button class="mark-review-btn marked" disabled>★ 已加入复习</button></div>';
+  return '<div style="margin-top:10px"><button class="mark-review-btn" data-key="'+escHtml(doneKey(q))+'">🤔 标记为不熟（加入复习）</button></div>';
+}
+function bindReviewBtn(exp,q){
+  const b=exp.querySelector('.mark-review-btn:not(.marked)');
+  if(!b) return;
+  b.addEventListener('click',()=>{
+    setReview(doneKey(q));
+    b.textContent='★ 已加入复习'; b.classList.add('marked'); b.disabled=true;
+  });
+}
+
+function fuHtml(){
+  return '<div class="followup-area">'+
+    '<div class="followup-title">💬 针对本题追问</div>'+
+    '<div class="followup-history" id="fu-history"></div>'+
+    '<div class="followup-input-row">'+
+      '<input class="followup-input" id="fu-input" placeholder="例如：为什么 A 不对？这个知识点怎么理解？">'+
+      '<button class="followup-send" id="fu-send">发送</button>'+
+    '</div></div>';
+}
+
+function bindFu(exp,q){
+  const inp=exp.querySelector('#fu-input');
+  const btn=exp.querySelector('#fu-send');
+  const hist=exp.querySelector('#fu-history');
+  if(!inp) return;
+  async function send(){
+    const txt=inp.value.trim();
+    if(!txt) return;
+    inp.value=''; btn.disabled=true;
+    const ub=document.createElement('div');
+    ub.className='fu-bubble fu-user';ub.textContent=txt;hist.appendChild(ub);
+    const ab=document.createElement('div');
+    ab.className='fu-bubble fu-ai';
+    ab.innerHTML='<span class="spinner"></span> 思考中…';
+    hist.appendChild(ab);hist.scrollTop=9999;
+    const ctx=[
+      {role:'user',content:'你是军队文职考试辅导老师。基于以下题目上下文回答学生追问，讲清知识点；学生要求举例或详解时就展开，否则简明扼要。\n题目：'+q.q+'\n选项：'+q.opts.map(o=>o.l+'.'+o.t).join('；')+'\n正确答案：'+q.ans},
+      {role:'assistant',content:'好的，我会结合这道题来回答。'},
+      ...state.fuHistory,
+      {role:'user',content:txt}
+    ];
+    try{
+      const r=await callAI(ctx,1000);
+      ab.innerHTML=escHtml(r);
+      state.fuHistory.push({role:'user',content:txt},{role:'assistant',content:r});
+      // 追问过 = 这题没把握，自动加入复习
+      setReview(doneKey(q));
+      const mb=exp.querySelector('.mark-review-btn:not(.marked)');
+      if(mb){mb.textContent='★ 已加入复习';mb.classList.add('marked');mb.disabled=true;}
+      saveSession();
+    }catch(e){ab.innerHTML='请求失败：'+escHtml(e.message);}
+    btn.disabled=false;hist.scrollTop=9999;
+  }
+  btn.addEventListener('click',send);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
 }
 
 document.getElementById('btn-next').addEventListener('click',()=>{
   state.current++;
   if(state.current>=state.totalQ)showResult();
-  else{updateProgress();renderQuestion();}
+  else{updateProgress();saveSession();renderQuestion();}
+});
+
+document.getElementById('btn-prev').addEventListener('click',()=>{
+  if(state.current>0){state.current--;updateProgress();renderQuestion();}
 });
 
 function updateProgress(){
   document.getElementById('prog-fill').style.width=Math.round(state.current/state.totalQ*100)+'%';
   document.getElementById('prog-text').textContent='第'+(state.current+1)+'题 / 共'+state.totalQ+'题';
-  document.getElementById('prog-score').textContent='得分：'+state.score+' 分';
+  const correct=state.results.filter(r=>r.ok).length;
+  const answered=state.results.length;
+  document.getElementById('prog-score').textContent='已答 '+answered+' · 对 '+correct;
 }
 
 function showResult(){
+  clearSession();
+  state.pool=[];
   document.getElementById('quiz-screen').style.display='none';
   document.getElementById('progress-wrap').style.display='none';
-  const rs=document.getElementById('result-screen');
-  rs.style.display='flex';
-  const total=state.totalQ*2;
+  const rs=document.getElementById('result-screen');rs.style.display='flex';
+  const answered=state.results.length;
   const correct=state.results.filter(r=>r.ok).length;
-  const pct=Math.round(state.score/total*100);
-  document.getElementById('res-score').textContent=state.score;
-  document.getElementById('res-total').textContent=total;
-  document.getElementById('res-detail').innerHTML='答对 '+correct+' / '+state.totalQ+' 题 &nbsp;·&nbsp; 正确率 '+pct+'%<br>'+(pct>=80?'🎉 优秀！继续保持':pct>=60?'📖 良好，还有提升空间':'💪 加油，继续巩固基础');
+  const pct=answered?Math.round(correct/answered*100):0;
+  document.getElementById('res-score').textContent=correct;
+  document.getElementById('res-total').textContent=answered;
+  document.getElementById('res-detail').innerHTML='答对 '+correct+' / '+answered+' 题 &nbsp;·&nbsp; 正确率 '+pct+'%<br>'+(pct>=80?'🎉 优秀！继续保持':pct>=60?'📖 良好，还有提升空间':'💪 加油，继续巩固基础');
+  // 复习要点面板复位
+  const rp=document.getElementById('review-points'); rp.style.display='none'; rp.innerHTML='';
+  document.getElementById('btn-review-points').style.display='inline-block';
   document.getElementById('review-list').innerHTML=state.results.map((r,i)=>
     '<div class="review-item '+(r.ok?'ri-correct':'ri-wrong')+'">'+
-    '<div class="ri-q">第'+(i+1)+'题：'+r.q.q.substring(0,40)+(r.q.q.length>40?'…':'')+'</div>'+
+    '<div class="ri-q">第'+(i+1)+'题：'+escHtml(r.q.q.substring(0,40))+(r.q.q.length>40?'…':'')+'</div>'+
     '<div class="ri-meta">'+(r.ok?'<span class="ri-correct-ans">✓ 正确：'+r.q.ans+'</span>':'<span class="ri-wrong-ans">✗ 你选：'+r.userAnswer+'</span>　<span class="ri-correct-ans">正确：'+r.q.ans+'</span>')+'</div></div>'
   ).join('');
 }
 
+// ── 结果页：生成本轮复习要点（错题 + 不熟题，整篇） ──
+document.getElementById('btn-review-points').addEventListener('click',async function(){
+  if(!getApiType(state.apiKey)){alert('请先在右上角 🔑 设置 填入 API Key');return;}
+  // 本轮需复习题：错题 或 已标记 review 的题
+  const done=loadDone();
+  const items=state.results.filter(r=>!r.ok || (done[doneKey(r.q)]&&done[doneKey(r.q)].status==='review'))
+    .map(r=>r.q);
+  // 去重
+  const seen=new Set(), uniq=[];
+  items.forEach(q=>{const k=doneKey(q);if(!seen.has(k)){seen.add(k);uniq.push(q);}});
+  const rp=document.getElementById('review-points');
+  rp.style.display='block';
+  if(!uniq.length){rp.innerHTML='本轮没有错题或标记为不熟的题，暂无需复习要点。🎉';this.style.display='none';return;}
+  rp.innerHTML='<div class="exp-loading"><div class="exp-spinner"></div> 正在归纳本轮 '+uniq.length+' 道题的知识点…</div>';
+  this.disabled=true;
+  const list=uniq.map((q,i)=>(i+1)+'. '+q.q+'（正确答案 '+q.ans+'）').join('\n');
+  const prompt='你是军队文职考试辅导老师。直接输出结果，不要写思考过程。以下是某次练习中答错或没把握的题目，请按知识点归类，整理成一份简明的背诵复习要点（用分点列出核心结论，相同知识点合并，每点1-2句，便于记忆，不要逐题复述题干）：\n\n'+list;
+  try{
+    const txt=await callAI([{role:'user',content:prompt}],3000);
+    rp.innerHTML='<div class="exp-header" style="color:var(--accent);margin-bottom:8px;">📝 本轮复习要点（错题+不熟 '+uniq.length+' 题）</div>'+escHtml(txt);
+  }catch(e){
+    rp.innerHTML='生成失败：'+escHtml(e.message);
+  }
+  this.disabled=false;
+});
+
 document.getElementById('btn-restart').addEventListener('click',()=>{
   document.getElementById('result-screen').style.display='none';
   document.getElementById('start-screen').style.display='flex';
+  refreshChapterProgress();
 });
+
+// ══════════════════════════════════════
+// AI 问答页
+// ══════════════════════════════════════
+const CHAT_SYS='你是军队文职考试备考助手，专注政治理论、法律、管理、军事等备考知识。回答简洁有力，重点突出，适当分点，不超过350字。';
+function appendBubble(role,text,loading){
+  const msgs=document.getElementById('chat-messages');
+  const empty=document.getElementById('chat-empty');
+  if(empty) empty.remove();
+  const el=document.createElement('div');
+  if(role==='user'){el.className='chat-bubble chat-user';el.textContent=text;}
+  else{el.className='chat-bubble chat-ai';el.innerHTML='<div class="chat-ai-name">AI 助手</div>'+(loading?'<span class="spinner"></span> 思考中…':escHtml(text));}
+  msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;
+  return el;
+}
+let chatImages=[];   // 当前待发送的图片 [{b64,mime,url}]
+
+function renderImgPreview(){
+  const box=document.getElementById('chat-img-preview');
+  if(!chatImages.length){box.style.display='none';box.innerHTML='';return;}
+  box.style.display='block';
+  box.innerHTML=chatImages.map((im,i)=>'<span class="img-pic-wrap"><img src="'+im.url+'"><button class="img-pic-del" data-i="'+i+'">×</button></span>').join(' ');
+  box.querySelectorAll('.img-pic-del').forEach(b=>b.addEventListener('click',()=>{chatImages.splice(+b.dataset.i,1);renderImgPreview();}));
+}
+function fileToImg(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>{const s=String(r.result);const b64=s.split(',')[1];res({b64,mime:file.type||'image/jpeg',url:s});};
+    r.onerror=()=>rej(new Error('图片读取失败'));
+    r.readAsDataURL(file);
+  });
+}
+document.getElementById('chat-img-btn').addEventListener('click',()=>document.getElementById('chat-img-input').click());
+document.getElementById('chat-img-input').addEventListener('change',async function(){
+  const f=this.files&&this.files[0];
+  this.value='';
+  if(!f) return;
+  if(f.size>5*1024*1024){alert('图片太大（>5MB），请压缩后再传');return;}
+  try{ chatImages.push(await fileToImg(f)); renderImgPreview(); }
+  catch(e){ alert(e.message); }
+});
+
+async function sendChat(){
+  const inp=document.getElementById('chat-input');
+  const btn=document.getElementById('chat-send');
+  const txt=inp.value.trim();
+  const imgs=chatImages.slice();
+  if((!txt&&!imgs.length)||!getApiType(state.apiKey)) return;
+  if(imgs.length&&!visionEnabled()){alert('当前服务商不支持图片，请在设置里切换到豆包或 Claude');return;}
+  inp.value='';inp.style.height='auto';btn.disabled=true;
+  // 用户气泡（含图片缩略图）
+  const userText=txt||'（请看图）';
+  const ub=appendBubble('user',userText);
+  imgs.forEach(im=>{const img=document.createElement('img');img.src=im.url;ub.appendChild(img);});
+  // chatHistory 只存文字，避免后续每轮重复发送大图
+  state.chatHistory.push({role:'user',content:userText});
+  const aiEl=appendBubble('ai','',true);
+  const msgs=[{role:'user',content:CHAT_SYS},{role:'assistant',content:'好的，我是你的军队文职备考助手，请问有什么问题？'},...state.chatHistory];
+  chatImages=[];renderImgPreview();
+  try{
+    const r=await callAI(msgs,600,imgs);
+    aiEl.innerHTML='<div class="chat-ai-name">AI 助手</div>'+escHtml(r);
+    state.chatHistory.push({role:'assistant',content:r});
+  }catch(e){aiEl.innerHTML='<div class="chat-ai-name">AI 助手</div>请求失败：'+escHtml(e.message);}
+  btn.disabled=!getApiType(state.apiKey);
+  document.getElementById('chat-messages').scrollTop=99999;
+}
+document.getElementById('chat-send').addEventListener('click',sendChat);
+document.getElementById('chat-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}});
+document.getElementById('chat-input').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';});
+
+// ══════════════════════════════════════
+// 续做上次（session 恢复）
+// ══════════════════════════════════════
+const Q_BY_KEY={};
+QUESTION_BANK.forEach(q=>{Q_BY_KEY[q.ch+'|'+q.q]=q;});
+
+function resumeSession(){
+  const s=loadSession();
+  if(!s) return false;
+  const pool=s.poolKeys.map(k=>Q_BY_KEY[k]).filter(Boolean);
+  if(pool.length!==s.poolKeys.length){clearSession();return false;} // 题库变动则放弃
+  state.pool=pool;
+  state.order=s.order;
+  state.totalQ=s.totalQ;
+  state.current=s.current;
+  state.answered=s.answered||[];
+  state.results=(s.results||[]).map(r=>({q:Q_BY_KEY[r.key],userAnswer:r.userAnswer,ok:r.ok})).filter(r=>r.q);
+  document.getElementById('start-screen').style.display='none';
+  document.getElementById('result-screen').style.display='none';
+  document.getElementById('quiz-screen').style.display='block';
+  document.getElementById('progress-wrap').style.display='block';
+  updateProgress();renderQuestion();
+  return true;
+}
+document.getElementById('btn-resume').addEventListener('click',()=>{
+  document.getElementById('resume-banner').style.display='none';
+  resumeSession();
+});
+document.getElementById('btn-discard').addEventListener('click',()=>{
+  clearSession();
+  document.getElementById('resume-banner').style.display='none';
+});
+
+// ══════════════════════════════════════
+// Init: restore saved key/model + badge + 进度 + 续做提示
+// ══════════════════════════════════════
+(function init(){
+  const savedKey=localStorage.getItem(LS_KEY)||'';
+  const savedModel=localStorage.getItem(LS_MODEL)||'';
+  const savedProvider=localStorage.getItem(LS_PROVIDER)||'';
+  const savedEndpoint=localStorage.getItem(LS_ENDPOINT)||'';
+  if(savedKey){state.apiKey=savedKey;document.getElementById('api-key-input').value=savedKey;}
+  if(savedModel)state.model=savedModel;
+  if(savedProvider){state.provider=savedProvider;document.getElementById('provider-select').value=savedProvider;}
+  if(savedEndpoint){state.endpoint=savedEndpoint;document.getElementById('ep-input').value=savedEndpoint;}
+  syncApiStatus();
+  refreshChapterProgress();
+  // 有未完成的测试 → 显示续做提示
+  if(loadSession()) document.getElementById('resume-banner').style.display='block';
+})();
 </script>
 </body>
 </html>
