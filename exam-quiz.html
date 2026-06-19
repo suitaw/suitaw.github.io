@@ -791,6 +791,7 @@ function quitQuiz(){
   document.getElementById('progress-wrap').style.display='none';
   document.getElementById('start-screen').style.display='flex';
   refreshChapterProgress();
+  updateDoneBadge(); updateWrongBadge();
 }
 
 // ── Render question ──
