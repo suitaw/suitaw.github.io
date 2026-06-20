@@ -456,12 +456,13 @@ function resolveModel(t){
   return state.model||MODELS[t][0][0];
 }
 
-async function callAI(messages, maxTokens=500, images=null){
+async function callAI(messages, maxTokens=500, images=null, onChunk=null){
   const t=getApiType(state.apiKey);
   if(!t) throw new Error('未设置 API Key');
   const model=resolveModel(t);
   if(t==='doubao' && !model) throw new Error('请填写火山方舟接入点 ID（ep-xxxx）');
   if(images&&images.length&&!VISION_PROVIDERS.includes(t)) throw new Error('当前服务商不支持图片，请切换到豆包或 Claude');
+  const stream=!!onChunk;
   if(t==='anthropic'){
     // 把图片拼到最后一条 user 消息（Anthropic 格式：source.base64）
     let msgs=messages;
@@ -475,8 +476,15 @@ async function callAI(messages, maxTokens=500, images=null){
     const r=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model,max_tokens:maxTokens,messages:msgs})
+      body:JSON.stringify({model,max_tokens:maxTokens,messages:msgs,stream})
     });
+    if(stream){
+      return await readStream(r,(obj,acc)=>{
+        // Anthropic SSE：content_block_delta → delta.text
+        if(obj.type==='content_block_delta'&&obj.delta&&obj.delta.text)return obj.delta.text;
+        return '';
+      },onChunk);
+    }
     const d=await r.json();
     if(d.error) throw new Error(d.error.message);
     const text=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
@@ -500,8 +508,15 @@ async function callAI(messages, maxTokens=500, images=null){
     const r=await fetch(url,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.apiKey},
-      body:JSON.stringify({model,max_tokens:maxTokens,messages:msgs})
+      body:JSON.stringify({model,max_tokens:maxTokens,messages:msgs,stream})
     });
+    if(stream){
+      return await readStream(r,(obj)=>{
+        // OpenAI 兼容 SSE：choices[0].delta.content
+        const d=obj.choices&&obj.choices[0]&&obj.choices[0].delta;
+        return (d&&d.content)||'';
+      },onChunk);
+    }
     const d=await r.json();
     if(d.error) throw new Error(d.error.message);
     const ch=d.choices&&d.choices[0];
@@ -513,6 +528,39 @@ async function callAI(messages, maxTokens=500, images=null){
     if(ch&&ch.finish_reason==='length') throw new Error('回答超长被截断，请把问题问得更具体或缩小范围');
     return '（无返回内容）';
   }
+}
+
+// 读取 SSE 流：extract(obj) 返回本块新增文字；onChunk(累积全文) 每次更新时回调；返回最终全文
+async function readStream(resp, extract, onChunk){
+  if(!resp.ok){
+    let m='请求失败 '+resp.status;
+    try{const e=await resp.json();if(e.error&&e.error.message)m=e.error.message;}catch(_){}
+    throw new Error(m);
+  }
+  const reader=resp.body.getReader();
+  const dec=new TextDecoder();
+  let buf='', acc='';
+  while(true){
+    const {done,value}=await reader.read();
+    if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    const lines=buf.split('\n');
+    buf=lines.pop();   // 最后一行可能不完整，留到下次
+    for(const line of lines){
+      const s=line.trim();
+      if(!s||!s.startsWith('data:'))continue;
+      const data=s.slice(5).trim();
+      if(data==='[DONE]')continue;
+      try{
+        const obj=JSON.parse(data);
+        if(obj.error)throw new Error(obj.error.message||'流式返回错误');
+        const piece=extract(obj);
+        if(piece){acc+=piece;onChunk(acc);}
+      }catch(e){ if(e.message&&e.message!=='Unexpected end of JSON input')throw e; }
+    }
+  }
+  acc=acc.trim();
+  return acc||'（无返回内容）';
 }
 
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
@@ -986,15 +1034,28 @@ async function runExplain(q,saved,exp,fb,hdr){
   const userMsg='题目：'+q.q+'\n选项：'+q.opts.map(o=>o.l+'.'+o.t).join('；')+'\n正确答案：'+q.ans+'\n考生选择：'+saved.letter+'（'+(saved.ok?'正确':'错误')+'）';
   const sysMsg='你是军队文职考试辅导老师，请给出简明解析（2-3句，直接讲知识点，不重复题干，不要开场白）。';
   try{
-    const txt=await callAI([{role:'user',content:sysMsg+'\n\n'+userMsg}],300);
+    // 先铺好外壳，再流式把文字填进 #exp-text，避免整块重绘导致闪烁
+    const shellRendered=(state.current===state.answered.indexOf(saved));
+    if(shellRendered){
+      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div id="exp-text"></div>'+reviewBtnHtml(q)+fuHtml();
+      bindReviewBtn(exp,q);
+    }
+    const onChunk=shellRendered?(acc=>{
+      const et=exp.querySelector('#exp-text');
+      if(et)et.innerHTML=escHtml(acc);
+    }):null;
+    const txt=await callAI([{role:'user',content:sysMsg+'\n\n'+userMsg}],300,null,onChunk);
     state.fuHistory.length=0;
     state.fuHistory.push({role:'user',content:userMsg},{role:'assistant',content:txt});
     saved.fuHistory=state.fuHistory;
     saved.expText=txt;
     saveSession();
     if(state.current===state.answered.indexOf(saved)){
-      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div id="exp-text">'+escHtml(txt)+'</div>'+reviewBtnHtml(q)+fuHtml();
-      bindFu(exp,q); bindReviewBtn(exp,q);
+      // 收尾：确保最终全文渲染 + 绑定追问
+      const et=exp.querySelector('#exp-text');
+      if(et)et.innerHTML=escHtml(txt);
+      else{exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div id="exp-text">'+escHtml(txt)+'</div>'+reviewBtnHtml(q)+fuHtml();bindReviewBtn(exp,q);}
+      bindFu(exp,q);
     }
   }catch(e){
     if(state.current===state.answered.indexOf(saved)){
@@ -1054,7 +1115,8 @@ function bindFu(exp,q){
       {role:'user',content:txt}
     ];
     try{
-      const r=await callAI(ctx,1000);
+      const onChunk=acc=>{ab.innerHTML=escHtml(acc);hist.scrollTop=9999;};
+      const r=await callAI(ctx,1000,null,onChunk);
       ab.innerHTML=escHtml(r);
       state.fuHistory.push({role:'user',content:txt},{role:'assistant',content:r});
       // 追问过 = 这题没把握，自动加入复习
@@ -1124,8 +1186,10 @@ async function genReviewPoints(resultsArr, rp, btn){
   const list=uniq.map((q,i)=>(i+1)+'. '+q.q+'（正确答案 '+q.ans+'）').join('\n');
   const prompt='你是军队文职考试辅导老师。直接输出结果，不要写思考过程。以下是某次练习中答错或没把握的题目，请按知识点归类，整理成一份简明的背诵复习要点（用分点列出核心结论，相同知识点合并，每点1-2句，便于记忆，不要逐题复述题干）：\n\n'+list;
   try{
-    const txt=await callAI([{role:'user',content:prompt}],3000);
-    rp.innerHTML='<div class="exp-header" style="color:var(--accent);margin-bottom:8px;">📝 复习要点（错题+不熟 '+uniq.length+' 题）</div>'+escHtml(txt);
+    const head='<div class="exp-header" style="color:var(--accent);margin-bottom:8px;">📝 复习要点（错题+不熟 '+uniq.length+' 题）</div>';
+    const onChunk=acc=>{rp.innerHTML=head+'<div>'+escHtml(acc)+'</div>';};
+    const txt=await callAI([{role:'user',content:prompt}],3000,null,onChunk);
+    rp.innerHTML=head+'<div>'+escHtml(txt)+'</div>';
   }catch(e){
     rp.innerHTML='生成失败：'+escHtml(e.message);
   }
@@ -1207,7 +1271,11 @@ async function sendChat(){
   const msgs=[{role:'user',content:CHAT_SYS},{role:'assistant',content:'好的，我是你的军队文职备考助手，请问有什么问题？'},...state.chatHistory];
   chatImages=[];renderImgPreview();
   try{
-    const r=await callAI(msgs,600,imgs);
+    const onChunk=acc=>{
+      aiEl.innerHTML='<div class="chat-ai-name">AI 助手</div>'+escHtml(acc);
+      document.getElementById('chat-messages').scrollTop=99999;
+    };
+    const r=await callAI(msgs,600,imgs,onChunk);
     aiEl.innerHTML='<div class="chat-ai-name">AI 助手</div>'+escHtml(r);
     state.chatHistory.push({role:'assistant',content:r});
   }catch(e){aiEl.innerHTML='<div class="chat-ai-name">AI 助手</div>请求失败：'+escHtml(e.message);}
