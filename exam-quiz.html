@@ -267,6 +267,15 @@
         <label>🔌 接入点</label>
         <input type="text" id="ep-input" placeholder="火山方舟推理接入点 ID，如 ep-xxxx 或模型名" autocomplete="off">
       </div>
+      <div class="api-row" id="think-row" style="display:none">
+        <label>🧠 思考深度</label>
+        <select id="think-select">
+          <option value="off">关闭（最快·解析秒出）</option>
+          <option value="low">低</option>
+          <option value="medium">中（质量与速度平衡）</option>
+          <option value="high">高（最慢·质量最好）</option>
+        </select>
+      </div>
       <div class="api-row">
         <label>⚡ 答题自动解析</label>
         <label class="switch-wrap"><input type="checkbox" id="auto-explain" checked><span class="switch-ui"></span></label>
@@ -402,7 +411,15 @@ const state = {
   currentQ:null, fuHistory:[], chatHistory:[], multiPick:new Set(), answered:[],
   wrongOnly:false,
 };
-const LS_KEY='jdwz_apikey', LS_MODEL='jdwz_model', LS_WRONG='jdwz_wrongbook', LS_DONE='jdwz_donebook', LS_SESSION='jdwz_session', LS_PROVIDER='jdwz_provider', LS_ENDPOINT='jdwz_endpoint', LS_NOSAVE='jdwz_nosavekey', LS_AUTOEXP='jdwz_autoexplain';
+const LS_KEY='jdwz_apikey', LS_MODEL='jdwz_model', LS_WRONG='jdwz_wrongbook', LS_DONE='jdwz_donebook', LS_SESSION='jdwz_session', LS_PROVIDER='jdwz_provider', LS_ENDPOINT='jdwz_endpoint', LS_NOSAVE='jdwz_nosavekey', LS_AUTOEXP='jdwz_autoexplain', LS_THINK='jdwz_think';
+
+// 思考档位（通用 off/low/medium/high）→ 各服务商真实参数
+// 豆包 Seed-2.0 用 reasoning_effort(minimal/low/medium/high)；Claude 4.6+ 用 output_config.effort(low/medium/high/xhigh/max)，无真正「关」故「关闭」映射到最低 low
+const THINK_MAP={
+  doubao:   {off:'minimal', low:'low',  medium:'medium', high:'high'},
+  anthropic:{off:'low',     low:'low',  medium:'medium', high:'high'},
+};
+function thinkLevel(){return localStorage.getItem(LS_THINK)||'medium';}  // 默认中
 
 function autoExplainOn(){return localStorage.getItem(LS_AUTOEXP)!=='0';}  // 默认开
 
@@ -479,10 +496,12 @@ async function callAI(messages, maxTokens=500, images=null, onChunk=null){
       blocks.push({type:'text',text:typeof last.content==='string'?last.content:''});
       last.content=blocks;
     }
+    const abody={model,max_tokens:maxTokens,messages:msgs,stream};
+    abody.output_config={effort:THINK_MAP.anthropic[thinkLevel()]};  // 思考深度按设置页档位（Claude 4.6+ adaptive thinking）
     const r=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model,max_tokens:maxTokens,messages:msgs,stream})
+      body:JSON.stringify(abody)
     });
     if(stream){
       return await readStream(r,(obj,acc)=>{
@@ -511,10 +530,12 @@ async function callAI(messages, maxTokens=500, images=null, onChunk=null){
       images.forEach(d=>parts.push({type:'image_url',image_url:{url:'data:'+d.mime+';base64,'+d.b64}}));
       last.content=parts;
     }
+    const body={model,max_tokens:maxTokens,messages:msgs,stream};
+    if(t==='doubao')body.reasoning_effort=THINK_MAP.doubao[thinkLevel()];  // 思考深度按设置页档位
     const r=await fetch(url,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.apiKey},
-      body:JSON.stringify({model,max_tokens:maxTokens,messages:msgs,stream})
+      body:JSON.stringify(body)
     });
     if(stream){
       return await readStream(r,(obj)=>{
@@ -736,6 +757,12 @@ function syncApiStatus(){
   document.getElementById('chat-send').disabled=!t;
   refreshModelOptions();
   updateImageUploadVisibility();
+  updateThinkRowVisibility();
+}
+// 思考档位行：仅支持档位的服务商（豆包/Claude）显示；DeepSeek 用模型下拉切思考，故隐藏
+function updateThinkRowVisibility(){
+  const p=curProvider();
+  document.getElementById('think-row').style.display=(p==='doubao'||p==='anthropic')?'flex':'none';
 }
 // 选了支持读图的服务商（豆包/Claude）才显示图片上传
 function updateImageUploadVisibility(){
@@ -748,6 +775,7 @@ document.getElementById('provider-select').addEventListener('change',function(){
   state.provider=this.value;
   state.model='';
   refreshModelOptions();
+  updateThinkRowVisibility();
 });
 // API Key 输入即时影响模型猜测（前缀判断服务商），刷新下拉，但不写入存储
 document.getElementById('api-key-input').addEventListener('input',function(){
@@ -776,6 +804,7 @@ document.getElementById('btn-save-settings').addEventListener('click',function()
   localStorage.setItem(LS_MODEL,state.model);
   localStorage.setItem(LS_ENDPOINT,state.endpoint);
   localStorage.setItem(LS_AUTOEXP,autoExp?'1':'0');
+  localStorage.setItem(LS_THINK,document.getElementById('think-select').value);
   if(noSave){
     localStorage.setItem(LS_NOSAVE,'1');
     localStorage.removeItem(LS_KEY);          // 不保存 Key
@@ -1347,6 +1376,7 @@ document.getElementById('btn-discard').addEventListener('click',()=>{
   const savedEndpoint=localStorage.getItem(LS_ENDPOINT)||'';
   if(localStorage.getItem(LS_NOSAVE)==='1')document.getElementById('no-save-key').checked=true;
   document.getElementById('auto-explain').checked=autoExplainOn();
+  document.getElementById('think-select').value=thinkLevel();
   if(savedKey){state.apiKey=savedKey;document.getElementById('api-key-input').value=savedKey;}
   if(savedModel)state.model=savedModel;
   if(savedProvider){state.provider=savedProvider;document.getElementById('provider-select').value=savedProvider;}
