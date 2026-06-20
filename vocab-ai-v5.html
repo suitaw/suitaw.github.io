@@ -520,6 +520,48 @@ async function callAI(messages, sys, maxTokens=600, images=null){
   return text;
 }
 
+// ===== 流式调用：逐字回调 onChunk(已累积的全文) =====
+async function callAIStream(messages, sys, onChunk, maxTokens=900){
+  if(!cfg.apikey)throw new Error("先在设置里填 API Key");
+  if(cfg.provider==="doubao"&&!cfg.endpoint)throw new Error("豆包需要先填接入点 ID（ep-xxxx）");
+  const p=cfg.provider;
+  let url,headers,body,parseLine;
+  if(p==="anthropic"){
+    url="https://api.anthropic.com/v1/messages";
+    headers={"Content-Type":"application/json","x-api-key":cfg.apikey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
+    body={model:"claude-haiku-4-5-20251001",max_tokens:maxTokens,messages,stream:true};
+    if(sys)body.system=sys;
+    parseLine=obj=>(obj.type==="content_block_delta"&&obj.delta&&obj.delta.text)?obj.delta.text:"";
+  }else{
+    if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+    else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
+    else url="https://openrouter.ai/api/v1/chat/completions";
+    const model=p==="doubao"?cfg.endpoint:p==="deepseek"?"deepseek-v4-flash":"anthropic/claude-3.5-haiku";
+    headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
+    body={model,max_tokens:maxTokens,messages:sys?[{role:"system",content:sys},...messages]:messages,stream:true};
+    parseLine=obj=>(obj.choices&&obj.choices[0]&&obj.choices[0].delta&&obj.choices[0].delta.content)||"";
+  }
+  const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});
+  if(!r.ok){let e="接口报错";try{const j=await r.json();e=j.error&&j.error.message||e}catch(x){}throw new Error(e)}
+  const reader=r.body.getReader();const dec=new TextDecoder();
+  let buf="",full="";
+  while(true){
+    const {done,value}=await reader.read();
+    if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    const lines=buf.split("\n");buf=lines.pop();
+    for(const line of lines){
+      const t=line.trim();
+      if(!t||!t.startsWith("data:"))continue;
+      const data=t.slice(5).trim();
+      if(data==="[DONE]")continue;
+      try{const obj=JSON.parse(data);const piece=parseLine(obj);if(piece){full+=piece;onChunk(full)}}catch(e){}
+    }
+  }
+  if(!full)throw new Error("空响应");
+  return full;
+}
+
 // ===== AI 造句批改 + 追问 =====
 async function checkSentence(){
   const txt=document.getElementById("sentence").value.trim();
@@ -578,17 +620,26 @@ async function sendChat(){
   const input=document.getElementById("chat-input");
   const q=input.value.trim();if(!q)return toast("写点什么");
   chatHistory.push({role:"user",content:q});
-  const btn=document.getElementById("chat-send");btn.disabled=true;btn.textContent="思考中…";
+  chatHistory.push({role:"assistant",content:"▍"});  // 占位，显示光标
+  input.value="";
+  const btn=document.getElementById("chat-send");btn.disabled=true;btn.textContent="生成中…";
   renderAssistant(document.getElementById("view"));
+  const log=document.getElementById("chat-log");if(log)log.scrollTop=log.scrollHeight;
+  const sys="你是耐心友好的英语老师，面对中文母语的英语初学者。用简单中文讲解，给例句，避免生硬术语。回答简明，不要长篇大论。";
   try{
-    const sys="你是耐心友好的英语老师，面对中文母语的英语初学者。用简单中文讲解，给例句，避免生硬术语。回答简明，不要长篇大论。";
-    const text=await callAI(chatHistory.slice(-8),sys,700);
-    chatHistory.push({role:"assistant",content:text});
+    // 流式：用倒数第二条之前的历史作为上下文（最后一条是占位）
+    const ctx=chatHistory.slice(0,-1).slice(-8);
+    await callAIStream(ctx,sys,(full)=>{
+      chatHistory[chatHistory.length-1].content=full+"▍";
+      const logEl=document.getElementById("chat-log");
+      if(logEl){logEl.innerHTML=chatHistory.map(m=>chatBubble(m)).join("");logEl.scrollTop=logEl.scrollHeight}
+    });
+    chatHistory[chatHistory.length-1].content=chatHistory[chatHistory.length-1].content.replace(/▍$/,"");
   }catch(e){
-    chatHistory.push({role:"assistant",content:"出错了："+(e.message||"检查设置里的 Key")});
+    chatHistory[chatHistory.length-1].content="出错了："+(e.message||"检查设置里的 Key");
   }
   renderAssistant(document.getElementById("view"));
-  const btn2=document.getElementById("chat-send");if(btn2){btn2.disabled=false;btn2.textContent="发送"}
+  const logEl=document.getElementById("chat-log");if(logEl)logEl.scrollTop=logEl.scrollHeight;
 }
 
 // ===== 从文章导入生词 =====
@@ -602,14 +653,18 @@ function openImport(){
         <h2 style="font-family:Fraunces,serif;font-size:1.2rem">导入生词</h2>
         <button class="gear" onclick="closeImport()">✕ 关闭</button>
       </div>
-      <p style="color:var(--ink-dim);font-size:.78rem;margin-bottom:8px">贴一段英文，或上传图片（截图、字幕、菜单都行），AI 会挑出生词生成词条。</p>
-      <textarea id="import-text" placeholder="Paste an English paragraph here…" style="width:100%;min-height:100px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;background:var(--paper);resize:vertical"></textarea>
+      <p style="color:var(--ink-dim);font-size:.78rem;margin-bottom:8px">贴英文/上传图片，或直接贴一串已知单词，让 AI 生成词条。</p>
+      <textarea id="import-text" placeholder="① 提取模式：贴一段英文/截图，AI 挑生词&#10;② 录入模式：贴一串单词（逗号或换行分隔），AI 全部补全不挑" style="width:100%;min-height:110px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;background:var(--paper);resize:vertical"></textarea>
       <label style="display:block;margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:12px;text-align:center;font-size:.8rem;color:var(--ink-dim);cursor:pointer">
         📷 选图片（需用豆包 Key）
         <input type="file" id="import-img" accept="image/*" style="display:none" onchange="onPickImage(this)">
       </label>
       <div id="img-preview" style="margin-top:8px"></div>
-      <button class="ai-btn" id="extract-btn" style="margin-top:10px" onclick="extractWords()">AI 提取生词</button>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="ai-btn" id="extract-btn" style="flex:1" onclick="extractWords()">从文章提取生词</button>
+        <button class="ai-btn" id="batch-btn" style="flex:1;background:var(--green)" onclick="batchImport()">批量录入单词</button>
+      </div>
+      <div id="import-progress" style="margin-top:8px;font-size:.78rem;color:var(--ink-dim)"></div>
       <div id="import-result" style="margin-top:14px"></div>
     </div>`;
 }
@@ -630,7 +685,7 @@ function closeImport(){const ov=document.getElementById("import-overlay");ov.cla
 async function extractWords(){
   const txt=document.getElementById("import-text").value.trim();
   if(!txt&&!importImage)return toast("贴段英文，或选张图片");
-  if(txt.length>2000)return toast("段落太长，截短到 2000 字以内");
+  if(txt.length>8000)return toast("文章太长，截短到 8000 字以内");
   if(importImage&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需要切到豆包 Key");
   const btn=document.getElementById("extract-btn");btn.disabled=true;btn.textContent="提取中…";
   const sys=`你是英语老师，学生是中文母语的中级偏初学习者（认识基础词如 the/is/have，目标是读技术文档和看美剧）。从用户给的英文内容（文字或图片里的英文）中挑出对这类学习者算"生词"的词或短语（跳过过于简单的词），每个生成词条，并归类。
@@ -660,7 +715,52 @@ async function extractWords(){
     renderCandidates();
   }catch(e){
     toast("提取失败："+(e.message||"检查 Key 或换个输入"));
-  }finally{btn.disabled=false;btn.textContent="AI 提取生词"}
+  }finally{btn.disabled=false;btn.textContent="从文章提取生词"}
+}
+
+// ===== 批量录入：给词表，AI 全部补全不挑，分批处理 =====
+async function batchImport(){
+  const raw=document.getElementById("import-text").value.trim();
+  if(!raw)return toast("先贴一串单词");
+  // 解析：先按行丢掉 ### 标题行，再按逗号/分号拆词
+  let words=raw.split(/\n/)
+    .filter(line=>!/^\s*#/.test(line))        // 丢掉 # 开头的标题行
+    .join(",")
+    .split(/[,;]+/)
+    .map(s=>s.trim())
+    .filter(s=>s&&/[a-zA-Z]/.test(s));
+  words=[...new Set(words.map(w=>w.toLowerCase()))];  // 去重
+  if(!words.length)return toast("没解析出单词");
+  if(words.length>200)return toast("一次最多 200 个，太多了分几次");
+  const btn=document.getElementById("batch-btn");btn.disabled=true;
+  const prog=document.getElementById("import-progress");
+  const BATCH=20;
+  const sys=`你是英语老师。用户会给你一批英文单词/短语，请为【每一个】生成词条，一个都不能漏、不要挑选。
+
+【分类】每个词归到且只能归到这7个key之一：dev(科技开发)、tv(影视口语)、life(日常生活)、biz(职场商务)、academic(学术阅读)、news(新闻时事)、other(其他)。
+【词性】pos填 n./v./adj./adv./phr. 等。
+【场景】scene：词在专业场景有特殊含义就简短写明（如 print 在编程里指打印输出），否则留空。
+
+只返回JSON数组，不要任何其他文字，数组长度必须等于输入单词数：[{"word":"原词","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","tip":"简短提示","exampleEn":"英文例句","exampleCn":"中文翻译","scene":"场景或空","cat":"7个key之一"}]`;
+  const valid=["dev","tv","life","biz","academic","news","other"];
+  let all=[];
+  try{
+    for(let i=0;i<words.length;i+=BATCH){
+      const chunk=words.slice(i,i+BATCH);
+      prog.textContent=`处理中… ${Math.min(i+BATCH,words.length)}/${words.length}`;
+      let text=await callAI([{role:"user",content:chunk.join(", ")}],sys,3000);
+      text=text.replace(/```json|```/g,"").trim();
+      const arr=JSON.parse(text);
+      if(Array.isArray(arr))all=all.concat(arr);
+    }
+    if(!all.length)throw new Error("没生成出词条");
+    importCandidates=all.map(w=>({...w,pos:w.pos||"",scene:w.scene||"",cat:valid.includes(w.cat)?w.cat:"other",pick:true}));
+    prog.textContent=`完成，共 ${importCandidates.length} 个词条`;
+    renderCandidates();
+  }catch(e){
+    toast("录入失败："+(e.message||"检查 Key 或减少数量"));
+    prog.textContent="";
+  }finally{btn.disabled=false}
 }
 function renderCandidates(){
   const box=document.getElementById("import-result");
