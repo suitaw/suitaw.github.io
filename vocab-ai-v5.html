@@ -90,6 +90,11 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .import-box{max-width:560px;margin:20px auto;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 40px rgba(43,38,32,.2)}
 .toast.show{opacity:1}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.typing{display:inline-flex;gap:4px;align-items:center;padding:4px 2px}
+.typing span{width:7px;height:7px;border-radius:50%;background:var(--ink-dim);opacity:.4;animation:typing-bounce 1.2s infinite ease-in-out}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes typing-bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
 </style>
 </head>
 <body>
@@ -612,29 +617,30 @@ function renderAssistant(v){
 }
 function chatBubble(m){
   const me=m.role==="user";
+  const inner=m.content==="__TYPING__"
+    ? `<div class="typing"><span></span><span></span><span></span></div>`
+    : m.content.replace(/</g,"&lt;");
   return `<div style="margin-bottom:10px;text-align:${me?"right":"left"}">
-    <div style="display:inline-block;max-width:85%;text-align:left;background:${me?"var(--accent-soft)":"var(--card)"};border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-size:.84rem;white-space:pre-wrap">${m.content.replace(/</g,"&lt;")}</div>
+    <div style="display:inline-block;max-width:88%;text-align:left;background:${me?"var(--accent-soft)":"var(--card)"};border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:.8rem;line-height:1.5;white-space:pre-wrap">${inner}</div>
   </div>`;
 }
 async function sendChat(){
   const input=document.getElementById("chat-input");
   const q=input.value.trim();if(!q)return toast("写点什么");
   chatHistory.push({role:"user",content:q});
-  chatHistory.push({role:"assistant",content:"▍"});  // 占位，显示光标
+  chatHistory.push({role:"assistant",content:"__TYPING__"});  // 占位：打字动画
   input.value="";
   const btn=document.getElementById("chat-send");btn.disabled=true;btn.textContent="生成中…";
   renderAssistant(document.getElementById("view"));
   const log=document.getElementById("chat-log");if(log)log.scrollTop=log.scrollHeight;
   const sys="你是耐心友好的英语老师，面对中文母语的英语初学者。用简单中文讲解，给例句，避免生硬术语。回答简明，不要长篇大论。";
   try{
-    // 流式：用倒数第二条之前的历史作为上下文（最后一条是占位）
     const ctx=chatHistory.slice(0,-1).slice(-8);
     await callAIStream(ctx,sys,(full)=>{
-      chatHistory[chatHistory.length-1].content=full+"▍";
+      chatHistory[chatHistory.length-1].content=full;  // 直接显示文本，无光标方块
       const logEl=document.getElementById("chat-log");
       if(logEl){logEl.innerHTML=chatHistory.map(m=>chatBubble(m)).join("");logEl.scrollTop=logEl.scrollHeight}
     });
-    chatHistory[chatHistory.length-1].content=chatHistory[chatHistory.length-1].content.replace(/▍$/,"");
   }catch(e){
     chatHistory[chatHistory.length-1].content="出错了："+(e.message||"检查设置里的 Key");
   }
