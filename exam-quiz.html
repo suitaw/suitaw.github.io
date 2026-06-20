@@ -21,8 +21,9 @@
   .tab-btn{padding:8px 18px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:13px;color:var(--text-dim);cursor:pointer;font-family:'Noto Sans SC',sans-serif;transition:all .18s;position:relative;}
   .tab-btn:hover{border-color:var(--accent);color:var(--accent);}
   .tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
-  .tab-badge{display:inline-block;min-width:17px;height:17px;line-height:17px;padding:0 5px;border-radius:9px;background:var(--wrong);color:#fff;font-size:10px;margin-left:5px;vertical-align:middle;}
-  .tab-btn.active .tab-badge{background:rgba(255,255,255,.3);}
+  .tab-badge{display:inline-block;min-width:17px;height:17px;line-height:17px;padding:0 5px;border-radius:9px;background:var(--accent-dim);color:var(--accent);font-size:10px;font-weight:600;margin-left:5px;vertical-align:middle;}
+  .tab-badge.badge-wrong{background:var(--wrong-bg);color:var(--wrong);}
+  .tab-btn.active .tab-badge{background:rgba(255,255,255,.25);color:#fff;}
   .progress-wrap{width:100%;max-width:720px;padding:16px 20px 0;}
   .progress-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:8px;}
   .progress-bar{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;}
@@ -215,7 +216,7 @@
     <h1>精准刷题，逐题突破</h1>
   </div>
   <div class="top-actions">
-    <button class="icon-btn" id="api-toggle" onclick="toggleApi()">🔑 设置</button>
+    <button class="icon-btn" id="api-toggle" onclick="switchTab('settings')">🔑 设置</button>
     <button class="icon-btn" id="theme-btn">☀️ 白天</button>
   </div>
 </div>
@@ -223,7 +224,7 @@
 <div class="tab-nav">
   <button class="tab-btn active" id="tab-quiz" onclick="switchTab('quiz')">📋 刷题练习</button>
   <button class="tab-btn" id="tab-chat" onclick="switchTab('chat')">💬 AI 问答</button>
-  <button class="tab-btn" id="tab-wrong" onclick="switchTab('wrong')">📕 错题集<span class="tab-badge" id="wrong-badge" style="display:none">0</span></button>
+  <button class="tab-btn" id="tab-wrong" onclick="switchTab('wrong')">📕 错题集<span class="tab-badge badge-wrong" id="wrong-badge" style="display:none">0</span></button>
   <button class="tab-btn" id="tab-done" onclick="switchTab('done')">✅ 已做题<span class="tab-badge" id="done-badge" style="display:none">0</span></button>
 </div>
 
@@ -236,8 +237,10 @@
 </div>
 
 <main>
-  <div class="api-panel" id="api-panel">
-    <div class="api-body">
+  <!-- 设置页（独立 tab） -->
+  <div id="settings-page" style="display:none">
+    <div class="api-panel open" style="display:block;margin-bottom:0;">
+      <div class="api-body">
       <div class="api-row">
         <label>🏷️ 服务商</label>
         <select id="provider-select">
@@ -270,6 +273,9 @@
         <span class="api-hint" style="flex:1;min-width:120px;">关闭后答完题不自动调 AI，需手动点「获取解析」，省 token</span>
       </div>
       <div class="api-hint" id="api-hint">先选服务商再填对应 Key。Key 仅保存在本机浏览器，不会上传。豆包/Claude 支持上传图片让 AI 读图。</div>
+      <button class="btn-start" id="btn-save-settings" style="width:100%;margin-top:6px;padding:13px;font-size:15px;">💾 保存设置</button>
+      <div id="save-tip" style="display:none;text-align:center;font-size:13px;color:var(--correct);margin-top:-2px;">✓ 已保存</div>
+      </div>
     </div>
   </div>
 
@@ -720,13 +726,6 @@ if(window.matchMedia){
   });
 }
 
-// ── API panel toggle ──
-function toggleApi(){
-  const p=document.getElementById('api-panel');
-  p.classList.toggle('open');
-  document.getElementById('api-toggle').classList.toggle('on',p.classList.contains('open'));
-}
-
 // ── API Key input ──
 const PROVIDER_LABEL={anthropic:'✓ Anthropic',deepseek:'✓ DeepSeek',doubao:'✓ 豆包'};
 function syncApiStatus(){
@@ -743,37 +742,53 @@ function updateImageUploadVisibility(){
   const show=visionEnabled();
   document.querySelectorAll('.img-upload-btn').forEach(b=>b.style.display=show?'inline-flex':'none');
 }
+// 服务商切换：即时刷新模型下拉（UI 联动，非保存数据）
 document.getElementById('provider-select').addEventListener('change',function(){
+  // 临时用所选服务商刷新模型列表，方便用户接着选模型；真正写入在「保存」时
   state.provider=this.value;
-  localStorage.setItem(LS_PROVIDER,this.value);
-  state.model='';                 // 切服务商后重置模型，由 refresh 选默认
-  syncApiStatus();
+  state.model='';
+  refreshModelOptions();
 });
+// API Key 输入即时影响模型猜测（前缀判断服务商），刷新下拉，但不写入存储
 document.getElementById('api-key-input').addEventListener('input',function(){
   state.apiKey=this.value.trim();
-  persistKey(state.apiKey);
-  syncApiStatus();
+  refreshModelOptions();
 });
-document.getElementById('no-save-key').addEventListener('change',function(){
-  if(this.checked){
-    localStorage.setItem(LS_NOSAVE,'1');
-    localStorage.removeItem(LS_KEY);   // 立即清掉已保存的
-  }else{
-    localStorage.removeItem(LS_NOSAVE);
-    persistKey(state.apiKey);           // 关掉开关则把当前 key 存回
-  }
-});
-document.getElementById('auto-explain').addEventListener('change',function(){
-  localStorage.setItem(LS_AUTOEXP,this.checked?'1':'0');
-});
+// 模型选择：联动接入点行显隐（UI），不即时存
 document.getElementById('model-select').addEventListener('change',function(){
   state.model=this.value;
-  localStorage.setItem(LS_MODEL,this.value);
   document.getElementById('ep-row').style.display=(curProvider()==='doubao')?'flex':'none';
 });
 document.getElementById('ep-input').addEventListener('input',function(){
   state.endpoint=this.value.trim();
+});
+
+// ── 保存设置：统一把所有字段写入 state + localStorage ──
+document.getElementById('btn-save-settings').addEventListener('click',function(){
+  state.provider=document.getElementById('provider-select').value;
+  state.apiKey=document.getElementById('api-key-input').value.trim();
+  state.model=document.getElementById('model-select').value;
+  state.endpoint=document.getElementById('ep-input').value.trim();
+  const noSave=document.getElementById('no-save-key').checked;
+  const autoExp=document.getElementById('auto-explain').checked;
+  // 写入存储
+  localStorage.setItem(LS_PROVIDER,state.provider);
+  localStorage.setItem(LS_MODEL,state.model);
   localStorage.setItem(LS_ENDPOINT,state.endpoint);
+  localStorage.setItem(LS_AUTOEXP,autoExp?'1':'0');
+  if(noSave){
+    localStorage.setItem(LS_NOSAVE,'1');
+    localStorage.removeItem(LS_KEY);          // 不保存 Key
+  }else{
+    localStorage.removeItem(LS_NOSAVE);
+    persistKey(state.apiKey);                  // 保存（混淆存储）
+  }
+  syncApiStatus();
+  // 提示
+  const tip=document.getElementById('save-tip');
+  tip.style.display='block';
+  clearTimeout(window._saveTipT);
+  window._saveTipT=setTimeout(()=>{tip.style.display='none';},1800);
 });
 
 // ── Tab ──
@@ -783,6 +798,9 @@ function switchTab(tab){
   document.getElementById('chat-page').style.display=tab==='chat'?'flex':'none';
   document.getElementById('wrong-page').style.display=tab==='wrong'?'flex':'none';
   document.getElementById('done-page').style.display=tab==='done'?'flex':'none';
+  document.getElementById('settings-page').style.display=tab==='settings'?'block':'none';
+  // 设置入口按钮高亮
+  document.getElementById('api-toggle').classList.toggle('on',tab==='settings');
   const inQuiz=document.getElementById('quiz-screen').style.display!=='none';
   document.getElementById('progress-wrap').style.display=(tab==='quiz'&&inQuiz)?'block':'none';
   if(tab==='wrong')renderWrong();
