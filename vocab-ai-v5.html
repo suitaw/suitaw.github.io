@@ -341,9 +341,12 @@ function render(){
     </div>`;
   bindSwipe();
 }
-function catName(c){return c==="nce2"?"新概念二":c==="dev"?"开发者":c==="tv"?"影视口语":"我的收藏"}
+function catName(c){
+  const fixed={nce2:"新概念二",dev:"开发者",tv:"影视口语",import:"我的收藏"};
+  return fixed[c]||c;  // 自定义分类直接用名字本身
+}
 function backToHome(){studyStarted=false;cur=null;flipped=false;viewed=[];go("home")}
-// 分类选择页
+// 分类选择页（动态：内置 + 用户导入词里出现的自定义分类）
 function renderHome(v){
   const cats=[
     {key:"all",name:"全部",desc:"混合所有分类"},
@@ -351,11 +354,17 @@ function renderHome(v){
     {key:"dev",name:"开发者英语",desc:"报错·文档·Git·API"},
     {key:"tv",name:"影视口语",desc:"看剧高频·课本不教"},
   ];
-  if(imported.length)cats.push({key:"import",name:"我的收藏词",desc:"从文章导入"});
+  // 扫描导入词里的自定义分类（排除已内置的）
+  const builtin=["nce2","dev","tv"];
+  const customCats=[...new Set(imported.map(w=>w.cat))].filter(c=>!builtin.includes(c));
+  customCats.forEach(c=>{
+    cats.push({key:c,name:catName(c),desc:c==="import"?"未归类的收藏词":"自动归类"});
+  });
   v.innerHTML=`<div style="padding-top:8px">
     <p style="color:var(--ink-dim);font-size:.82rem;margin-bottom:14px">选一个分类开始背：</p>
     ${cats.map(c=>{
       const n=allWords().filter(w=>c.key==="all"||w.cat===c.key).length;
+      if(n===0)return "";  // 空分类不显示
       const due=allWords().filter(w=>(c.key==="all"||w.cat===c.key)&&(!srs[w.id]||!srs[w.id].due||srs[w.id].due<=Date.now())).length;
       return `<div class="mistake-item" style="cursor:pointer" onclick="startStudy('${c.key}')">
         <div><div class="w">${c.name}</div><div class="c">${c.desc} · 共 ${n} 词</div></div>
@@ -404,23 +413,24 @@ function flip(){flipped=true;render()}
 let viewed=[];
 // 下一词（右滑）：当前词丢回队尾，记入历史
 function nextWord(){
-  if(queue.length<=1){toast("就剩这一个啦");return}
+  if(queue.length<=1){toast("就剩这一个啦");return false}
   viewed.push(cur);
   const w=queue.shift();queue.push(w);
   cur=queue[0];flipped=false;render();
+  return true;
 }
 // 上一词（左滑）：从历史弹回，重新放回队首
 function prevWord(){
-  if(!viewed.length){toast("已经是第一个了");return}
-  // 把当前从队首挪走、上一个塞回队首
+  if(!viewed.length){toast("已经是第一个了");return false}
   const idx=queue.indexOf(cur);
   if(idx>=0)queue.splice(idx,1);
-  queue.unshift(cur);              // 当前词回队列（不丢）
+  queue.unshift(cur);
   const prev=viewed.pop();
   const pi=queue.indexOf(prev);
   if(pi>=0)queue.splice(pi,1);
-  queue.unshift(prev);             // 上一词放队首
+  queue.unshift(prev);
   cur=prev;flipped=false;render();
+  return true;
 }
 // 左右滑（只在正面生效）：右滑下一词，左滑返回上一词
 function bindSwipe(){
@@ -441,18 +451,21 @@ function bindSwipe(){
     card.style.transform="translateX("+dx+"px) rotate("+(dx/40)+"deg)";
     card.style.opacity=Math.max(.4,1-Math.abs(dx)/300);
   },{passive:true});
+  const snapBack=()=>{card.classList.add("snap");card.style.transform="";card.style.opacity=""};
   card.addEventListener("touchend",()=>{
     if(flipped||x0===null)return;
     x0=null;card.classList.remove("swiping");
     if(Math.abs(dx)>90){
-      const right=dx>0;             // 右滑=下一词，左滑=返回
+      const right=dx>0;
+      // 先判断能不能切，能切才飞出去，到头了直接弹回（避免空白）
+      const canMove=right?(queue.length>1):(viewed.length>0);
+      if(!canMove){right?toast("就剩这一个啦"):toast("已经是第一个了");snapBack();return}
       card.classList.add("snap");
       card.style.transform="translateX("+(right?500:-500)+"px) rotate("+(right?20:-20)+"deg)";
       card.style.opacity="0";
       setTimeout(right?nextWord:prevWord,180);
     }else{
-      card.classList.add("snap");
-      card.style.transform="";card.style.opacity="";
+      snapBack();
     }
   });
 }
@@ -674,14 +687,21 @@ async function extractWords(){
   if(txt.length>2000)return toast("段落太长，截短到 2000 字以内");
   if(importImage&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需要切到豆包 Key");
   const btn=document.getElementById("extract-btn");btn.disabled=true;btn.textContent="提取中…";
-  const sys=`你是英语老师，学生是中文母语的中级偏初学习者（认识基础词如 the/is/have，目标是读技术文档和看美剧）。从用户给的英文内容（文字或图片里的英文）中挑出对这类学习者算"生词"的词或短语（跳过过于简单的词）。每个生成词条。只返回JSON数组，不要任何其他文字：[{"word":"原形","phonetic":"美式音标带斜杠","cn":"中文释义","tip":"简短用法/记忆提示","exampleEn":"一句英文例句，优先贴近原文语境","exampleCn":"例句中文翻译"}]。最多挑12个最值得学的。`;
+  // 列出已有分类供 AI 优先归类
+  const existCats=[...new Set(imported.map(w=>w.cat))].filter(c=>c!=="import");
+  const catHint=["dev(开发者:报错/文档/Git/API)","tv(影视口语:看剧高频)","nce2(新概念课本)",...existCats.map(c=>c+"(已有自定义分类)")].join("、");
+  const sys=`你是英语老师，学生是中文母语的中级偏初学习者（认识基础词如 the/is/have，目标是读技术文档和看美剧）。从用户给的英文内容（文字或图片里的英文）中挑出对这类学习者算"生词"的词或短语（跳过过于简单的词），每个生成词条，并判断它属于哪个分类。
+
+分类规则：优先归到这些已有分类之一：${catHint}。如果都不合适，自己起一个简短的中文分类名（2-4字，如"商务""医学""旅行""学术"），相似的词用同一个分类名。
+
+只返回JSON数组，不要任何其他文字：[{"word":"原形","phonetic":"美式音标带斜杠","cn":"中文释义","tip":"简短用法/记忆提示","exampleEn":"贴近原文语境的英文例句","exampleCn":"例句中文翻译","cat":"分类名(用dev/tv/nce2或你起的中文名)"}]。最多挑12个最值得学的。`;
   const prompt=importImage?(txt||"提取图片里的英文生词"):txt;
   try{
-    let text=await callAI([{role:"user",content:prompt}],sys,1500,importImage?[importImage]:null);
+    let text=await callAI([{role:"user",content:prompt}],sys,1800,importImage?[importImage]:null);
     text=text.replace(/```json|```/g,"").trim();
     const arr=JSON.parse(text);
     if(!Array.isArray(arr)||!arr.length)throw new Error("没提取到词");
-    importCandidates=arr.map(w=>({...w,pick:true}));
+    importCandidates=arr.map(w=>({...w,cat:w.cat||"import",pick:true}));
     renderCandidates();
   }catch(e){
     toast("提取失败："+(e.message||"检查 Key 或换个输入"));
@@ -691,7 +711,7 @@ function renderCandidates(){
   const box=document.getElementById("import-result");
   const dup=importCandidates.filter(c=>allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase())).length;
   box.innerHTML=`
-    <p style="font-size:.78rem;color:var(--ink-dim);margin-bottom:8px">挑出 ${importCandidates.length} 个词${dup?`（其中 ${dup} 个词库里已有，已默认不勾选）`:""}，取消勾选不想要的：</p>
+    <p style="font-size:.78rem;color:var(--ink-dim);margin-bottom:8px">挑出 ${importCandidates.length} 个词，已自动分类${dup?`（其中 ${dup} 个已有，默认不勾）`:""}。取消勾选不想要的：</p>
     ${importCandidates.map((c,i)=>{
       const exists=allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase());
       if(exists)c.pick=false;
@@ -701,10 +721,11 @@ function renderCandidates(){
           <div style="font-family:Fraunces,serif;font-weight:600">${c.word} <span style="color:var(--accent);font-size:.8rem">${c.phonetic||""}</span>${exists?' <span style="font-size:.65rem;color:var(--gold)">已有</span>':""}</div>
           <div style="font-size:.78rem">${c.cn}</div>
           <div style="font-size:.72rem;color:var(--ink-dim);margin-top:2px">${c.exampleEn||""}</div>
+          <div style="margin-top:4px"><span style="font-size:.65rem;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:2px 8px">📁 ${catName(c.cat)}</span></div>
         </div>
       </label>`;
     }).join("")}
-    <button class="ai-btn" style="margin-top:8px" onclick="saveImported()">保存勾选的词到「我的收藏词」</button>`;
+    <button class="ai-btn" style="margin-top:8px" onclick="saveImported()">保存勾选的词（按分类归入）</button>`;
 }
 function saveImported(){
   const picks=importCandidates.filter(c=>c.pick);
@@ -712,7 +733,7 @@ function saveImported(){
   let n=0;
   picks.forEach(c=>{
     if(imported.some(w=>w.word.toLowerCase()===c.word.toLowerCase()))return;
-    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",cn:c.cn,tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",cat:"import"});
+    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",cn:c.cn,tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",cat:c.cat||"import"});
   });
   save(IMP_KEY,imported);
   toast("已存 "+n+" 个词");
