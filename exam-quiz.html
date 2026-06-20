@@ -251,6 +251,11 @@
         <input type="password" id="api-key-input" placeholder="填入对应服务商的 API Key" autocomplete="off">
         <span class="api-status no" id="api-status">未设置</span>
       </div>
+      <div class="api-row" style="margin-top:-4px">
+        <label>🔒 不在本机保存</label>
+        <label class="switch-wrap"><input type="checkbox" id="no-save-key"><span class="switch-ui"></span></label>
+        <span class="api-hint" style="flex:1;min-width:120px;">勾选后 Key 仅本次使用，刷新即清空，更安全</span>
+      </div>
       <div class="api-row" id="model-row" style="display:none">
         <label>🤖 模型</label>
         <select id="model-select"></select>
@@ -258,6 +263,11 @@
       <div class="api-row" id="ep-row" style="display:none">
         <label>🔌 接入点</label>
         <input type="text" id="ep-input" placeholder="火山方舟推理接入点 ID，如 ep-xxxx 或模型名" autocomplete="off">
+      </div>
+      <div class="api-row">
+        <label>⚡ 答题自动解析</label>
+        <label class="switch-wrap"><input type="checkbox" id="auto-explain" checked><span class="switch-ui"></span></label>
+        <span class="api-hint" style="flex:1;min-width:120px;">关闭后答完题不自动调 AI，需手动点「获取解析」，省 token</span>
       </div>
       <div class="api-hint" id="api-hint">先选服务商再填对应 Key。Key 仅保存在本机浏览器，不会上传。豆包/Claude 支持上传图片让 AI 读图。</div>
     </div>
@@ -386,7 +396,27 @@ const state = {
   currentQ:null, fuHistory:[], chatHistory:[], multiPick:new Set(), answered:[],
   wrongOnly:false,
 };
-const LS_KEY='jdwz_apikey', LS_MODEL='jdwz_model', LS_WRONG='jdwz_wrongbook', LS_DONE='jdwz_donebook', LS_SESSION='jdwz_session', LS_PROVIDER='jdwz_provider', LS_ENDPOINT='jdwz_endpoint';
+const LS_KEY='jdwz_apikey', LS_MODEL='jdwz_model', LS_WRONG='jdwz_wrongbook', LS_DONE='jdwz_donebook', LS_SESSION='jdwz_session', LS_PROVIDER='jdwz_provider', LS_ENDPOINT='jdwz_endpoint', LS_NOSAVE='jdwz_nosavekey', LS_AUTOEXP='jdwz_autoexplain';
+
+function autoExplainOn(){return localStorage.getItem(LS_AUTOEXP)!=='0';}  // 默认开
+
+// Key 轻混淆存储：异或 + base64，防 devtools 肉眼直读 / 同步泄露（非强加密）
+const _XK='jdwz2026';
+function _xor(s){let o='';for(let i=0;i<s.length;i++)o+=String.fromCharCode(s.charCodeAt(i)^_XK.charCodeAt(i%_XK.length));return o;}
+function encKey(k){try{return btoa(unescape(encodeURIComponent(_xor(k))));}catch(e){return '';}}
+function decKey(s){try{return _xor(decodeURIComponent(escape(atob(s))));}catch(e){return '';}}
+function persistKey(k){
+  if(localStorage.getItem(LS_NOSAVE)==='1'){localStorage.removeItem(LS_KEY);return;}
+  if(k)localStorage.setItem(LS_KEY,encKey(k)); else localStorage.removeItem(LS_KEY);
+}
+function readKey(){
+  const s=localStorage.getItem(LS_KEY);
+  if(!s)return '';
+  const d=decKey(s);
+  if(d&&(d.startsWith('sk-')))return d;          // 正常解出新格式
+  if(s.startsWith('sk-')){persistKey(s);return s;} // 旧明文 key：读出并立即转存为混淆格式
+  return d||'';
+}
 
 const MODELS={
   anthropic:[['claude-sonnet-4-6','Claude Sonnet 4.6（均衡）'],['claude-opus-4-8','Claude Opus 4.8（最强）'],['claude-haiku-4-5-20251001','Claude Haiku 4.5（快速）']],
@@ -555,7 +585,8 @@ function renderWrong(){
     list.innerHTML='<div class="wrong-empty"><div class="icon">🎉</div><p>暂无错题，继续保持！<br><span style="font-size:12px;opacity:.6">答错的题目会自动收录到这里</span></p></div>';
     return;
   }
-  list.innerHTML=arr.map(w=>
+  list.innerHTML='<button class="btn-start" style="width:100%;padding:12px;margin-bottom:14px;font-size:15px;" onclick="redoWrong()">🔁 重做这些错题（'+arr.length+' 题）</button>'+
+  arr.map(w=>
     '<div class="wrong-card">'+
     '<div class="wrong-meta"><span>'+w.ch+'</span><span>答错 '+w.count+' 次</span></div>'+
     '<div class="wrong-q">'+escHtml(w.q)+'</div>'+
@@ -672,8 +703,20 @@ document.getElementById('provider-select').addEventListener('change',function(){
 });
 document.getElementById('api-key-input').addEventListener('input',function(){
   state.apiKey=this.value.trim();
-  localStorage.setItem(LS_KEY,state.apiKey);
+  persistKey(state.apiKey);
   syncApiStatus();
+});
+document.getElementById('no-save-key').addEventListener('change',function(){
+  if(this.checked){
+    localStorage.setItem(LS_NOSAVE,'1');
+    localStorage.removeItem(LS_KEY);   // 立即清掉已保存的
+  }else{
+    localStorage.removeItem(LS_NOSAVE);
+    persistKey(state.apiKey);           // 关掉开关则把当前 key 存回
+  }
+});
+document.getElementById('auto-explain').addEventListener('change',function(){
+  localStorage.setItem(LS_AUTOEXP,this.checked?'1':'0');
 });
 document.getElementById('model-select').addEventListener('change',function(){
   state.model=this.value;
@@ -755,16 +798,9 @@ function refreshChapterProgress(){
 }
 
 // ── Start ──
-document.getElementById('btn-start').addEventListener('click',()=>{
-  if(!state.selectedChapters.size){alert('请至少选择一个章节');return;}
-  let pool=QUESTION_BANK.filter(q=>state.selectedChapters.has(q.ch));
-  if(document.getElementById('unanswered-only').checked){
-    const done=loadDone();
-    pool=pool.filter(q=>!done[doneKey(q)]);
-    if(!pool.length){alert('所选章节的题已全部做过；关闭「只抽未做过的题」可重做。');return;}
-  }
+// 用指定题目数组开一轮测试（错题重做 / 章节抽题共用）
+function startQuizWith(pool){
   state.pool=pool;
-  if(!state.pool.length){alert('所选章节暂无题目');return;}
   const want=parseInt(document.getElementById('q-count').value);
   state.totalQ=Math.min(want,state.pool.length);
   const idx=[...Array(state.pool.length).keys()];
@@ -777,13 +813,35 @@ document.getElementById('btn-start').addEventListener('click',()=>{
   });
   state.order=picked;
   state.current=0;state.results=[];state.score=0;state.answered=[];
+  switchTab('quiz');
   document.getElementById('start-screen').style.display='none';
   document.getElementById('result-screen').style.display='none';
   document.getElementById('quiz-screen').style.display='block';
   document.getElementById('progress-wrap').style.display='block';
   saveSession();
   updateProgress();renderQuestion();
+}
+
+document.getElementById('btn-start').addEventListener('click',()=>{
+  if(!state.selectedChapters.size){alert('请至少选择一个章节');return;}
+  let pool=QUESTION_BANK.filter(q=>state.selectedChapters.has(q.ch));
+  if(document.getElementById('unanswered-only').checked){
+    const done=loadDone();
+    pool=pool.filter(q=>!done[doneKey(q)]);
+    if(!pool.length){alert('所选章节的题已全部做过；关闭「只抽未做过的题」可重做。');return;}
+  }
+  if(!pool.length){alert('所选章节暂无题目');return;}
+  startQuizWith(pool);
 });
+
+// 重做错题集里的题：用 wrongKey 反查题库原题（含完整 opts/ans）
+function redoWrong(){
+  const arr=loadWrong();
+  if(!arr.length){alert('错题集为空');return;}
+  const pool=arr.map(w=>Q_BY_KEY[w.key]).filter(Boolean);
+  if(!pool.length){alert('错题对应的题目在当前题库中未找到');return;}
+  startQuizWith(pool);
+}
 
 function quitQuiz(){
   if(!confirm('确定退出本次测试？已答的题已计入「已做题」，但本轮进度不再保留。'))return;
@@ -849,8 +907,19 @@ function restoreAnswered(q,saved){
       histEl.innerHTML=state.fuHistory.map(m=>'<div class="fu-bubble '+(m.role==='user'?'fu-user':'fu-ai')+'">'+escHtml(m.content)+'</div>').join('');
     }
   } else {
-    exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>填入 API Key（点右上角 🔑 设置）后可获取 AI 解析与追问。'+reviewBtnHtml(q);
-    bindReviewBtn(exp,q);
+    state.fuHistory=saved.fuHistory||[];
+    if(getApiType(state.apiKey)){
+      // 已答但还没解析（手动模式或上次中断）：给「获取解析」按钮，不自动调 AI
+      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>'+
+        '<button class="mark-review-btn" id="btn-get-exp" style="background:var(--accent-dim);border-color:var(--accent);color:var(--accent);">💡 获取 AI 解析</button>'+
+        reviewBtnHtml(q);
+      bindReviewBtn(exp,q);
+      const gb=exp.querySelector('#btn-get-exp');
+      if(gb)gb.addEventListener('click',()=>runExplain(q,saved,exp,fb,hdr));
+    }else{
+      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>填入 API Key（点右上角 🔑 设置）后可获取 AI 解析与追问。'+reviewBtnHtml(q);
+      bindReviewBtn(exp,q);
+    }
   }
   document.getElementById('btn-next').textContent=state.current+1>=state.totalQ?'查看结果 →':'下一题 →';
   document.getElementById('btn-next').classList.add('show');
@@ -894,30 +963,47 @@ async function handleAnswer(letter,q){
   saveSession();
 
   if(getApiType(state.apiKey)){
-    exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div class="exp-loading"><div class="exp-spinner"></div> AI 解析中…</div>';
-    const userMsg='题目：'+q.q+'\n选项：'+q.opts.map(o=>o.l+'.'+o.t).join('；')+'\n正确答案：'+q.ans+'\n考生选择：'+letter+'（'+(ok?'正确':'错误')+'）';
-    const sysMsg='你是军队文职考试辅导老师，请给出简明解析（2-3句，直接讲知识点，不重复题干，不要开场白）。';
-    try{
-      const txt=await callAI([{role:'user',content:sysMsg+'\n\n'+userMsg}],300);
-      state.fuHistory.length=0;
-      state.fuHistory.push({role:'user',content:userMsg},{role:'assistant',content:txt});
-      saved.expText=txt;
-      saveSession();
-      if(state.current===state.answered.indexOf(saved)){
-        exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div id="exp-text">'+escHtml(txt)+'</div>'+reviewBtnHtml(q)+fuHtml();
-        bindFu(exp,q); bindReviewBtn(exp,q);
-      }
-    }catch(e){
-      saved.expText='解析获取失败（'+e.message+'）。';
-      saveSession();
-      if(state.current===state.answered.indexOf(saved)){
-        exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>解析获取失败（'+escHtml(e.message)+'）。'+reviewBtnHtml(q)+fuHtml();
-        bindFu(exp,q); bindReviewBtn(exp,q);
-      }
+    if(autoExplainOn()){
+      runExplain(q,saved,exp,fb,hdr);
+    }else{
+      // 手动模式：显示「获取解析」按钮，不自动调 AI
+      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>'+
+        '<button class="mark-review-btn" id="btn-get-exp" style="background:var(--accent-dim);border-color:var(--accent);color:var(--accent);">💡 获取 AI 解析</button>'+
+        reviewBtnHtml(q);
+      bindReviewBtn(exp,q);
+      const gb=exp.querySelector('#btn-get-exp');
+      if(gb)gb.addEventListener('click',()=>runExplain(q,saved,exp,fb,hdr));
     }
   } else {
     exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>填入 API Key（点右上角 🔑 设置）后可获取 AI 解析与追问。'+reviewBtnHtml(q);
     bindReviewBtn(exp,q);
+  }
+}
+
+// ── 调用 AI 生成本题解析（自动模式与手动按钮共用） ──
+async function runExplain(q,saved,exp,fb,hdr){
+  exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div class="exp-loading"><div class="exp-spinner"></div> AI 解析中…</div>';
+  const userMsg='题目：'+q.q+'\n选项：'+q.opts.map(o=>o.l+'.'+o.t).join('；')+'\n正确答案：'+q.ans+'\n考生选择：'+saved.letter+'（'+(saved.ok?'正确':'错误')+'）';
+  const sysMsg='你是军队文职考试辅导老师，请给出简明解析（2-3句，直接讲知识点，不重复题干，不要开场白）。';
+  try{
+    const txt=await callAI([{role:'user',content:sysMsg+'\n\n'+userMsg}],300);
+    state.fuHistory.length=0;
+    state.fuHistory.push({role:'user',content:userMsg},{role:'assistant',content:txt});
+    saved.fuHistory=state.fuHistory;
+    saved.expText=txt;
+    saveSession();
+    if(state.current===state.answered.indexOf(saved)){
+      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div id="exp-text">'+escHtml(txt)+'</div>'+reviewBtnHtml(q)+fuHtml();
+      bindFu(exp,q); bindReviewBtn(exp,q);
+    }
+  }catch(e){
+    if(state.current===state.answered.indexOf(saved)){
+      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div>解析获取失败（'+escHtml(e.message)+'）。'+
+        '<div style="margin-top:8px"><button class="mark-review-btn" id="btn-get-exp" style="background:var(--accent-dim);border-color:var(--accent);color:var(--accent);">🔄 重试</button></div>'+reviewBtnHtml(q);
+      bindReviewBtn(exp,q);
+      const rb=exp.querySelector('#btn-get-exp');
+      if(rb)rb.addEventListener('click',()=>runExplain(q,saved,exp,fb,hdr));
+    }
   }
 }
 
@@ -1169,10 +1255,12 @@ document.getElementById('btn-discard').addEventListener('click',()=>{
 // Init: restore saved key/model + badge + 进度 + 续做提示
 // ══════════════════════════════════════
 (function init(){
-  const savedKey=localStorage.getItem(LS_KEY)||'';
+  const savedKey=readKey();
   const savedModel=localStorage.getItem(LS_MODEL)||'';
   const savedProvider=localStorage.getItem(LS_PROVIDER)||'';
   const savedEndpoint=localStorage.getItem(LS_ENDPOINT)||'';
+  if(localStorage.getItem(LS_NOSAVE)==='1')document.getElementById('no-save-key').checked=true;
+  document.getElementById('auto-explain').checked=autoExplainOn();
   if(savedKey){state.apiKey=savedKey;document.getElementById('api-key-input').value=savedKey;}
   if(savedModel)state.model=savedModel;
   if(savedProvider){state.provider=savedProvider;document.getElementById('provider-select').value=savedProvider;}
