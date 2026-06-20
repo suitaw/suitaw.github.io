@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Vocab AI v5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -76,7 +79,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .nav button{background:none;border:none;font-size:.72rem;color:var(--ink-dim);cursor:pointer;font-family:inherit;padding:4px 16px;border-radius:8px}
 .nav button.active{color:var(--accent);font-weight:600}
 
-/* 错题本 */
+/* 复习本 */
 .mistake-item{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
 .mistake-item .w{font-family:Fraunces,serif;font-weight:600;font-size:1.05rem}
 .mistake-item .c{font-size:.78rem;color:var(--ink-dim)}
@@ -134,108 +137,14 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 <div class="nav">
   <button id="nav-home" class="active" onclick="go('home')">学习</button>
   <button id="nav-assistant" onclick="go('assistant')">AI 助手</button>
-  <button id="nav-mistake" onclick="go('mistake')">错题本</button>
+  <button id="nav-mistake" onclick="go('mistake')">复习本</button>
   <button id="nav-stats" onclick="go('stats')">统计</button>
 </div>
 
 <div class="toast" id="toast"></div>
 <div class="import-overlay" id="import-overlay"></div>
 
-<script>
-// ===== Vocab AI v5 词库 =====
-// 例句全部原创，不复制任何教材原文
-// 结构: {id, word, phonetic, cn, tip, exampleEn, exampleCn, cat}
-
-const WORDS = [
-  // ========== 新概念二 Lesson 1-5 生词 (cat: nce2) ==========
-  // L1
-  {id:"nce001", word:"private", phonetic:"/ˈpraɪvət/", cn:"私人的；私密的", tip:"反义词 public（公开的）。private message = 私信", exampleEn:"This is a private room, please knock first.", exampleCn:"这是私人房间，请先敲门。", cat:"nce2"},
-  {id:"nce002", word:"conversation", phonetic:"/ˌkɑːnvərˈseɪʃn/", cn:"谈话；交谈", tip:"have a conversation 进行交谈", exampleEn:"We had a long conversation about our plans.", exampleCn:"我们就计划进行了长谈。", cat:"nce2"},
-  {id:"nce003", word:"theatre", phonetic:"/ˈθiːətər/", cn:"剧院；戏院", tip:"英式拼 theatre，美式拼 theater", exampleEn:"They went to the theatre to watch a play.", exampleCn:"他们去剧院看戏。", cat:"nce2"},
-  {id:"nce004", word:"attention", phonetic:"/əˈtenʃn/", cn:"注意；关注", tip:"pay attention to 注意……", exampleEn:"Please pay attention to the road signs.", exampleCn:"请注意路标。", cat:"nce2"},
-  {id:"nce005", word:"bear", phonetic:"/ber/", cn:"忍受；承受", tip:"过去式 bore。= stand / tolerate", exampleEn:"I cannot bear this noise any longer.", exampleCn:"我再也忍受不了这噪音了。", cat:"nce2"},
-  {id:"nce006", word:"business", phonetic:"/ˈbɪznəs/", cn:"事；商业；事务", tip:"It's none of your business 不关你的事", exampleEn:"How I spend my money is my own business.", exampleCn:"我怎么花钱是我自己的事。", cat:"nce2"},
-  {id:"nce007", word:"angrily", phonetic:"/ˈæŋɡrɪli/", cn:"生气地", tip:"angry 的副词形式，修饰动词", exampleEn:"She closed the door angrily and left.", exampleCn:"她生气地关上门走了。", cat:"nce2"},
-  // L2
-  {id:"nce008", word:"outside", phonetic:"/ˌaʊtˈsaɪd/", cn:"外面；在外面", tip:"反义词 inside（里面）", exampleEn:"It is raining outside, so take an umbrella.", exampleCn:"外面在下雨，带把伞吧。", cat:"nce2"},
-  {id:"nce009", word:"ripe", phonetic:"/raɪp/", cn:"成熟的（果实）", tip:"形容水果熟了。ripe banana 熟香蕉", exampleEn:"These apples are ripe and ready to eat.", exampleCn:"这些苹果熟了，可以吃了。", cat:"nce2"},
-  {id:"nce010", word:"weigh", phonetic:"/weɪ/", cn:"称……的重量；重达", tip:"名词形式 weight（重量）", exampleEn:"Can you weigh this box for me?", exampleCn:"你能帮我称一下这个箱子吗？", cat:"nce2"},
-  {id:"nce011", word:"customer", phonetic:"/ˈkʌstəmər/", cn:"顾客", tip:"区别于 client（客户/委托人）", exampleEn:"The shop was full of customers this morning.", exampleCn:"今天上午店里满是顾客。", cat:"nce2"},
-  // L3
-  {id:"nce012", word:"send", phonetic:"/send/", cn:"寄；发送", tip:"过去式 sent。send sb sth 给某人发某物", exampleEn:"Please send me the file by email.", exampleCn:"请把文件用邮件发给我。", cat:"nce2"},
-  {id:"nce013", word:"postcard", phonetic:"/ˈpoʊstkɑːrd/", cn:"明信片", tip:"post（邮寄）+ card（卡片）", exampleEn:"I sent her a postcard from Paris.", exampleCn:"我从巴黎给她寄了张明信片。", cat:"nce2"},
-  {id:"nce014", word:"spoil", phonetic:"/spɔɪl/", cn:"破坏；糟蹋", tip:"过去式 spoiled / spoilt 都行", exampleEn:"The bad weather spoiled our trip.", exampleCn:"坏天气破坏了我们的旅行。", cat:"nce2"},
-  {id:"nce015", word:"decide", phonetic:"/dɪˈsaɪd/", cn:"决定", tip:"decide to do 决定做某事。名词 decision", exampleEn:"We decided to stay home tonight.", exampleCn:"我们决定今晚待在家里。", cat:"nce2"},
-  {id:"nce016", word:"lonely", phonetic:"/ˈloʊnli/", cn:"孤独的", tip:"注意：lonely 是孤独感，alone 只是独自一人", exampleEn:"He felt lonely in the new city.", exampleCn:"在新城市里他感到孤独。", cat:"nce2"},
-  // L4
-  {id:"nce017", word:"exciting", phonetic:"/ɪkˈsaɪtɪŋ/", cn:"令人兴奋的", tip:"修饰事物用 exciting，人感到兴奋用 excited", exampleEn:"The football match was really exciting.", exampleCn:"那场足球赛真令人兴奋。", cat:"nce2"},
-  {id:"nce018", word:"diary", phonetic:"/ˈdaɪəri/", cn:"日记", tip:"keep a diary 记日记。别和 dairy（乳制品）混", exampleEn:"She writes in her diary every night.", exampleCn:"她每晚都写日记。", cat:"nce2"},
-  {id:"nce019", word:"abroad", phonetic:"/əˈbrɔːd/", cn:"在国外；到国外", tip:"副词，前面不加介词。go abroad 出国", exampleEn:"He wants to study abroad next year.", exampleCn:"他想明年出国留学。", cat:"nce2"},
-  // L5
-  {id:"nce020", word:"capital", phonetic:"/ˈkæpɪtl/", cn:"首都；资本；大写字母", tip:"一词多义，看语境", exampleEn:"Beijing is the capital of China.", exampleCn:"北京是中国的首都。", cat:"nce2"},
-  {id:"nce021", word:"exhibition", phonetic:"/ˌeksɪˈbɪʃn/", cn:"展览；展览会", tip:"动词 exhibit（展出）", exampleEn:"We saw an art exhibition at the museum.", exampleCn:"我们在博物馆看了一场艺术展。", cat:"nce2"},
-  {id:"nce022", word:"latest", phonetic:"/ˈleɪtɪst/", cn:"最新的", tip:"late 的最高级之一，指时间最近的", exampleEn:"Have you read the latest news?", exampleCn:"你看最新消息了吗？", cat:"nce2"},
-  {id:"nce023", word:"fashion", phonetic:"/ˈfæʃn/", cn:"时尚；流行", tip:"in fashion 流行的，out of fashion 过时的", exampleEn:"This style is back in fashion.", exampleCn:"这种风格又流行起来了。", cat:"nce2"},
-  {id:"nce024", word:"event", phonetic:"/ɪˈvent/", cn:"事件；大事", tip:"编程里也指“事件”（点击、输入等）", exampleEn:"The wedding was a happy event.", exampleCn:"婚礼是件喜事。", cat:"nce2"},
-
-  // ========== 开发者高频英语 (cat: dev) ==========
-  // 报错 / 调试
-  {id:"dev001", word:"error", phonetic:"/ˈerər/", cn:"错误；报错", tip:"程序出问题时最常见的词", exampleEn:"The program stopped because of an error.", exampleCn:"程序因为一个错误停止了。", cat:"dev"},
-  {id:"dev002", word:"exception", phonetic:"/ɪkˈsepʃn/", cn:"异常", tip:"程序运行时抛出的错误对象。throw / catch an exception", exampleEn:"The code threw an exception when the file was missing.", exampleCn:"文件缺失时代码抛出了异常。", cat:"dev"},
-  {id:"dev003", word:"traceback", phonetic:"/ˈtreɪsbæk/", cn:"回溯；错误追踪信息", tip:"Python 报错时打印的调用栈", exampleEn:"Read the traceback to find which line failed.", exampleCn:"看回溯信息找出哪一行出错了。", cat:"dev"},
-  {id:"dev004", word:"debug", phonetic:"/ˌdiːˈbʌɡ/", cn:"调试；排错", tip:"de（去除）+ bug（程序错误）", exampleEn:"I spent an hour debugging this function.", exampleCn:"我花了一小时调试这个函数。", cat:"dev"},
-  {id:"dev005", word:"syntax", phonetic:"/ˈsɪntæks/", cn:"语法（代码）", tip:"syntax error 语法错误", exampleEn:"A missing colon caused a syntax error.", exampleCn:"少了个冒号导致语法错误。", cat:"dev"},
-  {id:"dev006", word:"valid", phonetic:"/ˈvælɪd/", cn:"有效的；合法的", tip:"反义词 invalid。常见于输入校验", exampleEn:"Please enter a valid email address.", exampleCn:"请输入有效的邮箱地址。", cat:"dev"},
-  // 通用动词
-  {id:"dev007", word:"run", phonetic:"/rʌn/", cn:"运行（代码）", tip:"日常是“跑步”，技术里是“运行程序”", exampleEn:"Run the script to see the result.", exampleCn:"运行脚本看看结果。", cat:"dev"},
-  {id:"dev008", word:"call", phonetic:"/kɔːl/", cn:"调用（函数）", tip:"日常是“打电话”，技术里是“调用”", exampleEn:"This line calls the login function.", exampleCn:"这一行调用了登录函数。", cat:"dev"},
-  {id:"dev009", word:"return", phonetic:"/rɪˈtɜːrn/", cn:"返回（值）", tip:"函数把结果 return 出去", exampleEn:"The function returns a list of names.", exampleCn:"这个函数返回一个名字列表。", cat:"dev"},
-  {id:"dev010", word:"import", phonetic:"/ɪmˈpɔːrt/", cn:"导入（模块）", tip:"把别的代码引进来用", exampleEn:"Import the math module before using it.", exampleCn:"使用前先导入 math 模块。", cat:"dev"},
-  {id:"dev011", word:"deploy", phonetic:"/dɪˈplɔɪ/", cn:"部署（上线）", tip:"把代码发布到服务器/线上", exampleEn:"We deploy the app every Friday.", exampleCn:"我们每周五部署应用。", cat:"dev"},
-  {id:"dev012", word:"merge", phonetic:"/mɜːrdʒ/", cn:"合并（分支/代码）", tip:"Git 里把两个分支合到一起", exampleEn:"Merge your branch into main when ready.", exampleCn:"准备好后把你的分支合并到 main。", cat:"dev"},
-  // Git / 协作
-  {id:"dev013", word:"commit", phonetic:"/kəˈmɪt/", cn:"提交（代码记录）", tip:"Git 里保存一次改动", exampleEn:"Write a clear message for each commit.", exampleCn:"每次提交都写清楚说明。", cat:"dev"},
-  {id:"dev014", word:"branch", phonetic:"/bræntʃ/", cn:"分支", tip:"从主线分出来独立开发", exampleEn:"Create a new branch for this feature.", exampleCn:"为这个功能新建一个分支。", cat:"dev"},
-  {id:"dev015", word:"repository", phonetic:"/rɪˈpɑːzətɔːri/", cn:"代码仓库", tip:"简称 repo。代码存放的地方", exampleEn:"Clone the repository to your computer.", exampleCn:"把仓库克隆到你的电脑。", cat:"dev"},
-  {id:"dev016", word:"pull", phonetic:"/pʊl/", cn:"拉取（远程代码）", tip:"把远程的更新拉到本地", exampleEn:"Pull the latest changes before you start.", exampleCn:"开始前先拉取最新改动。", cat:"dev"},
-  {id:"dev017", word:"push", phonetic:"/pʊʃ/", cn:"推送（到远程）", tip:"把本地提交推到远程仓库", exampleEn:"Push your commits to the remote repository.", exampleCn:"把你的提交推送到远程仓库。", cat:"dev"},
-  // API / Web
-  {id:"dev018", word:"request", phonetic:"/rɪˈkwest/", cn:"请求", tip:"客户端向服务器发的请求", exampleEn:"The app sends a request to the server.", exampleCn:"应用向服务器发送一个请求。", cat:"dev"},
-  {id:"dev019", word:"response", phonetic:"/rɪˈspɑːns/", cn:"响应；回复", tip:"服务器返回的结果", exampleEn:"The server returned an empty response.", exampleCn:"服务器返回了空响应。", cat:"dev"},
-  {id:"dev020", word:"endpoint", phonetic:"/ˈendpɔɪnt/", cn:"接口端点", tip:"API 的某个访问地址", exampleEn:"This endpoint returns user data.", exampleCn:"这个端点返回用户数据。", cat:"dev"},
-  {id:"dev021", word:"parse", phonetic:"/pɑːrs/", cn:"解析", tip:"把文本/数据拆解成结构。parse JSON", exampleEn:"Parse the JSON before reading the values.", exampleCn:"读取数值前先解析 JSON。", cat:"dev"},
-  {id:"dev022", word:"token", phonetic:"/ˈtoʊkən/", cn:"令牌；词元", tip:"既指身份令牌，也指 LLM 的词元", exampleEn:"The API key is sent as an access token.", exampleCn:"API 密钥以访问令牌的形式发送。", cat:"dev"},
-  // AI / LLM
-  {id:"dev023", word:"prompt", phonetic:"/prɑːmpt/", cn:"提示词", tip:"给大模型的输入指令", exampleEn:"A clear prompt gives a better answer.", exampleCn:"清晰的提示词能得到更好的回答。", cat:"dev"},
-  {id:"dev024", word:"model", phonetic:"/ˈmɑːdl/", cn:"模型", tip:"指 AI 模型，如 Claude、GPT", exampleEn:"Choose a smaller model for fast replies.", exampleCn:"想要快速回复就选小一点的模型。", cat:"dev"},
-  {id:"dev025", word:"stream", phonetic:"/striːm/", cn:"流式传输", tip:"逐字返回结果，而非一次性给", exampleEn:"The model streams the answer word by word.", exampleCn:"模型逐字流式返回答案。", cat:"dev"},
-  {id:"dev026", word:"schema", phonetic:"/ˈskiːmə/", cn:"结构定义；模式", tip:"规定数据长什么样的模板", exampleEn:"The tool needs a schema to know the inputs.", exampleCn:"工具需要一个结构定义来识别输入。", cat:"dev"},
-
-  // ========== 影视口语高频 (cat: tv) ==========
-  {id:"tv001", word:"figure out", phonetic:"/ˈfɪɡjər aʊt/", cn:"弄明白；搞清楚", tip:"看剧最高频之一。= work out / understand", exampleEn:"I can't figure out why she's so upset.", exampleCn:"我搞不懂她为什么这么生气。", cat:"tv"},
-  {id:"tv002", word:"deal", phonetic:"/diːl/", cn:"约定；交易；处理", tip:"It's a deal 就这么定了；deal with 处理", exampleEn:"Okay, it's a deal. See you at eight.", exampleCn:"好，说定了，八点见。", cat:"tv"},
-  {id:"tv003", word:"whatever", phonetic:"/wʌtˈevər/", cn:"随便；无所谓（语气）", tip:"口语里常带不耐烦/敷衍的味道", exampleEn:"Whatever, I don't really care anymore.", exampleCn:"随便吧，我已经懒得管了。", cat:"tv"},
-  {id:"tv004", word:"freak out", phonetic:"/friːk aʊt/", cn:"吓坏；抓狂", tip:"情绪失控、慌了。剧里超常见", exampleEn:"Don't freak out, but I lost your keys.", exampleCn:"你先别慌，我把你钥匙弄丢了。", cat:"tv"},
-  {id:"tv005", word:"awesome", phonetic:"/ˈɔːsəm/", cn:"太棒了；超赞", tip:"美剧口头禅，表示赞叹", exampleEn:"You finished it already? Awesome!", exampleCn:"你已经做完了？太棒了！", cat:"tv"},
-  {id:"tv006", word:"guess", phonetic:"/ɡes/", cn:"猜；觉得（口语）", tip:"I guess 我觉得吧（不太确定的语气）", exampleEn:"I guess we could try that.", exampleCn:"我觉得我们可以试试那个吧。", cat:"tv"},
-  {id:"tv007", word:"mean", phonetic:"/miːn/", cn:"意思是；刻薄的", tip:"I mean… 我是说……（解释/改口）", exampleEn:"I mean, it's not a big deal.", exampleCn:"我是说，这没什么大不了的。", cat:"tv"},
-  {id:"tv008", word:"kidding", phonetic:"/ˈkɪdɪŋ/", cn:"开玩笑", tip:"Are you kidding me? 你逗我呢？", exampleEn:"Relax, I'm just kidding.", exampleCn:"放松，我开玩笑的。", cat:"tv"},
-  {id:"tv009", word:"point", phonetic:"/pɔɪnt/", cn:"重点；意义", tip:"What's the point? 有什么意义？That's the point 这就是重点", exampleEn:"What's the point of waiting here?", exampleCn:"在这儿等着有什么意义？", cat:"tv"},
-  {id:"tv010", word:"stuff", phonetic:"/stʌf/", cn:"东西；玩意儿", tip:"泛指一堆东西，比 things 更随意", exampleEn:"Just put your stuff over there.", exampleCn:"把你的东西放那边就行。", cat:"tv"},
-  {id:"tv011", word:"hang out", phonetic:"/hæŋ aʊt/", cn:"一起玩；闲混", tip:"约朋友出去玩、消磨时间", exampleEn:"We used to hang out every weekend.", exampleCn:"我们以前每周末都一起玩。", cat:"tv"},
-  {id:"tv012", word:"awkward", phonetic:"/ˈɔːkwərd/", cn:"尴尬的", tip:"That's so awkward 太尴尬了", exampleEn:"There was an awkward silence at dinner.", exampleCn:"晚饭时有段尴尬的沉默。", cat:"tv"},
-  {id:"tv013", word:"creepy", phonetic:"/ˈkriːpi/", cn:"瘆人的；令人发毛的", tip:"形容人或场景让人不舒服", exampleEn:"That old house is really creepy at night.", exampleCn:"那栋老房子晚上真瘆人。", cat:"tv"},
-  {id:"tv014", word:"mess", phonetic:"/mes/", cn:"一团糟；搞砸", tip:"a mess 乱七八糟；mess up 搞砸", exampleEn:"Sorry about the mess, I just moved in.", exampleCn:"抱歉这么乱，我刚搬进来。", cat:"tv"},
-  {id:"tv015", word:"weird", phonetic:"/wɪrd/", cn:"奇怪的；古怪的", tip:"比 strange 更口语、更高频", exampleEn:"It feels weird being back home.", exampleCn:"回到家感觉怪怪的。", cat:"tv"},
-  {id:"tv016", word:"totally", phonetic:"/ˈtoʊtəli/", cn:"完全；绝对（赞同）", tip:"Totally! 完全同意！", exampleEn:"You're totally right about that.", exampleCn:"这件事你说得完全对。", cat:"tv"},
-  {id:"tv017", word:"chill", phonetic:"/tʃɪl/", cn:"放松；冷静", tip:"chill out 放松点；也指“很酷/淡定”", exampleEn:"Just chill, everything will be fine.", exampleCn:"放轻松，一切都会好的。", cat:"tv"},
-  {id:"tv018", word:"gonna", phonetic:"/ˈɡɒnə/", cn:"将要（going to 口语缩写）", tip:"剧里几乎没人说 going to，都说 gonna", exampleEn:"I'm gonna grab some coffee.", exampleCn:"我要去买杯咖啡。", cat:"tv"},
-  {id:"tv019", word:"wanna", phonetic:"/ˈwɒnə/", cn:"想要（want to 口语缩写）", tip:"Do you wanna…? 你想不想……？", exampleEn:"Do you wanna come with us?", exampleCn:"你想跟我们一起去吗？", cat:"tv"},
-  {id:"tv020", word:"barely", phonetic:"/ˈberli/", cn:"几乎不；勉强", tip:"barely + 动词 = 差点没……", exampleEn:"I barely slept last night.", exampleCn:"我昨晚几乎没睡。", cat:"tv"},
-  {id:"tv021", word:"owe", phonetic:"/oʊ/", cn:"欠（钱/人情）", tip:"I owe you one 我欠你个人情", exampleEn:"Thanks, I owe you one.", exampleCn:"谢了，我欠你个人情。", cat:"tv"},
-  {id:"tv022", word:"creep", phonetic:"/kriːp/", cn:"讨厌鬼；慢慢移动", tip:"骂人时指“变态/讨厌的家伙”", exampleEn:"That guy is such a creep.", exampleCn:"那家伙真是个讨厌鬼。", cat:"tv"},
-];
-</script>
+<script src="words.js?v=20260621"></script>
 <script>
 // ===== 状态 =====
 const SRS_KEY="gh_vocab_srs_v1";
@@ -298,7 +207,16 @@ function grade(id,q){ // q: 0=again,3=hard,4=good,5=easy
   srs[id]=c;save(SRS_KEY,srs);
 }
 
-function inScope(w){return cfg.scope==="all"||w.cat===cfg.scope}
+function looseCatsNow(){
+  const builtinKeys=["all","nce2","dev","tv","life","biz","academic","news"];
+  const all=allWords();
+  return [...new Set(imported.map(w=>w.cat))].filter(c=>!builtinKeys.includes(c)&&c!=="import"&&c!=="other"&&all.filter(w=>w.cat===c).length<3);
+}
+function inScope(w){
+  if(cfg.scope==="all")return true;
+  if(cfg.scope==="__fav__")return w.cat==="import"||w.cat==="other"||looseCatsNow().includes(w.cat);
+  return w.cat===cfg.scope;
+}
 function buildQueue(){
   const now=Date.now();
   queue=allWords().filter(inScope).filter(w=>{
@@ -334,7 +252,7 @@ function render(){
         <div class="word">${cur.word}</div>
         <div class="phonetic">${cur.phonetic}</div>
         <button class="speak" onclick="event.stopPropagation();speak(this)">🔊 发音</button>
-        ${flipped?backHtml():`<div class="flip-hint">点卡片看释义 · 右滑下一个，左滑返回</div>`}
+        ${flipped?backHtml():`<div class="flip-hint">点卡片看释义 · 左滑下一个，右滑返回</div>`}
       </div>
       ${flipped?gradesHtml():""}
       ${flipped?aiHtml():""}
@@ -342,55 +260,84 @@ function render(){
   bindSwipe();
 }
 function catName(c){
-  const fixed={nce2:"新概念二",dev:"开发者",tv:"影视口语",import:"我的收藏"};
-  return fixed[c]||c;  // 自定义分类直接用名字本身
+  const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏"};
+  return fixed[c]||c;
 }
 function backToHome(){studyStarted=false;cur=null;flipped=false;viewed=[];go("home")}
-// 分类选择页（动态：内置 + 用户导入词里出现的自定义分类）
+// 分类选择页（内置 + 7大类，词数<3的归入"我的收藏"显示）
 function renderHome(v){
-  const cats=[
+  const MIN=3;  // 自定义大类至少3词才单独成类
+  const all=allWords();
+  // 固定候选分类（按顺序），有词才显示
+  const fixedCats=[
     {key:"all",name:"全部",desc:"混合所有分类"},
     {key:"nce2",name:"新概念二",desc:"课本基础生词"},
-    {key:"dev",name:"开发者英语",desc:"报错·文档·Git·API"},
+    {key:"dev",name:"科技开发",desc:"编程·报错·文档·AI"},
     {key:"tv",name:"影视口语",desc:"看剧高频·课本不教"},
+    {key:"life",name:"日常生活",desc:"衣食住行·社交"},
+    {key:"biz",name:"职场商务",desc:"邮件·会议·办公"},
+    {key:"academic",name:"学术阅读",desc:"论文·正式书面"},
+    {key:"news",name:"新闻时事",desc:"报道·政经·社会"},
   ];
-  // 扫描导入词里的自定义分类（排除已内置的）
-  const builtin=["nce2","dev","tv"];
-  const customCats=[...new Set(imported.map(w=>w.cat))].filter(c=>!builtin.includes(c));
-  customCats.forEach(c=>{
-    cats.push({key:c,name:catName(c),desc:c==="import"?"未归类的收藏词":"自动归类"});
+  // "我的收藏"特殊处理：装 import + 所有词数<3 的零散分类
+  const builtinKeys=fixedCats.map(c=>c.key);
+  const looseCats=[...new Set(imported.map(w=>w.cat))].filter(c=>{
+    if(builtinKeys.includes(c))return false;       // 已是固定大类的不算零散
+    return all.filter(w=>w.cat===c).length<MIN;     // 词数不足才算零散
   });
+  // 收藏分类的词 = cat为import的 + 零散分类的 + other
+  const favCount=all.filter(w=>w.cat==="import"||w.cat==="other"||looseCats.includes(w.cat)).length;
+
+  const rows=[];
+  fixedCats.forEach(c=>{
+    const n=all.filter(w=>c.key==="all"||w.cat===c.key).length;
+    if(n===0)return;
+    const due=all.filter(w=>(c.key==="all"||w.cat===c.key)&&(!srs[w.id]||!srs[w.id].due||srs[w.id].due<=Date.now())).length;
+    rows.push({key:c.key,name:c.name,desc:c.desc,n,due});
+  });
+  // 词数≥3的自定义大类（非固定、非零散）也单独显示
+  const bigCustom=[...new Set(imported.map(w=>w.cat))].filter(c=>!builtinKeys.includes(c)&&c!=="import"&&c!=="other"&&all.filter(w=>w.cat===c).length>=MIN);
+  bigCustom.forEach(c=>{
+    const n=all.filter(w=>w.cat===c).length;
+    const due=all.filter(w=>w.cat===c&&(!srs[w.id]||!srs[w.id].due||srs[w.id].due<=Date.now())).length;
+    rows.push({key:c,name:catName(c),desc:"自动归类",n,due});
+  });
+  // 我的收藏（兜底，含零散词）
+  if(favCount>0){
+    const due=all.filter(w=>(w.cat==="import"||w.cat==="other"||looseCats.includes(w.cat))&&(!srs[w.id]||!srs[w.id].due||srs[w.id].due<=Date.now())).length;
+    rows.push({key:"__fav__",name:"我的收藏",desc:"零散词·攒够会自动成类",n:favCount,due});
+  }
   v.innerHTML=`<div style="padding-top:8px">
     <p style="color:var(--ink-dim);font-size:.82rem;margin-bottom:14px">选一个分类开始背：</p>
-    ${cats.map(c=>{
-      const n=allWords().filter(w=>c.key==="all"||w.cat===c.key).length;
-      if(n===0)return "";  // 空分类不显示
-      const due=allWords().filter(w=>(c.key==="all"||w.cat===c.key)&&(!srs[w.id]||!srs[w.id].due||srs[w.id].due<=Date.now())).length;
-      return `<div class="mistake-item" style="cursor:pointer" onclick="startStudy('${c.key}')">
-        <div><div class="w">${c.name}</div><div class="c">${c.desc} · 共 ${n} 词</div></div>
-        <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${due}</div><div class="c">待学</div></div>
-      </div>`;
-    }).join("")}
-    <button class="ai-btn" style="margin-top:14px" onclick="openImport()">＋ 从文章导入生词</button>
+    ${rows.map(r=>`<div class="mistake-item" style="cursor:pointer" onclick="startStudy('${r.key}')">
+        <div><div class="w">${r.name}</div><div class="c">${r.desc} · 共 ${r.n} 词</div></div>
+        <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${r.due}</div><div class="c">待学</div></div>
+      </div>`).join("")}
+    <button class="ai-btn" style="margin-top:14px" onclick="openImport()">＋ 导入生词（文章/图片）</button>
   </div>`;
 }
+// 收藏聚合分类的判断
+function isFavWord(w,looseCats){return w.cat==="import"||w.cat==="other"||(looseCats&&looseCats.includes(w.cat))}
 function startStudy(cat){cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();cur=queue[0]||null;render()}
 function backHtml(){
   const fav=mistakes.find(m=>m.id===cur.id)?"★ 已收藏":"☆ 收藏";
+  const pos=cur.pos?`<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">${cur.pos}</span>`:"";
+  const scene=cur.scene?`<div class="tip" style="background:#eef3ec;border-left:3px solid var(--green)">🎬 ${cur.scene}</div>`:"";
   return `
   <div class="back">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <div class="cn">${cur.cn}</div>
+      <div class="cn">${cur.cn}${pos}</div>
       <button class="gear" id="fav-btn" onclick="event.stopPropagation();toggleFav()">${fav}</button>
     </div>
     <div class="tip">💡 ${cur.tip}</div>
+    ${scene}
     <div class="ex">${cur.exampleEn}</div>
     <div class="ex-cn">${cur.exampleCn}</div>
   </div>`;
 }
 function toggleFav(){
-  if(mistakes.find(m=>m.id===cur.id)){removeMistake(cur.id);toast("已取消收藏")}
-  else{addMistake(cur,"手动收藏");toast("已收藏到错题本")}
+  if(mistakes.find(m=>m.id===cur.id)){removeMistake(cur.id);toast("已移出复习本")}
+  else{addMistake(cur,"手动收藏");toast("已加入复习本")}
   document.getElementById("fav-btn").textContent=mistakes.find(m=>m.id===cur.id)?"★ 已收藏":"☆ 收藏";
 }
 function gradesHtml(){return `
@@ -456,14 +403,13 @@ function bindSwipe(){
     if(flipped||x0===null)return;
     x0=null;card.classList.remove("swiping");
     if(Math.abs(dx)>90){
-      const right=dx>0;
-      // 先判断能不能切，能切才飞出去，到头了直接弹回（避免空白）
-      const canMove=right?(queue.length>1):(viewed.length>0);
-      if(!canMove){right?toast("就剩这一个啦"):toast("已经是第一个了");snapBack();return}
+      const next=dx<0;  // 左滑(dx<0)=下一张，右滑(dx>0)=返回上一张
+      const canMove=next?(queue.length>1):(viewed.length>0);
+      if(!canMove){next?toast("就剩这一个啦"):toast("已经是第一个了");snapBack();return}
       card.classList.add("snap");
-      card.style.transform="translateX("+(right?500:-500)+"px) rotate("+(right?20:-20)+"deg)";
+      card.style.transform="translateX("+(next?-500:500)+"px) rotate("+(next?-20:20)+"deg)";
       card.style.opacity="0";
-      setTimeout(right?nextWord:prevWord,180);
+      setTimeout(next?nextWord:prevWord,180);
     }else{
       snapBack();
     }
@@ -501,7 +447,7 @@ function addMistake(w,from){if(!mistakes.find(m=>m.id===w.id)){mistakes.push({id
 function removeMistake(id){const i=mistakes.findIndex(m=>m.id===id);if(i>=0){mistakes.splice(i,1);save(MIS_KEY,mistakes)}}
 function delMistake(id){removeMistake(id);renderMistake(document.getElementById("view"))}
 function renderMistake(v){
-  if(!mistakes.length){v.innerHTML=`<div class="done"><h2>错题本是空的</h2><p>背单词时点了“忘了”的词会自动进来；翻面后点☆也能手动收藏。</p></div>`;return}
+  if(!mistakes.length){v.innerHTML=`<div class="done"><h2>复习本是空的</h2><p>背单词时点了“忘了”的词会自动进来；翻面后点☆也能手动收藏。</p></div>`;return}
   v.innerHTML=`<div style="padding-top:8px">
     <p style="color:var(--ink-dim);font-size:.76rem;margin-bottom:12px">点“忘了”自动收录，或翻面点☆手动收藏。点 🗑 移出。</p>
     ${mistakes.map(m=>`
@@ -523,7 +469,7 @@ function renderStats(v){
   v.innerHTML=`<div class="done" style="padding-top:24px">
     <h2>${seen} / ${total}</h2><p>已开始记忆的词</p>
     <p style="margin-top:16px;font-size:1.05rem;color:var(--green)">${mastered} 个已稳固（间隔≥6天）</p>
-    <p style="margin-top:4px">错题本 ${mistakes.length} 个待消灭</p>
+    <p style="margin-top:4px">复习本 ${mistakes.length} 个待复习</p>
   </div>`;
 }
 
@@ -687,21 +633,30 @@ async function extractWords(){
   if(txt.length>2000)return toast("段落太长，截短到 2000 字以内");
   if(importImage&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需要切到豆包 Key");
   const btn=document.getElementById("extract-btn");btn.disabled=true;btn.textContent="提取中…";
-  // 列出已有分类供 AI 优先归类
-  const existCats=[...new Set(imported.map(w=>w.cat))].filter(c=>c!=="import");
-  const catHint=["dev(开发者:报错/文档/Git/API)","tv(影视口语:看剧高频)","nce2(新概念课本)",...existCats.map(c=>c+"(已有自定义分类)")].join("、");
-  const sys=`你是英语老师，学生是中文母语的中级偏初学习者（认识基础词如 the/is/have，目标是读技术文档和看美剧）。从用户给的英文内容（文字或图片里的英文）中挑出对这类学习者算"生词"的词或短语（跳过过于简单的词），每个生成词条，并判断它属于哪个分类。
+  const sys=`你是英语老师，学生是中文母语的中级偏初学习者（认识基础词如 the/is/have，目标是读技术文档和看美剧）。从用户给的英文内容（文字或图片里的英文）中挑出对这类学习者算"生词"的词或短语（跳过过于简单的词），每个生成词条，并归类。
 
-分类规则：优先归到这些已有分类之一：${catHint}。如果都不合适，自己起一个简短的中文分类名（2-4字，如"商务""医学""旅行""学术"），相似的词用同一个分类名。
+【分类】每个词必须归到且只能归到以下7个大类之一（cat字段填对应英文key）：
+- dev（科技开发：编程、报错、IT、AI、互联网）
+- tv（影视口语：看剧高频、俚语、短语动词）
+- life（日常生活：衣食住行、社交对话）
+- biz（职场商务：邮件、会议、办公、商业）
+- academic（学术阅读：论文、正式书面、逻辑连接词）
+- news（新闻时事：报道、政经、社会话题）
+- other（其他：不属于以上的）
+不要发明新分类，必须从这7个里选。
 
-只返回JSON数组，不要任何其他文字：[{"word":"原形","phonetic":"美式音标带斜杠","cn":"中文释义","tip":"简短用法/记忆提示","exampleEn":"贴近原文语境的英文例句","exampleCn":"例句中文翻译","cat":"分类名(用dev/tv/nce2或你起的中文名)"}]。最多挑12个最值得学的。`;
+【词性】pos字段填 n./v./adj./adv./phr./prep. 等。
+【场景】scene字段：如果这个词在某专业场景有特殊含义（如 print 在编程里指"打印输出"），简短写明；普通词留空字符串。
+
+只返回JSON数组，不要任何其他文字：[{"word":"原形","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","tip":"简短用法/记忆提示","exampleEn":"贴近原文语境的英文例句","exampleCn":"例句中文翻译","scene":"场景用法或空","cat":"7个key之一"}]。最多挑12个最值得学的。`;
   const prompt=importImage?(txt||"提取图片里的英文生词"):txt;
   try{
-    let text=await callAI([{role:"user",content:prompt}],sys,1800,importImage?[importImage]:null);
+    let text=await callAI([{role:"user",content:prompt}],sys,2000,importImage?[importImage]:null);
     text=text.replace(/```json|```/g,"").trim();
     const arr=JSON.parse(text);
     if(!Array.isArray(arr)||!arr.length)throw new Error("没提取到词");
-    importCandidates=arr.map(w=>({...w,cat:w.cat||"import",pick:true}));
+    const valid=["dev","tv","life","biz","academic","news","other"];
+    importCandidates=arr.map(w=>({...w,pos:w.pos||"",scene:w.scene||"",cat:valid.includes(w.cat)?w.cat:"other",pick:true}));
     renderCandidates();
   }catch(e){
     toast("提取失败："+(e.message||"检查 Key 或换个输入"));
@@ -733,7 +688,7 @@ function saveImported(){
   let n=0;
   picks.forEach(c=>{
     if(imported.some(w=>w.word.toLowerCase()===c.word.toLowerCase()))return;
-    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",cn:c.cn,tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",cat:c.cat||"import"});
+    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn,tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",cat:c.cat||"import"});
   });
   save(IMP_KEY,imported);
   toast("已存 "+n+" 个词");
