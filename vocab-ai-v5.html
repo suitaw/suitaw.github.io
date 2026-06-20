@@ -121,13 +121,6 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <label>火山方舟接入点 ID</label>
       <input type="text" id="endpoint" placeholder="ep-xxxx（在火山控制台创建推理接入点后获得）" autocomplete="off">
     </div>
-    <label>学习范围</label>
-    <select id="scope">
-      <option value="all">全部</option>
-      <option value="nce2">只学新概念二</option>
-      <option value="dev">只学开发者词</option>
-      <option value="tv">只学影视口语</option>
-    </select>
     <div class="hint">Key 只存在你本机浏览器里，不上传。造句批改是可选功能，不填 Key 也能正常背单词。<br>豆包用的是火山方舟接入点，需要填 ep-xxxx；DeepSeek 直接填 sk- 开头的 Key。</div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="ai-btn" style="flex:1" onclick="saveCfg()">保存设置</button>
@@ -155,7 +148,8 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 const SRS_KEY="gh_vocab_srs_v1";
 const CFG_KEY="vocab_v5_cfg";
 let srs=load(SRS_KEY,{});          // {id:{ef,interval,reps,due}}
-let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",scope:"all"});
+let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",scope:"all",chatTier:"fast"});
+if(!cfg.chatTier)cfg.chatTier="fast";
 let queue=[], cur=null, flipped=false, page="home";
 
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}}
@@ -171,21 +165,19 @@ function allWords(){return WORDS.concat(imported)}
 // ===== 设置面板 =====
 function togglePanel(){document.getElementById("panel").classList.toggle("open")}
 function bindCfg(){
-  const p=document.getElementById("provider"),k=document.getElementById("apikey"),s=document.getElementById("scope"),ep=document.getElementById("endpoint"),epRow=document.getElementById("ep-row");
-  p.value=cfg.provider;k.value=cfg.apikey;s.value=cfg.scope;ep.value=cfg.endpoint||"";
+  const p=document.getElementById("provider"),k=document.getElementById("apikey"),ep=document.getElementById("endpoint"),epRow=document.getElementById("ep-row");
+  p.value=cfg.provider;k.value=cfg.apikey;ep.value=cfg.endpoint||"";
   const syncEpRow=()=>{epRow.style.display=cfg.provider==="doubao"?"block":"none"};
   syncEpRow();
   p.onchange=()=>{cfg.provider=p.value;save(CFG_KEY,cfg);syncEpRow()};
   k.onchange=()=>{cfg.apikey=k.value.trim();save(CFG_KEY,cfg)};
   ep.onchange=()=>{cfg.endpoint=ep.value.trim();save(CFG_KEY,cfg)};
-  s.onchange=()=>{cfg.scope=s.value;save(CFG_KEY,cfg);buildQueue();render()};
 }
 // 显式保存：读当前控件值存盘，折叠面板
 function saveCfg(){
   cfg.provider=document.getElementById("provider").value;
   cfg.apikey=document.getElementById("apikey").value.trim();
   cfg.endpoint=document.getElementById("endpoint").value.trim();
-  cfg.scope=document.getElementById("scope").value;
   save(CFG_KEY,cfg);
   document.getElementById("panel").classList.remove("open");
   toast("已保存");
@@ -526,24 +518,45 @@ async function callAI(messages, sys, maxTokens=600, images=null){
 }
 
 // ===== 流式调用：逐字回调 onChunk(已累积的全文) =====
-async function callAIStream(messages, sys, onChunk, maxTokens=900){
+// 档位 -> 实际模型名映射。返回 {model, label, anthropicModel}
+function tierModel(provider, tier){
+  const map={
+    deepseek:{fast:["deepseek-v4-flash","v4-flash"],strong:["deepseek-v4-pro","v4-pro"],think:["deepseek-reasoner","R1 思考"]},
+    openrouter:{fast:["anthropic/claude-3.5-haiku","haiku"],strong:["anthropic/claude-sonnet-4","sonnet-4"],think:["anthropic/claude-sonnet-4","sonnet-4 思考"]},
+    anthropic:{fast:["claude-haiku-4-5-20251001","haiku-4.5"],strong:["claude-sonnet-4-20250514","sonnet-4"],think:["claude-sonnet-4-20250514","sonnet-4 思考"]},
+    doubao:{fast:["","接入点"],strong:["","接入点"],think:["","接入点+思考"]},
+  };
+  const m=(map[provider]||map.deepseek)[tier]||(map[provider]||map.deepseek).fast;
+  return {model:m[0],label:m[1]};
+}
+// 当前 AI 助手档位对应的模型名（给界面显示）
+function currentTierLabel(){
+  if(cfg.provider==="doubao")return "豆包·由接入点决定";
+  return tierModel(cfg.provider,cfg.chatTier).label;
+}
+
+async function callAIStream(messages, sys, onChunk, maxTokens=900, tier="fast"){
   if(!cfg.apikey)throw new Error("先在设置里填 API Key");
   if(cfg.provider==="doubao"&&!cfg.endpoint)throw new Error("豆包需要先填接入点 ID（ep-xxxx）");
   const p=cfg.provider;
+  const isThink=tier==="think";
   let url,headers,body,parseLine;
   if(p==="anthropic"){
     url="https://api.anthropic.com/v1/messages";
     headers={"Content-Type":"application/json","x-api-key":cfg.apikey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
-    body={model:"claude-haiku-4-5-20251001",max_tokens:maxTokens,messages,stream:true};
+    body={model:tierModel("anthropic",tier).model,max_tokens:maxTokens,messages,stream:true};
     if(sys)body.system=sys;
+    if(isThink)body.thinking={type:"enabled",budget_tokens:2000};
     parseLine=obj=>(obj.type==="content_block_delta"&&obj.delta&&obj.delta.text)?obj.delta.text:"";
   }else{
     if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
     else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
-    const model=p==="doubao"?cfg.endpoint:p==="deepseek"?"deepseek-v4-flash":"anthropic/claude-3.5-haiku";
+    const model=p==="doubao"?cfg.endpoint:tierModel(p,tier).model;
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
     body={model,max_tokens:maxTokens,messages:sys?[{role:"system",content:sys},...messages]:messages,stream:true};
+    // 豆包思考：thinking 参数（需接入点模型支持）
+    if(p==="doubao"&&isThink)body.thinking={type:"enabled"};
     parseLine=obj=>(obj.choices&&obj.choices[0]&&obj.choices[0].delta&&obj.choices[0].delta.content)||"";
   }
   const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});
@@ -606,14 +619,26 @@ async function askFollowup(word){
 // ===== AI 助手页 =====
 let chatHistory=[];
 function renderAssistant(v){
+  const tiers=[["fast","快速"],["strong","强力"],["think","深度思考"]];
+  const tierBtns=tiers.map(([k,name])=>{
+    const on=cfg.chatTier===k;
+    return `<button onclick="setTier('${k}')" style="flex:1;padding:6px 4px;border:1px solid ${on?'var(--accent)':'var(--line)'};background:${on?'var(--accent-soft)':'var(--card)'};color:${on?'var(--accent)':'var(--ink-dim)'};border-radius:8px;font-size:.74rem;font-family:inherit;font-weight:${on?'600':'400'}">${name}</button>`;
+  }).join("");
   v.innerHTML=`<div style="padding-top:8px">
     <p style="color:var(--ink-dim);font-size:.8rem;margin-bottom:12px">问任何英语问题：语法、用法、翻译、词的区别…</p>
     <div id="chat-log" style="margin-bottom:12px">${chatHistory.map(m=>chatBubble(m)).join("")}</div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">${tierBtns}</div>
+    <div style="font-size:.68rem;color:var(--ink-dim);margin-bottom:8px;text-align:center">当前模型：${currentTierLabel()}</div>
     <div style="display:flex;gap:8px">
       <textarea id="chat-input" placeholder="比如：in 和 on 表示时间时怎么区分？" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;resize:vertical;min-height:48px;background:var(--paper)"></textarea>
     </div>
     <button class="ai-btn" id="chat-send" style="margin-top:8px" onclick="sendChat()">发送</button>
   </div>`;
+}
+function setTier(t){
+  cfg.chatTier=t;save(CFG_KEY,cfg);
+  // 只更新档位按钮区，不重渲染整个页面（避免清空输入和聊天）
+  renderAssistant(document.getElementById("view"));
 }
 function chatBubble(m){
   const me=m.role==="user";
@@ -636,11 +661,12 @@ async function sendChat(){
   const sys="你是耐心友好的英语老师，面对中文母语的英语初学者。用简单中文讲解，给例句，避免生硬术语。回答简明，不要长篇大论。";
   try{
     const ctx=chatHistory.slice(0,-1).slice(-8);
+    const mt=cfg.chatTier==="think"?2000:900;
     await callAIStream(ctx,sys,(full)=>{
       chatHistory[chatHistory.length-1].content=full;  // 直接显示文本，无光标方块
       const logEl=document.getElementById("chat-log");
       if(logEl){logEl.innerHTML=chatHistory.map(m=>chatBubble(m)).join("");logEl.scrollTop=logEl.scrollHeight}
-    });
+    },mt,cfg.chatTier);
   }catch(e){
     chatHistory[chatHistory.length-1].content="出错了："+(e.message||"检查设置里的 Key");
   }
