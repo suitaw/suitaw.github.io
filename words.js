@@ -1,0 +1,88 @@
+// ===== Vocab AI 内置词库 =====
+// 例句全部原创，不复制任何教材原文
+// 结构: {id, word, phonetic, pos, cn, tip, exampleEn, exampleCn, scene, cat}
+//   pos   词性: n./v./adj./adv./phr./prep. 等
+//   scene 场景用法(可选): 某词在特定场景的特殊含义，无则留空
+//   cat   分类: nce2/dev/tv 或自定义
+
+const WORDS = [
+  // ========== 新概念二 Lesson 1-5 生词 (cat: nce2) ==========
+  {id:"nce001", word:"private", phonetic:"/ˈpraɪvət/", pos:"adj.", cn:"私人的；私密的", tip:"反义词 public（公开的）。private message = 私信", exampleEn:"This is a private room, please knock first.", exampleCn:"这是私人房间，请先敲门。", scene:"", cat:"nce2"},
+  {id:"nce002", word:"conversation", phonetic:"/ˌkɑːnvərˈseɪʃn/", pos:"n.", cn:"谈话；交谈", tip:"have a conversation 进行交谈", exampleEn:"We had a long conversation about our plans.", exampleCn:"我们就计划进行了长谈。", scene:"", cat:"nce2"},
+  {id:"nce003", word:"theatre", phonetic:"/ˈθiːətər/", pos:"n.", cn:"剧院；戏院", tip:"英式拼 theatre，美式拼 theater", exampleEn:"They went to the theatre to watch a play.", exampleCn:"他们去剧院看戏。", scene:"", cat:"nce2"},
+  {id:"nce004", word:"attention", phonetic:"/əˈtenʃn/", pos:"n.", cn:"注意；关注", tip:"pay attention to 注意……", exampleEn:"Please pay attention to the road signs.", exampleCn:"请注意路标。", scene:"", cat:"nce2"},
+  {id:"nce005", word:"bear", phonetic:"/ber/", pos:"v.", cn:"忍受；承受", tip:"过去式 bore。= stand / tolerate", exampleEn:"I cannot bear this noise any longer.", exampleCn:"我再也忍受不了这噪音了。", scene:"另义作名词时指“熊”", cat:"nce2"},
+  {id:"nce006", word:"business", phonetic:"/ˈbɪznəs/", pos:"n.", cn:"事；商业；事务", tip:"It's none of your business 不关你的事", exampleEn:"How I spend my money is my own business.", exampleCn:"我怎么花钱是我自己的事。", scene:"", cat:"nce2"},
+  {id:"nce007", word:"angrily", phonetic:"/ˈæŋɡrɪli/", pos:"adv.", cn:"生气地", tip:"angry 的副词形式，修饰动词", exampleEn:"She closed the door angrily and left.", exampleCn:"她生气地关上门走了。", scene:"", cat:"nce2"},
+  {id:"nce008", word:"outside", phonetic:"/ˌaʊtˈsaɪd/", pos:"adv./n.", cn:"外面；在外面", tip:"反义词 inside（里面）", exampleEn:"It is raining outside, so take an umbrella.", exampleCn:"外面在下雨，带把伞吧。", scene:"", cat:"nce2"},
+  {id:"nce009", word:"ripe", phonetic:"/raɪp/", pos:"adj.", cn:"成熟的（果实）", tip:"形容水果熟了。ripe banana 熟香蕉", exampleEn:"These apples are ripe and ready to eat.", exampleCn:"这些苹果熟了，可以吃了。", scene:"", cat:"nce2"},
+  {id:"nce010", word:"weigh", phonetic:"/weɪ/", pos:"v.", cn:"称……的重量；重达", tip:"名词形式 weight（重量）", exampleEn:"Can you weigh this box for me?", exampleCn:"你能帮我称一下这个箱子吗？", scene:"", cat:"nce2"},
+  {id:"nce011", word:"customer", phonetic:"/ˈkʌstəmər/", pos:"n.", cn:"顾客", tip:"区别于 client（客户/委托人）", exampleEn:"The shop was full of customers this morning.", exampleCn:"今天上午店里满是顾客。", scene:"", cat:"nce2"},
+  {id:"nce012", word:"send", phonetic:"/send/", pos:"v.", cn:"寄；发送", tip:"过去式 sent。send sb sth 给某人发某物", exampleEn:"Please send me the file by email.", exampleCn:"请把文件用邮件发给我。", scene:"", cat:"nce2"},
+  {id:"nce013", word:"postcard", phonetic:"/ˈpoʊstkɑːrd/", pos:"n.", cn:"明信片", tip:"post（邮寄）+ card（卡片）", exampleEn:"I sent her a postcard from Paris.", exampleCn:"我从巴黎给她寄了张明信片。", scene:"", cat:"nce2"},
+  {id:"nce014", word:"spoil", phonetic:"/spɔɪl/", pos:"v.", cn:"破坏；糟蹋", tip:"过去式 spoiled / spoilt 都行", exampleEn:"The bad weather spoiled our trip.", exampleCn:"坏天气破坏了我们的旅行。", scene:"另义：宠坏（孩子）", cat:"nce2"},
+  {id:"nce015", word:"decide", phonetic:"/dɪˈsaɪd/", pos:"v.", cn:"决定", tip:"decide to do 决定做某事。名词 decision", exampleEn:"We decided to stay home tonight.", exampleCn:"我们决定今晚待在家里。", scene:"", cat:"nce2"},
+  {id:"nce016", word:"lonely", phonetic:"/ˈloʊnli/", pos:"adj.", cn:"孤独的", tip:"注意：lonely 是孤独感，alone 只是独自一人", exampleEn:"He felt lonely in the new city.", exampleCn:"在新城市里他感到孤独。", scene:"", cat:"nce2"},
+  {id:"nce017", word:"exciting", phonetic:"/ɪkˈsaɪtɪŋ/", pos:"adj.", cn:"令人兴奋的", tip:"修饰事物用 exciting，人感到兴奋用 excited", exampleEn:"The football match was really exciting.", exampleCn:"那场足球赛真令人兴奋。", scene:"", cat:"nce2"},
+  {id:"nce018", word:"diary", phonetic:"/ˈdaɪəri/", pos:"n.", cn:"日记", tip:"keep a diary 记日记。别和 dairy（乳制品）混", exampleEn:"She writes in her diary every night.", exampleCn:"她每晚都写日记。", scene:"", cat:"nce2"},
+  {id:"nce019", word:"abroad", phonetic:"/əˈbrɔːd/", pos:"adv.", cn:"在国外；到国外", tip:"副词，前面不加介词。go abroad 出国", exampleEn:"He wants to study abroad next year.", exampleCn:"他想明年出国留学。", scene:"", cat:"nce2"},
+  {id:"nce020", word:"capital", phonetic:"/ˈkæpɪtl/", pos:"n.", cn:"首都；资本；大写字母", tip:"一词多义，看语境", exampleEn:"Beijing is the capital of China.", exampleCn:"北京是中国的首都。", scene:"金融里指“资本/本金”；排版里指“大写字母”", cat:"nce2"},
+  {id:"nce021", word:"exhibition", phonetic:"/ˌeksɪˈbɪʃn/", pos:"n.", cn:"展览；展览会", tip:"动词 exhibit（展出）", exampleEn:"We saw an art exhibition at the museum.", exampleCn:"我们在博物馆看了一场艺术展。", scene:"", cat:"nce2"},
+  {id:"nce022", word:"latest", phonetic:"/ˈleɪtɪst/", pos:"adj.", cn:"最新的", tip:"late 的最高级之一，指时间最近的", exampleEn:"Have you read the latest news?", exampleCn:"你看最新消息了吗？", scene:"", cat:"nce2"},
+  {id:"nce023", word:"fashion", phonetic:"/ˈfæʃn/", pos:"n.", cn:"时尚；流行", tip:"in fashion 流行的，out of fashion 过时的", exampleEn:"This style is back in fashion.", exampleCn:"这种风格又流行起来了。", scene:"", cat:"nce2"},
+  {id:"nce024", word:"event", phonetic:"/ɪˈvent/", pos:"n.", cn:"事件；大事", tip:"编程里也指“事件”（点击、输入等）", exampleEn:"The wedding was a happy event.", exampleCn:"婚礼是件喜事。", scene:"编程里指“事件”，如点击、输入触发的 event", cat:"nce2"},
+
+  // ========== 开发者高频英语 (cat: dev) ==========
+  {id:"dev001", word:"error", phonetic:"/ˈerər/", pos:"n.", cn:"错误；报错", tip:"程序出问题时最常见的词", exampleEn:"The program stopped because of an error.", exampleCn:"程序因为一个错误停止了。", scene:"编程里指程序运行/语法的“报错”", cat:"dev"},
+  {id:"dev002", word:"exception", phonetic:"/ɪkˈsepʃn/", pos:"n.", cn:"异常", tip:"程序运行时抛出的错误对象。throw / catch an exception", exampleEn:"The code threw an exception when the file was missing.", exampleCn:"文件缺失时代码抛出了异常。", scene:"编程里指运行时抛出的“异常”对象", cat:"dev"},
+  {id:"dev003", word:"traceback", phonetic:"/ˈtreɪsbæk/", pos:"n.", cn:"回溯；错误追踪信息", tip:"Python 报错时打印的调用栈", exampleEn:"Read the traceback to find which line failed.", exampleCn:"看回溯信息找出哪一行出错了。", scene:"Python 报错时打印的调用栈信息", cat:"dev"},
+  {id:"dev004", word:"debug", phonetic:"/ˌdiːˈbʌɡ/", pos:"v.", cn:"调试；排错", tip:"de（去除）+ bug（程序错误）", exampleEn:"I spent an hour debugging this function.", exampleCn:"我花了一小时调试这个函数。", scene:"编程里指“调试、找bug”", cat:"dev"},
+  {id:"dev005", word:"syntax", phonetic:"/ˈsɪntæks/", pos:"n.", cn:"语法（代码）", tip:"syntax error 语法错误", exampleEn:"A missing colon caused a syntax error.", exampleCn:"少了个冒号导致语法错误。", scene:"编程里指代码的“语法”，syntax error 语法错误", cat:"dev"},
+  {id:"dev006", word:"valid", phonetic:"/ˈvælɪd/", pos:"adj.", cn:"有效的；合法的", tip:"反义词 invalid。常见于输入校验", exampleEn:"Please enter a valid email address.", exampleCn:"请输入有效的邮箱地址。", scene:"编程里指数据/输入“有效、合法”", cat:"dev"},
+  {id:"dev007", word:"run", phonetic:"/rʌn/", pos:"v.", cn:"运行（代码）", tip:"日常是“跑步”，技术里是“运行程序”", exampleEn:"Run the script to see the result.", exampleCn:"运行脚本看看结果。", scene:"编程里指“运行程序/脚本”，日常指“跑步”", cat:"dev"},
+  {id:"dev008", word:"call", phonetic:"/kɔːl/", pos:"v.", cn:"调用（函数）", tip:"日常是“打电话”，技术里是“调用”", exampleEn:"This line calls the login function.", exampleCn:"这一行调用了登录函数。", scene:"编程里指“调用函数”，日常指“打电话”", cat:"dev"},
+  {id:"dev009", word:"return", phonetic:"/rɪˈtɜːrn/", pos:"v.", cn:"返回（值）", tip:"函数把结果 return 出去", exampleEn:"The function returns a list of names.", exampleCn:"这个函数返回一个名字列表。", scene:"编程里指函数“返回值”，日常指“归还/返回”", cat:"dev"},
+  {id:"dev010", word:"import", phonetic:"/ɪmˈpɔːrt/", pos:"v.", cn:"导入（模块）", tip:"把别的代码引进来用", exampleEn:"Import the math module before using it.", exampleCn:"使用前先导入 math 模块。", scene:"编程里指“导入模块”，日常/贸易里指“进口”", cat:"dev"},
+  {id:"dev011", word:"deploy", phonetic:"/dɪˈplɔɪ/", pos:"v.", cn:"部署（上线）", tip:"把代码发布到服务器/线上", exampleEn:"We deploy the app every Friday.", exampleCn:"我们每周五部署应用。", scene:"编程里指把代码“部署”上线", cat:"dev"},
+  {id:"dev012", word:"merge", phonetic:"/mɜːrdʒ/", pos:"v.", cn:"合并（分支/代码）", tip:"Git 里把两个分支合到一起", exampleEn:"Merge your branch into main when ready.", exampleCn:"准备好后把你的分支合并到 main。", scene:"Git 里指“合并分支”", cat:"dev"},
+  {id:"dev013", word:"commit", phonetic:"/kəˈmɪt/", pos:"v./n.", cn:"提交（代码记录）", tip:"Git 里保存一次改动", exampleEn:"Write a clear message for each commit.", exampleCn:"每次提交都写清楚说明。", scene:"Git 里指一次“提交”记录", cat:"dev"},
+  {id:"dev014", word:"branch", phonetic:"/bræntʃ/", pos:"n.", cn:"分支", tip:"从主线分出来独立开发", exampleEn:"Create a new branch for this feature.", exampleCn:"为这个功能新建一个分支。", scene:"Git 里指代码“分支”，日常指“树枝/分店”", cat:"dev"},
+  {id:"dev015", word:"repository", phonetic:"/rɪˈpɑːzətɔːri/", pos:"n.", cn:"代码仓库", tip:"简称 repo。代码存放的地方", exampleEn:"Clone the repository to your computer.", exampleCn:"把仓库克隆到你的电脑。", scene:"编程里指“代码仓库”，简称 repo", cat:"dev"},
+  {id:"dev016", word:"pull", phonetic:"/pʊl/", pos:"v.", cn:"拉取（远程代码）", tip:"把远程的更新拉到本地", exampleEn:"Pull the latest changes before you start.", exampleCn:"开始前先拉取最新改动。", scene:"Git 里指“拉取”远程更新，日常指“拉”", cat:"dev"},
+  {id:"dev017", word:"push", phonetic:"/pʊʃ/", pos:"v.", cn:"推送（到远程）", tip:"把本地提交推到远程仓库", exampleEn:"Push your commits to the remote repository.", exampleCn:"把你的提交推送到远程仓库。", scene:"Git 里指“推送”到远程，日常指“推”", cat:"dev"},
+  {id:"dev018", word:"request", phonetic:"/rɪˈkwest/", pos:"n./v.", cn:"请求", tip:"客户端向服务器发的请求", exampleEn:"The app sends a request to the server.", exampleCn:"应用向服务器发送一个请求。", scene:"网络里指客户端发的“请求”", cat:"dev"},
+  {id:"dev019", word:"response", phonetic:"/rɪˈspɑːns/", pos:"n.", cn:"响应；回复", tip:"服务器返回的结果", exampleEn:"The server returned an empty response.", exampleCn:"服务器返回了空响应。", scene:"网络里指服务器的“响应”", cat:"dev"},
+  {id:"dev020", word:"endpoint", phonetic:"/ˈendpɔɪnt/", pos:"n.", cn:"接口端点", tip:"API 的某个访问地址", exampleEn:"This endpoint returns user data.", exampleCn:"这个端点返回用户数据。", scene:"API 里指一个访问“端点”地址", cat:"dev"},
+  {id:"dev021", word:"parse", phonetic:"/pɑːrs/", pos:"v.", cn:"解析", tip:"把文本/数据拆解成结构。parse JSON", exampleEn:"Parse the JSON before reading the values.", exampleCn:"读取数值前先解析 JSON。", scene:"编程里指“解析”文本/数据，如 parse JSON", cat:"dev"},
+  {id:"dev022", word:"token", phonetic:"/ˈtoʊkən/", pos:"n.", cn:"令牌；词元", tip:"既指身份令牌，也指 LLM 的词元", exampleEn:"The API key is sent as an access token.", exampleCn:"API 密钥以访问令牌的形式发送。", scene:"安全里指身份“令牌”；大模型里指“词元”", cat:"dev"},
+  {id:"dev023", word:"prompt", phonetic:"/prɑːmpt/", pos:"n.", cn:"提示词", tip:"给大模型的输入指令", exampleEn:"A clear prompt gives a better answer.", exampleCn:"清晰的提示词能得到更好的回答。", scene:"AI 里指给模型的“提示词”；命令行里指“提示符”", cat:"dev"},
+  {id:"dev024", word:"model", phonetic:"/ˈmɑːdl/", pos:"n.", cn:"模型", tip:"指 AI 模型，如 Claude、GPT", exampleEn:"Choose a smaller model for fast replies.", exampleCn:"想要快速回复就选小一点的模型。", scene:"AI 里指“模型”，日常指“模特/模型”", cat:"dev"},
+  {id:"dev025", word:"stream", phonetic:"/striːm/", pos:"v./n.", cn:"流式传输", tip:"逐字返回结果，而非一次性给", exampleEn:"The model streams the answer word by word.", exampleCn:"模型逐字流式返回答案。", scene:"编程里指“流式传输”，日常指“小溪/流”", cat:"dev"},
+  {id:"dev026", word:"schema", phonetic:"/ˈskiːmə/", pos:"n.", cn:"结构定义；模式", tip:"规定数据长什么样的模板", exampleEn:"The tool needs a schema to know the inputs.", exampleCn:"工具需要一个结构定义来识别输入。", scene:"编程里指数据的“结构定义/模式”", cat:"dev"},
+
+  // ========== 影视口语高频 (cat: tv) ==========
+  {id:"tv001", word:"figure out", phonetic:"/ˈfɪɡjər aʊt/", pos:"phr.", cn:"弄明白；搞清楚", tip:"看剧最高频之一。= work out / understand", exampleEn:"I can't figure out why she's so upset.", exampleCn:"我搞不懂她为什么这么生气。", scene:"", cat:"tv"},
+  {id:"tv002", word:"deal", phonetic:"/diːl/", pos:"n./v.", cn:"约定；交易；处理", tip:"It's a deal 就这么定了；deal with 处理", exampleEn:"Okay, it's a deal. See you at eight.", exampleCn:"好，说定了，八点见。", scene:"", cat:"tv"},
+  {id:"tv003", word:"whatever", phonetic:"/wʌtˈevər/", pos:"pron./int.", cn:"随便；无所谓（语气）", tip:"口语里常带不耐烦/敷衍的味道", exampleEn:"Whatever, I don't really care anymore.", exampleCn:"随便吧，我已经懒得管了。", scene:"", cat:"tv"},
+  {id:"tv004", word:"freak out", phonetic:"/friːk aʊt/", pos:"phr.", cn:"吓坏；抓狂", tip:"情绪失控、慌了。剧里超常见", exampleEn:"Don't freak out, but I lost your keys.", exampleCn:"你先别慌，我把你钥匙弄丢了。", scene:"", cat:"tv"},
+  {id:"tv005", word:"awesome", phonetic:"/ˈɔːsəm/", pos:"adj.", cn:"太棒了；超赞", tip:"美剧口头禅，表示赞叹", exampleEn:"You finished it already? Awesome!", exampleCn:"你已经做完了？太棒了！", scene:"", cat:"tv"},
+  {id:"tv006", word:"guess", phonetic:"/ɡes/", pos:"v.", cn:"猜；觉得（口语）", tip:"I guess 我觉得吧（不太确定的语气）", exampleEn:"I guess we could try that.", exampleCn:"我觉得我们可以试试那个吧。", scene:"", cat:"tv"},
+  {id:"tv007", word:"mean", phonetic:"/miːn/", pos:"v./adj.", cn:"意思是；刻薄的", tip:"I mean… 我是说……（解释/改口）", exampleEn:"I mean, it's not a big deal.", exampleCn:"我是说，这没什么大不了的。", scene:"", cat:"tv"},
+  {id:"tv008", word:"kidding", phonetic:"/ˈkɪdɪŋ/", pos:"v.", cn:"开玩笑", tip:"Are you kidding me? 你逗我呢？", exampleEn:"Relax, I'm just kidding.", exampleCn:"放松，我开玩笑的。", scene:"", cat:"tv"},
+  {id:"tv009", word:"point", phonetic:"/pɔɪnt/", pos:"n.", cn:"重点；意义", tip:"What's the point? 有什么意义？That's the point 这就是重点", exampleEn:"What's the point of waiting here?", exampleCn:"在这儿等着有什么意义？", scene:"", cat:"tv"},
+  {id:"tv010", word:"stuff", phonetic:"/stʌf/", pos:"n.", cn:"东西；玩意儿", tip:"泛指一堆东西，比 things 更随意", exampleEn:"Just put your stuff over there.", exampleCn:"把你的东西放那边就行。", scene:"", cat:"tv"},
+  {id:"tv011", word:"hang out", phonetic:"/hæŋ aʊt/", pos:"phr.", cn:"一起玩；闲混", tip:"约朋友出去玩、消磨时间", exampleEn:"We used to hang out every weekend.", exampleCn:"我们以前每周末都一起玩。", scene:"", cat:"tv"},
+  {id:"tv012", word:"awkward", phonetic:"/ˈɔːkwərd/", pos:"adj.", cn:"尴尬的", tip:"That's so awkward 太尴尬了", exampleEn:"There was an awkward silence at dinner.", exampleCn:"晚饭时有段尴尬的沉默。", scene:"", cat:"tv"},
+  {id:"tv013", word:"creepy", phonetic:"/ˈkriːpi/", pos:"adj.", cn:"瘆人的；令人发毛的", tip:"形容人或场景让人不舒服", exampleEn:"That old house is really creepy at night.", exampleCn:"那栋老房子晚上真瘆人。", scene:"", cat:"tv"},
+  {id:"tv014", word:"mess", phonetic:"/mes/", pos:"n.", cn:"一团糟；搞砸", tip:"a mess 乱七八糟；mess up 搞砸", exampleEn:"Sorry about the mess, I just moved in.", exampleCn:"抱歉这么乱，我刚搬进来。", scene:"", cat:"tv"},
+  {id:"tv015", word:"weird", phonetic:"/wɪrd/", pos:"adj.", cn:"奇怪的；古怪的", tip:"比 strange 更口语、更高频", exampleEn:"It feels weird being back home.", exampleCn:"回到家感觉怪怪的。", scene:"", cat:"tv"},
+  {id:"tv016", word:"totally", phonetic:"/ˈtoʊtəli/", pos:"adv.", cn:"完全；绝对（赞同）", tip:"Totally! 完全同意！", exampleEn:"You're totally right about that.", exampleCn:"这件事你说得完全对。", scene:"", cat:"tv"},
+  {id:"tv017", word:"chill", phonetic:"/tʃɪl/", pos:"v./adj.", cn:"放松；冷静", tip:"chill out 放松点；也指“很酷/淡定”", exampleEn:"Just chill, everything will be fine.", exampleCn:"放轻松，一切都会好的。", scene:"", cat:"tv"},
+  {id:"tv018", word:"gonna", phonetic:"/ˈɡɒnə/", pos:"phr.", cn:"将要（going to 口语缩写）", tip:"剧里几乎没人说 going to，都说 gonna", exampleEn:"I'm gonna grab some coffee.", exampleCn:"我要去买杯咖啡。", scene:"", cat:"tv"},
+  {id:"tv019", word:"wanna", phonetic:"/ˈwɒnə/", pos:"phr.", cn:"想要（want to 口语缩写）", tip:"Do you wanna…? 你想不想……？", exampleEn:"Do you wanna come with us?", exampleCn:"你想跟我们一起去吗？", scene:"", cat:"tv"},
+  {id:"tv020", word:"barely", phonetic:"/ˈberli/", pos:"adv.", cn:"几乎不；勉强", tip:"barely + 动词 = 差点没……", exampleEn:"I barely slept last night.", exampleCn:"我昨晚几乎没睡。", scene:"", cat:"tv"},
+  {id:"tv021", word:"owe", phonetic:"/oʊ/", pos:"v.", cn:"欠（钱/人情）", tip:"I owe you one 我欠你个人情", exampleEn:"Thanks, I owe you one.", exampleCn:"谢了，我欠你个人情。", scene:"", cat:"tv"},
+  {id:"tv022", word:"creep", phonetic:"/kriːp/", pos:"n./v.", cn:"讨厌鬼；慢慢移动", tip:"骂人时指“变态/讨厌的家伙”", exampleEn:"That guy is such a creep.", exampleCn:"那家伙真是个讨厌鬼。", scene:"", cat:"tv"},
+];
+
+if (typeof module !== "undefined") module.exports = { WORDS };
