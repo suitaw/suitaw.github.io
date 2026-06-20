@@ -304,8 +304,10 @@
       <div class="actions">
         <button class="btn-skip" id="btn-skip" onclick="quitQuiz()">退出</button>
         <button class="btn-skip" id="btn-prev" style="display:none">← 上一题</button>
+        <button class="btn-skip" id="btn-review-now" style="display:none">📝 复习要点</button>
         <button class="btn-next" id="btn-next">下一题 →</button>
       </div>
+      <div id="review-points-now" style="width:100%;text-align:left;display:none;margin-top:14px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.7;color:var(--text-dim);"></div>
     </div>
 
     <div id="result-screen">
@@ -803,6 +805,9 @@ function renderQuestion(){
   document.getElementById('btn-next').classList.remove('show');
   // 上一题按钮：非第一题时显示
   document.getElementById('btn-prev').style.display = state.current>0 ? 'block' : 'none';
+  // 复习要点按钮：已答过至少一题才显示；切题时收起已展开的面板
+  document.getElementById('btn-review-now').style.display = state.results.length>0 ? 'block' : 'none';
+  const rpn=document.getElementById('review-points-now'); rpn.style.display='none'; rpn.innerHTML='';
   document.getElementById('quiz-card').innerHTML=
     '<div class="q-number">第'+(state.current+1)+'题 · '+(isMulti?'多选':'单选')+' · '+escHtml(chLabel(q.ch))+'</div>'+
     '<div class="q-text">'+escHtml(q.q)+'</div>'+
@@ -884,6 +889,7 @@ async function handleAnswer(letter,q){
   exp.className='exp-box show '+fb;
   document.getElementById('btn-next').textContent=state.current+1>=state.totalQ?'查看结果 →':'下一题 →';
   document.getElementById('btn-next').classList.add('show');
+  document.getElementById('btn-review-now').style.display='block';
   updateProgress();
   saveSession();
 
@@ -1017,30 +1023,37 @@ function showResult(){
   ).join('');
 }
 
-// ── 结果页：生成本轮复习要点（错题 + 不熟题，整篇） ──
-document.getElementById('btn-review-points').addEventListener('click',async function(){
+// ── 公共：根据 results 生成复习要点（错题 + 不熟题，整篇） ──
+async function genReviewPoints(resultsArr, rp, btn){
   if(!getApiType(state.apiKey)){alert('请先在右上角 🔑 设置 填入 API Key');return;}
-  // 本轮需复习题：错题 或 已标记 review 的题
   const done=loadDone();
-  const items=state.results.filter(r=>!r.ok || (done[doneKey(r.q)]&&done[doneKey(r.q)].status==='review'))
+  const items=resultsArr.filter(r=>!r.ok || (done[doneKey(r.q)]&&done[doneKey(r.q)].status==='review'))
     .map(r=>r.q);
-  // 去重
   const seen=new Set(), uniq=[];
   items.forEach(q=>{const k=doneKey(q);if(!seen.has(k)){seen.add(k);uniq.push(q);}});
-  const rp=document.getElementById('review-points');
   rp.style.display='block';
-  if(!uniq.length){rp.innerHTML='本轮没有错题或标记为不熟的题，暂无需复习要点。🎉';this.style.display='none';return;}
-  rp.innerHTML='<div class="exp-loading"><div class="exp-spinner"></div> 正在归纳本轮 '+uniq.length+' 道题的知识点…</div>';
-  this.disabled=true;
+  if(!uniq.length){rp.innerHTML='目前没有错题或标记为不熟的题，暂无需复习要点。🎉';return;}
+  rp.innerHTML='<div class="exp-loading"><div class="exp-spinner"></div> 正在归纳 '+uniq.length+' 道题的知识点…</div>';
+  if(btn)btn.disabled=true;
   const list=uniq.map((q,i)=>(i+1)+'. '+q.q+'（正确答案 '+q.ans+'）').join('\n');
   const prompt='你是军队文职考试辅导老师。直接输出结果，不要写思考过程。以下是某次练习中答错或没把握的题目，请按知识点归类，整理成一份简明的背诵复习要点（用分点列出核心结论，相同知识点合并，每点1-2句，便于记忆，不要逐题复述题干）：\n\n'+list;
   try{
     const txt=await callAI([{role:'user',content:prompt}],3000);
-    rp.innerHTML='<div class="exp-header" style="color:var(--accent);margin-bottom:8px;">📝 本轮复习要点（错题+不熟 '+uniq.length+' 题）</div>'+escHtml(txt);
+    rp.innerHTML='<div class="exp-header" style="color:var(--accent);margin-bottom:8px;">📝 复习要点（错题+不熟 '+uniq.length+' 题）</div>'+escHtml(txt);
   }catch(e){
     rp.innerHTML='生成失败：'+escHtml(e.message);
   }
-  this.disabled=false;
+  if(btn)btn.disabled=false;
+}
+
+// ── 结果页：生成本轮复习要点 ──
+document.getElementById('btn-review-points').addEventListener('click',function(){
+  genReviewPoints(state.results, document.getElementById('review-points'), this);
+});
+
+// ── 答题页：随时生成已做题复习要点 ──
+document.getElementById('btn-review-now').addEventListener('click',function(){
+  genReviewPoints(state.results, document.getElementById('review-points-now'), this);
 });
 
 document.getElementById('btn-restart').addEventListener('click',()=>{
