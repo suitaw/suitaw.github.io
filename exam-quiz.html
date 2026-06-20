@@ -1055,7 +1055,7 @@ async function runExplain(q,saved,exp,fb,hdr){
     // 先铺好外壳，再流式把文字填进 #exp-text，避免整块重绘导致闪烁
     const shellRendered=(state.current===state.answered.indexOf(saved));
     if(shellRendered){
-      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div id="exp-text"></div>'+reviewBtnHtml(q)+fuHtml();
+      exp.innerHTML='<div class="exp-header '+fb+'">'+hdr+'</div><div id="exp-text"><div class="exp-loading"><div class="exp-spinner"></div> AI 解析中…</div></div>'+reviewBtnHtml(q)+fuHtml();
       bindReviewBtn(exp,q);
     }
     const onChunk=shellRendered?(acc=>{
