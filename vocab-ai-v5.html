@@ -139,7 +139,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 <div class="nav">
   <button id="nav-home" class="active" onclick="go('home')">学习</button>
   <button id="nav-assistant" onclick="go('assistant')">AI 助手</button>
-  <button id="nav-mistake" onclick="go('mistake')">复习本</button>
+  <button id="nav-mistake" onclick="go('mistake')">复习 / 库</button>
   <button id="nav-stats" onclick="go('stats')">统计</button>
 </div>
 
@@ -159,6 +159,18 @@ let queue=[], cur=null, flipped=false, page="home";
 
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}}
 function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
+// 容错解析 AI 返回的 JSON 数组：先去 markdown，整体 parse 失败时逐个对象提取（应对被截断/多说话）
+function parseJsonArrayLoose(text){
+  let t=(text||"").replace(/```json|```/g,"").trim();
+  try{const a=JSON.parse(t);if(Array.isArray(a))return a}catch(e){}
+  // 截取第一个 [ 到最后一个 ] 再试
+  const lb=t.indexOf("["),rb=t.lastIndexOf("]");
+  if(lb>=0&&rb>lb){try{const a=JSON.parse(t.slice(lb,rb+1));if(Array.isArray(a))return a}catch(e){}}
+  // 逐个 {...} 提取（容忍数组未闭合/末尾被截断）
+  const out=[];const re=/\{[^{}]*\}/g;let m;
+  while((m=re.exec(t))){try{out.push(JSON.parse(m[0]))}catch(e){}}
+  return out;
+}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1600)}
 
 // ===== 导入词库 =====
@@ -166,6 +178,22 @@ const IMP_KEY="vocab_v5_imported";
 let imported=load(IMP_KEY,[]);   // 用户导入的词，结构同 WORDS，cat:"import"
 // 全局词表 = 内置 + 导入。所有取词的地方用 allWords()
 function allWords(){return WORDS.concat(imported)}
+
+// ===== 短语库 / 语法库 =====
+const PHRASE_KEY="vocab_v5_phrases";
+const GRAMMAR_KEY="vocab_v5_grammar";
+let phrases=load(PHRASE_KEY,[]);  // [{id,phrase,cn,tip}]
+let grammar=load(GRAMMAR_KEY,[]); // [{id,point,cn,example}]
+function addPhrase(p){
+  if(phrases.some(x=>x.phrase.toLowerCase()===(p.phrase||"").toLowerCase()))return false;
+  phrases.push({id:"ph"+Date.now()+"_"+phrases.length,phrase:p.phrase,cn:p.cn||"",tip:p.tip||""});
+  save(PHRASE_KEY,phrases);return true;
+}
+function addGrammar(g){
+  if(grammar.some(x=>x.point===(g.point||"")))return false;
+  grammar.push({id:"gr"+Date.now()+"_"+grammar.length,point:g.point,cn:g.cn||"",example:g.example||""});
+  save(GRAMMAR_KEY,grammar);return true;
+}
 
 // ===== 设置面板 =====
 function togglePanel(){document.getElementById("panel").classList.toggle("open")}
@@ -274,7 +302,10 @@ function render(){
     <div class="stage">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <button class="gear" onclick="backToHome()">← 返回</button>
-        <div class="progress" style="margin:0">本轮剩 ${queue.length} 词</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${viewed.length?`<button class="gear" onclick="prevWord()">↩ 上一个</button>`:""}
+          <div class="progress" style="margin:0">本轮剩 ${queue.length} 词</div>
+        </div>
       </div>
       <div class="card" id="card" onclick="if(!flipped)flip()">
         <span class="cat-tag">${catName(cur.cat)}</span>
@@ -369,6 +400,11 @@ function backHtml(){
     ${scene}
     <div class="ex">${cur.exampleEn}</div>
     <div class="ex-cn">${cur.exampleCn}</div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="gear" onclick="event.stopPropagation();speakWord('${(cur.exampleEn||'').replace(/'/g,'')}')">🔊 读例句</button>
+      <button class="gear" id="dissect-btn" onclick="event.stopPropagation();dissectExample()">🔍 拆解这句话</button>
+    </div>
+    <div id="dissect-result" style="display:none;margin-top:10px"></div>
   </div>`;
 }
 function toggleFav(){
@@ -392,6 +428,88 @@ function aiHtml(){return `
   </div>`;
 }
 function flip(){flipped=true;render()}
+
+// ===== 例句拆解（短语/语法/记忆法），结果可一键入库 =====
+let lastDissect=null;  // 缓存当前拆解结果，供入库按钮取数据
+async function dissectExample(){
+  if(!cur||!cur.exampleEn)return toast("这个词没有例句");
+  const btn=document.getElementById("dissect-btn");
+  const box=document.getElementById("dissect-result");
+  btn.disabled=true;btn.textContent="拆解中…";
+  box.style.display="block";box.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
+  const sys=`你是英语老师，面对中文母语初学者。拆解给定英文例句，帮学生看懂结构、学会记忆。只返回JSON，不要任何其他文字：
+{"structure":"用简单中文一句话说这句的主干结构（主谓宾等），不堆术语",
+"phrases":[{"phrase":"句中值得记的短语/搭配（英文原样）","cn":"中文意思","tip":"怎么用/记忆提示","phonetic":"音标带斜杠","exampleEn":"一个用到它的简单例句","exampleCn":"例句中文"}],
+"grammar":[{"point":"涉及的语法点名称（如：一般现在时、动词不定式）","cn":"用简单中文解释它在这句的作用","example":"再给一个简单例句"}],
+"memory":"给学生一句记住这个目标词或这句话的方法（联想/谐音/场景皆可）"}
+phrases 挑 1-3 个最有价值的，grammar 挑 1-2 个，不要硬凑。`;
+  try{
+    const text=await callAI([{role:"user",content:`目标词：${cur.word}（${cur.cn}）\n例句：${cur.exampleEn}\n翻译：${cur.exampleCn||""}`}],sys,1200);
+    const t=text.replace(/```json|```/g,"").trim();
+    let o;try{o=JSON.parse(t)}catch(e){
+      const lb=t.indexOf("{"),rb=t.lastIndexOf("}");
+      o=lb>=0&&rb>lb?JSON.parse(t.slice(lb,rb+1)):null;
+    }
+    if(!o)throw new Error("解析失败");
+    lastDissect=o;
+    renderDissect(box,o);
+  }catch(e){
+    box.innerHTML=`<div style="font-size:.78rem;color:var(--accent)">拆解失败：${e.message||"检查 Key"}</div>`;
+  }finally{btn.disabled=false;btn.textContent="🔍 拆解这句话"}
+}
+function renderDissect(box,o){
+  const phraseRows=(o.phrases||[]).map((p,i)=>{
+    const exists=phrases.some(x=>x.phrase.toLowerCase()===(p.phrase||"").toLowerCase());
+    const inVocab=allWords().some(x=>x.word.toLowerCase()===(p.phrase||"").toLowerCase());
+    return `<div style="background:var(--paper2);border-radius:8px;padding:8px 10px;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1"><b>${p.phrase}</b> <span style="color:var(--ink-dim)">${p.cn||""}</span>
+          ${p.tip?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:2px">${p.tip}</div>`:""}</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button class="gear" style="white-space:nowrap" onclick="savePhraseFromDissect(${i},this)" ${exists?"disabled":""}>${exists?"已在短语库":"+短语库"}</button>
+          <button class="gear" style="white-space:nowrap" onclick="savePhraseToVocab(${i},this)" ${inVocab?"disabled":""}>${inVocab?"已在词库":"+词库"}</button>
+        </div>
+      </div></div>`;
+  }).join("");
+  const grammarRows=(o.grammar||[]).map((g,i)=>{
+    const exists=grammar.some(x=>x.point===g.point);
+    return `<div style="background:var(--paper2);border-radius:8px;padding:8px 10px;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1"><b>${g.point}</b><div style="font-size:.76rem;margin-top:2px">${g.cn||""}</div>
+          ${g.example?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:2px">例：${g.example}</div>`:""}</div>
+        <button class="gear" style="white-space:nowrap" onclick="saveGrammarFromDissect(${i},this)" ${exists?"disabled":""}>${exists?"已在语法库":"+语法库"}</button>
+      </div></div>`;
+  }).join("");
+  box.innerHTML=`
+    <div style="font-size:.82rem;line-height:1.6;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px">
+      ${o.structure?`<div style="margin-bottom:8px"><span style="color:var(--ink-dim);font-size:.72rem">句子主干</span><br>${o.structure}</div>`:""}
+      ${phraseRows?`<div style="color:var(--ink-dim);font-size:.72rem;margin:8px 0 4px">短语 / 搭配</div>${phraseRows}`:""}
+      ${grammarRows?`<div style="color:var(--ink-dim);font-size:.72rem;margin:8px 0 4px">语法点</div>${grammarRows}`:""}
+      ${o.memory?`<div style="margin-top:8px;background:#eef3ec;border-left:3px solid var(--green);border-radius:6px;padding:8px 10px">🧠 ${o.memory}</div>`:""}
+    </div>`;
+}
+function savePhraseFromDissect(i,btn){
+  if(!lastDissect||!lastDissect.phrases||!lastDissect.phrases[i])return;
+  const ok=addPhrase(lastDissect.phrases[i]);
+  toast(ok?"已加入短语库":"短语库里已有");
+  if(ok&&btn){btn.disabled=true;btn.textContent="已在短语库"}
+}
+// 把拆解出的短语当词条存入词库（imported，cat:import），可进 SRS 复习
+function savePhraseToVocab(i,btn){
+  const p=lastDissect&&lastDissect.phrases&&lastDissect.phrases[i];
+  if(!p)return;
+  if(allWords().some(x=>x.word.toLowerCase()===(p.phrase||"").toLowerCase()))return toast("词库里已有");
+  imported.push({id:"imp"+Date.now()+"_p"+i,word:p.phrase,phonetic:p.phonetic||"",pos:"phr.",cn:p.cn||"",tip:p.tip||"",exampleEn:p.exampleEn||"",exampleCn:p.exampleCn||"",scene:"",cat:"import"});
+  save(IMP_KEY,imported);
+  toast("已加入词库（我的收藏）");
+  if(btn){btn.disabled=true;btn.textContent="已在词库"}
+}
+function saveGrammarFromDissect(i,btn){
+  if(!lastDissect||!lastDissect.grammar||!lastDissect.grammar[i])return;
+  const ok=addGrammar(lastDissect.grammar[i]);
+  toast(ok?"已加入语法库":"语法库里已有");
+  if(ok&&btn){btn.disabled=true;btn.textContent="已在语法库"}
+}
 // 浏览历史栈：记看过的词，支持左滑返回
 let viewed=[];
 // 下一词（右滑）：当前词丢回队尾，记入历史
@@ -453,7 +571,9 @@ function bindSwipe(){
 }
 function rate(q){
   grade(cur.id,q);
-  if(q<3)addMistake(cur,"答错收录");else removeMistake(cur.id);
+  if(q===0)addMistake(cur,"忘了");
+  else if(q===3)addMistake(cur,"难");
+  else removeMistake(cur.id);  // 记得/秒答：移出复习本
   viewed=[];                        // 评分推进了进度，历史清空
   queue.shift();
   if(q<3)queue.push(cur);
@@ -479,22 +599,56 @@ function speak(btn){playAudio(cur.word,btn)}
 // ===== 错题本 =====
 const MIS_KEY="vocab_v5_mistakes";
 let mistakes=load(MIS_KEY,[]);
-function addMistake(w,from){if(!mistakes.find(m=>m.id===w.id)){mistakes.push({id:w.id,word:w.word,cn:w.cn,from:from||"答错收录"});save(MIS_KEY,mistakes)}}
+function addMistake(w,from){const ex=mistakes.find(m=>m.id===w.id);if(ex){if(from)ex.from=from;save(MIS_KEY,mistakes)}else{mistakes.push({id:w.id,word:w.word,cn:w.cn,from:from||"收藏"});save(MIS_KEY,mistakes)}}
 function removeMistake(id){const i=mistakes.findIndex(m=>m.id===id);if(i>=0){mistakes.splice(i,1);save(MIS_KEY,mistakes)}}
 function delMistake(id){removeMistake(id);renderMistake(document.getElementById("view"))}
+let mistakeTab="mistake";  // mistake | phrase | grammar
 function renderMistake(v){
-  if(!mistakes.length){v.innerHTML=`<div class="done"><h2>复习本是空的</h2><p>背单词时点了“忘了”的词会自动进来；翻面后点☆也能手动收藏。</p></div>`;return}
-  v.innerHTML=`<div style="padding-top:8px">
-    <p style="color:var(--ink-dim);font-size:.76rem;margin-bottom:12px">点“忘了”自动收录，或翻面点☆手动收藏。点 🗑 移出。</p>
-    ${mistakes.map(m=>`
+  const tabBar=`<div style="display:flex;gap:6px;margin-bottom:14px">
+    <button class="gear" style="flex:1${mistakeTab==='mistake'?';background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600':''}" onclick="switchMistakeTab('mistake')">复习本 ${mistakes.length}</button>
+    <button class="gear" style="flex:1${mistakeTab==='phrase'?';background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600':''}" onclick="switchMistakeTab('phrase')">短语 ${phrases.length}</button>
+    <button class="gear" style="flex:1${mistakeTab==='grammar'?';background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600':''}" onclick="switchMistakeTab('grammar')">语法 ${grammar.length}</button>
+  </div>`;
+  if(mistakeTab==="phrase")return renderPhraseTab(v,tabBar);
+  if(mistakeTab==="grammar")return renderGrammarTab(v,tabBar);
+  if(!mistakes.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>复习本是空的</h2><p>背单词点“忘了/难”自动进来；翻面点☆也能手动收藏。</p></div></div>`;return}
+  v.innerHTML=`<div style="padding-top:8px">${tabBar}
+    <p style="color:var(--ink-dim);font-size:.76rem;margin-bottom:12px">点“忘了/难”自动收录，或翻面点☆手动收藏。点 🗑 移出。</p>
+    ${mistakes.map(m=>{
+      const tag=m.from==="忘了"?`<span style="color:var(--accent);font-weight:600">忘了</span>`
+        :m.from==="难"?`<span style="color:var(--gold);font-weight:600">难</span>`
+        :`<span style="opacity:.7">${m.from||"收藏"}</span>`;
+      return `
     <div class="mistake-item">
-      <div><div class="w">${m.word}</div><div class="c">${m.cn} · <span style="opacity:.7">${m.from||"答错收录"}</span></div></div>
+      <div><div class="w">${m.word}</div><div class="c">${m.cn} · ${tag}</div></div>
       <div style="display:flex;gap:6px">
         <button class="gear" onclick="speakWord('${m.word.replace(/'/g,"")}')">🔊</button>
         <button class="gear" onclick="delMistake('${m.id}')">🗑</button>
       </div>
+    </div>`}).join("")}</div>`;
+}
+function switchMistakeTab(t){mistakeTab=t;renderMistake(document.getElementById("view"))}
+function renderPhraseTab(v,tabBar){
+  if(!phrases.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>短语库是空的</h2><p>背单词翻面后点“🔍 拆解这句话”，把有用的短语加进来。</p></div></div>`;return}
+  v.innerHTML=`<div style="padding-top:8px">${tabBar}
+    ${phrases.map(p=>`<div class="mistake-item">
+      <div style="flex:1"><div class="w" style="font-size:1rem">${p.phrase}</div><div class="c">${p.cn}${p.tip?` · ${p.tip}`:""}</div></div>
+      <div style="display:flex;gap:6px">
+        <button class="gear" onclick="speakWord('${p.phrase.replace(/'/g,"")}')">🔊</button>
+        <button class="gear" onclick="delPhrase('${p.id}')">🗑</button>
+      </div>
     </div>`).join("")}</div>`;
 }
+function renderGrammarTab(v,tabBar){
+  if(!grammar.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>语法库是空的</h2><p>拆解例句时点“+语法库”，把语法点收集到这里。</p></div></div>`;return}
+  v.innerHTML=`<div style="padding-top:8px">${tabBar}
+    ${grammar.map(g=>`<div class="mistake-item" style="align-items:flex-start">
+      <div style="flex:1"><div class="w" style="font-size:1rem">${g.point}</div><div class="c">${g.cn}</div>${g.example?`<div class="c" style="margin-top:3px;font-style:italic">例：${g.example}</div>`:""}</div>
+      <button class="gear" onclick="delGrammar('${g.id}')">🗑</button>
+    </div>`).join("")}</div>`;
+}
+function delPhrase(id){const i=phrases.findIndex(p=>p.id===id);if(i>=0){phrases.splice(i,1);save(PHRASE_KEY,phrases);renderMistake(document.getElementById("view"))}}
+function delGrammar(id){const i=grammar.findIndex(g=>g.id===id);if(i>=0){grammar.splice(i,1);save(GRAMMAR_KEY,grammar);renderMistake(document.getElementById("view"))}}
 function speakWord(w){playAudio(w,null)}
 
 // ===== 统计 =====
@@ -554,8 +708,71 @@ function renderStats(v){
       ${catBars}
     </div>
 
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleLearned()">
+        <div style="font-size:.8rem;font-weight:600">已学过的词（${seen}）</div>
+        <span id="learned-arrow" style="font-size:.8rem;color:var(--ink-dim)">展开 ▸</span>
+      </div>
+      <div id="learned-list" style="display:none;margin-top:12px"></div>
+    </div>
+
     <p style="text-align:center;font-size:.78rem;color:var(--ink-dim)">复习本 ${mistakes.length} 个待复习</p>
   </div>`;
+}
+// 已学列表：展开/收起
+let learnedOpen=false;
+function toggleLearned(){
+  learnedOpen=!learnedOpen;
+  const list=document.getElementById("learned-list"),arrow=document.getElementById("learned-arrow");
+  if(!list)return;
+  if(learnedOpen){list.style.display="block";arrow.textContent="收起 ▾";renderLearnedList(list)}
+  else{list.style.display="none";arrow.textContent="展开 ▸"}
+}
+function renderLearnedList(box){
+  // 已学 = 有 srs 记录且 reps>0；按到期日排序（快到期的在前）
+  const all=allWords();
+  const learned=all.filter(w=>srs[w.id]&&srs[w.id].reps>0)
+    .sort((a,b)=>(srs[a.id].due||0)-(srs[b.id].due||0));
+  if(!learned.length){box.innerHTML=`<p style="font-size:.78rem;color:var(--ink-dim)">还没有学过的词。背单词时点“记得/秒答”就会进这里。</p>`;return}
+  const now=Date.now();
+  box.innerHTML=learned.map(w=>{
+    const c=srs[w.id];
+    const dueIn=Math.ceil((c.due-now)/86400000);
+    const dueTxt=dueIn<=0?`<span style="color:var(--accent)">待复习</span>`:`${dueIn} 天后`;
+    const solid=c.interval>=6?` · <span style="color:var(--green)">稳固</span>`:"";
+    return `<div class="mistake-item" style="cursor:pointer" onclick="reviewWord('${w.id}')">
+      <div><div class="w">${w.word} <span style="font-size:.78rem;color:var(--accent);font-weight:400">${w.phonetic||""}</span></div>
+        <div class="c">${w.cn} · ${dueTxt}${solid}</div></div>
+      <button class="gear" onclick="event.stopPropagation();speakWord('${w.word.replace(/'/g,"")}')">🔊</button>
+    </div>`;
+  }).join("");
+}
+// 点已学词：弹出只读卡片重看（不影响 SM-2）
+function reviewWord(id){
+  const w=allWords().find(x=>x.id===id);if(!w)return;
+  const ov=document.getElementById("import-overlay");
+  ov.classList.add("open");
+  const fav=mistakes.find(m=>m.id===id);
+  const scene=w.scene?`<div class="tip" style="background:#eef3ec;border-left:3px solid var(--green)">🎬 ${w.scene}</div>`:"";
+  ov.innerHTML=`<div class="import-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="font-family:Fraunces,serif;font-size:1.4rem">${w.word}</h2>
+      <button class="gear" onclick="closeImport()">✕ 关闭</button>
+    </div>
+    <div style="color:var(--accent);font-family:Fraunces,serif;margin-bottom:4px">${w.phonetic||""}</div>
+    <button class="speak" style="margin:6px 0" onclick="speakWord('${w.word.replace(/'/g,"")}')">🔊 发音</button>
+    <div class="cn" style="margin-top:8px">${w.cn}${w.pos?` <span style="font-size:.8rem;color:var(--ink-dim);font-style:italic">${w.pos}</span>`:""}</div>
+    ${w.tip?`<div class="tip">💡 ${w.tip}</div>`:""}
+    ${scene}
+    ${w.exampleEn?`<div class="ex" style="margin-top:8px">${w.exampleEn}</div><div class="ex-cn">${w.exampleCn||""}</div>`:""}
+    <button class="ai-btn" style="margin-top:14px;background:${fav?'var(--gold)':'var(--ink)'}" onclick="favFromReview('${id}')">${fav?'★ 已收藏（点击移出）':'☆ 加入复习本'}</button>
+  </div>`;
+}
+function favFromReview(id){
+  const w=allWords().find(x=>x.id===id);if(!w)return;
+  if(mistakes.find(m=>m.id===id)){removeMistake(id);toast("已移出复习本")}
+  else{addMistake(w,"收藏");toast("已加入复习本")}
+  reviewWord(id);  // 重渲染按钮态
 }
 
 // ===== 通用 AI 调用（四 provider，支持图片）=====
@@ -725,11 +942,22 @@ async function askFollowup(word){
 }
 
 // ===== AI 助手页 =====
-let chatHistory=[];
+const CHAT_KEY="vocab_v5_chat";
+let chatHistory=load(CHAT_KEY,[]);  // 持久化：刷新页面不丢失
+// 清掉上次可能残留的打字占位符
+if(chatHistory.length&&chatHistory[chatHistory.length-1].content==="__TYPING__")chatHistory.pop();
+function saveChat(){
+  // 只存最近 40 条，避免 localStorage 膨胀
+  save(CHAT_KEY,chatHistory.slice(-40));
+}
+function clearChat(){if(!chatHistory.length)return toast("对话已经是空的");chatHistory=[];saveChat();renderAssistant(document.getElementById("view"))}
 function renderAssistant(v){
   const on=cfg.thinkOn;
   v.innerHTML=`<div style="padding-top:8px">
-    <p style="color:var(--ink-dim);font-size:.8rem;margin-bottom:12px">问任何英语问题：语法、用法、翻译、词的区别…</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <p style="color:var(--ink-dim);font-size:.8rem;margin:0">问任何英语问题：语法、用法、翻译、词的区别…</p>
+      ${chatHistory.length?`<button class="gear" onclick="clearChat()">清空</button>`:""}
+    </div>
     <div id="chat-log" style="margin-bottom:12px">${chatHistory.map(m=>chatBubble(m)).join("")}</div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:.72rem;color:var(--ink-dim)">
       <span>模型：${currentModelLabel()}</span>
@@ -757,6 +985,7 @@ function chatBubble(m){
 async function sendChat(){
   const input=document.getElementById("chat-input");
   const q=input.value.trim();if(!q)return toast("写点什么");
+  if(q.length>1500)return toast("问题太长了，截短到 1500 字以内再发");
   chatHistory.push({role:"user",content:q});
   chatHistory.push({role:"assistant",content:"__TYPING__"});  // 占位：打字动画
   input.value="";
@@ -775,6 +1004,7 @@ async function sendChat(){
   }catch(e){
     chatHistory[chatHistory.length-1].content="出错了："+(e.message||"检查设置里的 Key");
   }
+  saveChat();  // 每轮结束存盘，刷新不丢
   renderAssistant(document.getElementById("view"));
   const logEl=document.getElementById("chat-log");if(logEl)logEl.scrollTop=logEl.scrollHeight;
 }
@@ -844,8 +1074,7 @@ async function extractWords(){
   const prompt=importImage?(txt||"提取图片里的英文生词"):txt;
   try{
     let text=await callAI([{role:"user",content:prompt}],sys,2000,importImage?[importImage]:null);
-    text=text.replace(/```json|```/g,"").trim();
-    const arr=JSON.parse(text);
+    const arr=parseJsonArrayLoose(text);
     if(!Array.isArray(arr)||!arr.length)throw new Error("没提取到词");
     const valid=["dev","tv","life","biz","academic","news","other"];
     importCandidates=arr.map(w=>({...w,pos:w.pos||"",scene:w.scene||"",cat:valid.includes(w.cat)?w.cat:"other",pick:true}));
@@ -871,7 +1100,7 @@ async function batchImport(){
   if(words.length>200)return toast("一次最多 200 个，太多了分几次");
   const btn=document.getElementById("batch-btn");btn.disabled=true;
   const prog=document.getElementById("import-progress");
-  const BATCH=20;
+  const BATCH=10;  // 缩小批次：20 个词条常超 token 被截断导致整批 JSON.parse 失败
   const sys=`你是英语老师。用户会给你一批英文单词/短语，请为【每一个】生成词条，一个都不能漏、不要挑选。
 
 【分类】每个词归到且只能归到这7个key之一：dev(科技开发)、tv(影视口语)、life(日常生活)、biz(职场商务)、academic(学术阅读)、news(新闻时事)、other(其他)。
@@ -880,24 +1109,31 @@ async function batchImport(){
 
 只返回JSON数组，不要任何其他文字，数组长度必须等于输入单词数：[{"word":"原词","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","tip":"简短提示","exampleEn":"英文例句","exampleCn":"中文翻译","scene":"场景或空","cat":"7个key之一"}]`;
   const valid=["dev","tv","life","biz","academic","news","other"];
-  let all=[];
-  try{
-    for(let i=0;i<words.length;i+=BATCH){
-      const chunk=words.slice(i,i+BATCH);
-      prog.textContent=`处理中… ${Math.min(i+BATCH,words.length)}/${words.length}`;
-      let text=await callAI([{role:"user",content:chunk.join(", ")}],sys,3000);
-      text=text.replace(/```json|```/g,"").trim();
-      const arr=JSON.parse(text);
-      if(Array.isArray(arr))all=all.concat(arr);
+  let all=[];let failedBatches=0;
+  for(let i=0;i<words.length;i+=BATCH){
+    const chunk=words.slice(i,i+BATCH);
+    prog.textContent=`处理中… ${Math.min(i+BATCH,words.length)}/${words.length}`;
+    try{
+      const text=await callAI([{role:"user",content:chunk.join(", ")}],sys,4000);  // 提高 token，10 词留足空间
+      const arr=parseJsonArrayLoose(text);  // 容错解析：单批截断也能捞回大部分
+      if(arr.length)all=all.concat(arr);
+      else failedBatches++;
+    }catch(e){
+      failedBatches++;  // 单批失败（网络/接口）不连累其它批，继续下一批
     }
-    if(!all.length)throw new Error("没生成出词条");
-    importCandidates=all.map(w=>({...w,pos:w.pos||"",scene:w.scene||"",cat:valid.includes(w.cat)?w.cat:"other",pick:true}));
-    prog.textContent=`完成，共 ${importCandidates.length} 个词条`;
-    renderCandidates();
-  }catch(e){
-    toast("录入失败："+(e.message||"检查 Key 或减少数量"));
+  }
+  btn.disabled=false;
+  if(!all.length){
+    toast("录入失败：一个都没生成，检查 Key 或网络");
     prog.textContent="";
-  }finally{btn.disabled=false}
+    return;
+  }
+  // 按 word 去重（容错解析可能重复捞到）
+  const seen=new Set();
+  all=all.filter(w=>{const k=(w.word||"").toLowerCase();if(!k||seen.has(k))return false;seen.add(k);return true});
+  importCandidates=all.map(w=>({...w,pos:w.pos||"",scene:w.scene||"",cat:valid.includes(w.cat)?w.cat:"other",pick:true}));
+  prog.textContent=`完成 ${importCandidates.length} 个词条`+(failedBatches?`（有 ${failedBatches} 批没成功，可对剩下的词再录一次）`:"");
+  renderCandidates();
 }
 function renderCandidates(){
   const box=document.getElementById("import-result");
