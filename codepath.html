@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Codepath · 边造边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#15171c;        /* 深墨炭 */
+  --bg2:#1d2026;       /* 卡片 */
+  --bg3:#252932;       /* 输入/代码块 */
+  --line:#31363f;
+  --ink:#e8e6e0;       /* 主文字，暖白 */
+  --ink-dim:#9aa0ab;
+  --ink-faint:#6b7280;
+  --amber:#e8a33d;     /* 主强调：磷光琥珀（避开骇客绿俗套） */
+  --amber-soft:rgba(232,163,61,.14);
+  --green:#7fb069;     /* 成功/已学 */
+  --red:#e06c5e;       /* 报错 */
+  --cyan:#6fb3c9;      /* 代码里的字符串 */
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;line-height:1.6}
+.mono{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
+.wrap{max-width:680px;margin:0 auto;padding:0 16px 80px}
+
+/* 顶栏 */
+.top{position:sticky;top:0;z-index:30;background:rgba(21,23,28,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:12px}
+.top .logo{font-family:"SF Mono",Menlo,monospace;font-weight:700;letter-spacing:.5px;font-size:1rem}
+.top .logo .dot{color:var(--amber)}
+.top .back{background:none;border:1px solid var(--line);color:var(--ink-dim);border-radius:8px;padding:5px 12px;font-size:.82rem;cursor:pointer}
+.top .back:hover{border-color:var(--amber);color:var(--amber)}
+.top .gear{margin-left:auto;background:none;border:none;color:var(--ink-dim);font-size:1.2rem;cursor:pointer}
+
+/* 首页 hero：Agent 进化条 = 招牌元素 */
+.hero{padding:28px 0 18px;text-align:center}
+.hero h1{font-family:"SF Mono",Menlo,monospace;font-size:1.5rem;font-weight:700;margin-bottom:6px}
+.hero p{color:var(--ink-dim);font-size:.86rem;max-width:440px;margin:0 auto}
+.agent-bar{margin:22px auto 6px;max-width:460px;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.agent-bar .av-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.agent-bar .av-name{font-family:"SF Mono",Menlo,monospace;font-size:.82rem;color:var(--ink-dim)}
+.agent-bar .av-ver{font-family:"SF Mono",Menlo,monospace;font-weight:700;font-size:1.4rem;color:var(--amber)}
+.agent-bar .track{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.agent-bar .fill{height:100%;background:linear-gradient(90deg,var(--amber),#f0c060);border-radius:4px;transition:width .6s ease}
+.agent-bar .av-foot{margin-top:8px;font-size:.74rem;color:var(--ink-faint)}
+
+/* Stage 分组 */
+.stage-head{display:flex;align-items:center;gap:10px;margin:26px 0 12px}
+.stage-head .sn{font-family:"SF Mono",Menlo,monospace;font-size:.72rem;color:var(--amber);border:1px solid var(--amber);border-radius:6px;padding:1px 7px}
+.stage-head .st{font-size:.92rem;font-weight:600}
+.stage-head .sp{margin-left:auto;font-size:.72rem;color:var(--ink-faint)}
+
+/* 课节点 */
+.node{display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s,transform .15s}
+.node:hover{border-color:var(--amber);transform:translateX(2px)}
+.node.locked{opacity:.5;cursor:not-allowed}
+.node.locked:hover{border-color:var(--line);transform:none}
+.node .ic{width:34px;height:34px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:"SF Mono",Menlo,monospace;font-size:.82rem;font-weight:700;background:var(--bg3);color:var(--ink-dim)}
+.node.done .ic{background:var(--green);color:#15171c}
+.node.cur .ic{background:var(--amber);color:#15171c}
+.node .body{flex:1;min-width:0}
+.node .body .t{font-size:.92rem;font-weight:600}
+.node .body .z{font-size:.76rem;color:var(--ink-dim)}
+.node .meta{text-align:right;flex:none}
+.node .meta .v{font-family:"SF Mono",Menlo,monospace;font-size:.78rem;color:var(--amber)}
+.node .meta .s{font-size:.68rem;color:var(--ink-faint)}
+
+/* 单课页 */
+.lesson-hd{padding:20px 0 10px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.lesson-hd .eyebrow{font-family:"SF Mono",Menlo,monospace;font-size:.72rem;color:var(--amber);letter-spacing:.5px}
+.lesson-hd h2{font-size:1.3rem;font-weight:700;margin:4px 0 2px}
+.lesson-hd .zh{color:var(--ink-dim);font-size:.9rem}
+.lesson-hd .agent-chip{display:inline-block;margin-top:10px;font-family:"SF Mono",Menlo,monospace;font-size:.74rem;background:var(--amber-soft);color:var(--amber);border-radius:20px;padding:3px 12px}
+
+.sec{margin-bottom:24px}
+.sec .lab{display:flex;align-items:center;gap:8px;font-family:"SF Mono",Menlo,monospace;font-size:.74rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.sec .lab::before{content:"";width:18px;height:1px;background:var(--ink-faint)}
+
+.codeblock{background:var(--bg3);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:8px;padding:14px 16px;font-family:"SF Mono",Menlo,monospace;font-size:.9rem;overflow-x:auto;white-space:pre;color:var(--ink)}
+.codeblock.out{border-left-color:var(--green);color:var(--green);font-size:.86rem}
+.codeblock.err{border-left-color:var(--red);color:var(--red);font-size:.84rem}
+
+.brief{font-size:.94rem;color:var(--ink);background:var(--bg2);border-radius:10px;padding:14px 16px;border:1px solid var(--line)}
+
+/* AI 流式讲解区 */
+.ai-explain{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:0;overflow:hidden}
+.ai-explain .ai-body{padding:14px 16px;font-size:.9rem;min-height:20px;white-space:pre-wrap}
+.ai-explain .ai-foot{border-top:1px solid var(--line);padding:8px 12px;font-size:.72rem;color:var(--ink-faint);display:flex;align-items:center;gap:8px}
+.gen-btn{background:var(--amber);color:#15171c;border:none;border-radius:9px;padding:11px 16px;font-weight:600;font-size:.88rem;cursor:pointer;width:100%}
+.gen-btn:disabled{opacity:.6;cursor:default}
+.gen-btn.ghost{background:none;border:1px solid var(--line);color:var(--ink-dim);width:auto;padding:7px 14px;font-size:.8rem}
+.typing::after{content:"▋";color:var(--amber);animation:bl 1s steps(2) infinite}
+@keyframes bl{50%{opacity:0}}
+
+/* 单词卡 */
+.wcard{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.wcard .wh{display:flex;align-items:baseline;gap:8px}
+.wcard .w{font-family:"SF Mono",Menlo,monospace;font-size:1.02rem;font-weight:700;color:var(--amber)}
+.wcard .ph{font-size:.76rem;color:var(--ink-faint)}
+.wcard .pos{font-size:.74rem;color:var(--ink-dim);font-style:italic}
+.wcard .cn{font-size:.9rem;margin-top:2px}
+.wcard .tip{font-size:.78rem;color:var(--ink-dim);margin-top:4px;background:var(--bg3);border-radius:6px;padding:6px 9px}
+
+.breakrow{margin-bottom:10px}
+.breakrow .why{margin-top:6px;font-size:.84rem;color:var(--ink-dim);padding-left:12px;border-left:2px solid var(--red)}
+
+.done-btn{background:var(--green);color:#15171c;border:none;border-radius:10px;padding:13px;font-weight:700;font-size:.94rem;cursor:pointer;width:100%;margin-top:8px}
+.done-btn.undo{background:none;border:1px solid var(--line);color:var(--ink-dim)}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3);border:1px solid var(--line);color:var(--ink);padding:10px 18px;border-radius:10px;font-size:.86rem;opacity:0;pointer-events:none;transition:.25s;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* 设置面板 */
+.panel{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:60;align-items:flex-end}
+.panel.open{display:flex}
+.panel .sheet{background:var(--bg2);width:100%;max-width:680px;margin:0 auto;border-radius:16px 16px 0 0;padding:20px 18px 28px;border:1px solid var(--line)}
+.panel h3{font-size:1rem;margin-bottom:14px}
+.panel label{display:block;font-size:.8rem;color:var(--ink-dim);margin:10px 0 4px}
+.panel select,.panel input{width:100%;background:var(--bg3);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 11px;font-size:.88rem;font-family:inherit}
+.panel .pbtns{display:flex;gap:10px;margin-top:16px}
+.panel .pbtns button{flex:1;border-radius:9px;padding:11px;font-weight:600;font-size:.88rem;cursor:pointer;border:none}
+.panel .save{background:var(--amber);color:#15171c}
+.panel .clear{background:none;border:1px solid var(--line);color:var(--ink-dim)}
+.hint{font-size:.74rem;color:var(--ink-faint);margin-top:6px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <button class="back" id="backbtn" onclick="goHome()" style="display:none">← 课程</button>
+  <span class="logo">code<span class="dot">·</span>path</span>
+  <button class="gear" onclick="togglePanel()">⚙</button>
+</div>
+
+<div class="wrap"><div id="view"></div></div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 设置面板：复用 Vocab AI 的同一套 provider/key（共享 localStorage） -->
+<div class="panel" id="panel">
+  <div class="sheet">
+    <h3>AI 设置</h3>
+    <p class="hint">和 Vocab AI 共用同一套 Key，那边填过这里自动通用。</p>
+    <label>服务商</label>
+    <select id="provider">
+      <option value="deepseek">DeepSeek</option>
+      <option value="doubao">豆包（火山方舟）</option>
+      <option value="openrouter">OpenRouter</option>
+      <option value="anthropic">Anthropic</option>
+    </select>
+    <div id="model-row"><label>模型</label><select id="model"></select></div>
+    <label>API Key</label>
+    <input id="apikey" type="password" placeholder="sk-...">
+    <div id="ep-row" style="display:none"><label>豆包接入点 ID</label><input id="endpoint" placeholder="ep-xxxxxxxx"></div>
+    <div class="pbtns">
+      <button class="clear" onclick="clearKey()">清空 Key</button>
+      <button class="save" onclick="saveCfg()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="lessons.js?v=20260621"></script>
+<script>
+// ===== 共享存储：与 Vocab AI 完全相同的 key =====
+const CFG_KEY="vocab_v5_cfg";        // 共用配置（provider/key/model）
+const SRS_KEY="gh_vocab_srs_v1";     // 共用 SRS，单词在两边互通
+const PROG_KEY="codepath_progress_v1"; // 课程进度（独有）
+const CACHE_KEY="codepath_ai_cache_v1"; // AI 讲解缓存（独有）
+
+function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}}
+function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
+
+let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",models:{}});
+if(!cfg.models)cfg.models={};
+let srs=load(SRS_KEY,{});
+let prog=load(PROG_KEY,{done:{}});   // {done:{L01:true}}
+if(!prog.done)prog.done={};
+let aiCache=load(CACHE_KEY,{});      // {L01_explain:"...", L01_break0:"..."}
+
+let page="home", curLesson=null;
+
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1700)}
+
+// ===== 模型表（与 Vocab AI 一致，2026-06）=====
+const MODELS={
+  deepseek:[["deepseek-v4-flash","V4 Flash（快·性价比）"],["deepseek-v4-pro","V4 Pro（强·编程数学）"]],
+  openrouter:[["anthropic/claude-haiku-4.5","Claude Haiku 4.5（快）"],["anthropic/claude-sonnet-4","Claude Sonnet 4（强）"],["deepseek/deepseek-chat","DeepSeek V4（性价比）"],["google/gemini-2.5-flash","Gemini 2.5 Flash（快）"]],
+  anthropic:[["claude-haiku-4-5-20251001","Claude Haiku 4.5（快）"],["claude-sonnet-4-20250514","Claude Sonnet 4（强）"],["claude-opus-4-20250514","Claude Opus 4（最强）"]],
+};
+function currentModel(){
+  const p=cfg.provider;
+  if(p==="doubao")return cfg.endpoint;
+  const list=MODELS[p]||MODELS.deepseek;
+  const saved=cfg.models[p];
+  if(saved&&list.some(m=>m[0]===saved))return saved;
+  return list[0][0];
+}
+
+// ===== 设置面板 =====
+function togglePanel(){document.getElementById("panel").classList.toggle("open")}
+function bindCfg(){
+  const p=document.getElementById("provider"),k=document.getElementById("apikey"),ep=document.getElementById("endpoint"),epRow=document.getElementById("ep-row");
+  const mRow=document.getElementById("model-row"),mSel=document.getElementById("model");
+  p.value=cfg.provider;k.value=cfg.apikey;ep.value=cfg.endpoint||"";
+  const syncModel=()=>{
+    if(cfg.provider==="doubao"||!MODELS[cfg.provider]){mRow.style.display="none";return}
+    mRow.style.display="block";
+    mSel.innerHTML=MODELS[cfg.provider].map(m=>`<option value="${m[0]}">${m[1]}</option>`).join("");
+    mSel.value=currentModel();
+  };
+  const syncEp=()=>{epRow.style.display=cfg.provider==="doubao"?"block":"none"};
+  syncEp();syncModel();
+  p.onchange=()=>{cfg.provider=p.value;save(CFG_KEY,cfg);syncEp();syncModel()};
+  mSel.onchange=()=>{cfg.models[cfg.provider]=mSel.value;save(CFG_KEY,cfg)};
+}
+function saveCfg(){
+  cfg.provider=document.getElementById("provider").value;
+  cfg.apikey=document.getElementById("apikey").value.trim();
+  cfg.endpoint=document.getElementById("endpoint").value.trim();
+  save(CFG_KEY,cfg);
+  document.getElementById("panel").classList.remove("open");
+  toast("已保存");
+}
+function clearKey(){
+  cfg.apikey="";cfg.endpoint="";save(CFG_KEY,cfg);
+  document.getElementById("apikey").value="";document.getElementById("endpoint").value="";
+  toast("Key 已清空");
+}
+
+// ===== AI 调用（复用 Vocab AI 的四 provider 逻辑）=====
+async function callAI(messages,sys,maxTokens=700){
+  if(!cfg.apikey)throw new Error("先在 ⚙ 设置里填 API Key");
+  if(cfg.provider==="doubao"&&!cfg.endpoint)throw new Error("豆包需要先填接入点 ID（ep-xxxx）");
+  const p=cfg.provider;let url,headers,body,readText;
+  if(p==="anthropic"){
+    url="https://api.anthropic.com/v1/messages";
+    headers={"Content-Type":"application/json","x-api-key":cfg.apikey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
+    body={model:currentModel(),max_tokens:maxTokens,messages};
+    if(sys)body.system=sys;
+    readText=d=>(d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+  }else{
+    if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+    else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
+    else url="https://openrouter.ai/api/v1/chat/completions";
+    const model=p==="doubao"?cfg.endpoint:currentModel();
+    headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
+    const msgs=sys?[{role:"system",content:sys},...messages]:messages.slice();
+    body={model,max_tokens:maxTokens,messages:msgs};
+    readText=d=>d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
+  }
+  const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message||"接口报错");
+  const text=readText(d);
+  if(!text)throw new Error("空响应");
+  return text;
+}
+// 流式：onChunk(累积全文)
+async function callAIStream(messages,sys,onChunk,maxTokens=900){
+  if(!cfg.apikey)throw new Error("先在 ⚙ 设置里填 API Key");
+  if(cfg.provider==="doubao"&&!cfg.endpoint)throw new Error("豆包需要先填接入点 ID（ep-xxxx）");
+  const p=cfg.provider;const mdl=currentModel();let url,headers,body,parseLine;
+  if(p==="anthropic"){
+    url="https://api.anthropic.com/v1/messages";
+    headers={"Content-Type":"application/json","x-api-key":cfg.apikey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
+    body={model:mdl,max_tokens:maxTokens,messages,stream:true};
+    if(sys)body.system=sys;
+    parseLine=o=>(o.type==="content_block_delta"&&o.delta&&o.delta.text)?o.delta.text:"";
+  }else{
+    if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+    else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
+    else url="https://openrouter.ai/api/v1/chat/completions";
+    headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
+    body={model:mdl,max_tokens:maxTokens,messages:sys?[{role:"system",content:sys},...messages]:messages,stream:true};
+    parseLine=o=>(o.choices&&o.choices[0]&&o.choices[0].delta&&o.choices[0].delta.content)||"";
+  }
+  const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});
+  if(!r.ok){let e="接口报错";try{const j=await r.json();e=j.error&&j.error.message||e}catch(x){}throw new Error(e)}
+  const reader=r.body.getReader();const dec=new TextDecoder();let buf="",full="";
+  while(true){
+    const {done,value}=await reader.read();if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    const lines=buf.split("\n");buf=lines.pop();
+    for(const line of lines){
+      const t=line.trim();if(!t||!t.startsWith("data:"))continue;
+      const data=t.slice(5).trim();if(data==="[DONE]")continue;
+      try{const o=JSON.parse(data);const pc=parseLine(o);if(pc){full+=pc;onChunk(full)}}catch(e){}
+    }
+  }
+  if(!full)throw new Error("空响应");
+  return full;
+}
+
+// ===== 进度与 Agent 进化 =====
+function lessonById(id){return LESSONS.find(l=>l.id===id)}
+function isDone(id){return !!prog.done[id]}
+function doneCount(){return LESSONS.filter(l=>isDone(l.id)).length}
+// 当前 Agent 版本 = 最后一节已完成课的 agentVersion（没有则 v0.0）
+function currentAgentVer(){
+  let v="v0.0",note="还没开始——学完第一课，你的 agent 就上线了";
+  for(const l of LESSONS){if(isDone(l.id)){v=l.agentVersion;note=l.agentNote}}
+  return {v,note};
+}
+// 进度百分比（按已完成 / 规划总课数 40）
+const TOTAL_PLANNED=40;
+function progressPct(){return Math.min(100,Math.round(doneCount()/TOTAL_PLANNED*100))}
+// 第一节未完成的课 = 当前课（节点高亮）
+function currentLessonId(){
+  for(const l of LESSONS){if(!isDone(l.id))return l.id}
+  return null;
+}
+// 解锁规则：第一课永远解锁；其余需前一节完成
+function isUnlocked(idx){
+  if(idx===0)return true;
+  return isDone(LESSONS[idx-1].id);
+}
+
+// ===== 渲染 =====
+function render(){
+  const v=document.getElementById("view");
+  document.getElementById("backbtn").style.display=page==="lesson"?"inline-block":"none";
+  if(page==="lesson")return renderLesson(v);
+  return renderHome(v);
+}
+function goHome(){page="home";curLesson=null;window.scrollTo(0,0);render()}
+function openLesson(id,idx){
+  if(!isUnlocked(idx)){toast("先完成上一节");return}
+  page="lesson";curLesson=id;window.scrollTo(0,0);render();
+}
+
+function renderHome(v){
+  const {v:ver,note}=currentAgentVer();
+  const pct=progressPct();
+  // 按 stage 分组
+  const stages={};
+  LESSONS.forEach((l,i)=>{(stages[l.stage]=stages[l.stage]||[]).push({l,i})});
+  const curId=currentLessonId();
+  let stagesHtml="";
+  Object.keys(stages).sort((a,b)=>a-b).forEach(sn=>{
+    const items=stages[sn];
+    const name=items[0].l.stageName;
+    const sdone=items.filter(x=>isDone(x.l.id)).length;
+    stagesHtml+=`<div class="stage-head"><span class="sn">Stage ${sn}</span><span class="st">${name}</span><span class="sp">${sdone}/${items.length}</span></div>`;
+    items.forEach(({l,i})=>{
+      const done=isDone(l.id), cur=l.id===curId, locked=!isUnlocked(i);
+      const cls=done?"done":(cur?"cur":(locked?"locked":""));
+      const ic=done?"✓":(locked?"🔒":l.num);
+      stagesHtml+=`<div class="node ${cls}" onclick="openLesson('${l.id}',${i})">
+        <div class="ic">${ic}</div>
+        <div class="body"><div class="t">${l.title}</div><div class="z">${l.titleZh} · ${l.minutes} 分钟</div></div>
+        <div class="meta"><div class="v">${l.agentVersion}</div><div class="s">${done?"已学":(cur?"在学":"")}</div></div>
+      </div>`;
+    });
+  });
+  v.innerHTML=`
+    <div class="hero">
+      <h1>边造边学</h1>
+      <p>40 节课，造一个会进化的 debug agent。每节让它强一点，英文顺手学会。</p>
+      <div class="agent-bar">
+        <div class="av-head"><span class="av-name">// your debug_agent.py</span><span class="av-ver">${ver}</span></div>
+        <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+        <div class="av-foot">${note} · 已完成 ${doneCount()}/${TOTAL_PLANNED} 课（${pct}%）</div>
+      </div>
+    </div>
+    ${stagesHtml}`;
+}
+
+// ===== 单课 =====
+function renderLesson(v){
+  const l=lessonById(curLesson);if(!l){goHome();return}
+  const done=isDone(l.id);
+  v.innerHTML=`
+    <div class="lesson-hd">
+      <div class="eyebrow">STAGE ${l.stage} · LESSON ${l.num} / ${TOTAL_PLANNED}</div>
+      <h2>${l.title}</h2>
+      <div class="zh">${l.titleZh}</div>
+      <span class="agent-chip">⚙ debug_agent ${l.agentVersion} — ${l.agentNote}</span>
+    </div>
+
+    <div class="sec">
+      <div class="lab">这节造什么</div>
+      <div class="brief">${l.brief}</div>
+    </div>
+
+    <div class="sec">
+      <div class="lab">代码</div>
+      <div class="codeblock">${esc(l.code)}</div>
+      <div class="lab" style="margin-top:12px">运行结果</div>
+      <div class="codeblock out">${esc(l.output)}</div>
+    </div>
+
+    <div class="sec">
+      <div class="lab">逐行讲解 · AI</div>
+      <div id="explain-wrap">${explainBlock(l)}</div>
+    </div>
+
+    <div class="sec">
+      <div class="lab">这节的英文词（学完进复习库）</div>
+      ${l.words.map(w=>wcardHtml(w)).join("")}
+      <button class="gen-btn ghost" style="margin-top:4px" onclick="addWordsToSrs('${l.id}')">＋ 把这 ${l.words.length} 个词加入 SRS 复习</button>
+    </div>
+
+    <div class="sec">
+      <div class="lab">故意弄坏它 · 把报错当英语教材</div>
+      <div id="break-wrap">${breakBlock(l)}</div>
+    </div>
+
+    <button class="done-btn ${done?'undo':''}" onclick="toggleDone('${l.id}')">${done?'✓ 已完成（点此取消）':'标记完成 · 让 agent 进化到 '+l.agentVersion}</button>
+  `;
+}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+
+// 逐行讲解块：有缓存直接显示，否则给生成按钮
+function explainBlock(l){
+  const cached=aiCache[l.id+"_explain"];
+  if(cached){
+    return `<div class="ai-explain"><div class="ai-body" id="explain-body">${esc(cached)}</div>
+      <div class="ai-foot">已缓存 · <span onclick="genExplain('${l.id}',true)" style="cursor:pointer;color:var(--amber)">重新生成</span></div></div>`;
+  }
+  return `<button class="gen-btn" id="explain-btn" onclick="genExplain('${l.id}')">🧠 让 AI 逐行讲解这段代码</button>`;
+}
+async function genExplain(id,regen){
+  const l=lessonById(id);
+  const wrap=document.getElementById("explain-wrap");
+  wrap.innerHTML=`<div class="ai-explain"><div class="ai-body typing" id="explain-body"></div><div class="ai-foot">生成中…</div></div>`;
+  const body=document.getElementById("explain-body");
+  const sys="你是耐心的编程老师，学生是中文母语的编程初学者，也在借此学英文。请用简单中文逐行讲解给定的 Python 代码：每行做了什么、为什么这么写、初学者容易忽略的点。语气亲切，不堆术语。可以顺带点出代码里英文词的含义。控制在 220 字内。";
+  const usr=`课程：${l.title}（${l.titleZh}）\n代码：\n${l.code}\n\n运行结果：${l.output}`;
+  try{
+    const full=await callAIStream([{role:"user",content:usr}],sys,t=>{body.textContent=t},900);
+    body.classList.remove("typing");
+    aiCache[id+"_explain"]=full;save(CACHE_KEY,aiCache);
+    document.getElementById("explain-wrap").innerHTML=explainBlock(l);
+  }catch(e){
+    document.getElementById("explain-wrap").innerHTML=`<div class="ai-explain"><div class="ai-body" style="color:var(--red)">生成失败：${e.message}</div><div class="ai-foot"><span onclick="genExplain('${id}')" style="cursor:pointer;color:var(--amber)">重试</span></div></div>`;
+  }
+}
+
+// 报错块
+function breakBlock(l){
+  return l.breakIt.map((code,i)=>{
+    const cached=aiCache[l.id+"_break"+i];
+    const why=cached?`<div class="why">${esc(cached)}</div>`
+      :`<button class="gen-btn ghost" style="margin-top:6px" onclick="genBreak('${l.id}',${i})">这个为什么会报错？</button>`;
+    return `<div class="breakrow"><div class="codeblock err">${esc(code)}</div>${why}</div>`;
+  }).join("");
+}
+async function genBreak(id,i){
+  const l=lessonById(id);
+  const sys="你是编程老师，面向中文母语初学者（也在学英文）。给定一段写错的 Python 代码，请：1)说它会报什么错（错误类型英文名+中文意思）2)错在哪 3)怎么改对。简明，100 字内，亲切。";
+  const usr=`正确代码应是：${l.code}\n这是写错的版本：${l.breakIt[i]}`;
+  // 占位
+  aiCache[id+"_break"+i]="生成中…";
+  document.getElementById("break-wrap").innerHTML=breakBlock(l);
+  try{
+    const full=await callAI([{role:"user",content:usr}],sys,400);
+    aiCache[id+"_break"+i]=full;save(CACHE_KEY,aiCache);
+  }catch(e){
+    delete aiCache[id+"_break"+i];
+    toast("生成失败："+e.message);
+  }
+  document.getElementById("break-wrap").innerHTML=breakBlock(l);
+}
+
+// 单词卡
+function wcardHtml(w){
+  return `<div class="wcard"><div class="wh"><span class="w">${w.word}</span><span class="ph">${w.phonetic||""}</span><span class="pos">${w.pos||""}</span></div>
+    <div class="cn">${w.cn}</div>${w.tip?`<div class="tip">💡 ${w.tip}</div>`:""}</div>`;
+}
+// 把这节的词写进共享 SRS（格式兼容 Vocab AI words.js）
+function addWordsToSrs(id){
+  const l=lessonById(id);let added=0;
+  l.words.forEach(w=>{
+    const wid="cp_"+id+"_"+w.word;          // 避免和内置词 id 冲突
+    if(!srs[wid]){srs[wid]={ef:2.5,interval:0,reps:0,due:Date.now()};added++}
+  });
+  save(SRS_KEY,srs);
+  toast(added?`已加入 ${added} 个词，去 Vocab AI 复习`:"这些词已在复习库里了");
+}
+
+function toggleDone(id){
+  if(prog.done[id]){delete prog.done[id];toast("已取消完成")}
+  else{prog.done[id]=Date.now();toast("agent 进化了 🎉")}
+  save(PROG_KEY,prog);
+  render();
+}
+
+// ===== 启动 =====
+bindCfg();
+render();
+
+// 暴露给测试（jsdom 通过 window 触发）
+if(typeof window!=="undefined"){
+  window.render=render;window.goHome=goHome;window.openLesson=openLesson;
+  window.toggleDone=toggleDone;window.addWordsToSrs=addWordsToSrs;
+  window.renderHome=renderHome;window.renderLesson=renderLesson;
+  window.currentAgentVer=currentAgentVer;window.isDone=isDone;
+}
+</script>
+</body>
+</html>
