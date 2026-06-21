@@ -155,7 +155,8 @@ let srs=load(SRS_KEY,{});          // {id:{ef,interval,reps,due}}
 let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",scope:"all",models:{},thinkOn:false});
 if(!cfg.models)cfg.models={};
 if(typeof cfg.thinkOn!=="boolean")cfg.thinkOn=false;
-let queue=[], cur=null, flipped=false, page="home";
+let queue=[], cur=null, flipped=false, page=load("vocab_v5_page","home");
+if(!["home","assistant","mistake","stats"].includes(page))page="home";
 
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}}
 function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
@@ -286,7 +287,7 @@ function buildQueue(){
 }
 
 // ===== 渲染 =====
-function go(p){page=p;["home","assistant","mistake","stats"].forEach(x=>{const el=document.getElementById("nav-"+x);if(el)el.classList.toggle("active",x===p)});render()}
+function go(p){page=p;save("vocab_v5_page",p);["home","assistant","mistake","stats"].forEach(x=>{const el=document.getElementById("nav-"+x);if(el)el.classList.toggle("active",x===p)});render()}
 let studyStarted=false;  // 是否已从分类页进入学习
 function render(){
   const v=document.getElementById("view");
@@ -627,7 +628,8 @@ let mistakes=load(MIS_KEY,[]);
 function addMistake(w,from){const ex=mistakes.find(m=>m.id===w.id);if(ex){if(from)ex.from=from;save(MIS_KEY,mistakes)}else{mistakes.push({id:w.id,word:w.word,cn:w.cn,from:from||"收藏"});save(MIS_KEY,mistakes)}}
 function removeMistake(id){const i=mistakes.findIndex(m=>m.id===id);if(i>=0){mistakes.splice(i,1);save(MIS_KEY,mistakes)}}
 function delMistake(id){removeMistake(id);renderMistake(document.getElementById("view"))}
-let mistakeTab="mistake";  // mistake | phrase | grammar
+let mistakeTab=load("vocab_v5_mtab","mistake");  // mistake | phrase | grammar
+if(!["mistake","phrase","grammar"].includes(mistakeTab))mistakeTab="mistake";
 function renderMistake(v){
   const tabBar=`<div style="display:flex;gap:6px;margin-bottom:14px">
     <button class="gear" style="flex:1${mistakeTab==='mistake'?';background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600':''}" onclick="switchMistakeTab('mistake')">复习本 ${mistakes.length}</button>
@@ -652,7 +654,7 @@ function renderMistake(v){
       </div>
     </div>`}).join("")}</div>`;
 }
-function switchMistakeTab(t){mistakeTab=t;renderMistake(document.getElementById("view"))}
+function switchMistakeTab(t){mistakeTab=t;save("vocab_v5_mtab",t);renderMistake(document.getElementById("view"))}
 function renderPhraseTab(v,tabBar){
   if(!phrases.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>短语库是空的</h2><p>背单词翻面后点“🔍 拆解这句话”，把有用的短语加进来。</p></div></div>`;return}
   const groups=[["phrasal","短语动词"],["collocation","固定搭配"],["prep","介词短语"],["other","其他"]];
@@ -701,26 +703,37 @@ function renderGrammarTab(v,tabBar){
         <div style="flex:1"><div class="w" style="font-size:1rem">${g.point}</div><div class="c">${g.cn}</div>${g.example?`<div class="c" style="margin-top:3px;font-style:italic">例：${g.example}</div>`:""}</div>
         <button class="gear" onclick="delGrammar('${g.id}')">🗑</button>
       </div>
-      <button class="gear" style="margin-top:8px" onclick="explainGrammar('${g.id}')">📖 展开详解（AI 讲透+多给例句）</button>
-      <div id="gexp-${g.id}" style="margin-top:8px"></div>
+      <button class="gear" style="margin-top:8px" onclick="explainGrammar('${g.id}')">${grammarOpen[g.id]?'📖 收起详解':'📖 展开详解（AI 讲透+多给例句）'}</button>
+      <div id="gexp-${g.id}" style="margin-top:8px">${grammarOpen[g.id]&&g.detail?grammarDetailHtml(g.detail):""}</div>
     </div>`).join("");
   });
   v.innerHTML=`<div style="padding-top:8px">${tabBar}
     <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:4px">按主题分组。语法重在理解——点“展开详解”让 AI 讲透，不做闪卡考试。</p>
     ${body}</div>`;
 }
-// 语法点详解：AI 现场展开（缓存到 grammar 条目）
+// 语法点详解：AI 现场展开（缓存到 grammar 条目），可展开可收回
+let grammarOpen={};  // {id:true} 记录哪些详解是展开的
 async function explainGrammar(id){
   const g=grammar.find(x=>x.point&&x.id===id);if(!g)return;
   const box=document.getElementById("gexp-"+id);if(!box)return;
-  if(g.detail){box.innerHTML=`<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;white-space:pre-wrap">${g.detail}</div>`;return}
-  box.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
+  // 已展开 → 收起
+  if(grammarOpen[id]){grammarOpen[id]=false;renderMistake(document.getElementById("view"));return}
+  grammarOpen[id]=true;
+  // 有缓存直接显示（重渲染让按钮文字变“收起”）
+  if(g.detail){renderMistake(document.getElementById("view"));return}
+  // 无缓存：先把按钮态刷新成展开，再异步取内容
+  renderMistake(document.getElementById("view"));
+  const box2=document.getElementById("gexp-"+id);if(box2)box2.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
   const sys="你是耐心的英语老师，面向中文初学者。把给定语法点讲透：用简单中文解释它是什么、什么时候用、初学者常踩的坑，并给 2-3 个由易到难的例句（英文+中文）。纯文本，不要 Markdown 符号。260 字内。";
   try{
     const text=await callAI([{role:"user",content:`语法点：${g.point}\n已知简述：${g.cn}`}],sys,800);
     g.detail=text;save(GRAMMAR_KEY,grammar);
-    box.innerHTML=`<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;white-space:pre-wrap">${text}</div>`;
-  }catch(e){box.innerHTML=`<div style="font-size:.78rem;color:var(--accent)">详解失败：${e.message||"检查 Key"}</div>`}
+    const box3=document.getElementById("gexp-"+id);
+    if(grammarOpen[id]&&box3)box3.innerHTML=grammarDetailHtml(text);  // 期间没被收起才显示
+  }catch(e){const box3=document.getElementById("gexp-"+id);if(box3)box3.innerHTML=`<div style="font-size:.78rem;color:var(--accent)">详解失败：${e.message||"检查 Key"}</div>`}
+}
+function grammarDetailHtml(text){
+  return `<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;white-space:pre-wrap">${text}</div>`;
 }
 function delPhrase(id){const i=phrases.findIndex(p=>p.id===id);if(i>=0){phrases.splice(i,1);save(PHRASE_KEY,phrases);renderMistake(document.getElementById("view"))}}
 function delGrammar(id){const i=grammar.findIndex(g=>g.id===id);if(i>=0){grammar.splice(i,1);save(GRAMMAR_KEY,grammar);renderMistake(document.getElementById("view"))}}
@@ -1253,6 +1266,9 @@ function exportImported(){
 }
 
 // ===== 启动 =====
-bindCfg();render();</script>
+bindCfg();
+// 启动时同步底部导航高亮到恢复的页面
+["home","assistant","mistake","stats"].forEach(x=>{const el=document.getElementById("nav-"+x);if(el)el.classList.toggle("active",x===page)});
+render();</script>
 </body>
 </html>
