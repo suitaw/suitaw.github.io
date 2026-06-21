@@ -79,6 +79,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",s
 .sec{margin-bottom:24px}
 .sec .lab{display:flex;align-items:center;gap:8px;font-family:"SF Mono",Menlo,monospace;font-size:.74rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
 .sec .lab::before{content:"";width:18px;height:1px;background:var(--ink-faint)}
+/* 可折叠块 */
+.sec.fold .lab{cursor:pointer;user-select:none}
+.sec.fold .lab .arrow{margin-left:auto;font-size:.8rem;transition:transform .15s}
+.sec.fold.closed .lab .arrow{transform:rotate(-90deg)}
+.sec.fold.closed .fold-body{display:none}
 
 .codeblock{background:var(--bg3);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:8px;padding:14px 16px;font-family:"SF Mono",Menlo,monospace;font-size:.9rem;overflow-x:auto;white-space:pre;color:var(--ink)}
 .codeblock.out{border-left-color:var(--green);color:var(--green);font-size:.86rem}
@@ -429,6 +434,20 @@ function renderHome(v){
     ${stagesHtml}`;
 }
 
+// 单课页分块折叠：状态全局存（一旦你把某块设为展开/折叠，所有课记住）
+// 默认：brief/code 展开；explain/doc/words/break/exercise 折叠
+const FOLD_KEY="codepath_fold_v1";
+let foldState=load(FOLD_KEY,{explain:true,doc:true,words:true,break:true,exercise:true});
+function isFolded(key){return !!foldState[key]}
+function toggleFold(key){foldState[key]=!foldState[key];save(FOLD_KEY,foldState);const sec=document.getElementById("sec-"+key);if(sec)sec.classList.toggle("closed",foldState[key])}
+// 生成可折叠的 sec 块
+function foldSec(key,label,bodyHtml){
+  const closed=isFolded(key)?" closed":"";
+  return `<div class="sec fold${closed}" id="sec-${key}">
+    <div class="lab" onclick="toggleFold('${key}')">${label}<span class="arrow">▾</span></div>
+    <div class="fold-body">${bodyHtml}</div>
+  </div>`;
+}
 function renderLesson(v){
   const l=lessonById(curLesson);if(!l){goHome();return}
   const done=isDone(l.id);
@@ -449,27 +468,12 @@ function renderLesson(v){
       <div class="lab" style="margin-top:12px">运行结果</div>
       <div class="codeblock out">${esc(l.output)}</div>
     </div>
-    <div class="sec">
-      <div class="lab">逐行讲解 · AI</div>
-      <div id="explain-wrap">${explainBlock(l)}</div>
-    </div>
-    ${l.docQuote?`<div class="sec">
-      <div class="lab">文档里长这样 · Python 官方原句</div>
-      <div id="doc-wrap">${docBlock(l)}</div>
-    </div>`:""}
-    <div class="sec">
-      <div class="lab">这节的英文词（读文档会遇到 · 学完进复习库）</div>
-      ${l.words.map(w=>wcardHtml(w)).join("")}
-      <button class="gen-btn ghost" style="margin-top:4px" onclick="addWordsToSrs('${l.id}')">＋ 把这 ${l.words.length} 个词加入 SRS 复习</button>
-    </div>
-    <div class="sec">
-      <div class="lab">故意弄坏它 · 把报错当英语教材</div>
-      <div id="break-wrap">${breakBlock(l)}</div>
-    </div>
-    <div class="sec">
-      <div class="lab">动手练 · 写代码才学得会</div>
-      <div id="exercise-wrap">${exerciseBlock(l)}</div>
-    </div>
+    ${foldSec("explain","逐行讲解 · AI",`<div id="explain-wrap">${explainBlock(l)}</div>`)}
+    ${l.docQuote?foldSec("doc","文档里长这样 · Python 官方原句",`<div id="doc-wrap">${docBlock(l)}</div>`):""}
+    ${foldSec("words","这节的英文词（读文档会遇到 · 学完进复习库）",
+      l.words.map(w=>wcardHtml(w)).join("")+`<button class="gen-btn ghost" style="margin-top:4px" onclick="addWordsToSrs('${l.id}')">＋ 把这 ${l.words.length} 个词加入 SRS 复习</button>`)}
+    ${foldSec("break","故意弄坏它 · 把报错当英语教材",`<div id="break-wrap">${breakBlock(l)}</div>`)}
+    ${foldSec("exercise","动手练 · 写代码才学得会",`<div id="exercise-wrap">${exerciseBlock(l)}</div>`)}
     <button class="done-btn ${done?'undo':''}" onclick="toggleDone('${l.id}')">${done?'✓ 已完成（点此取消）':'标记完成 · 让 agent 进化到 '+l.agentVersion}</button>
   `;
 }
@@ -478,7 +482,7 @@ function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").repl
 function explainBlock(l){
   const cached=aiCache[l.id+"_explain"];
   if(cached){
-    return `<div class="ai-explain"><div class="ai-body" id="explain-body">${esc(cached)}</div>
+    return `<div class="ai-explain"><div class="ai-body" id="explain-body">${esc(stripMd(cached))}</div>
       <div class="ai-foot">已缓存 · <span onclick="genExplain('${l.id}',true)" style="cursor:pointer;color:var(--amber)">重新生成</span></div></div>`;
   }
   return `<button class="gen-btn" id="explain-btn" onclick="genExplain('${l.id}')">🧠 让 AI 逐行讲解这段代码</button>`;
@@ -504,7 +508,7 @@ function docBlock(l){
   const cached=aiCache[l.id+"_doc"];
   const quote=`<div class="docquote"><div class="q">"${esc(l.docQuote)}"</div><div class="src">— Python 官方文档</div></div>`;
   if(cached){
-    return quote+`<div class="ai-explain" style="margin-top:8px"><div class="ai-body">${esc(cached)}</div><div class="ai-foot">已缓存 · <span onclick="genDoc('${l.id}')" style="cursor:pointer;color:var(--amber)">重新生成</span></div></div>`;
+    return quote+`<div class="ai-explain" style="margin-top:8px"><div class="ai-body">${esc(stripMd(cached))}</div><div class="ai-foot">已缓存 · <span onclick="genDoc('${l.id}')" style="cursor:pointer;color:var(--amber)">重新生成</span></div></div>`;
   }
   return quote+`<button class="gen-btn ghost" id="doc-btn" style="margin-top:8px" onclick="genDoc('${l.id}')">翻译这句 + 点出生词</button>`;
 }
@@ -522,7 +526,7 @@ async function genDoc(id){
 function breakBlock(l){
   return l.breakIt.map((code,i)=>{
     const cached=aiCache[l.id+"_break"+i];
-    const why=cached?`<div class="why">${esc(cached)}</div>`
+    const why=cached?`<div class="why">${esc(stripMd(cached))}</div>`
       :`<button class="gen-btn ghost" style="margin-top:6px" onclick="genBreak('${l.id}',${i})">这个为什么会报错？</button>`;
     return `<div class="breakrow"><div class="codeblock err">${esc(code)}</div>${why}</div>`;
   }).join("");
@@ -545,7 +549,7 @@ function exerciseBlock(l){
   if(!q){
     return `<button class="gen-btn ghost" id="exq-btn" onclick="genExercise('${l.id}')">✍️ 出一道练习题</button>`;
   }
-  return `<div class="ai-explain"><div class="ai-body" style="white-space:pre-wrap">${esc(q)}</div></div>
+  return `<div class="ai-explain"><div class="ai-body" style="white-space:pre-wrap">${esc(stripMd(q))}</div></div>
     <textarea id="ex-input" placeholder="在这里写你的答案（代码或预测的输出）" style="width:100%;min-height:70px;margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:.85rem;background:var(--bg);color:var(--ink);resize:vertical"></textarea>
     <button class="gen-btn" id="ex-check-btn" style="margin-top:6px" onclick="checkExercise('${l.id}')">提交，让 AI 批改</button>
     <div id="ex-result" style="margin-top:8px"></div>
@@ -668,6 +672,7 @@ if(typeof window!=="undefined"){
   window.togglePanel=togglePanel;window.saveCfg=saveCfg;window.genExplain=genExplain;
   window.genDoc=genDoc;window.genBreak=genBreak;window.quickToggleThink=quickToggleThink;
   window.genExercise=genExercise;window.checkExercise=checkExercise;
+  window.toggleFold=toggleFold;
 }
 </script>
 </body>
