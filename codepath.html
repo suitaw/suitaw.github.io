@@ -203,6 +203,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",s
 <script>
 const CFG_KEY="vocab_v5_cfg";
 const SRS_KEY="gh_vocab_srs_v1";
+const IMP_KEY="vocab_v5_imported";  // 与 Vocab AI 共用，Codepath 学的词写这里才能进 Vocab 复习队列
 const PROG_KEY="codepath_progress_v1";
 const CACHE_KEY="codepath_ai_cache_v1";
 const PROFILE_KEY="codepath_profile_v1";
@@ -465,6 +466,10 @@ function renderLesson(v){
       <div class="lab">故意弄坏它 · 把报错当英语教材</div>
       <div id="break-wrap">${breakBlock(l)}</div>
     </div>
+    <div class="sec">
+      <div class="lab">动手练 · 写代码才学得会</div>
+      <div id="exercise-wrap">${exerciseBlock(l)}</div>
+    </div>
     <button class="done-btn ${done?'undo':''}" onclick="toggleDone('${l.id}')">${done?'✓ 已完成（点此取消）':'标记完成 · 让 agent 进化到 '+l.agentVersion}</button>
   `;
 }
@@ -534,18 +539,68 @@ async function genBreak(id,i){
   document.getElementById("break-wrap").innerHTML=breakBlock(l);
 }
 
+// ===== 动手练：AI 出一道小题，学生写答案，AI 批改 =====
+function exerciseBlock(l){
+  const q=aiCache[l.id+"_exq"];  // 题目（缓存，固定）
+  if(!q){
+    return `<button class="gen-btn ghost" id="exq-btn" onclick="genExercise('${l.id}')">✍️ 出一道练习题</button>`;
+  }
+  return `<div class="ai-explain"><div class="ai-body" style="white-space:pre-wrap">${esc(q)}</div></div>
+    <textarea id="ex-input" placeholder="在这里写你的答案（代码或预测的输出）" style="width:100%;min-height:70px;margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:.85rem;background:var(--bg);color:var(--ink);resize:vertical"></textarea>
+    <button class="gen-btn" id="ex-check-btn" style="margin-top:6px" onclick="checkExercise('${l.id}')">提交，让 AI 批改</button>
+    <div id="ex-result" style="margin-top:8px"></div>
+    <div class="ai-foot" style="margin-top:4px">不满意这题？<span onclick="genExercise('${l.id}',true)" style="cursor:pointer;color:var(--amber)">换一题</span></div>`;
+}
+async function genExercise(id,regen){
+  const l=lessonById(id);
+  const btn=document.getElementById("exq-btn");if(btn){btn.disabled=true;btn.textContent="出题中…"}
+  if(regen){delete aiCache[id+"_exq"]}
+  const sys=withProfile("你是编程老师，给中文初学者出一道紧扣本节代码的小练习。题型三选一：1)改写代码完成一个小目标 2)填空补全代码 3)预测这段代码的输出。要求：只出一题，难度贴合本节，题干用简单中文，必要时给出代码片段。不要给答案。重要：纯文本，不要用 Markdown 符号。120 字内。");
+  const usr=`本节课：${l.title}（${l.titleZh}）\n本节代码：\n${l.code}\n运行结果：${l.output}\n本节主题：${l.brief}`;
+  try{
+    let full=await callAI([{role:"user",content:usr}],sys,400);
+    aiCache[id+"_exq"]=stripMd(full);save(CACHE_KEY,aiCache);
+  }catch(e){toast("出题失败："+e.message)}
+  const w=document.getElementById("exercise-wrap");if(w)w.innerHTML=exerciseBlock(l);
+}
+async function checkExercise(id){
+  const l=lessonById(id);
+  const ans=(document.getElementById("ex-input")||{}).value||"";
+  if(!ans.trim())return toast("先写下你的答案");
+  const q=aiCache[id+"_exq"]||"";
+  const btn=document.getElementById("ex-check-btn");if(btn){btn.disabled=true;btn.textContent="批改中…"}
+  const res=document.getElementById("ex-result");
+  res.innerHTML=`<div class="ai-explain"><div class="ai-body typing"></div></div>`;
+  const sys=withProfile("你是鼓励式的编程老师，批改中文初学者的练习答案。请：1)先说对错（对就肯定，错就温和指出）2)解释为什么 3)给出参考答案。语气友好，别打击。重要：纯文本，不要用 Markdown 符号。180 字内。");
+  const usr=`题目：${q}\n参考的正确代码（本节）：${l.code}\n运行结果：${l.output}\n学生的答案：${ans}`;
+  try{
+    let full=await callAI([{role:"user",content:usr}],sys,600);
+    res.innerHTML=`<div class="ai-explain"><div class="ai-body" style="white-space:pre-wrap">${esc(stripMd(full))}</div></div>`;
+  }catch(e){res.innerHTML=`<div class="ai-explain"><div class="ai-body" style="color:var(--red)">批改失败：${e.message}</div></div>`}
+  if(btn){btn.disabled=false;btn.textContent="提交，让 AI 批改"}
+}
+
 function wcardHtml(w){
   return `<div class="wcard"><div class="wh"><span class="w">${w.word}</span><span class="ph">${w.phonetic||""}</span><span class="pos">${w.pos||""}</span></div>
     <div class="cn">${w.cn}</div>${w.tip?`<div class="tip">💡 ${w.tip}</div>`:""}</div>`;
 }
 function addWordsToSrs(id){
-  const l=lessonById(id);let added=0;
+  const l=lessonById(id);
+  let imported=load(IMP_KEY,[]);
+  let added=0;
   l.words.forEach(w=>{
     const wid="cp_"+id+"_"+w.word;
-    if(!srs[wid]){srs[wid]={ef:2.5,interval:0,reps:0,due:Date.now()};added++}
+    // 完整词条写进 Vocab 共用词库（cat=codepath），这样才会出现在 Vocab 的 allWords/复习队列里
+    if(!imported.some(x=>x.id===wid)){
+      imported.push({id:wid,word:w.word,phonetic:w.phonetic||"",pos:w.pos||"",cn:w.cn||"",tip:w.tip||"",exampleEn:w.exampleEn||"",exampleCn:w.exampleCn||"",scene:w.scene||"",cat:"codepath"});
+      added++;
+    }
+    // 同时建 SRS 记忆条目，立即可复习
+    if(!srs[wid])srs[wid]={ef:2.5,interval:0,reps:0,due:Date.now()};
   });
+  save(IMP_KEY,imported);
   save(SRS_KEY,srs);
-  toast(added?`已加入 ${added} 个词，去 Vocab AI 复习`:"这些词已在复习库里了");
+  toast(added?`已加入 ${added} 个词，去 Vocab AI「复习/库」里复习`:"这些词已在复习库里了");
 }
 
 function toggleDone(id){
@@ -612,6 +667,7 @@ if(typeof window!=="undefined"){
   window.toggleTheme=toggleTheme;window.stripMd=stripMd;window.sendChat=sendChat;
   window.togglePanel=togglePanel;window.saveCfg=saveCfg;window.genExplain=genExplain;
   window.genDoc=genDoc;window.genBreak=genBreak;window.quickToggleThink=quickToggleThink;
+  window.genExercise=genExercise;window.checkExercise=checkExercise;
 }
 </script>
 </body>

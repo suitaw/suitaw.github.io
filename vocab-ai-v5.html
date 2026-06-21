@@ -186,12 +186,14 @@ let phrases=load(PHRASE_KEY,[]);  // [{id,phrase,cn,tip}]
 let grammar=load(GRAMMAR_KEY,[]); // [{id,point,cn,example}]
 function addPhrase(p){
   if(phrases.some(x=>x.phrase.toLowerCase()===(p.phrase||"").toLowerCase()))return false;
-  phrases.push({id:"ph"+Date.now()+"_"+phrases.length,phrase:p.phrase,cn:p.cn||"",tip:p.tip||""});
+  const validT=["phrasal","collocation","prep","other"];
+  phrases.push({id:"ph"+Date.now()+"_"+phrases.length,phrase:p.phrase,cn:p.cn||"",tip:p.tip||"",type:validT.includes(p.type)?p.type:"other"});
   save(PHRASE_KEY,phrases);return true;
 }
 function addGrammar(g){
   if(grammar.some(x=>x.point===(g.point||"")))return false;
-  grammar.push({id:"gr"+Date.now()+"_"+grammar.length,point:g.point,cn:g.cn||"",example:g.example||""});
+  const validTopic=["tense","word","sentence","other"];
+  grammar.push({id:"gr"+Date.now()+"_"+grammar.length,point:g.point,cn:g.cn||"",example:g.example||"",topic:validTopic.includes(g.topic)?g.topic:"other"});
   save(GRAMMAR_KEY,grammar);return true;
 }
 
@@ -320,7 +322,7 @@ function render(){
   bindSwipe();
 }
 function catName(c){
-  const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏"};
+  const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",codepath:"Codepath 编程"};
   return fixed[c]||c;
 }
 function backToHome(){studyStarted=false;cur=null;flipped=false;viewed=[];go("home")}
@@ -439,8 +441,8 @@ async function dissectExample(){
   box.style.display="block";box.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
   const sys=`你是英语老师，面对中文母语初学者。拆解给定英文例句，帮学生看懂结构、学会记忆。只返回JSON，不要任何其他文字：
 {"structure":"用简单中文一句话说这句的主干结构（主谓宾等），不堆术语",
-"phrases":[{"phrase":"句中值得记的短语/搭配（英文原样）","cn":"中文意思","tip":"怎么用/记忆提示","phonetic":"音标带斜杠","exampleEn":"一个用到它的简单例句","exampleCn":"例句中文"}],
-"grammar":[{"point":"涉及的语法点名称（如：一般现在时、动词不定式）","cn":"用简单中文解释它在这句的作用","example":"再给一个简单例句"}],
+"phrases":[{"phrase":"句中值得记的短语/搭配（英文原样）","cn":"中文意思","tip":"怎么用/记忆提示","phonetic":"音标带斜杠","exampleEn":"一个用到它的简单例句","exampleCn":"例句中文","type":"短语类型，只能填：phrasal(短语动词如set up)、collocation(固定搭配如by default)、prep(介词短语如word by word)、other"}],
+"grammar":[{"point":"涉及的语法点名称（如：一般现在时、动词不定式）","cn":"用简单中文解释它在这句的作用","example":"再给一个简单例句","topic":"语法主题，只能填：tense(时态)、word(词法如词性/单复数)、sentence(句法如从句/语序)、other"}],
 "memory":"给学生一句记住这个目标词或这句话的方法（联想/谐音/场景皆可）"}
 phrases 挑 1-3 个最有价值的，grammar 挑 1-2 个，不要硬凑。`;
   try{
@@ -630,22 +632,72 @@ function renderMistake(v){
 function switchMistakeTab(t){mistakeTab=t;renderMistake(document.getElementById("view"))}
 function renderPhraseTab(v,tabBar){
   if(!phrases.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>短语库是空的</h2><p>背单词翻面后点“🔍 拆解这句话”，把有用的短语加进来。</p></div></div>`;return}
-  v.innerHTML=`<div style="padding-top:8px">${tabBar}
-    ${phrases.map(p=>`<div class="mistake-item">
+  const groups=[["phrasal","短语动词"],["collocation","固定搭配"],["prep","介词短语"],["other","其他"]];
+  let body="";
+  groups.forEach(([key,name])=>{
+    const list=phrases.filter(p=>(p.type||"other")===key);
+    if(!list.length)return;
+    body+=`<div style="font-size:.72rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600">${name}（${list.length}）</div>`;
+    body+=list.map(p=>{
+      const inSrs=allWords().some(w=>w.id===p.srsId);
+      return `<div class="mistake-item">
       <div style="flex:1"><div class="w" style="font-size:1rem">${p.phrase}</div><div class="c">${p.cn}${p.tip?` · ${p.tip}`:""}</div></div>
       <div style="display:flex;gap:6px">
+        <button class="gear" onclick="phraseToReview('${p.id}')" ${inSrs?"disabled":""}>${inSrs?"复习中":"加复习"}</button>
         <button class="gear" onclick="speakWord('${p.phrase.replace(/'/g,"")}')">🔊</button>
         <button class="gear" onclick="delPhrase('${p.id}')">🗑</button>
       </div>
-    </div>`).join("")}</div>`;
+    </div>`}).join("");
+  });
+  v.innerHTML=`<div style="padding-top:8px">${tabBar}
+    <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:4px">按类型分组。点“加复习”把短语当词条进 SRS，像单词一样考你。</p>
+    ${body}</div>`;
+}
+// 短语→当词条进词库+SRS，能像单词一样复习
+function phraseToReview(id){
+  const p=phrases.find(x=>x.id===id);if(!p)return;
+  if(p.srsId&&allWords().some(w=>w.id===p.srsId))return toast("已在复习中");
+  const wid="ph_"+id;
+  imported.push({id:wid,word:p.phrase,phonetic:"",pos:"phr.",cn:p.cn||"",tip:p.tip||"",exampleEn:"",exampleCn:"",scene:"",cat:"import"});
+  save(IMP_KEY,imported);
+  srs[wid]={ef:2.5,interval:0,reps:0,due:Date.now()};save(SRS_KEY,srs);
+  p.srsId=wid;save(PHRASE_KEY,phrases);
+  toast("已加入复习，去“学习”里的“我的收藏”背它");
+  renderMistake(document.getElementById("view"));
 }
 function renderGrammarTab(v,tabBar){
   if(!grammar.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>语法库是空的</h2><p>拆解例句时点“+语法库”，把语法点收集到这里。</p></div></div>`;return}
+  const groups=[["tense","时态"],["word","词法"],["sentence","句法"],["other","其他"]];
+  let body="";
+  groups.forEach(([key,name])=>{
+    const list=grammar.filter(g=>(g.topic||"other")===key);
+    if(!list.length)return;
+    body+=`<div style="font-size:.72rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600">${name}（${list.length}）</div>`;
+    body+=list.map(g=>`<div class="mistake-item" style="flex-direction:column;align-items:stretch">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1"><div class="w" style="font-size:1rem">${g.point}</div><div class="c">${g.cn}</div>${g.example?`<div class="c" style="margin-top:3px;font-style:italic">例：${g.example}</div>`:""}</div>
+        <button class="gear" onclick="delGrammar('${g.id}')">🗑</button>
+      </div>
+      <button class="gear" style="margin-top:8px" onclick="explainGrammar('${g.id}')">📖 展开详解（AI 讲透+多给例句）</button>
+      <div id="gexp-${g.id}" style="margin-top:8px"></div>
+    </div>`).join("");
+  });
   v.innerHTML=`<div style="padding-top:8px">${tabBar}
-    ${grammar.map(g=>`<div class="mistake-item" style="align-items:flex-start">
-      <div style="flex:1"><div class="w" style="font-size:1rem">${g.point}</div><div class="c">${g.cn}</div>${g.example?`<div class="c" style="margin-top:3px;font-style:italic">例：${g.example}</div>`:""}</div>
-      <button class="gear" onclick="delGrammar('${g.id}')">🗑</button>
-    </div>`).join("")}</div>`;
+    <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:4px">按主题分组。语法重在理解——点“展开详解”让 AI 讲透，不做闪卡考试。</p>
+    ${body}</div>`;
+}
+// 语法点详解：AI 现场展开（缓存到 grammar 条目）
+async function explainGrammar(id){
+  const g=grammar.find(x=>x.point&&x.id===id);if(!g)return;
+  const box=document.getElementById("gexp-"+id);if(!box)return;
+  if(g.detail){box.innerHTML=`<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;white-space:pre-wrap">${g.detail}</div>`;return}
+  box.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
+  const sys="你是耐心的英语老师，面向中文初学者。把给定语法点讲透：用简单中文解释它是什么、什么时候用、初学者常踩的坑，并给 2-3 个由易到难的例句（英文+中文）。纯文本，不要 Markdown 符号。260 字内。";
+  try{
+    const text=await callAI([{role:"user",content:`语法点：${g.point}\n已知简述：${g.cn}`}],sys,800);
+    g.detail=text;save(GRAMMAR_KEY,grammar);
+    box.innerHTML=`<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;white-space:pre-wrap">${text}</div>`;
+  }catch(e){box.innerHTML=`<div style="font-size:.78rem;color:var(--accent)">详解失败：${e.message||"检查 Key"}</div>`}
 }
 function delPhrase(id){const i=phrases.findIndex(p=>p.id===id);if(i>=0){phrases.splice(i,1);save(PHRASE_KEY,phrases);renderMistake(document.getElementById("view"))}}
 function delGrammar(id){const i=grammar.findIndex(g=>g.id===id);if(i>=0){grammar.splice(i,1);save(GRAMMAR_KEY,grammar);renderMistake(document.getElementById("view"))}}
