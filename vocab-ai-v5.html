@@ -320,6 +320,11 @@ function render(){
       ${flipped?aiHtml():""}
     </div>`;
   bindSwipe();
+  // 翻面后：若该词已拆解过，自动恢复显示（修复切走再回来丢失）
+  if(flipped&&cur&&dissectCache[cur.id]){
+    const box=document.getElementById("dissect-result");
+    if(box){lastDissect=dissectCache[cur.id];box.style.display="block";renderDissect(box,lastDissect)}
+  }
 }
 function catName(c){
   const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",codepath:"Codepath 编程"};
@@ -432,7 +437,10 @@ function aiHtml(){return `
 function flip(){flipped=true;render()}
 
 // ===== 例句拆解（短语/语法/记忆法），结果可一键入库 =====
-let lastDissect=null;  // 缓存当前拆解结果，供入库按钮取数据
+// 拆解结果缓存：按词 id 存，翻面重渲染/切走再回来都能恢复
+const DISSECT_KEY="vocab_v5_dissect";
+let dissectCache=load(DISSECT_KEY,{});
+let lastDissect=null;  // 当前词的拆解结果，供入库按钮取数据
 async function dissectExample(){
   if(!cur||!cur.exampleEn)return toast("这个词没有例句");
   const btn=document.getElementById("dissect-btn");
@@ -454,6 +462,7 @@ phrases 挑 1-3 个最有价值的，grammar 挑 1-2 个，不要硬凑。`;
     }
     if(!o)throw new Error("解析失败");
     lastDissect=o;
+    dissectCache[cur.id]=o;save(DISSECT_KEY,dissectCache);  // 缓存，下次翻面直接显示
     renderDissect(box,o);
   }catch(e){
     box.innerHTML=`<div style="font-size:.78rem;color:var(--accent)">拆解失败：${e.message||"检查 Key"}</div>`;
@@ -582,19 +591,33 @@ function rate(q){
   cur=queue[0]||null;flipped=false;render();
 }
 
-// ===== 发音（有道真人美音，失败退回浏览器合成）=====
-function playAudio(word,btn){
-  const w=word.trim();if(!w)return;
+// ===== 发音 =====
+// 单词：有道真人发音（更准）；句子：浏览器语音合成（带语调，不机械）
+function isSentence(s){return /\s/.test(s.trim())&&s.trim().split(/\s+/).length>=2}
+function speakSynth(text,btn){
+  const done=()=>{if(btn)btn.classList.remove("playing")};
+  if(!window.speechSynthesis){done();toast("此浏览器不支持句子朗读");return}
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="en-US";u.rate=.92;u.pitch=1;
+  // 尽量选一个英语嗓音
+  const pick=()=>{
+    const vs=speechSynthesis.getVoices().filter(v=>/en[-_]/i.test(v.lang));
+    if(vs.length){const pref=vs.find(v=>/US|United States/i.test(v.lang+v.name));u.voice=pref||vs[0]}
+  };
+  pick();if(!u.voice)speechSynthesis.onvoiceschanged=pick;
+  u.onend=done;u.onerror=done;
+  speechSynthesis.cancel();speechSynthesis.speak(u);
+}
+function playAudio(text,btn){
+  const w=(text||"").trim();if(!w)return;
   if(btn)btn.classList.add("playing");
   const done=()=>{if(btn)btn.classList.remove("playing")};
-  // type=0 美音, type=2 英音
+  if(isSentence(w))return speakSynth(w,btn);  // 句子走合成，自然
+  // 单词：有道美音，失败再退回合成
   const a=new Audio("https://dict.youdao.com/dictvoice?type=0&audio="+encodeURIComponent(w));
   a.onended=done;
-  a.onerror=()=>{ // 有道挂了/没网 -> 浏览器合成兜底
-    if(window.speechSynthesis){const u=new SpeechSynthesisUtterance(w);u.lang="en-US";u.rate=.9;u.onend=done;speechSynthesis.cancel();speechSynthesis.speak(u)}
-    else{done();toast("发音加载失败")}
-  };
-  a.play().catch(a.onerror);
+  a.onerror=()=>speakSynth(w,btn);
+  a.play().catch(()=>speakSynth(w,btn));
 }
 function speak(btn){playAudio(cur.word,btn)}
 
