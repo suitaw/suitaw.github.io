@@ -181,7 +181,7 @@ function parseJsonArrayLoose(text){
   while((m=re.exec(t))){try{out.push(JSON.parse(m[0]))}catch(e){}}
   return out;
 }
-function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1600)}
+function toast(m,ms){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),ms||1600)}
 // 去 Markdown 符号兜底（豆包爱用 #、DeepSeek 爱用 **）
 function stripMd(s){
   if(!s)return s;
@@ -1134,10 +1134,16 @@ function renderAssistant(v){
         ["非谓语动词是什么","系统讲不定式、动名词、分词这些非谓语动词分别是什么、什么时候用、怎么区分，配例句。"]
       ].map(([t,q])=>`<button class="gear" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:10px 12px" onclick="askTopic(${JSON.stringify(q).replace(/"/g,'&quot;')})">📖 ${t}</button>`).join("")}
     </div>`}
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:.72rem;color:var(--ink-dim)">
-      <span>模型：${currentModelLabel()}</span>
-      <button onclick="toggleThink()" style="padding:5px 12px;border:1px solid ${on?'var(--accent)':'var(--line)'};background:${on?'var(--accent-soft)':'var(--card)'};color:${on?'var(--accent)':'var(--ink-dim)'};border-radius:14px;font-size:.72rem;font-family:inherit;font-weight:${on?'600':'400'}">${on?'🧠 深度思考 开':'深度思考 关'}</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px">
+      <select onchange="switchProvider(this.value)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-family:inherit;font-size:.74rem;background:var(--card);color:var(--ink)">
+        ${[["deepseek","DeepSeek"],["doubao","豆包"],["anthropic","Claude"],["openrouter","OpenRouter"]].map(([k,name])=>{
+          const hasKey=cfg.keys&&cfg.keys[k];
+          return `<option value="${k}" ${cfg.provider===k?"selected":""}>${name}${hasKey?"":"（未填Key）"}${VISION_PROVIDERS.includes(k)?" · 可看图":""}</option>`;
+        }).join("")}
+      </select>
+      <button onclick="toggleThink()" style="padding:7px 12px;border:1px solid ${on?'var(--accent)':'var(--line)'};background:${on?'var(--accent-soft)':'var(--card)'};color:${on?'var(--accent)':'var(--ink-dim)'};border-radius:14px;font-size:.72rem;font-family:inherit;font-weight:${on?'600':'400'};white-space:nowrap">${on?'🧠 思考开':'思考关'}</button>
     </div>
+    <div style="font-size:.68rem;color:var(--ink-dim);margin-bottom:8px">当前：${currentModelLabel()}</div>
     <div id="chat-img-preview" style="margin-bottom:6px"></div>
     <div style="display:flex;gap:8px;align-items:flex-end">
       <textarea id="chat-input" placeholder="问任何问题，或传张图片问（截图/拍照）" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;resize:vertical;min-height:48px;background:var(--paper)"></textarea>
@@ -1159,6 +1165,14 @@ function onPickChatImage(input){
 function clearChatImage(){chatImage=null;const p=document.getElementById("chat-img-preview");if(p)p.innerHTML=""}
 function toggleThink(){
   cfg.thinkOn=!cfg.thinkOn;save(CFG_KEY,cfg);
+  renderAssistant(document.getElementById("view"));
+}
+// AI助手页直接切服务商（带出对应 Key）
+function switchProvider(p){
+  cfg.provider=p;
+  cfg.apikey=(cfg.keys&&cfg.keys[p])||"";
+  save(CFG_KEY,cfg);
+  if(!cfg.apikey)toast(`${p} 还没填 Key，去设置里填`);
   renderAssistant(document.getElementById("view"));
 }
 // 点系统话题：直接以该问题发问
@@ -1483,13 +1497,21 @@ async function quickAddGo(mode){
 }
 function finishQuickAdd(arr,valid,res){
   let n=0,dup=0;
+  const byCat={};  // 统计每类加了几个
   arr.forEach(c=>{
     if(!c.word)return;
     if(allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase())){dup++;return}
-    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn||"",tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",cat:valid.includes(c.cat)?c.cat:"other"});
+    const cat=valid.includes(c.cat)?c.cat:"other";
+    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn||"",tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",cat});
+    byCat[cat]=(byCat[cat]||0)+1;
   });
   save(IMP_KEY,imported);
-  toast(`已加入 ${n} 个词`+(dup?`（${dup} 个已有跳过）`:""));
+  if(n){
+    const detail=Object.keys(byCat).map(c=>`${catName(c)} ${byCat[c]}`).join("、");
+    toast(`已加入 ${n} 个词 → ${detail}`+(dup?`（${dup} 个已有跳过）`:""),3200);
+  }else{
+    toast(dup?`这 ${dup} 个词都已在库里了`:"没有可加入的词");
+  }
   closeQuickAdd();
   if(page==="home"&&!studyStarted)render();
 }
