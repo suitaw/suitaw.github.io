@@ -121,7 +121,11 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <label>火山方舟接入点 ID</label>
       <input type="text" id="endpoint" placeholder="ep-xxxx（在火山控制台创建推理接入点后获得）" autocomplete="off">
     </div>
-    <div class="hint">Key 只存在你本机浏览器里，不上传。造句批改是可选功能，不填 Key 也能正常背单词。<br>豆包用的是火山方舟接入点，需要填 ep-xxxx；DeepSeek 直接填 sk- 开头的 Key。</div>
+    <div id="model-row" style="display:none">
+      <label>模型</label>
+      <select id="model"></select>
+    </div>
+    <div class="hint">Key 只存在你本机浏览器里，不上传。造句批改是可选功能，不填 Key 也能正常背单词。<br>豆包用的是火山方舟接入点，需要填 ep-xxxx；DeepSeek 直接填 sk- 开头的 Key。深度思考开关在「AI 助手」页。</div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="ai-btn" style="flex:1" onclick="saveCfg()">保存设置</button>
       <button class="gear" onclick="clearKey()">清空 Key</button>
@@ -148,8 +152,9 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 const SRS_KEY="gh_vocab_srs_v1";
 const CFG_KEY="vocab_v5_cfg";
 let srs=load(SRS_KEY,{});          // {id:{ef,interval,reps,due}}
-let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",scope:"all",chatTier:"fast"});
-if(!cfg.chatTier)cfg.chatTier="fast";
+let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",scope:"all",models:{},thinkOn:false});
+if(!cfg.models)cfg.models={};
+if(typeof cfg.thinkOn!=="boolean")cfg.thinkOn=false;
 let queue=[], cur=null, flipped=false, page="home";
 
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}}
@@ -166,12 +171,23 @@ function allWords(){return WORDS.concat(imported)}
 function togglePanel(){document.getElementById("panel").classList.toggle("open")}
 function bindCfg(){
   const p=document.getElementById("provider"),k=document.getElementById("apikey"),ep=document.getElementById("endpoint"),epRow=document.getElementById("ep-row");
+  const mRow=document.getElementById("model-row"),mSel=document.getElementById("model");
   p.value=cfg.provider;k.value=cfg.apikey;ep.value=cfg.endpoint||"";
+  // 渲染模型下拉（豆包用ep不显示模型下拉）
+  const syncModelRow=()=>{
+    const prov=cfg.provider;
+    if(prov==="doubao"||!MODELS[prov]){mRow.style.display="none";return}
+    mRow.style.display="block";
+    const list=MODELS[prov];
+    mSel.innerHTML=list.map(m=>`<option value="${m[0]}">${m[1]}</option>`).join("");
+    mSel.value=currentModel();
+  };
   const syncEpRow=()=>{epRow.style.display=cfg.provider==="doubao"?"block":"none"};
-  syncEpRow();
-  p.onchange=()=>{cfg.provider=p.value;save(CFG_KEY,cfg);syncEpRow()};
+  syncEpRow();syncModelRow();
+  p.onchange=()=>{cfg.provider=p.value;save(CFG_KEY,cfg);syncEpRow();syncModelRow()};
   k.onchange=()=>{cfg.apikey=k.value.trim();save(CFG_KEY,cfg)};
   ep.onchange=()=>{cfg.endpoint=ep.value.trim();save(CFG_KEY,cfg)};
+  mSel.onchange=()=>{cfg.models[cfg.provider]=mSel.value;save(CFG_KEY,cfg)};
 }
 // 显式保存：读当前控件值存盘，折叠面板
 function saveCfg(){
@@ -202,6 +218,22 @@ function grade(id,q){ // q: 0=again,3=hard,4=good,5=easy
   }
   c.due=Date.now()+c.interval*86400000;
   srs[id]=c;save(SRS_KEY,srs);
+  logStudy();  // 记录今日学习
+}
+// 每日学习量记录 {YYYY-MM-DD: 次数}
+const DAILY_KEY="vocab_v5_daily";
+let daily=load(DAILY_KEY,{});
+function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function logStudy(){const t=todayStr();daily[t]=(daily[t]||0)+1;save(DAILY_KEY,daily)}
+// 连续打卡天数（从今天往回数）
+function streakDays(){
+  let n=0;const d=new Date();
+  for(;;){
+    const s=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    if(daily[s]){n++;d.setDate(d.getDate()-1)}
+    else break;
+  }
+  return n;
 }
 
 function looseCatsNow(){
@@ -460,13 +492,62 @@ function speakWord(w){playAudio(w,null)}
 
 // ===== 统计 =====
 function renderStats(v){
-  const total=allWords().filter(inScope).length;
-  const seen=allWords().filter(inScope).filter(w=>srs[w.id]&&srs[w.id].reps>0).length;
-  const mastered=allWords().filter(inScope).filter(w=>srs[w.id]&&srs[w.id].interval>=6).length;
-  v.innerHTML=`<div class="done" style="padding-top:24px">
-    <h2>${seen} / ${total}</h2><p>已开始记忆的词</p>
-    <p style="margin-top:16px;font-size:1.05rem;color:var(--green)">${mastered} 个已稳固（间隔≥6天）</p>
-    <p style="margin-top:4px">复习本 ${mistakes.length} 个待复习</p>
+  const all=allWords();
+  const total=all.length;
+  const seen=all.filter(w=>srs[w.id]&&srs[w.id].reps>0).length;
+  const mastered=all.filter(w=>srs[w.id]&&srs[w.id].interval>=6).length;
+  const streak=streakDays();
+  const todayCount=daily[todayStr()]||0;
+  // 最近7天数据
+  const last7=[];
+  const dd=new Date();
+  for(let i=6;i>=0;i--){
+    const d=new Date();d.setDate(dd.getDate()-i);
+    const s=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    last7.push({day:["日","一","二","三","四","五","六"][d.getDay()],n:daily[s]||0});
+  }
+  const maxN=Math.max(1,...last7.map(x=>x.n));
+  // 各分类掌握度
+  const catList=[["nce2","新概念二"],["dev","科技开发"],["tv","影视口语"],["life","日常生活"]];
+  const catBars=catList.map(([k,name])=>{
+    const ws=all.filter(w=>w.cat===k);if(!ws.length)return "";
+    const m=ws.filter(w=>srs[w.id]&&srs[w.id].interval>=6).length;
+    const pct=Math.round(m/ws.length*100);
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:3px"><span>${name}</span><span style="color:var(--ink-dim)">${m}/${ws.length}</span></div>
+      <div style="height:8px;background:var(--paper2);border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--green);border-radius:4px"></div></div>
+    </div>`;
+  }).join("");
+
+  v.innerHTML=`<div style="padding-top:8px">
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <div style="flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-family:Fraunces,serif;font-size:1.8rem;font-weight:700;color:var(--accent)">${streak}</div>
+        <div style="font-size:.72rem;color:var(--ink-dim)">连续打卡(天)</div>
+      </div>
+      <div style="flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-family:Fraunces,serif;font-size:1.8rem;font-weight:700;color:var(--accent)">${todayCount}</div>
+        <div style="font-size:.72rem;color:var(--ink-dim)">今日已背</div>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:.8rem;font-weight:600;margin-bottom:12px">最近 7 天</div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;height:80px;gap:6px">
+        ${last7.map(x=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+          <div style="font-size:.62rem;color:var(--ink-dim);margin-bottom:2px">${x.n||""}</div>
+          <div style="width:100%;height:${Math.round(x.n/maxN*60)}px;min-height:${x.n?'4px':'0'};background:var(--accent);border-radius:3px 3px 0 0;opacity:${x.n?'1':'.15'}"></div>
+          <div style="font-size:.64rem;color:var(--ink-dim);margin-top:4px">${x.day}</div>
+        </div>`).join("")}
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:.8rem;font-weight:600;margin-bottom:12px">总进度：${seen}/${total} 已开始，${mastered} 已稳固</div>
+      ${catBars}
+    </div>
+
+    <p style="text-align:center;font-size:.78rem;color:var(--ink-dim)">复习本 ${mistakes.length} 个待复习</p>
   </div>`;
 }
 
@@ -489,14 +570,14 @@ async function callAI(messages, sys, maxTokens=600, images=null){
       blocks.push({type:"text",text:typeof last.content==="string"?last.content:""});
       last.content=blocks;
     }
-    body={model:"claude-haiku-4-5-20251001",max_tokens:maxTokens,messages:msgs};
+    body={model:currentModel(),max_tokens:maxTokens,messages:msgs};
     if(sys)body.system=sys;
     readText=d=>(d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
   }else{
     if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
     else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
-    const model=p==="doubao"?cfg.endpoint:p==="deepseek"?"deepseek-v4-flash":"anthropic/claude-3.5-haiku";
+    const model=p==="doubao"?cfg.endpoint:currentModel();
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
     let msgs=sys?[{role:"system",content:sys},...messages]:messages.slice();
     if(images&&images.length){          // OpenAI 兼容: image_url data URL
@@ -518,33 +599,54 @@ async function callAI(messages, sys, maxTokens=600, images=null){
 }
 
 // ===== 流式调用：逐字回调 onChunk(已累积的全文) =====
-// 档位 -> 实际模型名映射。返回 {model, label, anthropicModel}
-function tierModel(provider, tier){
-  const map={
-    deepseek:{fast:["deepseek-v4-flash","v4-flash"],strong:["deepseek-v4-pro","v4-pro"],think:["deepseek-reasoner","R1 思考"]},
-    openrouter:{fast:["anthropic/claude-3.5-haiku","haiku"],strong:["anthropic/claude-sonnet-4","sonnet-4"],think:["anthropic/claude-sonnet-4","sonnet-4 思考"]},
-    anthropic:{fast:["claude-haiku-4-5-20251001","haiku-4.5"],strong:["claude-sonnet-4-20250514","sonnet-4"],think:["claude-sonnet-4-20250514","sonnet-4 思考"]},
-    doubao:{fast:["","接入点"],strong:["","接入点"],think:["","接入点+思考"]},
-  };
-  const m=(map[provider]||map.deepseek)[tier]||(map[provider]||map.deepseek).fast;
-  return {model:m[0],label:m[1]};
+// 各 provider 可选模型列表（2026-06 最新）。[模型ID, 显示名]
+const MODELS={
+  deepseek:[
+    ["deepseek-v4-flash","V4 Flash（快·性价比）"],
+    ["deepseek-v4-pro","V4 Pro（强·编程数学）"],
+  ],
+  openrouter:[
+    ["anthropic/claude-haiku-4.5","Claude Haiku 4.5（快）"],
+    ["anthropic/claude-sonnet-4","Claude Sonnet 4（强）"],
+    ["deepseek/deepseek-chat","DeepSeek V4（性价比）"],
+    ["google/gemini-2.5-flash","Gemini 2.5 Flash（快）"],
+  ],
+  anthropic:[
+    ["claude-haiku-4-5-20251001","Claude Haiku 4.5（快）"],
+    ["claude-sonnet-4-20250514","Claude Sonnet 4（强）"],
+    ["claude-opus-4-20250514","Claude Opus 4（最强）"],
+  ],
+};
+// 取当前 provider 实际要用的模型 ID
+function currentModel(){
+  const p=cfg.provider;
+  if(p==="doubao")return cfg.endpoint;  // 豆包用接入点
+  const list=MODELS[p]||MODELS.deepseek;
+  const saved=cfg.models[p];
+  if(saved&&list.some(m=>m[0]===saved))return saved;
+  return list[0][0];  // 默认第一个
 }
-// 当前 AI 助手档位对应的模型名（给界面显示）
-function currentTierLabel(){
-  if(cfg.provider==="doubao")return "豆包·由接入点决定";
-  return tierModel(cfg.provider,cfg.chatTier).label;
+// 当前模型显示名（给界面）
+function currentModelLabel(){
+  const p=cfg.provider;
+  if(p==="doubao")return "豆包·"+(cfg.endpoint||"未填接入点");
+  const list=MODELS[p]||MODELS.deepseek;
+  const id=currentModel();
+  const m=list.find(x=>x[0]===id);
+  return m?m[1]:id;
 }
 
-async function callAIStream(messages, sys, onChunk, maxTokens=900, tier="fast"){
+async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false){
   if(!cfg.apikey)throw new Error("先在设置里填 API Key");
   if(cfg.provider==="doubao"&&!cfg.endpoint)throw new Error("豆包需要先填接入点 ID（ep-xxxx）");
   const p=cfg.provider;
-  const isThink=tier==="think";
+  const isThink=think;
+  const mdl=currentModel();
   let url,headers,body,parseLine;
   if(p==="anthropic"){
     url="https://api.anthropic.com/v1/messages";
     headers={"Content-Type":"application/json","x-api-key":cfg.apikey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
-    body={model:tierModel("anthropic",tier).model,max_tokens:maxTokens,messages,stream:true};
+    body={model:mdl,max_tokens:maxTokens,messages,stream:true};
     if(sys)body.system=sys;
     if(isThink)body.thinking={type:"enabled",budget_tokens:2000};
     parseLine=obj=>(obj.type==="content_block_delta"&&obj.delta&&obj.delta.text)?obj.delta.text:"";
@@ -552,11 +654,10 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, tier="fast"){
     if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
     else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
-    const model=p==="doubao"?cfg.endpoint:tierModel(p,tier).model;
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
-    body={model,max_tokens:maxTokens,messages:sys?[{role:"system",content:sys},...messages]:messages,stream:true};
-    // 豆包思考：thinking 参数（需接入点模型支持）
-    if(p==="doubao"&&isThink)body.thinking={type:"enabled"};
+    body={model:mdl,max_tokens:maxTokens,messages:sys?[{role:"system",content:sys},...messages]:messages,stream:true};
+    // 思考开关：DeepSeek V4 / 豆包用 thinking 参数
+    if(isThink&&(p==="doubao"||p==="deepseek"))body.thinking={type:"enabled"};
     parseLine=obj=>(obj.choices&&obj.choices[0]&&obj.choices[0].delta&&obj.choices[0].delta.content)||"";
   }
   const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});
@@ -619,25 +720,22 @@ async function askFollowup(word){
 // ===== AI 助手页 =====
 let chatHistory=[];
 function renderAssistant(v){
-  const tiers=[["fast","快速"],["strong","强力"],["think","深度思考"]];
-  const tierBtns=tiers.map(([k,name])=>{
-    const on=cfg.chatTier===k;
-    return `<button onclick="setTier('${k}')" style="flex:1;padding:6px 4px;border:1px solid ${on?'var(--accent)':'var(--line)'};background:${on?'var(--accent-soft)':'var(--card)'};color:${on?'var(--accent)':'var(--ink-dim)'};border-radius:8px;font-size:.74rem;font-family:inherit;font-weight:${on?'600':'400'}">${name}</button>`;
-  }).join("");
+  const on=cfg.thinkOn;
   v.innerHTML=`<div style="padding-top:8px">
     <p style="color:var(--ink-dim);font-size:.8rem;margin-bottom:12px">问任何英语问题：语法、用法、翻译、词的区别…</p>
     <div id="chat-log" style="margin-bottom:12px">${chatHistory.map(m=>chatBubble(m)).join("")}</div>
-    <div style="display:flex;gap:6px;margin-bottom:6px">${tierBtns}</div>
-    <div style="font-size:.68rem;color:var(--ink-dim);margin-bottom:8px;text-align:center">当前模型：${currentTierLabel()}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:.72rem;color:var(--ink-dim)">
+      <span>模型：${currentModelLabel()}</span>
+      <button onclick="toggleThink()" style="padding:5px 12px;border:1px solid ${on?'var(--accent)':'var(--line)'};background:${on?'var(--accent-soft)':'var(--card)'};color:${on?'var(--accent)':'var(--ink-dim)'};border-radius:14px;font-size:.72rem;font-family:inherit;font-weight:${on?'600':'400'}">${on?'🧠 深度思考 开':'深度思考 关'}</button>
+    </div>
     <div style="display:flex;gap:8px">
       <textarea id="chat-input" placeholder="比如：in 和 on 表示时间时怎么区分？" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;resize:vertical;min-height:48px;background:var(--paper)"></textarea>
     </div>
     <button class="ai-btn" id="chat-send" style="margin-top:8px" onclick="sendChat()">发送</button>
   </div>`;
 }
-function setTier(t){
-  cfg.chatTier=t;save(CFG_KEY,cfg);
-  // 只更新档位按钮区，不重渲染整个页面（避免清空输入和聊天）
+function toggleThink(){
+  cfg.thinkOn=!cfg.thinkOn;save(CFG_KEY,cfg);
   renderAssistant(document.getElementById("view"));
 }
 function chatBubble(m){
@@ -661,12 +759,12 @@ async function sendChat(){
   const sys="你是耐心友好的英语老师，面对中文母语的英语初学者。用简单中文讲解，给例句，避免生硬术语。回答简明，不要长篇大论。";
   try{
     const ctx=chatHistory.slice(0,-1).slice(-8);
-    const mt=cfg.chatTier==="think"?2000:900;
+    const mt=cfg.thinkOn?2000:900;
     await callAIStream(ctx,sys,(full)=>{
       chatHistory[chatHistory.length-1].content=full;  // 直接显示文本，无光标方块
       const logEl=document.getElementById("chat-log");
       if(logEl){logEl.innerHTML=chatHistory.map(m=>chatBubble(m)).join("");logEl.scrollTop=logEl.scrollHeight}
-    },mt,cfg.chatTier);
+    },mt,cfg.thinkOn);
   }catch(e){
     chatHistory[chatHistory.length-1].content="出错了："+(e.message||"检查设置里的 Key");
   }
