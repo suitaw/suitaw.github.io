@@ -125,7 +125,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <label>模型</label>
       <select id="model"></select>
     </div>
-    <div class="hint">Key 只存在你本机浏览器里，不上传。造句批改是可选功能，不填 Key 也能正常背单词。<br>豆包用的是火山方舟接入点，需要填 ep-xxxx；DeepSeek 直接填 sk- 开头的 Key。深度思考开关在「AI 助手」页。</div>
+    <div class="hint">Key 只存在你本机浏览器里，不上传。每个服务商的 Key 分开保存，切换服务商会自动带出对应的 Key。<br>豆包用的是火山方舟接入点，需要填 ep-xxxx；DeepSeek 直接填 sk- 开头的 Key。深度思考开关在「AI 助手」页。</div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="ai-btn" style="flex:1" onclick="saveCfg()">保存设置</button>
       <button class="gear" onclick="clearKey()">清空 Key</button>
@@ -155,6 +155,11 @@ let srs=load(SRS_KEY,{});          // {id:{ef,interval,reps,due}}
 let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",scope:"all",models:{},thinkOn:false});
 if(!cfg.models)cfg.models={};
 if(typeof cfg.thinkOn!=="boolean")cfg.thinkOn=false;
+// Key 按 provider 分开存（修复切换 provider 后 Key 没跟着切）。迁移旧的单一 apikey
+if(!cfg.keys)cfg.keys={};
+if(cfg.apikey&&cfg.provider&&!cfg.keys[cfg.provider]){cfg.keys[cfg.provider]=cfg.apikey;save(CFG_KEY,cfg)}
+// 启动时把当前 provider 的 key 同步到 apikey（其余代码读 cfg.apikey 不用动）
+cfg.apikey=cfg.keys[cfg.provider]||"";
 let queue=[], cur=null, flipped=false, page=load("vocab_v5_page","home");
 if(!["home","assistant","mistake","stats"].includes(page))page="home";
 
@@ -173,6 +178,17 @@ function parseJsonArrayLoose(text){
   return out;
 }
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1600)}
+// 去 Markdown 符号兜底（豆包爱用 #、DeepSeek 爱用 **）
+function stripMd(s){
+  if(!s)return s;
+  return s
+    .replace(/\*\*(.+?)\*\*/g,"$1")
+    .replace(/(^|\s)\*(?!\s)(.+?)\*/g,"$1$2")
+    .replace(/^#{1,6}\s+/gm,"")
+    .replace(/`{1,3}([^`]+)`{1,3}/g,"$1")
+    .replace(/^\s*[-•]\s+/gm,"· ")
+    .trim();
+}
 
 // ===== 导入词库 =====
 const IMP_KEY="vocab_v5_imported";
@@ -215,8 +231,13 @@ function bindCfg(){
   };
   const syncEpRow=()=>{epRow.style.display=cfg.provider==="doubao"?"block":"none"};
   syncEpRow();syncModelRow();
-  p.onchange=()=>{cfg.provider=p.value;save(CFG_KEY,cfg);syncEpRow();syncModelRow()};
-  k.onchange=()=>{cfg.apikey=k.value.trim();save(CFG_KEY,cfg)};
+  p.onchange=()=>{
+    cfg.provider=p.value;
+    cfg.apikey=cfg.keys[cfg.provider]||"";  // 切 provider 带出它自己的 key
+    k.value=cfg.apikey;                       // 同步输入框
+    save(CFG_KEY,cfg);syncEpRow();syncModelRow();
+  };
+  k.onchange=()=>{cfg.apikey=k.value.trim();cfg.keys[cfg.provider]=cfg.apikey;save(CFG_KEY,cfg)};
   ep.onchange=()=>{cfg.endpoint=ep.value.trim();save(CFG_KEY,cfg)};
   mSel.onchange=()=>{cfg.models[cfg.provider]=mSel.value;save(CFG_KEY,cfg)};
 }
@@ -225,15 +246,16 @@ function saveCfg(){
   cfg.provider=document.getElementById("provider").value;
   cfg.apikey=document.getElementById("apikey").value.trim();
   cfg.endpoint=document.getElementById("endpoint").value.trim();
+  cfg.keys[cfg.provider]=cfg.apikey;  // 存进当前 provider 的槽
   save(CFG_KEY,cfg);
   document.getElementById("panel").classList.remove("open");
   toast("已保存");
 }
 function clearKey(){
-  cfg.apikey="";cfg.endpoint="";save(CFG_KEY,cfg);
+  cfg.apikey="";cfg.endpoint="";cfg.keys[cfg.provider]="";save(CFG_KEY,cfg);
   document.getElementById("apikey").value="";
   document.getElementById("endpoint").value="";
-  toast("Key 已清空");
+  toast("Key 已清空（仅当前服务商）");
 }
 
 // ===== SM-2 =====
@@ -1023,9 +1045,9 @@ async function askFollowup(word){
   if(!q)return toast("写下你的问题");
   const ans=document.getElementById("followup-ans");ans.textContent="思考中…";
   try{
-    const sys="你是耐心的英语老师，面对中文母语初学者。用简单中文回答，简明扼要，避免术语。";
+    const sys="你是耐心的英语老师，面对中文母语初学者。用简单中文回答，简明扼要，避免术语。纯文本，不要 Markdown 符号。";
     const text=await callAI([{role:"user",content:`关于单词「${word}」：${q}`}],sys,500);
-    ans.textContent=text;
+    ans.textContent=stripMd(text);
   }catch(e){ans.textContent="";toast("追问失败："+(e.message||"检查 Key"))}
 }
 
@@ -1063,9 +1085,10 @@ function toggleThink(){
 }
 function chatBubble(m){
   const me=m.role==="user";
+  const text=me?m.content:stripMd(m.content);  // AI 回复去 Markdown，用户消息原样
   const inner=m.content==="__TYPING__"
     ? `<div class="typing"><span></span><span></span><span></span></div>`
-    : m.content.replace(/</g,"&lt;");
+    : text.replace(/</g,"&lt;");
   return `<div style="margin-bottom:10px;text-align:${me?"right":"left"}">
     <div style="display:inline-block;max-width:88%;text-align:left;background:${me?"var(--accent-soft)":"var(--card)"};border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:.8rem;line-height:1.5;white-space:pre-wrap">${inner}</div>
   </div>`;
@@ -1080,7 +1103,7 @@ async function sendChat(){
   const btn=document.getElementById("chat-send");btn.disabled=true;btn.textContent="生成中…";
   renderAssistant(document.getElementById("view"));
   const log=document.getElementById("chat-log");if(log)log.scrollTop=log.scrollHeight;
-  const sys="你是耐心友好的英语老师，面对中文母语的英语初学者。用简单中文讲解，给例句，避免生硬术语。回答简明，不要长篇大论。";
+  const sys="你是耐心友好的英语老师，面对中文母语的英语初学者。用简单中文讲解，给例句，避免生硬术语。回答简明，不要长篇大论。重要：纯文本输出，不要用任何 Markdown 符号（不要 **、#、`、- 列表符号等）。";
   try{
     const ctx=chatHistory.slice(0,-1).slice(-8);
     const mt=cfg.thinkOn?2000:900;
