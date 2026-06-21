@@ -1292,6 +1292,15 @@ function exportImported(){
 bindCfg();
 // 启动时同步底部导航高亮到恢复的页面
 ["home","assistant","mistake","stats"].forEach(x=>{const el=document.getElementById("nav-"+x);if(el)el.classList.toggle("active",x===page)});
+// 检测：SRS 里有 Codepath 的词（cp_ 前缀）但词库 imported 里缺 → 老数据，提示重新同步
+(function checkCodepathSync(){
+  const cpInSrs=Object.keys(srs).filter(k=>k.indexOf("cp_")===0);
+  if(!cpInSrs.length)return;
+  const missing=cpInSrs.filter(k=>!imported.some(w=>w.id===k));
+  if(missing.length){
+    setTimeout(()=>toast(`检测到 ${missing.length} 个 Codepath 词未同步，请去 Codepath 课程页重新点一次「加入 SRS 复习」`),800);
+  }
+})();
 render();</script>
 </body>
 </html>
