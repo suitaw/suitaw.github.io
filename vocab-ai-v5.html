@@ -242,7 +242,7 @@ function looseCatsNow(){
   return [...new Set(imported.map(w=>w.cat))].filter(c=>!builtinKeys.includes(c)&&c!=="import"&&c!=="other"&&all.filter(w=>w.cat===c).length<3);
 }
 function inScope(w){
-  if(cfg.scope==="all")return true;
+  if(cfg.scope==="all"||cfg.scope==="__due__")return true;
   if(cfg.scope==="__fav__")return w.cat==="import"||w.cat==="other"||looseCatsNow().includes(w.cat);
   return w.cat===cfg.scope;
 }
@@ -336,7 +336,14 @@ function renderHome(v){
     const due=all.filter(w=>(w.cat==="import"||w.cat==="other"||looseCats.includes(w.cat))&&(!srs[w.id]||!srs[w.id].due||srs[w.id].due<=Date.now())).length;
     rows.push({key:"__fav__",name:"我的收藏",desc:"零散词·攒够会自动成类",n:favCount,due});
   }
+  // 跨分类今日待复习总数（已学过且到期；新词不计入"复习"）
+  const dueNow=all.filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=Date.now()).length;
+  const dueBtn=dueNow>0?`<div class="mistake-item" style="cursor:pointer;background:var(--accent);border:none;margin-bottom:14px" onclick="startStudy('__due__')">
+      <div><div class="w" style="color:#fff">📚 今日待复习</div><div class="c" style="color:rgba(255,255,255,.85)">跨所有分类·到期的词</div></div>
+      <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;font-size:1.3rem;color:#fff">${dueNow}</div><div class="c" style="color:rgba(255,255,255,.85)">词</div></div>
+    </div>`:"";
   v.innerHTML=`<div style="padding-top:8px">
+    ${dueBtn}
     <p style="color:var(--ink-dim);font-size:.82rem;margin-bottom:14px">选一个分类开始背：</p>
     ${rows.map(r=>`<div class="mistake-item" style="cursor:pointer" onclick="startStudy('${r.key}')">
         <div><div class="w">${r.name}</div><div class="c">${r.desc} · 共 ${r.n} 词</div></div>
