@@ -443,7 +443,6 @@ function renderHome(v){
         <div><div class="w">${r.name}</div><div class="c">${r.desc} · 共 ${r.n} 词</div></div>
         <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${r.due}</div><div class="c">待学</div></div>
       </div>`).join("")}
-      <button class="ai-btn" style="margin-top:14px" onclick="openImport()">＋ 导入生词（文章/图片）</button>
     </div>
   </div>`;
 }
@@ -1010,9 +1009,10 @@ function currentModelLabel(){
   return m?m[1]:id;
 }
 
-async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false){
+async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, images=null){
   if(!cfg.apikey)throw new Error("先在设置里填 API Key");
   if(cfg.provider==="doubao"&&!cfg.endpoint)throw new Error("豆包需要先填接入点 ID（ep-xxxx）");
+  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到豆包或 Claude");
   const p=cfg.provider;
   const isThink=think;
   const mdl=currentModel();
@@ -1020,7 +1020,15 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false){
   if(p==="anthropic"){
     url="https://api.anthropic.com/v1/messages";
     headers={"Content-Type":"application/json","x-api-key":cfg.apikey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
-    body={model:mdl,max_tokens:maxTokens,messages,stream:true};
+    let msgs=messages;
+    if(images&&images.length){
+      msgs=messages.map(m=>({...m}));
+      const last=msgs[msgs.length-1];
+      const blocks=images.map(d=>({type:"image",source:{type:"base64",media_type:d.mime,data:d.b64}}));
+      blocks.push({type:"text",text:typeof last.content==="string"?last.content:""});
+      last.content=blocks;
+    }
+    body={model:mdl,max_tokens:maxTokens,messages:msgs,stream:true};
     if(sys)body.system=sys;
     if(isThink)body.thinking={type:"enabled",budget_tokens:2000};
     parseLine=obj=>(obj.type==="content_block_delta"&&obj.delta&&obj.delta.text)?obj.delta.text:"";
@@ -1029,8 +1037,15 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false){
     else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
-    body={model:mdl,max_tokens:maxTokens,messages:sys?[{role:"system",content:sys},...messages]:messages,stream:true};
-    // 思考开关：DeepSeek V4 / 豆包用 thinking 参数
+    let msgs=sys?[{role:"system",content:sys},...messages]:messages.slice();
+    if(images&&images.length){
+      msgs=msgs.map(m=>({...m}));
+      const last=msgs[msgs.length-1];
+      const parts=[{type:"text",text:typeof last.content==="string"?last.content:""}];
+      images.forEach(d=>parts.push({type:"image_url",image_url:{url:"data:"+d.mime+";base64,"+d.b64}}));
+      last.content=parts;
+    }
+    body={model:mdl,max_tokens:maxTokens,messages:msgs,stream:true};
     if(isThink&&(p==="doubao"||p==="deepseek"))body.thinking={type:"enabled"};
     parseLine=obj=>(obj.choices&&obj.choices[0]&&obj.choices[0].delta&&obj.choices[0].delta.content)||"";
   }
@@ -1123,12 +1138,25 @@ function renderAssistant(v){
       <span>模型：${currentModelLabel()}</span>
       <button onclick="toggleThink()" style="padding:5px 12px;border:1px solid ${on?'var(--accent)':'var(--line)'};background:${on?'var(--accent-soft)':'var(--card)'};color:${on?'var(--accent)':'var(--ink-dim)'};border-radius:14px;font-size:.72rem;font-family:inherit;font-weight:${on?'600':'400'}">${on?'🧠 深度思考 开':'深度思考 关'}</button>
     </div>
-    <div style="display:flex;gap:8px">
-      <textarea id="chat-input" placeholder="比如：in 和 on 表示时间时怎么区分？" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;resize:vertical;min-height:48px;background:var(--paper)"></textarea>
+    <div id="chat-img-preview" style="margin-bottom:6px"></div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <textarea id="chat-input" placeholder="问任何问题，或传张图片问（截图/拍照）" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;resize:vertical;min-height:48px;background:var(--paper)"></textarea>
+      <label class="gear" style="cursor:pointer;padding:10px 12px;white-space:nowrap">📷<input type="file" accept="image/*" style="display:none" onchange="onPickChatImage(this)"></label>
     </div>
     <button class="ai-btn" id="chat-send" style="margin-top:8px" onclick="sendChat()">发送</button>
   </div>`;
 }
+let chatImage=null;  // AI助手当前要发的图 {b64,mime}
+function onPickChatImage(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("传图需切到豆包或 Claude");return}
+  readImageFile(f).then(img=>{
+    chatImage=img;
+    const p=document.getElementById("chat-img-preview");
+    if(p)p.innerHTML=`<div style="font-size:.76rem;color:var(--green)">✓ 已附图片，发送时一起问 <button class="gear" onclick="clearChatImage()">移除</button></div>`;
+  }).catch(e=>toast(e.message));
+}
+function clearChatImage(){chatImage=null;const p=document.getElementById("chat-img-preview");if(p)p.innerHTML=""}
 function toggleThink(){
   cfg.thinkOn=!cfg.thinkOn;save(CFG_KEY,cfg);
   renderAssistant(document.getElementById("view"));
@@ -1151,27 +1179,31 @@ function chatBubble(m){
 }
 async function sendChat(){
   const input=document.getElementById("chat-input");
-  const q=input.value.trim();if(!q)return toast("写点什么");
+  const q=input.value.trim();
+  if(!q&&!chatImage)return toast("写点什么，或附张图片");
   if(q.length>1500)return toast("问题太长了，截短到 1500 字以内再发");
-  chatHistory.push({role:"user",content:q});
+  const img=chatImage;            // 本次要发的图
+  const userText=q||(img?"看这张图片，帮我讲讲（翻译/解释/有什么生词）":"");
+  chatHistory.push({role:"user",content:(img?"🖼️ ":"")+userText});
   chatHistory.push({role:"assistant",content:"__TYPING__"});  // 占位：打字动画
-  input.value="";
+  input.value="";chatImage=null;
   const btn=document.getElementById("chat-send");btn.disabled=true;btn.textContent="生成中…";
   renderAssistant(document.getElementById("view"));
   const log=document.getElementById("chat-log");if(log)log.scrollTop=log.scrollHeight;
   const sys="你是耐心友好的英语老师，面对中文母语的英语初学者。用简单中文讲解，给例句，避免生硬术语。回答简明，不要长篇大论。重要：纯文本输出，不要用任何 Markdown 符号（不要 **、#、`、- 列表符号等）。";
   try{
-    const ctx=chatHistory.slice(0,-1).slice(-8);
+    // 带图时只发当前这条（图片消息不进历史，避免 localStorage 膨胀）；纯文本则带最近8条上下文
+    const ctx=img?[{role:"user",content:userText}]:chatHistory.slice(0,-1).slice(-8);
     const mt=cfg.thinkOn?2000:900;
     await callAIStream(ctx,sys,(full)=>{
-      chatHistory[chatHistory.length-1].content=full;  // 直接显示文本，无光标方块
+      chatHistory[chatHistory.length-1].content=full;
       const logEl=document.getElementById("chat-log");
       if(logEl){logEl.innerHTML=chatHistory.map(m=>chatBubble(m)).join("");logEl.scrollTop=logEl.scrollHeight}
-    },mt,cfg.thinkOn);
+    },mt,cfg.thinkOn,img?[img]:null);
   }catch(e){
     chatHistory[chatHistory.length-1].content="出错了："+(e.message||"检查设置里的 Key");
   }
-  saveChat();  // 每轮结束存盘，刷新不丢
+  saveChat();
   renderAssistant(document.getElementById("view"));
   const logEl=document.getElementById("chat-log");if(logEl)logEl.scrollTop=logEl.scrollHeight;
 }
@@ -1203,6 +1235,26 @@ function openImport(){
     </div>`;
 }
 let importImage=null;  // {b64, mime}
+// 通用：读图片文件为 {b64,mime}
+function readImageFile(f){
+  return new Promise((resolve,reject)=>{
+    if(!f)return reject(new Error("没有文件"));
+    if(f.size>5*1024*1024)return reject(new Error("图片太大，请压到 5MB 内"));
+    const reader=new FileReader();
+    reader.onload=()=>resolve({b64:reader.result.split(",")[1],mime:f.type});
+    reader.onerror=()=>reject(new Error("读取失败"));
+    reader.readAsDataURL(f);
+  });
+}
+// 通用：读文本文件
+function readTextFile(f){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(new Error("读取失败"));
+    reader.readAsText(f);
+  });
+}
 function onPickImage(input){
   const f=input.files&&input.files[0];if(!f)return;
   if(f.size>5*1024*1024)return toast("图片太大，请压到 5MB 内");
@@ -1345,50 +1397,101 @@ function exportImported(){
 }
 
 // ===== 快速加词：任意页浮动按钮，贴词→AI秒补全→直接入库 =====
+let qaImage=null;  // 快捷加词选的图片 {b64,mime}
 function openQuickAdd(){
   const ov=document.getElementById("quickadd-overlay");
-  ov.classList.add("open");
+  ov.classList.add("open");qaImage=null;
   ov.innerHTML=`<div class="import-box">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <h2 style="font-family:Fraunces,serif;font-size:1.3rem">快速加词</h2>
+      <h2 style="font-family:Fraunces,serif;font-size:1.3rem">加词</h2>
       <button class="gear" onclick="closeQuickAdd()">✕</button>
     </div>
-    <p style="font-size:.78rem;color:var(--ink-dim);margin-bottom:8px">遇到生词随手丢进来，一行一个或逗号隔开。AI 自动补音标/释义/例句/分类，直接进词库。</p>
-    <textarea id="qa-input" placeholder="例如：\nresilient\nthrough thick and thin\nubiquitous" style="width:100%;min-height:90px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.9rem;background:var(--paper);resize:vertical"></textarea>
-    <button class="ai-btn" id="qa-btn" style="margin-top:10px" onclick="quickAddGo()">加入词库</button>
-    <div id="qa-result" style="margin-top:8px;font-size:.8rem;color:var(--ink-dim)"></div>
+    <p style="font-size:.76rem;color:var(--ink-dim);margin-bottom:8px">三种用法：①贴一串词→秒补全全要 ②贴一段英文/传图片→AI 挑生词 ③传文本文件</p>
+    <textarea id="qa-input" placeholder="贴词（一行一个或逗号隔开）：&#10;resilient, ubiquitous&#10;&#10;或贴一段英文文章，让 AI 挑生词" style="width:100%;min-height:100px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.88rem;background:var(--paper);resize:vertical"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <label style="flex:1;border:1px dashed var(--line);border-radius:10px;padding:9px;text-align:center;font-size:.76rem;color:var(--ink-dim);cursor:pointer">
+        📷 图片<input type="file" accept="image/*" style="display:none" onchange="onPickQaImage(this)"></label>
+      <label style="flex:1;border:1px dashed var(--line);border-radius:10px;padding:9px;text-align:center;font-size:.76rem;color:var(--ink-dim);cursor:pointer">
+        📄 文本文件<input type="file" accept=".txt,.md,text/*" style="display:none" onchange="onPickQaText(this)"></label>
+    </div>
+    <div id="qa-img-preview" style="margin-top:6px"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="ai-btn" id="qa-extract" style="flex:1;background:var(--ink)" onclick="quickAddGo('extract')">AI 挑生词</button>
+      <button class="ai-btn" id="qa-all" style="flex:1" onclick="quickAddGo('all')">全部补全录入</button>
+    </div>
+    <div id="qa-result" style="margin-top:10px;font-size:.8rem;color:var(--ink-dim)"></div>
   </div>`;
   setTimeout(()=>{const t=document.getElementById("qa-input");if(t)t.focus()},100);
 }
-function closeQuickAdd(){const ov=document.getElementById("quickadd-overlay");ov.classList.remove("open");ov.innerHTML=""}
-async function quickAddGo(){
+function onPickQaImage(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("读图需切到豆包或 Claude");return}
+  readImageFile(f).then(img=>{
+    qaImage=img;
+    document.getElementById("qa-img-preview").innerHTML=`<div style="font-size:.76rem;color:var(--green)">✓ 已选图片，点「AI 挑生词」提取 <button class="gear" onclick="clearQaImage()">移除</button></div>`;
+  }).catch(e=>toast(e.message));
+}
+function clearQaImage(){qaImage=null;const p=document.getElementById("qa-img-preview");if(p)p.innerHTML=""}
+function onPickQaText(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  readTextFile(f).then(txt=>{
+    const ta=document.getElementById("qa-input");if(ta)ta.value=(ta.value?ta.value+"\n":"")+txt;
+    toast("已读入文本，点「AI 挑生词」");
+  }).catch(e=>toast(e.message));
+}
+function closeQuickAdd(){const ov=document.getElementById("quickadd-overlay");ov.classList.remove("open");ov.innerHTML="";qaImage=null}
+// mode: 'all'=贴词全部补全录入；'extract'=贴文章/图片让AI挑生词
+async function quickAddGo(mode){
   const raw=(document.getElementById("qa-input")||{}).value||"";
-  const words=raw.split(/[\n,，]+/).map(s=>s.trim()).filter(Boolean);
-  if(!words.length)return toast("先写下要加的词");
-  if(words.length>15)return toast("一次最多 15 个，多了分几次");
-  const btn=document.getElementById("qa-btn");btn.disabled=true;btn.textContent="AI 补全中…";
-  const res=document.getElementById("qa-result");res.textContent="处理中，请稍候…";
-  const sys=`你是英语老师。为用户给的每个英文单词/短语生成词条，一个都不能漏。
-分类 cat 只能填这7个之一：dev(科技开发)、tv(影视口语)、life(日常生活)、biz(职场商务)、academic(学术阅读)、news(新闻时事)、other(其他)。
-只返回JSON数组，不要任何其他文字：[{"word":"原词","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","tip":"简短提示","exampleEn":"英文例句","exampleCn":"中文翻译","scene":"专业场景特殊含义或空","cat":"7个key之一"}]`;
+  const res=document.getElementById("qa-result");
   const valid=["dev","tv","life","biz","academic","news","other"];
+  const eBtn=document.getElementById("qa-extract"),aBtn=document.getElementById("qa-all");
+
+  if(mode==="all"){
+    const words=raw.split(/[\n,，]+/).map(s=>s.trim()).filter(Boolean);
+    if(!words.length)return toast("先贴要加的词");
+    if(words.length>15)return toast("一次最多 15 个，多了分几次");
+    aBtn.disabled=true;aBtn.textContent="补全中…";res.textContent="处理中…";
+    const sys=`你是英语老师。为用户给的每个英文单词/短语生成词条，一个都不能漏。
+分类 cat 只能填这7个之一：dev(科技开发)、tv(影视口语)、life(日常生活)、biz(职场商务)、academic(学术阅读)、news(新闻时事)、other(其他)。
+只返回JSON数组：[{"word":"原词","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","tip":"简短提示","exampleEn":"英文例句","exampleCn":"中文翻译","scene":"专业场景特殊含义或空","cat":"7个key之一"}]`;
+    try{
+      const text=await callAI([{role:"user",content:words.join(", ")}],sys,3000);
+      const arr=parseJsonArrayLoose(text);
+      if(!arr.length)throw new Error("没生成出来，重试一次");
+      finishQuickAdd(arr,valid,res);
+    }catch(e){res.textContent="失败："+(e.message||"检查 Key")}
+    finally{aBtn.disabled=false;aBtn.textContent="全部补全录入"}
+    return;
+  }
+
+  // extract：贴文章 或 图片
+  if(!raw.trim()&&!qaImage)return toast("贴段英文，或选张图片");
+  if(qaImage&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到豆包或 Claude");
+  eBtn.disabled=true;eBtn.textContent="提取中…";res.textContent="AI 正在挑生词…";
+  const sys=`你是英语老师，面向中文母语的英语学习者。从用户给的英文文章或图片里挑出值得学的生词/短语（跳过 the/is 这类太简单的），为每个生成词条。
+分类 cat 只能填：dev、tv、life、biz、academic、news、other。
+只返回JSON数组：[{"word":"原词","phonetic":"音标","pos":"词性","cn":"中文释义","tip":"提示","exampleEn":"例句","exampleCn":"翻译","scene":"或空","cat":"key"}]`;
+  const prompt=qaImage?(raw.trim()||"提取图片里值得学的英文生词"):raw.trim();
   try{
-    const text=await callAI([{role:"user",content:words.join(", ")}],sys,3000);
+    const text=await callAI([{role:"user",content:prompt}],sys,3000,qaImage?[qaImage]:null);
     const arr=parseJsonArrayLoose(text);
-    if(!arr.length)throw new Error("没生成出来，重试一次");
-    let n=0,dup=0;
-    arr.forEach(c=>{
-      if(!c.word)return;
-      if(allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase())){dup++;return}
-      imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn||"",tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",cat:valid.includes(c.cat)?c.cat:"other"});
-    });
-    save(IMP_KEY,imported);
-    toast(`已加入 ${n} 个词`+(dup?`（${dup} 个已有跳过）`:""));
-    closeQuickAdd();
-    if(page==="home"&&!studyStarted)render();
-  }catch(e){
-    res.textContent="失败："+(e.message||"检查设置里的 Key");
-  }finally{btn.disabled=false;btn.textContent="加入词库"}
+    if(!arr.length)throw new Error("没挑出生词，换段文字或图片");
+    finishQuickAdd(arr,valid,res);
+  }catch(e){res.textContent="失败："+(e.message||"检查 Key")}
+  finally{eBtn.disabled=false;eBtn.textContent="AI 挑生词"}
+}
+function finishQuickAdd(arr,valid,res){
+  let n=0,dup=0;
+  arr.forEach(c=>{
+    if(!c.word)return;
+    if(allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase())){dup++;return}
+    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn||"",tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",cat:valid.includes(c.cat)?c.cat:"other"});
+  });
+  save(IMP_KEY,imported);
+  toast(`已加入 ${n} 个词`+(dup?`（${dup} 个已有跳过）`:""));
+  closeQuickAdd();
+  if(page==="home"&&!studyStarted)render();
 }
 
 
