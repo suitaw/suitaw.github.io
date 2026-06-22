@@ -803,61 +803,130 @@ function onPickArticleFile(input){
   r.onerror=()=>toast("读取失败");
   r.readAsText(f);
 }
-async function runArticle(){
+// 把文章切成块：先按空行/换行分段，累积到约 400 词成一块；超长单段按句子再切
+function splitArticle(text){
+  const paras=text.split(/\n\s*\n|\n/).map(s=>s.trim()).filter(Boolean);
+  const chunks=[];let cur="",curWords=0;
+  const wc=s=>s.split(/\s+/).filter(Boolean).length;
+  const flush=()=>{if(cur.trim()){chunks.push(cur.trim());cur="";curWords=0}};
+  for(let para of paras){
+    let pw=wc(para);
+    if(pw>400){ // 超长段：按句子切
+      flush();
+      const sents=para.match(/[^.!?。！？]+[.!?。！？]+|\S+$/g)||[para];
+      let block="",bw=0;
+      for(const s of sents){const sw=wc(s);if(bw+sw>400&&block){chunks.push(block.trim());block="";bw=0}block+=s+" ";bw+=sw}
+      if(block.trim())chunks.push(block.trim());
+      continue;
+    }
+    if(curWords+pw>400&&cur){flush()}
+    cur+=(cur?"\n":"")+para;curWords+=pw;
+  }
+  flush();
+  return chunks.length?chunks:[text.trim()];
+}
+// 分段精读状态
+let artChunks=[],artChunkIdx=0,artId=null,artAllWords=[];
+function startArticleSession(){
   const text=(document.getElementById("art-text")||{}).value||"";
   if(text.trim().length<20)return toast("文章太短了");
   if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider]))return toast("先在设置里填 API Key");
-  const box=document.getElementById("art-result");
-  const goBtn=document.getElementById("art-go");if(goBtn)goBtn.disabled=true;
   let title=(document.getElementById("art-title")||{}).value||"";
   if(!title.trim())title=text.trim().slice(0,16).replace(/\n/g," ")+"…";
-  // 第一次调用：精讲（流式纯文本）
-  const sys1=artMode==="deep"
-    ? "你是英语精读老师，面向中文母语初学者。把下面文章讲透：逐段给中文讲解，指出长难句结构、关键语法、地道表达。条理清楚，用中文讲。不要 Markdown 符号堆砌。"
-    : "你是英语老师，面向中文母语初学者。用中文概括下面文章的大意和结构（主题、要点、作者意图），简明扼要。不要逐句翻译。";
-  if(box)box.innerHTML=`<div style="font-size:.78rem;color:var(--ink-dim);margin-bottom:6px">AI 精讲中…</div><div id="art-explain" style="font-size:.84rem;line-height:1.7;white-space:pre-wrap"></div>`;
-  let explain="";
-  try{
-    await callAIStream([{role:"user",content:text}],sys1,(fullText)=>{
-      explain=stripMd(fullText);  // 全量赋值（不能+=）+ 清理Markdown符号
-      const e=document.getElementById("art-explain");if(e)e.textContent=explain;
-    },1500,false);
-  }catch(e){if(box)box.innerHTML=`<div style="color:var(--accent);font-size:.8rem">精讲失败：${e.message}</div>`;if(goBtn)goBtn.disabled=false;return}
-  // 第二次调用：抽生词（结构化 JSON）
-  const sys2=`从下面文章里挑出对中文初学者(约CET4水平)有学习价值的生词和短语，跳过最基础的词(the/is/and等)，最多18个。只返回 JSON，不要任何解释或 Markdown：
-{"words":[{"word":"原词或短语","phonetic":"音标(没有就空)","cn":"在本文里的意思","tip":"用法提示(可空)"}]}`;
-  const e2=document.getElementById("art-explain");
-  if(e2)e2.insertAdjacentHTML("afterend",`<div id="art-words-loading" style="font-size:.78rem;color:var(--ink-dim);margin-top:10px">挑生词中…</div>`);
-  let wordsArr=[];
-  try{
-    const raw=await callAI([{role:"user",content:text}],sys2,900);
-    const m=raw.match(/\{[\s\S]*\}/);
-    if(m){const o=JSON.parse(m[0]);wordsArr=Array.isArray(o.words)?o.words:[]}
-  }catch(e){/* 抽词失败不致命，仍保存文章+精讲 */}
-  // 保存文章（含精讲）
-  const id="a"+Date.now();
-  articles.unshift({id,title,text,mode:artMode,explain,createdAt:Date.now()});
+  artChunks=splitArticle(text);
+  artChunkIdx=0;artAllWords=[];
+  artId="a"+Date.now();
+  // 先建文章（explain 随每段追加）
+  articles.unshift({id:artId,title,text,mode:artMode,explain:"",createdAt:Date.now()});
   saveArticles();
-  lastArtWords={articleId:id,words:wordsArr};
-  // 渲染生词预览（勾选入库）
-  const ld=document.getElementById("art-words-loading");if(ld)ld.remove();
-  if(box){
-    const checks=wordsArr.map((w,i)=>{
-      const exists=allWords().some(x=>x.word.toLowerCase()===(w.word||"").toLowerCase());
-      return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:.82rem;${exists?'opacity:.5':''}">
-        <input type="checkbox" class="art-wc" data-i="${i}" ${exists?'disabled':'checked'}>
-        <span><b>${w.word}</b> ${w.phonetic||""} — ${w.cn||""}${exists?' (已在库)':''}</span></label>`;
-    }).join("");
-    box.insertAdjacentHTML("beforeend",`
-      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
-        <div style="font-weight:600;font-size:.86rem;margin-bottom:6px">挑出 ${wordsArr.length} 个生词/短语</div>
-        ${checks||'<div style="font-size:.78rem;color:var(--ink-dim)">没挑到生词</div>'}
-        ${wordsArr.length?`<button class="ai-btn" style="margin-top:10px" onclick="saveArticleWords()">加入词库（进“我的文章”）</button>`:""}
-        <div style="font-size:.74rem;color:var(--ink-dim);margin-top:8px">文章和精讲已保存，可在「复习/库」或学习页「我的文章」里重看。</div>
-      </div>`);
-  }
-  if(goBtn)goBtn.disabled=false;
+  const box=document.getElementById("art-result");
+  if(box)box.innerHTML=`<div id="art-explain" style="font-size:.84rem;line-height:1.7;white-space:pre-wrap"></div>
+    <div id="art-step" style="margin-top:12px"></div>`;
+  const goBtn=document.getElementById("art-go");if(goBtn){goBtn.style.display="none"}
+  runArticleChunk();
 }
+async function runArticleChunk(){
+  const idx=artChunkIdx, chunk=artChunks[idx], total=artChunks.length;
+  const art=articles.find(a=>a.id===artId);if(!art)return;
+  const explainEl=document.getElementById("art-explain");
+  const stepEl=document.getElementById("art-step");
+  if(stepEl)stepEl.innerHTML=`<div style="font-size:.78rem;color:var(--ink-dim)">AI 精讲中… 第 ${idx+1}/${total} 段</div>`;
+  // 段标题
+  const header=`\n\n第 ${idx+1} 段\n`;
+  let segText=art.explain?header:"";
+  const sysDeep="你是英语精读老师，面向中文母语初学者。把下面这段文章讲透：先给中文翻译，再逐句讲解长难句结构、关键语法点、地道表达。讲清楚、讲完整，用中文。不要 Markdown 符号。";
+  const sysGist="你是英语老师，面向中文母语初学者。用中文概括下面这段的大意和要点，简明扼要。不要 Markdown 符号。";
+  const base=art.explain;
+  try{
+    await callAIStream([{role:"user",content:chunk}], artMode==="deep"?sysDeep:sysGist, (fullText)=>{
+      const piece=stripMd(fullText);
+      art.explain=base+segText+piece;
+      if(explainEl)explainEl.textContent=art.explain;
+    }, 1500, false);
+  }catch(e){
+    if(stepEl)stepEl.innerHTML=`<div style="color:var(--accent);font-size:.8rem">这段精讲失败：${e.message}</div>
+      <button class="gear" style="margin-top:8px" onclick="runArticleChunk()">重试这段</button>`;
+    return;
+  }
+  saveArticles();
+  // 抽这段的生词
+  if(stepEl)stepEl.insertAdjacentHTML("beforeend",`<div id="art-pick" style="font-size:.78rem;color:var(--ink-dim);margin-top:8px">挑生词中…</div>`);
+  const got=await pickWordsFromChunk(chunk);
+  // 去重合并（got 为 null=抽词失败，跳过不崩）
+  if(got)got.forEach(w=>{if(!artAllWords.some(x=>(x.word||"").toLowerCase()===(w.word||"").toLowerCase()))artAllWords.push(w)});
+  const pickEl=document.getElementById("art-pick");if(pickEl)pickEl.remove();
+  // 下一段 or 完成
+  if(idx<total-1){
+    if(stepEl)stepEl.innerHTML=`<div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">已讲完 ${idx+1}/${total} 段，本段累计挑出 ${artAllWords.length} 生词。读完点继续。</div>
+      <button class="ai-btn" onclick="artChunkIdx++;runArticleChunk()">继续下一段（${idx+2}/${total}）</button>`;
+  }else{
+    renderArticleWordPicker();
+  }
+}
+// 抽词（强约束 JSON + 容错 + 返回空时不静默）
+async function pickWordsFromChunk(chunk){
+  const sys=`你是英语词汇老师。从下面这段英文里挑出对中文初学者(约CET4水平)有学习价值的生词和短语，跳过最基础的词。
+严格只输出 JSON，第一个字符必须是 {，不要任何前后文字、不要 Markdown 代码块：
+{"words":[{"word":"词或短语","phonetic":"音标(无则空字符串)","cn":"在本段里的意思","tip":"用法提示(可空)"}]}`;
+  try{
+    const raw=await callAI([{role:"user",content:chunk}],sys,800);
+    let s=raw.trim().replace(/^```json?/i,"").replace(/```$/,"").trim();
+    const a=s.indexOf("{"),b=s.lastIndexOf("}");
+    if(a>=0&&b>a)s=s.slice(a,b+1);
+    const o=JSON.parse(s);
+    return Array.isArray(o.words)?o.words:[];
+  }catch(e){return null}  // null = 失败（区别于空数组=确实没词）
+}
+function renderArticleWordPicker(){
+  const stepEl=document.getElementById("art-step");if(!stepEl)return;
+  lastArtWords={articleId:artId,words:artAllWords};
+  const checks=artAllWords.map((w,i)=>{
+    const exists=allWords().some(x=>x.word.toLowerCase()===(w.word||"").toLowerCase());
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:.82rem;${exists?'opacity:.5':''}">
+      <input type="checkbox" class="art-wc" data-i="${i}" ${exists?'disabled':'checked'}>
+      <span><b>${w.word}</b> ${w.phonetic||""} — ${w.cn||""}${exists?' (已在库)':''}</span></label>`;
+  }).join("");
+  stepEl.innerHTML=`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:10px">
+    <div style="font-weight:600;font-size:.86rem;margin-bottom:6px">全文讲完 · 挑出 ${artAllWords.length} 个生词/短语</div>
+    ${checks||'<div style="font-size:.78rem;color:var(--ink-dim)">没挑到生词，可点下面按钮重试。</div>'}
+    ${artAllWords.length?`<button class="ai-btn" style="margin-top:10px" onclick="saveArticleWords()">加入词库（进“我的文章”）</button>`
+      :`<button class="gear" style="margin-top:8px" onclick="retryPickAll()">🔄 重新挑词</button>`}
+    <div style="font-size:.74rem;color:var(--ink-dim);margin-top:8px">文章和精讲已保存，可在学习页「我的文章」里重看。</div>
+  </div>`;
+}
+// 全文重新抽词（逐段重抽合并）
+async function retryPickAll(){
+  const stepEl=document.getElementById("art-step");
+  if(stepEl)stepEl.innerHTML=`<div style="font-size:.78rem;color:var(--ink-dim)">重新挑词中…</div>`;
+  artAllWords=[];
+  for(let i=0;i<artChunks.length;i++){
+    const got=await pickWordsFromChunk(artChunks[i]);
+    if(got)got.forEach(w=>{if(!artAllWords.some(x=>(x.word||"").toLowerCase()===(w.word||"").toLowerCase()))artAllWords.push(w)});
+  }
+  renderArticleWordPicker();
+}
+// 兼容旧入口名
+function runArticle(){return startArticleSession()}
 function saveArticleWords(){
   if(!lastArtWords)return;
   const {articleId,words}=lastArtWords;
