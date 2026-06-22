@@ -963,6 +963,7 @@ async function callAI(messages, sys, maxTokens=600, images=null){
       last.content=parts;
     }
     body={model,max_tokens:maxTokens,messages:msgs};
+    if(p==="kimi")body.thinking={type:"disabled"};  // Kimi 默认快速模式，不思考
     readText=d=>d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
   }
   const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});
@@ -992,8 +993,8 @@ const MODELS={
     ["claude-opus-4-20250514","Claude Opus 4（最强）"],
   ],
   kimi:[
+    ["kimi-k2.6","Kimi K2.6（可看图·最新）"],
     ["kimi-k2.5","Kimi K2.5（可看图）"],
-    ["moonshot-v1-8k","Moonshot v1 8k"],
   ],
 };
 // 取当前 provider 实际要用的模型 ID
@@ -1054,6 +1055,7 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
     }
     body={model:mdl,max_tokens:maxTokens,messages:msgs,stream:true};
     if(isThink&&(p==="doubao"||p==="deepseek"))body.thinking={type:"enabled"};
+    if(p==="kimi")body.thinking={type:isThink?"enabled":"disabled"};  // Kimi 跟随思考开关，默认关=快
     parseLine=obj=>(obj.choices&&obj.choices[0]&&obj.choices[0].delta&&obj.choices[0].delta.content)||"";
   }
   const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});

@@ -257,7 +257,7 @@ function stripMd(s){
 
 const MODELS={
   deepseek:[["deepseek-v4-flash","V4 Flash（快·性价比）"],["deepseek-v4-pro","V4 Pro（强·编程数学）"]],
-  kimi:[["kimi-k2.5","Kimi K2.5（可看图）"],["moonshot-v1-8k","Moonshot v1 8k"]],
+  kimi:[["kimi-k2.6","Kimi K2.6（可看图·最新）"],["kimi-k2.5","Kimi K2.5（可看图）"]],
   openrouter:[["anthropic/claude-haiku-4.5","Claude Haiku 4.5（快）"],["anthropic/claude-sonnet-4","Claude Sonnet 4（强）"],["deepseek/deepseek-chat","DeepSeek V4（性价比）"],["google/gemini-2.5-flash","Gemini 2.5 Flash（快）"]],
   anthropic:[["claude-haiku-4-5-20251001","Claude Haiku 4.5（快）"],["claude-sonnet-4-20250514","Claude Sonnet 4（强）"],["claude-opus-4-20250514","Claude Opus 4（最强）"]],
 };
@@ -344,6 +344,7 @@ async function callAI(messages,sys,maxTokens=700){
     const msgs=sys?[{role:"system",content:sys},...messages]:messages.slice();
     body={model,max_tokens:maxTokens,messages:msgs};
     if(cfg.thinkOn&&(p==="doubao"||p==="deepseek"))body.thinking={type:"enabled"};
+    if(p==="kimi")body.thinking={type:"disabled"};
     readText=d=>d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
   }
   const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});
@@ -372,6 +373,7 @@ async function callAIStream(messages,sys,onChunk,maxTokens=900){
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
     body={model:mdl,max_tokens:maxTokens,messages:sys?[{role:"system",content:sys},...messages]:messages,stream:true};
     if(cfg.thinkOn&&(p==="doubao"||p==="deepseek"))body.thinking={type:"enabled"};
+    if(p==="kimi")body.thinking={type:cfg.thinkOn?"enabled":"disabled"};
     parseLine=o=>(o.choices&&o.choices[0]&&o.choices[0].delta&&o.choices[0].delta.content)||"";
   }
   const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});
