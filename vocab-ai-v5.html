@@ -679,6 +679,8 @@ function renderArticleDetail(v){
       <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:700;flex:1">${a.title}</div>
     </div>
     <details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-dim)">📖 原文</summary>
+      <button class="gear" style="margin-top:8px" onclick="speakSynth(articles.find(a=>a.id==='${a.id}').text,this);this.classList.toggle('playing')">🔊 朗读原文</button>
+      <button class="gear" style="margin-top:8px" onclick="speechSynthesis.cancel()">⏹ 停止</button>
       <div style="font-size:.84rem;line-height:1.7;white-space:pre-wrap;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px">${(a.text||"").replace(/</g,"&lt;")}</div></details>
     <details open style="margin-bottom:12px"><summary style="cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-dim)">🤖 AI 精讲（${a.mode==="deep"?"精读":"大意"}）</summary>
       <div style="font-size:.84rem;line-height:1.7;white-space:pre-wrap;margin-top:8px">${(a.explain||"").replace(/</g,"&lt;")}</div></details>
@@ -804,26 +806,41 @@ function onPickArticleFile(input){
   r.readAsText(f);
 }
 // 把文章切成块：先按空行/换行分段，累积到约 400 词成一块；超长单段按句子再切
-function splitArticle(text){
-  const paras=text.split(/\n\s*\n|\n/).map(s=>s.trim()).filter(Boolean);
-  const chunks=[];let cur="",curWords=0;
+function splitArticle(text,size){
+  size=size||200;
+  const minBlock=Math.max(30,Math.floor(size*0.4));  // 太短的块并入相邻
+  // 拆成最小单元：优先按句末标点（中英），无标点则整体按词处理
+  const raw=text.replace(/\s+/g," ").trim();
+  if(!raw)return [text.trim()];
+  // 先按句末标点切句；剩下没标点的长串再按词切
+  let units=[];
+  const sentRe=/[^.!?。！？\n]+[.!?。！？]+/g;
+  let lastEnd=0,m;
+  while((m=sentRe.exec(raw))){units.push(m[0].trim());lastEnd=sentRe.lastIndex}
+  const tail=raw.slice(lastEnd).trim();
+  if(tail)units.push(tail);
+  if(!units.length)units=[raw];
   const wc=s=>s.split(/\s+/).filter(Boolean).length;
-  const flush=()=>{if(cur.trim()){chunks.push(cur.trim());cur="";curWords=0}};
-  for(let para of paras){
-    let pw=wc(para);
-    if(pw>400){ // 超长段：按句子切
-      flush();
-      const sents=para.match(/[^.!?。！？]+[.!?。！？]+|\S+$/g)||[para];
-      let block="",bw=0;
-      for(const s of sents){const sw=wc(s);if(bw+sw>400&&block){chunks.push(block.trim());block="";bw=0}block+=s+" ";bw+=sw}
-      if(block.trim())chunks.push(block.trim());
-      continue;
-    }
-    if(curWords+pw>400&&cur){flush()}
-    cur+=(cur?"\n":"")+para;curWords+=pw;
+  // 把超过 size 的单元（多见于无标点长串）按词强制切
+  const fine=[];
+  units.forEach(u=>{
+    if(wc(u)<=size){fine.push(u);return}
+    const words=u.split(/\s+/);
+    for(let i=0;i<words.length;i+=size)fine.push(words.slice(i,i+size).join(" "));
+  });
+  // 累积成块，单元拼到接近 size
+  const chunks=[];let cur="",cw=0;
+  fine.forEach(u=>{
+    const uw=wc(u);
+    if(cw+uw>size&&cur){chunks.push(cur.trim());cur="";cw=0}
+    cur+=(cur?" ":"")+u;cw+=uw;
+  });
+  if(cur.trim())chunks.push(cur.trim());
+  // 合并过短的尾块/碎块到前一块，避免残句单独成段
+  for(let i=chunks.length-1;i>0;i--){
+    if(wc(chunks[i])<minBlock){chunks[i-1]=chunks[i-1]+" "+chunks[i];chunks.splice(i,1)}
   }
-  flush();
-  return chunks.length?chunks:[text.trim()];
+  return chunks.length?chunks:[raw];
 }
 // 分段精读状态
 let artChunks=[],artChunkIdx=0,artId=null,artAllWords=[];
@@ -854,7 +871,11 @@ async function runArticleChunk(){
   // 段标题
   const header=`\n\n第 ${idx+1} 段\n`;
   let segText=art.explain?header:"";
-  const sysDeep="你是英语精读老师，面向中文母语初学者。把下面这段文章讲透：先给中文翻译，再逐句讲解长难句结构、关键语法点、地道表达。讲清楚、讲完整，用中文。不要 Markdown 符号。";
+  const sysDeep=`你是英语精读老师，面向中文母语初学者。讲解下面这段英文，严格按这个顺序，用中文：
+1. 先给整段的中文翻译（标题：整段翻译）
+2. 再逐句拆讲（标题：逐句讲解），每句：先列英文原句，下一行给该句中文翻译，再点出句中的重点短语/词的意思
+3. 最后小结这段的关键语法点和地道表达（标题：语法与表达）
+条理清楚，不要用 Markdown 符号（不要 * # 等）。`;
   const sysGist="你是英语老师，面向中文母语初学者。用中文概括下面这段的大意和要点，简明扼要。不要 Markdown 符号。";
   const base=art.explain;
   try{
@@ -886,8 +907,9 @@ async function runArticleChunk(){
 // 抽词（强约束 JSON + 容错 + 返回空时不静默）
 async function pickWordsFromChunk(chunk){
   const sys=`你是英语词汇老师。从下面这段英文里挑出对中文初学者(约CET4水平)有学习价值的生词和短语，跳过最基础的词。
+每个词要给出它在原文里所在的那句英文作为例句，并翻译该例句。
 严格只输出 JSON，第一个字符必须是 {，不要任何前后文字、不要 Markdown 代码块：
-{"words":[{"word":"词或短语","phonetic":"音标(无则空字符串)","cn":"在本段里的意思","tip":"用法提示(可空)"}]}`;
+{"words":[{"word":"词或短语","phonetic":"音标(无则空字符串)","cn":"在本段里的意思","tip":"用法提示(可空)","exampleEn":"原文中该词所在的句子","exampleCn":"该句中文翻译"}]}`;
   try{
     const raw=await callAI([{role:"user",content:chunk}],sys,800);
     let s=raw.trim().replace(/^```json?/i,"").replace(/```$/,"").trim();
@@ -937,7 +959,7 @@ function saveArticleWords(){
     const w=words[parseInt(cb.dataset.i,10)];if(!w)return;
     if(allWords().some(x=>x.word.toLowerCase()===(w.word||"").toLowerCase()))return;
     const id="aw"+Date.now()+"_"+n;
-    imported.push({id,word:w.word,phonetic:w.phonetic||"",pos:"",cn:w.cn||"",tip:w.tip||"",exampleEn:"",exampleCn:"",scene:"",cat:artCatKey(articleId),fromArticle:articleId});
+    imported.push({id,word:w.word,phonetic:w.phonetic||"",pos:"",cn:w.cn||"",tip:w.tip||"",exampleEn:w.exampleEn||"",exampleCn:w.exampleCn||"",scene:"",cat:artCatKey(articleId),fromArticle:articleId});
     srs[id]={ef:2.5,interval:0,reps:0,due:Date.now()};  // 进复习曲线
     n++;
   });
