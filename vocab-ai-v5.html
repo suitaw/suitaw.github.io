@@ -308,13 +308,24 @@ function grade(id,q){ // q: 0=again,3=hard,4=good,5=easy
   }
   c.due=Date.now()+c.interval*86400000;
   srs[id]=c;save(SRS_KEY,srs);
-  logStudy();  // 记录今日学习
+  logStudy(id,q);  // 记录今日学习
 }
-// 每日学习量记录 {YYYY-MM-DD: 次数}
+// 每日学习量记录 {YYYY-MM-DD: 次数}（练习量，用于打卡/7天图）
 const DAILY_KEY="vocab_v5_daily";
 let daily=load(DAILY_KEY,{});
+// 每日"记住"的去重词 {YYYY-MM-DD:{wordId:1}}（仅记得/秒答计入，用于"今日已背"）
+const LEARNED_KEY="vocab_v5_daily_learned";
+let dailyLearned=load(LEARNED_KEY,{});
 function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
-function logStudy(){const t=todayStr();daily[t]=(daily[t]||0)+1;save(DAILY_KEY,daily)}
+function logStudy(id,q){
+  const t=todayStr();
+  daily[t]=(daily[t]||0)+1;save(DAILY_KEY,daily);          // 练习量（保持原样：打卡/图表用）
+  if(q>=4&&id){                                            // 记得/秒答=今天记住了这个词（去重）
+    if(!dailyLearned[t])dailyLearned[t]={};
+    dailyLearned[t][id]=1;save(LEARNED_KEY,dailyLearned);
+  }
+}
+function todayLearnedCount(){const o=dailyLearned[todayStr()];return o?Object.keys(o).length:0}
 // 连续打卡天数（从今天往回数）
 function streakDays(){
   let n=0;const d=new Date();
@@ -357,6 +368,8 @@ function buildQueue(){
 // ===== 渲染 =====
 function go(p){page=p;save("vocab_v5_page",p);["home","assistant","mistake","stats"].forEach(x=>{const el=document.getElementById("nav-"+x);if(el)el.classList.toggle("active",x===p)});render()}
 let studyStarted=false;  // 是否已从分类页进入学习
+let roundTotal=0;        // 本轮词数（建队列时定）
+let roundDone=new Set(); // 本轮已过关的去重词 id（点难/记得/秒答即过关，忘了不算）
 function render(){
   const v=document.getElementById("view");
   // 快速加词浮动按钮：背单词卡片态隐藏（不挡操作），其余显示
@@ -381,8 +394,11 @@ function render(){
         <button class="gear" onclick="backToHome()">← 返回</button>
         <div style="display:flex;gap:8px;align-items:center">
           ${viewed.length?`<button class="gear" onclick="prevWord()">↩ 上一个</button>`:""}
-          <div class="progress" style="margin:0">本轮剩 ${queue.length} 词</div>
+          <div class="progress" style="margin:0">已过 ${roundDone.size} / ${roundTotal||queue.length}</div>
         </div>
+      </div>
+      <div style="height:4px;background:var(--line);border-radius:2px;margin-bottom:12px;overflow:hidden">
+        <div style="height:100%;width:${roundTotal?Math.round(roundDone.size/roundTotal*100):0}%;background:var(--accent);border-radius:2px;transition:width .3s"></div>
       </div>
       <div class="card" id="card" onclick="if(!flipped)flip()">
         <span class="cat-tag">${catName(cur.cat)}</span>
@@ -499,9 +515,9 @@ function renderHome(v){
     </div>
   </div>`;
 }
-let homeCatsOpen=false;
+let homeCatsOpen=load("vocab_v5_homecats_open",true);
 function toggleHomeCats(){
-  homeCatsOpen=!homeCatsOpen;
+  homeCatsOpen=!homeCatsOpen;save("vocab_v5_homecats_open",homeCatsOpen);
   const c=document.getElementById("home-cats"),a=document.getElementById("homecats-arrow");
   if(c)c.style.display=homeCatsOpen?"block":"none";
   if(a)a.textContent=homeCatsOpen?"收起 ▾":"展开 ▸";
@@ -603,13 +619,14 @@ function renderPreview(v){
     ${list.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
   </div>`;
 }
-function startStudy(cat){previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();cur=queue[0]||null;render()}
+function startStudy(cat){previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();roundTotal=queue.length;roundDone=new Set();cur=queue[0]||null;render()}
 // 从词表点某个词直接开背：把该词排到队首
 function startStudyAt(cat,id){
   previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;flipped=false;viewed=[];buildQueue();
   const i=queue.findIndex(w=>w.id===id);
   if(i>0){const picked=queue.splice(i,1)[0];queue.unshift(picked)}
   else if(i<0){const w=allWords().find(x=>x.id===id);if(w)queue.unshift(w)}
+  roundTotal=queue.length;roundDone=new Set();
   cur=queue[0]||null;render();
 }
 function backHtml(){
@@ -863,6 +880,7 @@ function bindSwipe(){
 const GRADUATE_STREAK=3;  // 复习本的词连续点"记得/秒答"达到此次数自动毕业移出
 function rate(q){
   grade(cur.id,q);
+  if(q>=3)roundDone.add(cur.id);  // 难/记得/秒答=本轮过关；忘了不算
   if(cur._phrase){
     // 短语卡：只走 SRS，不进复习本
   }else if(q===0){addMistake(cur,"忘了");resetStreak(cur.id)}
@@ -1061,7 +1079,7 @@ function renderStats(v){
   const seen=all.filter(w=>srs[w.id]&&srs[w.id].reps>0).length;
   const mastered=all.filter(w=>srs[w.id]&&srs[w.id].interval>=6).length;
   const streak=streakDays();
-  const todayCount=daily[todayStr()]||0;
+  const todayCount=todayLearnedCount();
   // 最近7天数据
   const last7=[];
   const dd=new Date();
@@ -1091,7 +1109,7 @@ function renderStats(v){
       </div>
       <div style="flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center">
         <div style="font-family:Fraunces,serif;font-size:1.8rem;font-weight:700;color:var(--accent)">${todayCount}</div>
-        <div style="font-size:.72rem;color:var(--ink-dim)">今日已背</div>
+        <div style="font-size:.72rem;color:var(--ink-dim)">今日记住</div>
       </div>
     </div>
 
@@ -1412,7 +1430,16 @@ function renderAssistant(v){
       <label class="gear" style="cursor:pointer;padding:10px 12px;white-space:nowrap">📷<input type="file" accept="image/*" style="display:none" onchange="onPickChatImage(this)"></label>
     </div>
     <button class="ai-btn" id="chat-send" style="margin-top:8px" onclick="sendChat()">发送</button>
+    ${chatHistory.length>=2?`<div style="position:fixed;right:14px;bottom:148px;display:flex;flex-direction:column;gap:8px;z-index:50">
+      <button class="gear" style="width:42px;height:42px;border-radius:50%;padding:0;box-shadow:0 2px 8px rgba(0,0,0,.18);background:var(--card)" onclick="scrollChat('top')" title="回到顶部">↑</button>
+      <button class="gear" style="width:42px;height:42px;border-radius:50%;padding:0;box-shadow:0 2px 8px rgba(0,0,0,.18);background:var(--card)" onclick="scrollChat('bottom')" title="到最新">↓</button>
+    </div>`:""}
   </div>`;
+}
+// AI助手：一键到顶/到底（滚整页窗口）
+function scrollChat(where){
+  if(where==="top")window.scrollTo({top:0,behavior:"smooth"});
+  else window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
 }
 let chatImage=null;  // AI助手当前要发的图 {b64,mime}
 function onPickChatImage(input){
