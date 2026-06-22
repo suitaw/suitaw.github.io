@@ -539,6 +539,24 @@ function wordStatus(id){
 }
 const SORT_LABELS={recent:"最新在前",alpha:"字母序",default:"默认"};
 function setSortMode(m){sortMode=m;save("vocab_v5_sortmode",m);renderPreview(document.getElementById("view"))}
+// 遮义模式：none(全显)/cn(遮中文,先认英文)/en(遮英文,练拼写回想)
+let maskMode=load("vocab_v5_maskmode","cn");
+const MASK_LABELS={none:"显示全部",cn:"遮中文",en:"遮英文"};
+function setMaskMode(m){maskMode=m;save("vocab_v5_maskmode",m);renderPreview(document.getElementById("view"))}
+// 行内翻看：点遮住的那块时切显隐，不重渲染整页（保滚动位置）
+function revealCell(el){
+  el.querySelector(".pv-hide").style.display="none";
+  el.querySelector(".pv-show").style.display="";
+}
+function hideCell(el){
+  el.querySelector(".pv-hide").style.display="";
+  el.querySelector(".pv-show").style.display="none";
+}
+function toggleCell(ev,el){
+  ev.stopPropagation();
+  const shown=el.querySelector(".pv-show").style.display!=="none";
+  if(shown)hideCell(el);else revealCell(el);
+}
 function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;render()}
 function closeCatPreview(){previewCat=null;render()}
 function renderPreview(v){
@@ -550,11 +568,26 @@ function renderPreview(v){
   const sortBtns=Object.keys(SORT_LABELS).map(m=>
     `<button class="gear" style="${sortMode===m?'background:var(--accent-soft);border-color:var(--accent);color:var(--accent)':''}" onclick="setSortMode('${m}')">${SORT_LABELS[m]}</button>`
   ).join("");
+  const maskBtns=Object.keys(MASK_LABELS).map(m=>
+    `<button class="gear" style="${maskMode===m?'background:var(--accent-soft);border-color:var(--accent);color:var(--accent)':''}" onclick="setMaskMode('${m}')">${MASK_LABELS[m]}</button>`
+  ).join("");
+  // 一块可遮区域：hideMe=true 时初始遮住
+  const cell=(realHtml,hideMe,placeholder)=>{
+    if(!hideMe)return realHtml;
+    return `<span onclick="toggleCell(event,this.parentNode)" style="cursor:pointer">
+      <span class="pv-hide" style="color:var(--ink-dim);font-style:italic">${placeholder}</span>
+      <span class="pv-show" style="display:none">${realHtml}</span></span>`;
+  };
   const rows=list.map(w=>{
     const st=wordStatus(w.id);
+    const ph=w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${w.phonetic}</span>`:"";
+    // 英文行（含音标）：遮英文模式下遮住，露音标保留提示性可选——这里整块遮，点开露英文+音标
+    const enReal=`${w.word}${ph}`;
+    const enBlock=`<div class="w" style="font-size:1rem">${cell(enReal,maskMode==="en","••• 点击显示单词")}</div>`;
+    const cnReal=`${w.cn||""}`;
+    const cnBlock=`<div class="c">${cell(cnReal,maskMode==="cn","••• 点击显示意思")}</div>`;
     return `<div class="mistake-item" style="cursor:pointer" onclick="startStudyAt('${cat}','${w.id}')">
-      <div style="flex:1"><div class="w" style="font-size:1rem">${w.word}${w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${w.phonetic}</span>`:""}</div>
-        <div class="c">${w.cn||""}</div></div>
+      <div style="flex:1">${enBlock}${cnBlock}</div>
       <span style="font-size:.66rem;color:${st.col};border:1px solid ${st.col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st.t}</span>
     </div>`;
   }).join("");
@@ -564,7 +597,8 @@ function renderPreview(v){
       <div style="font-family:Fraunces,serif;font-size:1.15rem;font-weight:700">${catName(cat)}</div>
     </div>
     <div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:10px">共 ${list.length} 词 · 新词 ${newN} · 待复习 ${dueN}</div>
-    <div style="display:flex;gap:6px;margin-bottom:12px">${sortBtns}</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${sortBtns}</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${maskBtns}</div>
     ${list.length?rows:`<div class="done"><p>这个分类还没有词。</p></div>`}
     ${list.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
   </div>`;
