@@ -179,9 +179,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",s
     <label>服务商</label>
     <select id="provider">
       <option value="deepseek">DeepSeek</option>
-      <option value="doubao">豆包（火山方舟）</option>
+      <option value="doubao">豆包（火山方舟·可看图）</option>
+      <option value="kimi">Kimi 月之暗面（可看图）</option>
       <option value="openrouter">OpenRouter</option>
-      <option value="anthropic">Anthropic</option>
+      <option value="anthropic">Anthropic（可看图）</option>
     </select>
     <div id="model-row"><label>模型</label><select id="model"></select></div>
     <label>API Key</label>
@@ -221,6 +222,10 @@ function loadStr(k,d){const v=localStorage.getItem(k);return v===null?d:v}
 let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",models:{},thinkOn:false});
 if(!cfg.models)cfg.models={};
 if(typeof cfg.thinkOn!=="boolean")cfg.thinkOn=false;
+// Key 按 provider 分开存（与 Vocab 共享同一 cfg）
+if(!cfg.keys)cfg.keys={};
+if(cfg.apikey&&cfg.provider&&!cfg.keys[cfg.provider]){cfg.keys[cfg.provider]=cfg.apikey;save(CFG_KEY,cfg)}
+cfg.apikey=cfg.keys[cfg.provider]||"";
 let srs=load(SRS_KEY,{});
 let prog=load(PROG_KEY,{done:{}});
 if(!prog.done)prog.done={};
@@ -252,9 +257,19 @@ function stripMd(s){
 
 const MODELS={
   deepseek:[["deepseek-v4-flash","V4 Flash（快·性价比）"],["deepseek-v4-pro","V4 Pro（强·编程数学）"]],
+  kimi:[["kimi-k2.5","Kimi K2.5（可看图）"],["moonshot-v1-8k","Moonshot v1 8k"]],
   openrouter:[["anthropic/claude-haiku-4.5","Claude Haiku 4.5（快）"],["anthropic/claude-sonnet-4","Claude Sonnet 4（强）"],["deepseek/deepseek-chat","DeepSeek V4（性价比）"],["google/gemini-2.5-flash","Gemini 2.5 Flash（快）"]],
   anthropic:[["claude-haiku-4-5-20251001","Claude Haiku 4.5（快）"],["claude-sonnet-4-20250514","Claude Sonnet 4（强）"],["claude-opus-4-20250514","Claude Opus 4（最强）"]],
 };
+const VISION_PROVIDERS=["anthropic","doubao","kimi"];
+function currentModelLabel(){
+  const p=cfg.provider;
+  if(p==="doubao")return "豆包·"+(cfg.endpoint||"未填接入点");
+  const list=MODELS[p]||MODELS.deepseek;
+  const id=currentModel();
+  const m=list.find(x=>x[0]===id);
+  return m?m[1]:id;
+}
 function currentModel(){
   const p=cfg.provider;
   if(p==="doubao")return cfg.endpoint;
@@ -279,7 +294,13 @@ function bindCfg(){
   };
   const syncEp=()=>{epRow.style.display=cfg.provider==="doubao"?"block":"none"};
   syncEp();syncModel();
-  p.onchange=()=>{cfg.provider=p.value;save(CFG_KEY,cfg);syncEp();syncModel()};
+  p.onchange=()=>{
+    cfg.provider=p.value;
+    cfg.apikey=cfg.keys[cfg.provider]||"";  // 切 provider 带出它的 key
+    k.value=cfg.apikey;                       // 同步输入框
+    save(CFG_KEY,cfg);syncEp();syncModel();
+  };
+  k.onchange=()=>{cfg.apikey=k.value.trim();cfg.keys[cfg.provider]=cfg.apikey;save(CFG_KEY,cfg)};
   mSel.onchange=()=>{cfg.models[cfg.provider]=mSel.value;save(CFG_KEY,cfg)};
   th.onchange=()=>{cfg.thinkOn=th.checked;save(CFG_KEY,cfg)};
 }
@@ -288,6 +309,7 @@ function saveCfg(){
   cfg.apikey=document.getElementById("apikey").value.trim();
   cfg.endpoint=document.getElementById("endpoint").value.trim();
   cfg.thinkOn=document.getElementById("think-toggle").checked;
+  cfg.keys[cfg.provider]=cfg.apikey;  // 存进当前 provider 的槽
   save(CFG_KEY,cfg);
   profile=document.getElementById("profile").value.trim();
   localStorage.setItem(PROFILE_KEY,profile);
@@ -295,9 +317,9 @@ function saveCfg(){
   toast("已保存");
 }
 function clearKey(){
-  cfg.apikey="";cfg.endpoint="";save(CFG_KEY,cfg);
+  cfg.apikey="";cfg.endpoint="";cfg.keys[cfg.provider]="";save(CFG_KEY,cfg);
   document.getElementById("apikey").value="";document.getElementById("endpoint").value="";
-  toast("Key 已清空");
+  toast("Key 已清空（仅当前服务商）");
 }
 function withProfile(sys){return profile?sys+"\n\n【关于这位学习者】"+profile:sys}
 
@@ -315,6 +337,7 @@ async function callAI(messages,sys,maxTokens=700){
   }else{
     if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
     else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
+    else if(p==="kimi")url="https://api.moonshot.cn/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
     const model=p==="doubao"?cfg.endpoint:currentModel();
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
@@ -344,6 +367,7 @@ async function callAIStream(messages,sys,onChunk,maxTokens=900){
   }else{
     if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
     else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
+    else if(p==="kimi")url="https://api.moonshot.cn/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
     body={model:mdl,max_tokens:maxTokens,messages:sys?[{role:"system",content:sys},...messages]:messages,stream:true};
@@ -621,15 +645,28 @@ function renderAssistant(v){
         `<div style="text-align:center;color:var(--ink-faint);font-size:.86rem;padding:40px 20px">问我任何 Python 或英文问题——<br>比如「raise 是什么意思」「这个报错怎么读」。</div>`}</div>
     </div>
     <div class="chat-input">
-      <div class="chat-meta">
+      <div class="chat-meta" style="display:flex;align-items:center;gap:8px">
+        <select onchange="switchProvider(this.value)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-family:inherit;font-size:.72rem;background:var(--card);color:var(--ink)">
+          ${[["deepseek","DeepSeek"],["doubao","豆包"],["kimi","Kimi"],["anthropic","Claude"],["openrouter","OpenRouter"]].map(([k,name])=>{
+            const hasKey=cfg.keys&&cfg.keys[k];
+            return `<option value="${k}" ${cfg.provider===k?"selected":""}>${name}${hasKey?"":"（未填Key）"}${VISION_PROVIDERS.includes(k)?" ·可看图":""}</option>`;
+          }).join("")}
+        </select>
         <span class="think" onclick="quickToggleThink()"><span id="think-ind">${cfg.thinkOn?"🧠 思考开":"🧠 思考关"}</span></span>
-        <span>模型：${modelLabel()}</span>
       </div>
+      <div style="font-size:.68rem;color:var(--ink-faint);margin:4px 0 6px">当前：${modelLabel()}</div>
       <div class="row">
         <textarea id="chat-in" rows="1" placeholder="问点什么…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
         <button onclick="sendChat()">发送</button>
       </div>
     </div>`;
+}
+function switchProvider(p){
+  cfg.provider=p;
+  cfg.apikey=(cfg.keys&&cfg.keys[p])||"";
+  save(CFG_KEY,cfg);
+  if(!cfg.apikey)toast(`${p} 还没填 Key，去设置（⚙）里填`);
+  renderAssistant(document.getElementById("view"));
 }
 function modelLabel(){
   const p=cfg.provider;
@@ -672,7 +709,7 @@ if(typeof window!=="undefined"){
   window.togglePanel=togglePanel;window.saveCfg=saveCfg;window.genExplain=genExplain;
   window.genDoc=genDoc;window.genBreak=genBreak;window.quickToggleThink=quickToggleThink;
   window.genExercise=genExercise;window.checkExercise=checkExercise;
-  window.toggleFold=toggleFold;
+  window.toggleFold=toggleFold;window.switchProvider=switchProvider;
 }
 </script>
 </body>

@@ -113,9 +113,10 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
     <label>AI 服务商</label>
     <select id="provider">
       <option value="deepseek">DeepSeek（纯文本·性价比）</option>
-      <option value="doubao">豆包 / 火山方舟</option>
+      <option value="doubao">豆包 / 火山方舟（可看图）</option>
+      <option value="kimi">Kimi 月之暗面（可看图）</option>
       <option value="openrouter">OpenRouter（一把 Key 多模型）</option>
-      <option value="anthropic">Anthropic 直连</option>
+      <option value="anthropic">Anthropic 直连（可看图）</option>
     </select>
     <label>API Key</label>
     <input type="password" id="apikey" placeholder="sk-..." autocomplete="off">
@@ -925,7 +926,7 @@ function favFromReview(id){
 }
 
 // ===== 通用 AI 调用（四 provider，支持图片）=====
-const VISION_PROVIDERS=["anthropic","doubao"];
+const VISION_PROVIDERS=["anthropic","doubao","kimi"];
 async function callAI(messages, sys, maxTokens=600, images=null){
   if(!cfg.apikey)throw new Error("先在设置里填 API Key");
   if(cfg.provider==="doubao"&&!cfg.endpoint)throw new Error("豆包需要先填接入点 ID（ep-xxxx）");
@@ -949,6 +950,7 @@ async function callAI(messages, sys, maxTokens=600, images=null){
   }else{
     if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
     else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
+    else if(p==="kimi")url="https://api.moonshot.cn/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
     const model=p==="doubao"?cfg.endpoint:currentModel();
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
@@ -989,6 +991,10 @@ const MODELS={
     ["claude-sonnet-4-20250514","Claude Sonnet 4（强）"],
     ["claude-opus-4-20250514","Claude Opus 4（最强）"],
   ],
+  kimi:[
+    ["kimi-k2.5","Kimi K2.5（可看图）"],
+    ["moonshot-v1-8k","Moonshot v1 8k"],
+  ],
 };
 // 取当前 provider 实际要用的模型 ID
 function currentModel(){
@@ -1012,7 +1018,7 @@ function currentModelLabel(){
 async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, images=null){
   if(!cfg.apikey)throw new Error("先在设置里填 API Key");
   if(cfg.provider==="doubao"&&!cfg.endpoint)throw new Error("豆包需要先填接入点 ID（ep-xxxx）");
-  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到豆包或 Claude");
+  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到豆包/Kimi/Claude");
   const p=cfg.provider;
   const isThink=think;
   const mdl=currentModel();
@@ -1035,6 +1041,7 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
   }else{
     if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
     else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
+    else if(p==="kimi")url="https://api.moonshot.cn/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
     let msgs=sys?[{role:"system",content:sys},...messages]:messages.slice();
@@ -1136,7 +1143,7 @@ function renderAssistant(v){
     </div>`}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px">
       <select onchange="switchProvider(this.value)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-family:inherit;font-size:.74rem;background:var(--card);color:var(--ink)">
-        ${[["deepseek","DeepSeek"],["doubao","豆包"],["anthropic","Claude"],["openrouter","OpenRouter"]].map(([k,name])=>{
+        ${[["deepseek","DeepSeek"],["doubao","豆包"],["kimi","Kimi"],["anthropic","Claude"],["openrouter","OpenRouter"]].map(([k,name])=>{
           const hasKey=cfg.keys&&cfg.keys[k];
           return `<option value="${k}" ${cfg.provider===k?"selected":""}>${name}${hasKey?"":"（未填Key）"}${VISION_PROVIDERS.includes(k)?" · 可看图":""}</option>`;
         }).join("")}
@@ -1155,7 +1162,7 @@ function renderAssistant(v){
 let chatImage=null;  // AI助手当前要发的图 {b64,mime}
 function onPickChatImage(input){
   const f=input.files&&input.files[0];if(!f)return;
-  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("传图需切到豆包或 Claude");return}
+  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("传图需切到豆包/Kimi/Claude");return}
   readImageFile(f).then(img=>{
     chatImage=img;
     const p=document.getElementById("chat-img-preview");
@@ -1439,7 +1446,7 @@ function openQuickAdd(){
 }
 function onPickQaImage(input){
   const f=input.files&&input.files[0];if(!f)return;
-  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("读图需切到豆包或 Claude");return}
+  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("读图需切到豆包/Kimi/Claude");return}
   readImageFile(f).then(img=>{
     qaImage=img;
     document.getElementById("qa-img-preview").innerHTML=`<div style="font-size:.76rem;color:var(--green)">✓ 已选图片，点「AI 挑生词」提取 <button class="gear" onclick="clearQaImage()">移除</button></div>`;
@@ -1473,7 +1480,7 @@ async function quickAddGo(mode){
       const text=await callAI([{role:"user",content:words.join(", ")}],sys,3000);
       const arr=parseJsonArrayLoose(text);
       if(!arr.length)throw new Error("没生成出来，重试一次");
-      finishQuickAdd(arr,valid,res);
+      showQuickAddPreview(arr,valid);
     }catch(e){res.textContent="失败："+(e.message||"检查 Key")}
     finally{aBtn.disabled=false;aBtn.textContent="全部补全录入"}
     return;
@@ -1481,7 +1488,7 @@ async function quickAddGo(mode){
 
   // extract：贴文章 或 图片
   if(!raw.trim()&&!qaImage)return toast("贴段英文，或选张图片");
-  if(qaImage&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到豆包或 Claude");
+  if(qaImage&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到豆包/Kimi/Claude");
   eBtn.disabled=true;eBtn.textContent="提取中…";res.textContent="AI 正在挑生词…";
   const sys=`你是英语老师，面向中文母语的英语学习者。从用户给的英文文章或图片里挑出值得学的生词/短语（跳过 the/is 这类太简单的），为每个生成词条。
 分类 cat 只能填：dev、tv、life、biz、academic、news、other。
@@ -1491,27 +1498,58 @@ async function quickAddGo(mode){
     const text=await callAI([{role:"user",content:prompt}],sys,3000,qaImage?[qaImage]:null);
     const arr=parseJsonArrayLoose(text);
     if(!arr.length)throw new Error("没挑出生词，换段文字或图片");
-    finishQuickAdd(arr,valid,res);
+    showQuickAddPreview(arr,valid);
   }catch(e){res.textContent="失败："+(e.message||"检查 Key")}
   finally{eBtn.disabled=false;eBtn.textContent="AI 挑生词"}
 }
-function finishQuickAdd(arr,valid,res){
-  let n=0,dup=0;
-  const byCat={};  // 统计每类加了几个
-  arr.forEach(c=>{
-    if(!c.word)return;
-    if(allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase())){dup++;return}
-    const cat=valid.includes(c.cat)?c.cat:"other";
-    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn||"",tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",cat});
-    byCat[cat]=(byCat[cat]||0)+1;
+// 候选词暂存（预览用）
+let qaCandidates=[];
+// AI 补全后：渲染勾选列表让用户确认
+function showQuickAddPreview(arr,valid){
+  // 过滤无 word 的、标记已存在的
+  qaCandidates=arr.filter(c=>c.word).map(c=>({
+    word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn||"",tip:c.tip||"",
+    exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",
+    cat:valid.includes(c.cat)?c.cat:"other",
+    dup:allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase()),
+    checked:!allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase())  // 已存在的默认不勾
+  }));
+  if(!qaCandidates.length){toast("没挑出可加入的词");return}
+  const ov=document.getElementById("quickadd-overlay");
+  ov.innerHTML=`<div class="import-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h2 style="font-family:Fraunces,serif;font-size:1.2rem">确认加入（${qaCandidates.length} 个）</h2>
+      <button class="gear" onclick="closeQuickAdd()">✕</button>
+    </div>
+    <p style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">勾选要加入的词，取消不想要的。灰色是已在库里的。</p>
+    <div style="max-height:48vh;overflow-y:auto;margin-bottom:10px">
+      ${qaCandidates.map((c,i)=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:8px;background:${c.dup?'var(--paper2)':'var(--card)'};border:1px solid var(--line);margin-bottom:6px;${c.dup?'opacity:.6':''}">
+        <input type="checkbox" ${c.checked?"checked":""} onchange="qaCandidates[${i}].checked=this.checked" style="margin-top:3px">
+        <div style="flex:1">
+          <div><b>${c.word}</b> <span style="font-size:.72rem;color:var(--ink-dim)">${c.phonetic} ${c.pos}</span>${c.dup?' <span style="font-size:.7rem;color:var(--accent)">已在库</span>':''}</div>
+          <div style="font-size:.8rem">${c.cn}</div>
+          <div style="font-size:.7rem;color:var(--ink-dim)">→ ${catName(c.cat)}</div>
+        </div>
+      </label>`).join("")}
+    </div>
+    <button class="ai-btn" onclick="confirmQuickAdd()">确认加入勾选的词</button>
+  </div>`;
+}
+function confirmQuickAdd(){
+  let n=0;const byCat={};
+  qaCandidates.forEach(c=>{
+    if(!c.checked||c.dup)return;
+    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic,pos:c.pos,cn:c.cn,tip:c.tip,exampleEn:c.exampleEn,exampleCn:c.exampleCn,scene:c.scene,cat:c.cat});
+    byCat[c.cat]=(byCat[c.cat]||0)+1;
   });
   save(IMP_KEY,imported);
   if(n){
     const detail=Object.keys(byCat).map(c=>`${catName(c)} ${byCat[c]}`).join("、");
-    toast(`已加入 ${n} 个词 → ${detail}`+(dup?`（${dup} 个已有跳过）`:""),3200);
+    toast(`已加入 ${n} 个词 → ${detail}`,3200);
   }else{
-    toast(dup?`这 ${dup} 个词都已在库里了`:"没有可加入的词");
+    toast("没有勾选要加入的词");
   }
+  qaCandidates=[];
   closeQuickAdd();
   if(page==="home"&&!studyStarted)render();
 }
