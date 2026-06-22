@@ -361,12 +361,15 @@ function render(){
   const v=document.getElementById("view");
   // 快速加词浮动按钮：背单词卡片态隐藏（不挡操作），其余显示
   const fab=document.getElementById("quick-add-fab");
-  if(fab)fab.style.display=(page==="home"&&studyStarted)?"none":"block";
+  if(fab)fab.style.display=(page==="home"&&(studyStarted||previewCat!==null))?"none":"block";
   if(page==="assistant")return renderAssistant(v);
   if(page==="mistake")return renderMistake(v);
   if(page==="stats")return renderStats(v);
-  // home：未开始学习时显示分类选择，已开始则显示卡片
-  if(page==="home"&&!studyStarted)return renderHome(v);
+  // home：未开始学习时显示分类选择/词表预览，已开始则显示卡片
+  if(page==="home"&&!studyStarted){
+    if(previewCat!==null)return renderPreview(v);
+    return renderHome(v);
+  }
   // study (卡片)
   if(!cur){buildQueue();cur=queue[0]||null;flipped=false}
   if(!cur){
@@ -402,7 +405,14 @@ function catName(c){
   const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",codepath:"Codepath 编程",__phrase__:"短语复习"};
   return fixed[c]||c;
 }
-function backToHome(){studyStarted=false;cur=null;flipped=false;viewed=[];go("home")}
+function backToHome(){
+  studyStarted=false;cur=null;flipped=false;viewed=[];
+  // 从某个具体分类进入的，返回到该分类词表预览；特殊 scope(到期/新词/收藏)回首页
+  const sp=cfg.scope;
+  if(sp&&sp!=="__due__"&&sp!=="__new__"&&sp!=="__fav__"){previewCat=sp}
+  else{previewCat=null}
+  go("home");
+}
 // 分类选择页（内置 + 7大类，词数<3的归入"我的收藏"显示）
 function renderHome(v){
   const MIN=3;  // 自定义大类至少3词才单独成类
@@ -482,7 +492,7 @@ function renderHome(v){
       <span id="homecats-arrow" style="font-size:.8rem;color:var(--ink-dim)">${homeCatsOpen?'收起 ▾':'展开 ▸'}</span>
     </div>
     <div id="home-cats" style="display:${homeCatsOpen?'block':'none'}">
-      ${rows.map(r=>`<div class="mistake-item" style="cursor:pointer" onclick="startStudy('${r.key}')">
+      ${rows.map(r=>`<div class="mistake-item" style="cursor:pointer" onclick="openCatPreview('${r.key}')">
         <div><div class="w">${r.name}</div><div class="c">${r.desc} · 共 ${r.n} 词</div></div>
         <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${r.due}</div><div class="c">待学</div></div>
       </div>`).join("")}
@@ -498,7 +508,76 @@ function toggleHomeCats(){
 }
 // 收藏聚合分类的判断
 function isFavWord(w,looseCats){return w.cat==="import"||w.cat==="other"||(looseCats&&looseCats.includes(w.cat))}
-function startStudy(cat){cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();cur=queue[0]||null;render()}
+// ===== A：分类词表预览 + 排序 =====
+let previewCat=null;                                   // 当前预览的分类 key（null=未在预览）
+let sortMode=load("vocab_v5_sortmode","recent");       // recent(最新在前)/alpha(字母序)/default(默认)
+// 取某分类下的词（与 inScope 同口径，但不依赖 cfg.scope）
+function wordsOfCat(cat){
+  const all=allWords();
+  if(cat==="all")return all.slice();
+  if(cat==="__fav__"){const lc=looseCatsNow();return all.filter(w=>isFavWord(w,lc))}
+  return all.filter(w=>w.cat===cat);
+}
+// 从词 id 解析加入时间（导入词 id 形如 "数字" 或带前缀，取其中的时间戳；内置词无时间戳→0）
+function wordTime(w){
+  const m=String(w.id).match(/(\d{13})/);   // 13 位毫秒时间戳
+  return m?parseInt(m[1],10):0;
+}
+function sortWords(list){
+  const a=list.slice();
+  if(sortMode==="alpha")a.sort((x,y)=>(x.word||"").toLowerCase().localeCompare((y.word||"").toLowerCase()));
+  else if(sortMode==="recent")a.sort((x,y)=>wordTime(y)-wordTime(x));  // 有时间戳的(新加入)在前，内置(0)在后保持原序
+  // default：保持 allWords 原始顺序，不动
+  return a;
+}
+// 词的学习状态标签
+function wordStatus(id){
+  const c=srs[id];
+  if(!c)return {t:"新词",col:"var(--ink-dim)"};
+  if(c.due&&c.due<=Date.now())return {t:"待复习",col:"var(--accent)"};
+  return {t:"复习中",col:"var(--green)"};
+}
+const SORT_LABELS={recent:"最新在前",alpha:"字母序",default:"默认"};
+function setSortMode(m){sortMode=m;save("vocab_v5_sortmode",m);renderPreview(document.getElementById("view"))}
+function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;render()}
+function closeCatPreview(){previewCat=null;render()}
+function renderPreview(v){
+  const cat=previewCat;
+  const list=sortWords(wordsOfCat(cat));
+  const now=Date.now();
+  const dueN=list.filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=now).length;
+  const newN=list.filter(w=>!srs[w.id]).length;
+  const sortBtns=Object.keys(SORT_LABELS).map(m=>
+    `<button class="gear" style="${sortMode===m?'background:var(--accent-soft);border-color:var(--accent);color:var(--accent)':''}" onclick="setSortMode('${m}')">${SORT_LABELS[m]}</button>`
+  ).join("");
+  const rows=list.map(w=>{
+    const st=wordStatus(w.id);
+    return `<div class="mistake-item" style="cursor:pointer" onclick="startStudyAt('${cat}','${w.id}')">
+      <div style="flex:1"><div class="w" style="font-size:1rem">${w.word}${w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${w.phonetic}</span>`:""}</div>
+        <div class="c">${w.cn||""}</div></div>
+      <span style="font-size:.66rem;color:${st.col};border:1px solid ${st.col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st.t}</span>
+    </div>`;
+  }).join("");
+  v.innerHTML=`<div style="padding-top:8px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <button class="gear" onclick="closeCatPreview()">← 返回</button>
+      <div style="font-family:Fraunces,serif;font-size:1.15rem;font-weight:700">${catName(cat)}</div>
+    </div>
+    <div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:10px">共 ${list.length} 词 · 新词 ${newN} · 待复习 ${dueN}</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">${sortBtns}</div>
+    ${list.length?rows:`<div class="done"><p>这个分类还没有词。</p></div>`}
+    ${list.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
+  </div>`;
+}
+function startStudy(cat){previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();cur=queue[0]||null;render()}
+// 从词表点某个词直接开背：把该词排到队首
+function startStudyAt(cat,id){
+  previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;flipped=false;viewed=[];buildQueue();
+  const i=queue.findIndex(w=>w.id===id);
+  if(i>0){const picked=queue.splice(i,1)[0];queue.unshift(picked)}
+  else if(i<0){const w=allWords().find(x=>x.id===id);if(w)queue.unshift(w)}
+  cur=queue[0]||null;render();
+}
 function backHtml(){
   // 短语卡：只展示释义+用法提示，不收藏、无例句、不拆解
   if(cur._phrase){
@@ -526,6 +605,7 @@ function backHtml(){
       <button class="gear" id="dissect-btn" onclick="event.stopPropagation();dissectExample()">🔍 拆解这句话</button>
     </div>
     <div id="dissect-result" style="display:none;margin-top:10px"></div>
+    ${tagBarHtml()}
   </div>`;
 }
 function toggleFav(){
@@ -555,6 +635,61 @@ function flip(){flipped=true;render()}
 const DISSECT_KEY="vocab_v5_dissect";
 let dissectCache=load(DISSECT_KEY,{});
 let lastDissect=null;  // 当前词的拆解结果，供入库按钮取数据
+// ===== 多标签 AI 查询（仿百词斩：词组搭配/派生词/单词变形/英文释义/近义词/反义词/形近词）=====
+const TAG_KEY="vocab_v5_tagcache";
+let tagCache=load(TAG_KEY,{});   // {wordId:{tagKey:文本}}
+const TAGS=[
+  {k:"collo",label:"词组搭配",ask:"列出这个词最常用的 3-5 个词组/固定搭配，每行：英文搭配 + 空格 + 中文意思。只列搭配本身，不要例句、不要解释、不要编号。"},
+  {k:"deriv",label:"派生词",ask:"列出这个词的常见派生词（加前后缀变出的词，如 happy→happiness/unhappy），每行：派生词(词性) + 空格 + 中文意思。最多 5 个，没有就写「无明显派生词」。"},
+  {k:"forms",label:"单词变形",ask:"列出这个词的语法变形（名词复数、动词过去式/过去分词/现在分词、形容词比较级/最高级等，按词性适用的列）。每行：变形类型：变形后的词。没有变形就写「该词无规则变形」。"},
+  {k:"endef",label:"英文释义",ask:"用简单英文给这个词 1-2 条释义（CEFR B1 难度，初学者能懂），每条一行。只要英文释义，不要中文、不要例句。"},
+  {k:"syn",label:"近义词",ask:"列出 3-5 个近义词，每行：近义词 + 空格 + 中文意思 + （括号里一句话点出和目标词的细微差别）。"},
+  {k:"ant",label:"反义词",ask:"列出 2-4 个反义词，每行：反义词 + 空格 + 中文意思。没有明确反义词就写「该词无常用反义词」。"},
+  {k:"near",label:"形近词",ask:"列出 2-4 个长得像、容易混淆的形近词（拼写相近），每行：形近词 + 空格 + 中文意思 + （括号里提示和目标词怎么区分）。"}
+];
+let openTag=null;  // 当前展开的标签 key
+function tagBarHtml(){
+  return `<div id="tag-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${tagBtnsHtml()}</div>
+    <div id="tag-result" style="margin-top:8px">${openTag&&tagCache[cur.id]&&tagCache[cur.id][openTag]?tagResultHtml(tagCache[cur.id][openTag]):""}</div>`;
+}
+function tagBtnsHtml(){
+  return TAGS.map(t=>{
+    const cached=tagCache[cur.id]&&tagCache[cur.id][t.k];
+    const on=openTag===t.k;
+    return `<button class="gear" style="${on?'background:var(--accent-soft);border-color:var(--accent);color:var(--accent)':''}" onclick="event.stopPropagation();queryTag('${t.k}')">${t.label}${cached?' ·':''}</button>`;
+  }).join("");
+}
+function tagResultHtml(txt){
+  const lines=String(txt).split("\n").filter(l=>l.trim());
+  return `<div style="background:var(--card-soft,#f5f1ea);border-radius:10px;padding:10px 12px;font-size:.82rem;line-height:1.7">${
+    lines.map(l=>`<div>${l.replace(/[*#`]/g,"")}</div>`).join("")}</div>`;
+}
+async function queryTag(k){
+  if(!cur)return;
+  const box=document.getElementById("tag-result");
+  if(openTag===k){openTag=null;if(box)box.innerHTML="";refreshTagBar();return}  // 再点收起
+  openTag=k;
+  const tag=TAGS.find(t=>t.k===k);
+  if(tagCache[cur.id]&&tagCache[cur.id][k]){if(box)box.innerHTML=tagResultHtml(tagCache[cur.id][k]);refreshTagBar();return}
+  refreshTagBar();
+  if(box)box.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
+  const sys=`你是英语老师，面对中文母语初学者。针对给定单词，${tag.ask}\n直接给内容，不要开场白、不要总结、不要 Markdown 符号。`;
+  try{
+    const text=await callAI([{role:"user",content:`单词：${cur.word}（${cur.cn||""}）`}],sys,500);
+    const clean=text.replace(/```/g,"").trim();
+    if(!tagCache[cur.id])tagCache[cur.id]={};
+    tagCache[cur.id][k]=clean;save(TAG_KEY,tagCache);
+    if(openTag===k&&box)box.innerHTML=tagResultHtml(clean);
+    refreshTagBar();
+  }catch(e){
+    if(box)box.innerHTML=`<div style="font-size:.78rem;color:var(--accent)">查询失败：${e.message||"检查 Key"}</div>`;
+  }
+}
+// 只重建标签按钮行（高亮+缓存点），不动结果区
+function refreshTagBar(){
+  const bar=document.getElementById("tag-bar");
+  if(bar)bar.innerHTML=tagBtnsHtml();
+}
 async function dissectExample(){
   if(!cur||!cur.exampleEn)return toast("这个词没有例句");
   const btn=document.getElementById("dissect-btn");
@@ -639,7 +774,7 @@ function nextWord(){
   if(queue.length<=1){toast("就剩这一个啦");return false}
   viewed.push(cur);
   const w=queue.shift();queue.push(w);
-  cur=queue[0];flipped=false;render();
+  cur=queue[0];flipped=false;openTag=null;render();
   return true;
 }
 // 上一词（左滑）：从历史弹回，重新放回队首
@@ -652,7 +787,7 @@ function prevWord(){
   const pi=queue.indexOf(prev);
   if(pi>=0)queue.splice(pi,1);
   queue.unshift(prev);
-  cur=prev;flipped=false;render();
+  cur=prev;flipped=false;openTag=null;render();
   return true;
 }
 // 左右滑（只在正面生效）：右滑下一词，左滑返回上一词
@@ -710,7 +845,7 @@ function rate(q){
   viewed=[];                        // 评分推进了进度，历史清空
   queue.shift();
   if(q<3)queue.push(cur);
-  cur=queue[0]||null;flipped=false;render();
+  cur=queue[0]||null;flipped=false;openTag=null;render();
 }
 function resetStreak(id){const m=mistakes.find(x=>x.id===id);if(m&&m.streak){m.streak=0;save(MIS_KEY,mistakes)}}
 
