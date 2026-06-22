@@ -204,8 +204,9 @@ function allWords(){return WORDS.concat(imported)}
 // ===== 短语库 / 语法库 =====
 const PHRASE_KEY="vocab_v5_phrases";
 const GRAMMAR_KEY="vocab_v5_grammar";
-let phrases=load(PHRASE_KEY,[]);  // [{id,phrase,cn,tip}]
-let grammar=load(GRAMMAR_KEY,[]); // [{id,point,cn,example}]
+let phrases=load(PHRASE_KEY,[]);  // [{id,phrase,cn,tip,type,inReview?}]  inReview=true 时 srs[id] 存在
+let grammar=load(GRAMMAR_KEY,[]); // [{id,point,cn,example,topic,detail?,due?,lastReview?}]
+const GRAMMAR_REVIEW_DAYS=7;      // 语法回顾间隔（天）：展开详解一次后顺延这么久
 function addPhrase(p){
   if(phrases.some(x=>x.phrase.toLowerCase()===(p.phrase||"").toLowerCase()))return false;
   const validT=["phrasal","collocation","prep","other"];
@@ -215,9 +216,40 @@ function addPhrase(p){
 function addGrammar(g){
   if(grammar.some(x=>x.point===(g.point||"")))return false;
   const validTopic=["tense","word","sentence","other"];
-  grammar.push({id:"gr"+Date.now()+"_"+grammar.length,point:g.point,cn:g.cn||"",example:g.example||"",topic:validTopic.includes(g.topic)?g.topic:"other"});
+  // 新加语法点立即进回顾队列：due=now，回顾后顺延
+  grammar.push({id:"gr"+Date.now()+"_"+grammar.length,point:g.point,cn:g.cn||"",example:g.example||"",topic:validTopic.includes(g.topic)?g.topic:"other",due:Date.now()});
   save(GRAMMAR_KEY,grammar);return true;
 }
+// 短语→闪卡对象（带齐卡片渲染所需字段，复用整套词卡渲染/评分；id 仍是 ph 前缀不与词撞）
+function phraseCard(p){
+  return {id:p.id,word:p.phrase,phonetic:"",pos:"phr.",cn:p.cn||"",tip:p.tip||"",exampleEn:"",exampleCn:"",scene:"",cat:"__phrase__",_phrase:true};
+}
+// 短语加入/移出复习曲线
+function setPhraseReview(id,on){
+  const p=phrases.find(x=>x.id===id);if(!p)return;
+  if(on){if(!srs[id])srs[id]={ef:2.5,interval:0,reps:0,due:Date.now()};p.inReview=true}
+  else{delete srs[id];p.inReview=false}
+  save(SRS_KEY,srs);save(PHRASE_KEY,phrases);
+}
+// 一次性迁移：清理旧 phraseToReview 留下的 import 脏词条 + 旧字段
+(function migrateB(){
+  let dirty=false;
+  // 旧 hack：phrase 上有 srsId 回指一个 import 词条。把复习状态迁到短语本身，删脏词条
+  phrases.forEach(p=>{
+    if(p.srsId){
+      const old=srs[p.srsId];
+      if(old){srs[p.id]=old;delete srs[p.srsId];dirty=true}
+      p.inReview=true;delete p.srsId;dirty=true;
+    }
+  });
+  // 删掉 hack 产生的 import 词条（word 等于某个短语、cat=import、pos=phr.）
+  const before=imported.length;
+  imported=imported.filter(w=>!(w.cat==="import"&&w.pos==="phr."&&phrases.some(p=>p.phrase===w.word)));
+  if(imported.length!==before){save(IMP_KEY,imported);dirty=true}
+  // 语法补 due（旧数据没有）
+  grammar.forEach(g=>{if(typeof g.due!=="number"){g.due=Date.now();dirty=true}});
+  if(dirty){save(SRS_KEY,srs);save(PHRASE_KEY,phrases);save(GRAMMAR_KEY,grammar)}
+})();
 
 // ===== 设置面板 =====
 function togglePanel(){document.getElementById("panel").classList.toggle("open")}
@@ -306,9 +338,11 @@ function inScope(w){
 }
 function buildQueue(){
   const now=Date.now();
+  // 到期短语（已加入复习且到点）→ 闪卡对象，与词共用队列
+  const duePhrases=phrases.filter(p=>p.inReview&&srs[p.id]&&srs[p.id].due&&srs[p.id].due<=now).map(phraseCard);
   if(cfg.scope==="__due__"){
-    // 只复习已学过且到期的词
-    queue=allWords().filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=now);
+    // 只复习已学过且到期的词 + 到期短语
+    queue=allWords().filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=now).concat(duePhrases);
   }else if(cfg.scope==="__new__"){
     // 只背还没学过的新词
     queue=allWords().filter(w=>!srs[w.id]);
@@ -365,7 +399,7 @@ function render(){
   }
 }
 function catName(c){
-  const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",codepath:"Codepath 编程"};
+  const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",codepath:"Codepath 编程",__phrase__:"短语复习"};
   return fixed[c]||c;
 }
 function backToHome(){studyStarted=false;cur=null;flipped=false;viewed=[];go("home")}
@@ -412,25 +446,33 @@ function renderHome(v){
     const due=all.filter(w=>(w.cat==="import"||w.cat==="other"||looseCats.includes(w.cat))&&(!srs[w.id]||!srs[w.id].due||srs[w.id].due<=Date.now())).length;
     rows.push({key:"__fav__",name:"我的收藏",desc:"零散词·攒够会自动成类",n:favCount,due});
   }
-  // 跨分类今日待复习总数（已学过且到期；新词不计入"复习"）
-  const dueNow=all.filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=Date.now()).length;
+  // 跨分类今日待复习总数（词到期 + 短语到期；新词不计入"复习"）
+  const dueWords=all.filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=Date.now()).length;
+  const duePhraseCount=phrases.filter(p=>p.inReview&&srs[p.id]&&srs[p.id].due&&srs[p.id].due<=Date.now()).length;
+  const dueNow=dueWords+duePhraseCount;
   // 新词 = 还没建立 srs 记录的词
   const newCount=all.filter(w=>!srs[w.id]).length;
   // 复习本待复习
   const misCount=mistakes.length;
+  // 到期待回顾的语法点（不进闪卡，点击跳语法库）
+  const dueGrammar=grammar.filter(g=>g.due&&g.due<=Date.now()).length;
 
   const todayPanel=`
     <div style="background:linear-gradient(135deg,var(--accent),#a0563a);border-radius:16px;padding:18px;margin-bottom:16px;color:#fff">
       <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:600;margin-bottom:2px">今天学什么</div>
       <div style="font-size:.74rem;opacity:.85;margin-bottom:14px">跟着下面走就行，不用自己想</div>
       <div onclick="${dueNow?`startStudy('__due__')`:''}" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;margin-bottom:8px;${dueNow?'cursor:pointer':'opacity:.6'}">
-        <div><div style="font-weight:600">📚 复习到期的词</div><div style="font-size:.72rem;opacity:.85">${dueNow?'记忆该巩固了，先复习':'今天没有到期的，太棒了'}</div></div>
+        <div><div style="font-weight:600">📚 复习到期</div><div style="font-size:.72rem;opacity:.85">${dueNow?`记忆该巩固了${duePhraseCount?`（含 ${duePhraseCount} 短语）`:''}`:'今天没有到期的，太棒了'}</div></div>
         <div style="font-family:Fraunces,serif;font-weight:700;font-size:1.5rem">${dueNow}</div>
       </div>
-      <div onclick="${newCount?`startStudy('__new__')`:''}" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;${newCount?'cursor:pointer':'opacity:.6'}">
+      <div onclick="${newCount?`startStudy('__new__')`:''}" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;${dueGrammar?'margin-bottom:8px;':''}${newCount?'cursor:pointer':'opacity:.6'}">
         <div><div style="font-weight:600">✨ 背几个新词</div><div style="font-size:.72rem;opacity:.85">${newCount?'从所有分类里挑新词':'新词都学过啦'}</div></div>
         <div style="font-family:Fraunces,serif;font-weight:700;font-size:1.5rem">${newCount}</div>
       </div>
+      ${dueGrammar?`<div onclick="gotoGrammarReview()" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;cursor:pointer">
+        <div><div style="font-weight:600">📖 语法该回顾了</div><div style="font-size:.72rem;opacity:.85">点开看 AI 详解，回顾一遍就顺延</div></div>
+        <div style="font-family:Fraunces,serif;font-weight:700;font-size:1.5rem">${dueGrammar}</div>
+      </div>`:""}
     </div>`;
 
   v.innerHTML=`<div style="padding-top:8px">
@@ -458,6 +500,14 @@ function toggleHomeCats(){
 function isFavWord(w,looseCats){return w.cat==="import"||w.cat==="other"||(looseCats&&looseCats.includes(w.cat))}
 function startStudy(cat){cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();cur=queue[0]||null;render()}
 function backHtml(){
+  // 短语卡：只展示释义+用法提示，不收藏、无例句、不拆解
+  if(cur._phrase){
+    return `
+  <div class="back">
+    <div class="cn">${cur.cn}<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">phr.</span></div>
+    ${cur.tip?`<div class="tip">💡 ${cur.tip}</div>`:""}
+  </div>`;
+  }
   const fav=mistakes.find(m=>m.id===cur.id)?"★ 已收藏":"☆ 收藏";
   const pos=cur.pos?`<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">${cur.pos}</span>`:"";
   const scene=cur.scene?`<div class="tip" style="background:#eef3ec;border-left:3px solid var(--green)">🎬 ${cur.scene}</div>`:"";
@@ -641,16 +691,28 @@ function bindSwipe(){
     }
   });
 }
+const GRADUATE_STREAK=3;  // 复习本的词连续点"记得/秒答"达到此次数自动毕业移出
 function rate(q){
   grade(cur.id,q);
-  if(q===0)addMistake(cur,"忘了");
-  else if(q===3)addMistake(cur,"难");
-  else removeMistake(cur.id);  // 记得/秒答：移出复习本
+  if(cur._phrase){
+    // 短语卡：只走 SRS，不进复习本
+  }else if(q===0){addMistake(cur,"忘了");resetStreak(cur.id)}
+  else if(q===3){addMistake(cur,"难");resetStreak(cur.id)}
+  else{
+    // 记得/秒答：若该词在复习本，累加连对；达标毕业移出，否则保留
+    const m=mistakes.find(x=>x.id===cur.id);
+    if(m){
+      m.streak=(m.streak||0)+1;
+      if(m.streak>=GRADUATE_STREAK){removeMistake(cur.id);toast("已掌握，移出复习本 🎓")}
+      else save(MIS_KEY,mistakes);
+    }
+  }
   viewed=[];                        // 评分推进了进度，历史清空
   queue.shift();
   if(q<3)queue.push(cur);
   cur=queue[0]||null;flipped=false;render();
 }
+function resetStreak(id){const m=mistakes.find(x=>x.id===id);if(m&&m.streak){m.streak=0;save(MIS_KEY,mistakes)}}
 
 // ===== 发音 =====
 // 单词：有道真人发音（更准）；句子：浏览器语音合成（带语调，不机械）
@@ -702,14 +764,15 @@ function renderMistake(v){
   if(mistakeTab==="grammar")return renderGrammarTab(v,tabBar);
   if(!mistakes.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>复习本是空的</h2><p>背单词点“忘了/难”自动进来；翻面点☆也能手动收藏。</p></div></div>`;return}
   v.innerHTML=`<div style="padding-top:8px">${tabBar}
-    <p style="color:var(--ink-dim);font-size:.76rem;margin-bottom:12px">点“忘了/难”自动收录，或翻面点☆手动收藏。点 🗑 移出。</p>
+    <p style="color:var(--ink-dim);font-size:.76rem;margin-bottom:12px">点“忘了/难”自动收录，或翻面点☆手动收藏。复习时连续点 ${GRADUATE_STREAK} 次“记得/秒答”自动毕业移出。</p>
     ${mistakes.map(m=>{
       const tag=m.from==="忘了"?`<span style="color:var(--accent);font-weight:600">忘了</span>`
         :m.from==="难"?`<span style="color:var(--gold);font-weight:600">难</span>`
         :`<span style="opacity:.7">${m.from||"收藏"}</span>`;
+      const prog=m.streak?`<span style="opacity:.7"> · 连对 ${m.streak}/${GRADUATE_STREAK}</span>`:"";
       return `
     <div class="mistake-item">
-      <div><div class="w">${m.word}</div><div class="c">${m.cn} · ${tag}</div></div>
+      <div><div class="w">${m.word}</div><div class="c">${m.cn} · ${tag}${prog}</div></div>
       <div style="display:flex;gap:6px">
         <button class="gear" onclick="speakWord('${m.word.replace(/'/g,"")}')">🔊</button>
         <button class="gear" onclick="delMistake('${m.id}')">🗑</button>
@@ -717,61 +780,80 @@ function renderMistake(v){
     </div>`}).join("")}</div>`;
 }
 function switchMistakeTab(t){mistakeTab=t;save("vocab_v5_mtab",t);renderMistake(document.getElementById("view"))}
+// 从首页"语法该回顾"跳到语法库 tab（到期的会置顶高亮）
+function gotoGrammarReview(){mistakeTab="grammar";save("vocab_v5_mtab","grammar");go("mistake")}
 function renderPhraseTab(v,tabBar){
   if(!phrases.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>短语库是空的</h2><p>背单词翻面后点“🔍 拆解这句话”，把有用的短语加进来。</p></div></div>`;return}
   const groups=[["phrasal","短语动词"],["collocation","固定搭配"],["prep","介词短语"],["other","其他"]];
+  const now=Date.now();
   let body="";
   groups.forEach(([key,name])=>{
     const list=phrases.filter(p=>(p.type||"other")===key);
     if(!list.length)return;
     body+=`<div style="font-size:.72rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600">${name}（${list.length}）</div>`;
     body+=list.map(p=>{
-      const inSrs=allWords().some(w=>w.id===p.srsId);
+      const c=p.inReview?srs[p.id]:null;
+      const due=c&&c.due&&c.due<=now;
+      const status=!p.inReview?"加复习":due?"待复习":"复习中";
+      const stHint=p.inReview?(due?`<span style="color:var(--accent);font-weight:600;font-size:.7rem">· 到期待复习</span>`:`<span style="opacity:.7;font-size:.7rem">· 下次 ${fmtDue(c&&c.due)}</span>`):"";
       return `<div class="mistake-item">
-      <div style="flex:1"><div class="w" style="font-size:1rem">${p.phrase}</div><div class="c">${p.cn}${p.tip?` · ${p.tip}`:""}</div></div>
+      <div style="flex:1"><div class="w" style="font-size:1rem">${p.phrase}</div><div class="c">${p.cn}${p.tip?` · ${p.tip}`:""} ${stHint}</div></div>
       <div style="display:flex;gap:6px">
-        <button class="gear" onclick="phraseToReview('${p.id}')" ${inSrs?"disabled":""}>${inSrs?"复习中":"加复习"}</button>
+        <button class="gear" style="${p.inReview?'background:var(--accent-soft);border-color:var(--accent);color:var(--accent)':''}" onclick="togglePhraseReview('${p.id}')">${status}</button>
         <button class="gear" onclick="speakWord('${p.phrase.replace(/'/g,"")}')">🔊</button>
         <button class="gear" onclick="delPhrase('${p.id}')">🗑</button>
       </div>
     </div>`}).join("");
   });
   v.innerHTML=`<div style="padding-top:8px">${tabBar}
-    <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:4px">按类型分组。点“加复习”把短语当词条进 SRS，像单词一样考你。</p>
+    <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:4px">点“加复习”让短语进记忆曲线，到期会在首页“复习到期”里提醒你，像单词一样翻卡考。</p>
     ${body}</div>`;
 }
-// 短语→当词条进词库+SRS，能像单词一样复习
-function phraseToReview(id){
+// 短语加入/移出复习曲线（原地 SRS，不再复制成词条）
+function togglePhraseReview(id){
   const p=phrases.find(x=>x.id===id);if(!p)return;
-  if(p.srsId&&allWords().some(w=>w.id===p.srsId))return toast("已在复习中");
-  const wid="ph_"+id;
-  imported.push({id:wid,word:p.phrase,phonetic:"",pos:"phr.",cn:p.cn||"",tip:p.tip||"",exampleEn:"",exampleCn:"",scene:"",cat:"import"});
-  save(IMP_KEY,imported);
-  srs[wid]={ef:2.5,interval:0,reps:0,due:Date.now()};save(SRS_KEY,srs);
-  p.srsId=wid;save(PHRASE_KEY,phrases);
-  toast("已加入复习，去“学习”里的“我的收藏”背它");
+  setPhraseReview(id,!p.inReview);
+  toast(p.inReview?"已加入复习，到期在首页提醒":"已移出复习");
   renderMistake(document.getElementById("view"));
+}
+// 友好显示下次复习时间
+function fmtDue(ts){
+  if(!ts)return"今天";
+  const d=Math.ceil((ts-Date.now())/86400000);
+  if(d<=0)return"今天";if(d===1)return"明天";return d+"天后";
 }
 function renderGrammarTab(v,tabBar){
   if(!grammar.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>语法库是空的</h2><p>语法重在系统学。想学某个语法，直接去「AI 助手」问它，会给你讲整块、配例句，比存零散卡片更有用。</p></div></div>`;return}
+  const now=Date.now();
   const groups=[["tense","时态"],["word","词法"],["sentence","句法"],["other","其他"]];
+  const due=grammar.filter(g=>g.due&&g.due<=now);
   let body="";
+  // 到期待回顾置顶高亮
+  if(due.length){
+    body+=`<div style="font-size:.72rem;color:var(--accent);margin:6px 0;font-weight:600">📖 该回顾了（${due.length}）— 点开详解看一遍就顺延</div>`;
+    body+=due.map(g=>grammarItem(g,true)).join("");
+  }
+  // 分组列出未到期的（避免与置顶重复）
   groups.forEach(([key,name])=>{
-    const list=grammar.filter(g=>(g.topic||"other")===key);
+    const list=grammar.filter(g=>(g.topic||"other")===key&&!(g.due&&g.due<=now));
     if(!list.length)return;
     body+=`<div style="font-size:.72rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600">${name}（${list.length}）</div>`;
-    body+=list.map(g=>`<div class="mistake-item" style="flex-direction:column;align-items:stretch">
+    body+=list.map(g=>grammarItem(g,false)).join("");
+  });
+  v.innerHTML=`<div style="padding-top:8px">${tabBar}
+    <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:4px">按主题分组。语法重在理解——点“展开详解”让 AI 讲透，不做闪卡考试；看一遍即算回顾，${GRAMMAR_REVIEW_DAYS}天后再提醒。</p>
+    ${body}</div>`;
+}
+// 单个语法条目（hot=到期高亮）
+function grammarItem(g,hot){
+  return `<div class="mistake-item" style="flex-direction:column;align-items:stretch${hot?';border-color:var(--accent);background:var(--accent-soft)':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div style="flex:1"><div class="w" style="font-size:1rem">${g.point}</div><div class="c">${g.cn}</div>${g.example?`<div class="c" style="margin-top:3px;font-style:italic">例：${g.example}</div>`:""}</div>
         <button class="gear" onclick="delGrammar('${g.id}')">🗑</button>
       </div>
       <button class="gear" style="margin-top:8px" onclick="explainGrammar('${g.id}')">${grammarOpen[g.id]?'📖 收起详解':'📖 展开详解（AI 讲透+多给例句）'}</button>
       <div id="gexp-${g.id}" style="margin-top:8px">${grammarOpen[g.id]&&g.detail?grammarDetailHtml(g.detail):""}</div>
-    </div>`).join("");
-  });
-  v.innerHTML=`<div style="padding-top:8px">${tabBar}
-    <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:4px">按主题分组。语法重在理解——点“展开详解”让 AI 讲透，不做闪卡考试。</p>
-    ${body}</div>`;
+    </div>`;
 }
 // 语法点详解：AI 现场展开（缓存到 grammar 条目），可展开可收回
 let grammarOpen={};  // {id:true} 记录哪些详解是展开的
@@ -781,6 +863,8 @@ async function explainGrammar(id){
   // 已展开 → 收起
   if(grammarOpen[id]){grammarOpen[id]=false;renderMistake(document.getElementById("view"));return}
   grammarOpen[id]=true;
+  // 展开即算一次回顾：顺延下次提醒
+  g.due=Date.now()+GRAMMAR_REVIEW_DAYS*86400000;g.lastReview=Date.now();save(GRAMMAR_KEY,grammar);
   // 有缓存直接显示（重渲染让按钮文字变“收起”）
   if(g.detail){renderMistake(document.getElementById("view"));return}
   // 无缓存：先把按钮态刷新成展开，再异步取内容
@@ -797,7 +881,7 @@ async function explainGrammar(id){
 function grammarDetailHtml(text){
   return `<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;white-space:pre-wrap">${text}</div>`;
 }
-function delPhrase(id){const i=phrases.findIndex(p=>p.id===id);if(i>=0){phrases.splice(i,1);save(PHRASE_KEY,phrases);renderMistake(document.getElementById("view"))}}
+function delPhrase(id){const i=phrases.findIndex(p=>p.id===id);if(i>=0){phrases.splice(i,1);delete srs[id];save(SRS_KEY,srs);save(PHRASE_KEY,phrases);renderMistake(document.getElementById("view"))}}
 function delGrammar(id){const i=grammar.findIndex(g=>g.id===id);if(i>=0){grammar.splice(i,1);save(GRAMMAR_KEY,grammar);renderMistake(document.getElementById("view"))}}
 function speakWord(w){playAudio(w,null)}
 
