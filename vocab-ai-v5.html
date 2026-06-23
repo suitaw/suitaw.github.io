@@ -927,12 +927,13 @@ async function runArticleChunk(){
 }
 // 抽词（强约束 JSON + 容错 + 返回空时不静默）
 async function pickWordsFromChunk(chunk){
-  const sys=`你是英语词汇老师。从下面这段英文里挑出对中文初学者(约CET4水平)有学习价值的生词和短语，跳过最基础的词。
-每个词要给出它在原文里所在的那句英文作为例句，并翻译该例句。
+  const sys=`你是英语词汇老师。读者的英语水平相当于《新概念英语》第一册(NCE1)，词汇量很基础。
+请从下面这段英文里，挑出所有超出 NCE1 词汇范围的内容：生词、技术术语、专有名词、固定搭配、动词短语都要挑。宁多勿漏——只有 NCE1 已经学过的最基础词(如 the/is/you/voice/course 这类)才跳过。
+本段最多挑 25 个。每个词给出它在原文里所在的那句英文作为例句，并翻译该例句。
 严格只输出 JSON，第一个字符必须是 {，不要任何前后文字、不要 Markdown 代码块：
 {"words":[{"word":"词或短语","phonetic":"音标(无则空字符串)","cn":"在本段里的意思","tip":"用法提示(可空)","exampleEn":"原文中该词所在的句子","exampleCn":"该句中文翻译"}]}`;
   try{
-    const raw=await callAI([{role:"user",content:chunk}],sys,800);
+    const raw=await callAI([{role:"user",content:chunk}],sys,1200);
     let s=raw.trim().replace(/^```json?/i,"").replace(/```$/,"").trim();
     const a=s.indexOf("{"),b=s.lastIndexOf("}");
     if(a>=0&&b>a)s=s.slice(a,b+1);
