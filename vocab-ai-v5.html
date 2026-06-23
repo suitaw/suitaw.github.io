@@ -782,6 +782,8 @@ function openArticleReader(){
     <input id="art-title" placeholder="给这篇起个名（可留空，自动取开头）" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px;font-family:inherit;font-size:.82rem;background:var(--paper)">
     <textarea id="art-text" placeholder="把文章粘贴到这里…" style="width:100%;min-height:140px;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:inherit;font-size:.85rem;background:var(--paper);resize:vertical"></textarea>
     <label class="gear" style="display:inline-block;cursor:pointer;margin:8px 0">📎 上传 .txt<input type="file" accept=".txt,text/plain" style="display:none" onchange="onPickArticleFile(this)"></label>
+    <button class="gear" id="art-punct" style="margin:8px 0 8px 8px" onclick="punctuateArticle()">✨ AI 断句加标点（转写稿先用这个）</button>
+    <div id="art-punct-hint" style="font-size:.72rem;color:var(--ink-dim);margin-bottom:8px">没有标点的语音转写稿，先点上面按钮断句，再开始精读效果更好。只加标点不改原词。</div>
     <div style="display:flex;gap:8px;margin:8px 0">
       <button class="gear" id="art-mode-deep" style="flex:1;background:var(--accent-soft);border-color:var(--accent);color:var(--accent)" onclick="setArtMode('deep')">精读（逐段讲透）</button>
       <button class="gear" id="art-mode-gist" style="flex:1" onclick="setArtMode('gist')">大意（概括）</button>
@@ -841,6 +843,25 @@ function splitArticle(text,size){
     if(wc(chunks[i])<minBlock){chunks[i-1]=chunks[i-1]+" "+chunks[i];chunks.splice(i,1)}
   }
   return chunks.length?chunks:[raw];
+}
+// AI 断句加标点（只加标点分段，不改原词）→ 替换输入框
+async function punctuateArticle(){
+  const ta=document.getElementById("art-text");if(!ta)return;
+  const text=(ta.value||"").trim();
+  if(text.length<20)return toast("先粘贴文章");
+  if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider]))return toast("先在设置里填 API Key");
+  const btn=document.getElementById("art-punct");
+  const oldLabel=btn?btn.textContent:"";
+  if(btn){btn.disabled=true;btn.textContent="处理中…"}
+  const sys=`下面是一段没有标点（或标点很少）的英文，多为语音转写稿。请给它断句、加上正确的标点符号、并合理分段。
+严格要求：只能添加标点、大小写和分段换行，绝对不可以增删、改写、替换任何单词，词序也不能变。直接输出处理后的英文，不要任何解释、不要 Markdown。`;
+  try{
+    const out=await callAI([{role:"user",content:text}],sys,Math.min(4000,Math.max(800,Math.ceil(text.length/2))));
+    const cleaned=out.replace(/```/g,"").trim();
+    if(cleaned.length>10){ta.value=cleaned;toast("已断句加标点，可检查后开始精读")}
+    else toast("处理结果异常，请重试");
+  }catch(e){toast("加标点失败："+(e.message||"检查 Key"))}
+  if(btn){btn.disabled=false;btn.textContent=oldLabel}
 }
 // 分段精读状态
 let artChunks=[],artChunkIdx=0,artId=null,artAllWords=[];
