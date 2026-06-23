@@ -809,7 +809,7 @@ function onPickArticleFile(input){
 }
 // 把文章切成块：先按空行/换行分段，累积到约 400 词成一块；超长单段按句子再切
 function splitArticle(text,size){
-  size=size||200;
+  size=size||150;
   const minBlock=Math.max(30,Math.floor(size*0.4));  // 太短的块并入相邻
   // 拆成最小单元：优先按句末标点（中英），无标点则整体按词处理
   const raw=text.replace(/\s+/g," ").trim();
@@ -872,7 +872,7 @@ function startArticleSession(){
   let title=(document.getElementById("art-title")||{}).value||"";
   if(!title.trim())title=text.trim().slice(0,16).replace(/\n/g," ")+"…";
   artChunks=splitArticle(text);
-  artChunkIdx=0;artAllWords=[];
+  artChunkIdx=0;artAllWords=[];artStat={w:0,p:0,g:0};
   artId="a"+Date.now();
   // 先建文章（explain 随每段追加）
   articles.unshift({id:artId,title,text,mode:artMode,explain:"",createdAt:Date.now()});
@@ -904,42 +904,87 @@ async function runArticleChunk(){
       const piece=stripMd(fullText);
       art.explain=base+segText+piece;
       if(explainEl)explainEl.textContent=art.explain;
-    }, 1500, false);
+    }, 3000, false);
   }catch(e){
     if(stepEl)stepEl.innerHTML=`<div style="color:var(--accent);font-size:.8rem">这段精讲失败：${e.message}</div>
       <button class="gear" style="margin-top:8px" onclick="runArticleChunk()">重试这段</button>`;
     return;
   }
   saveArticles();
-  // 抽这段的生词
-  if(stepEl)stepEl.insertAdjacentHTML("beforeend",`<div id="art-pick" style="font-size:.78rem;color:var(--ink-dim);margin-top:8px">挑生词中…</div>`);
-  const got=await pickWordsFromChunk(chunk);
-  // 去重合并（got 为 null=抽词失败，跳过不崩）
-  if(got)got.forEach(w=>{if(!artAllWords.some(x=>(x.word||"").toLowerCase()===(w.word||"").toLowerCase()))artAllWords.push(w)});
+  // 提取本段涉及的 单词/短语/语法，自动入库（方案B：不再手动挑）
+  if(stepEl)stepEl.insertAdjacentHTML("beforeend",`<div id="art-pick" style="font-size:.78rem;color:var(--ink-dim);margin-top:8px">自动收录词句中…</div>`);
+  const ext=await extractFromChunk(chunk);
+  if(ext)autoFileExtract(ext);
   const pickEl=document.getElementById("art-pick");if(pickEl)pickEl.remove();
   // 下一段 or 完成
   if(idx<total-1){
-    if(stepEl)stepEl.innerHTML=`<div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">已讲完 ${idx+1}/${total} 段，本段累计挑出 ${artAllWords.length} 生词。读完点继续。</div>
+    if(stepEl)stepEl.innerHTML=`<div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">已讲完 ${idx+1}/${total} 段 · 已收录 ${artStat.w} 词 / ${artStat.p} 短语 / ${artStat.g} 语法。读完点继续。</div>
       <button class="ai-btn" onclick="artChunkIdx++;runArticleChunk()">继续下一段（${idx+2}/${total}）</button>`;
   }else{
-    renderArticleWordPicker();
+    renderArticleDone();
   }
 }
+// 累计入库统计
+let artStat={w:0,p:0,g:0};
+// 自动把提取结果分类入库（去重）：单词→文章词库进SRS带例句；短语→短语库进复习；语法→语法库进回顾
+function autoFileExtract(ext){
+  // 单词
+  (ext.words||[]).forEach(it=>{
+    const word=(it.w||"").trim();if(!word)return;
+    if(allWords().some(x=>x.word.toLowerCase()===word.toLowerCase()))return;
+    const id="aw"+Date.now()+"_"+artStat.w+"_"+Math.floor(Math.random()*1000);
+    imported.push({id,word,phonetic:"",pos:"",cn:it.cn||"",tip:"",exampleEn:it.eg||"",exampleCn:"",scene:"",cat:artCatKey(artId),fromArticle:artId});
+    srs[id]={ef:2.5,interval:0,reps:0,due:Date.now()};
+    artStat.w++;
+  });
+  // 短语（进短语库并加入复习曲线）
+  (ext.phrases||[]).forEach(it=>{
+    const ph=(it.w||"").trim();if(!ph)return;
+    if(addPhrase({phrase:ph,cn:it.cn||"",tip:it.eg||"",type:"other"})){
+      const added=phrases[phrases.length-1];
+      setPhraseReview(added.id,true);
+      artStat.p++;
+    }
+  });
+  // 语法（进语法库，自动进7天回顾）
+  (ext.grammar||[]).forEach(it=>{
+    const point=(it.point||"").trim();if(!point)return;
+    if(addGrammar({point,cn:it.cn||"",example:it.eg||"",topic:"other"}))artStat.g++;
+  });
+  save(IMP_KEY,imported);save(SRS_KEY,srs);
+}
+function renderArticleDone(){
+  const stepEl=document.getElementById("art-step");if(!stepEl)return;
+  stepEl.innerHTML=`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:10px">
+    <div style="font-weight:600;font-size:.9rem;margin-bottom:6px">✅ 全文讲完，已自动收录：</div>
+    <div style="font-size:.84rem;line-height:1.8">📘 单词 ${artStat.w} 个（进「我的文章」词库，可背）<br>
+    🔗 短语 ${artStat.p} 个（进短语库，已加入复习）<br>
+    📖 语法 ${artStat.g} 个（进语法库，已加入回顾）</div>
+    <div style="font-size:.74rem;color:var(--ink-dim);margin-top:10px">文章和精讲已保存，可在学习页「我的文章」重看。</div>
+    <button class="gear" style="margin-top:10px" onclick="closeImport()">完成</button>
+  </div>`;
+}
 // 抽词（强约束 JSON + 容错 + 返回空时不静默）
-async function pickWordsFromChunk(chunk){
-  const sys=`你是英语词汇老师。读者的英语水平相当于《新概念英语》第一册(NCE1)，词汇量很基础。
-请从下面这段英文里，挑出所有超出 NCE1 词汇范围的内容：生词、技术术语、专有名词、固定搭配、动词短语都要挑。宁多勿漏——只有 NCE1 已经学过的最基础词(如 the/is/you/voice/course 这类)才跳过。
-本段最多挑 25 个。每个词给出它在原文里所在的那句英文作为例句，并翻译该例句。
-严格只输出 JSON，第一个字符必须是 {，不要任何前后文字、不要 Markdown 代码块：
-{"words":[{"word":"词或短语","phonetic":"音标(无则空字符串)","cn":"在本段里的意思","tip":"用法提示(可空)","exampleEn":"原文中该词所在的句子","exampleCn":"该句中文翻译"}]}`;
+// 从一段精讲对应的原文里，提取该段涉及的 单词/短语/语法，分类返回（prompt 精简，避免模型负担过重）
+async function extractFromChunk(chunk){
+  const sys=`读者英语水平相当于《新概念英语》第一册。从下面这段英文里，提取超出该水平、值得学的内容，分三类。
+只返回 JSON，第一个字符必须是 {，不要任何解释、不要 Markdown：
+{"words":[{"w":"单词","cn":"意思","eg":"原文中该词所在的句子"}],
+"phrases":[{"w":"短语/固定搭配","cn":"意思","eg":"原文句子"}],
+"grammar":[{"point":"语法点名称","cn":"一句话说明","eg":"原文例句"}]}
+单词最多12个，短语最多8个，语法最多4个。没有的类别给空数组。`;
   try{
-    const raw=await callAI([{role:"user",content:chunk}],sys,1200);
+    const raw=await callAI([{role:"user",content:chunk}],sys,1500);
     let s=raw.trim().replace(/^```json?/i,"").replace(/```$/,"").trim();
     const a=s.indexOf("{"),b=s.lastIndexOf("}");
     if(a>=0&&b>a)s=s.slice(a,b+1);
     const o=JSON.parse(s);
-    return Array.isArray(o.words)?o.words:[];
-  }catch(e){return null}  // null = 失败（区别于空数组=确实没词）
+    return {
+      words:Array.isArray(o.words)?o.words:[],
+      phrases:Array.isArray(o.phrases)?o.phrases:[],
+      grammar:Array.isArray(o.grammar)?o.grammar:[]
+    };
+  }catch(e){return null}
 }
 function renderArticleWordPicker(){
   const stepEl=document.getElementById("art-step");if(!stepEl)return;
