@@ -131,6 +131,9 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <select id="model"></select>
     </div>
     <div class="hint">Key 只存在你本机浏览器里，不上传。每个服务商的 Key 分开保存，切换服务商会自动带出对应的 Key。<br>豆包用的是火山方舟接入点，需要填 ep-xxxx；DeepSeek 直接填 sk- 开头的 Key。深度思考开关在「AI 助手」页。</div>
+    <label>每次学习上限（张卡）</label>
+    <input type="number" id="daily-limit" min="5" max="200" step="5" placeholder="20">
+    <div class="hint">每次进入背卡，最多出现多少张（新词+到期复习合计）。默认 20，词多想多背可调大。</div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="ai-btn" style="flex:1" onclick="saveCfg()">保存设置</button>
       <button class="gear" onclick="clearKey()">清空 Key</button>
@@ -164,7 +167,8 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 const SRS_KEY="gh_vocab_srs_v1";
 const CFG_KEY="vocab_v5_cfg";
 let srs=load(SRS_KEY,{});          // {id:{ef,interval,reps,due}}
-let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",scope:"all",models:{},thinkOn:false});
+let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",scope:"all",models:{},thinkOn:false,dailyLimit:20});
+if(!cfg.dailyLimit)cfg.dailyLimit=20;  // 老用户补默认
 if(!cfg.models)cfg.models={};
 if(typeof cfg.thinkOn!=="boolean")cfg.thinkOn=false;
 // Key 按 provider 分开存（修复切换 provider 后 Key 没跟着切）。迁移旧的单一 apikey
@@ -265,6 +269,7 @@ function bindCfg(){
   const p=document.getElementById("provider"),k=document.getElementById("apikey"),ep=document.getElementById("endpoint"),epRow=document.getElementById("ep-row");
   const mRow=document.getElementById("model-row"),mSel=document.getElementById("model");
   p.value=cfg.provider;k.value=cfg.apikey;ep.value=cfg.endpoint||"";
+  const dl=document.getElementById("daily-limit");if(dl)dl.value=cfg.dailyLimit||20;
   // 渲染模型下拉（豆包用ep不显示模型下拉）
   const syncModelRow=()=>{
     const prov=cfg.provider;
@@ -292,6 +297,8 @@ function saveCfg(){
   cfg.apikey=document.getElementById("apikey").value.trim();
   cfg.endpoint=document.getElementById("endpoint").value.trim();
   cfg.keys[cfg.provider]=cfg.apikey;  // 存进当前 provider 的槽
+  const dl=parseInt((document.getElementById("daily-limit")||{}).value,10);
+  if(!isNaN(dl)&&dl>=5)cfg.dailyLimit=Math.min(200,dl);
   save(CFG_KEY,cfg);
   document.getElementById("panel").classList.remove("open");
   toast("已保存");
@@ -371,7 +378,7 @@ function buildQueue(){
       const c=srs[w.id];return !c||!c.due||c.due<=now;
     });
   }
-  queue=queue.slice(0,20);
+  queue=queue.slice(0,cfg.dailyLimit||20);
 }
 
 // ===== 渲染 =====
@@ -502,6 +509,34 @@ function mergeCat(cat){
   toast(`已把 ${n} 个词合并到「${to.name}」`);
   renderCatManager();
 }
+// ===== 搜词：全库搜 word/释义，点结果看详情 =====
+function openSearch(){
+  const ov=document.getElementById("import-overlay");if(!ov)return;
+  ov.classList.add("open");
+  ov.innerHTML=`<div class="import-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="font-family:Fraunces,serif;font-size:1.3rem">🔍 搜词</h2>
+      <button class="gear" onclick="closeImport()">✕ 关闭</button>
+    </div>
+    <input id="search-input" placeholder="输入英文或中文…" autocomplete="off" oninput="runSearch(this.value)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:inherit;font-size:.9rem;background:var(--paper)">
+    <div id="search-result" style="margin-top:12px"></div>
+  </div>`;
+  setTimeout(()=>{const i=document.getElementById("search-input");if(i)i.focus()},80);
+}
+function runSearch(q){
+  const box=document.getElementById("search-result");if(!box)return;
+  q=(q||"").trim().toLowerCase();
+  if(!q){box.innerHTML=`<div style="font-size:.78rem;color:var(--ink-dim)">输入关键词开始搜索</div>`;return}
+  const hits=allWords().filter(w=>
+    (w.word||"").toLowerCase().includes(q)||(w.cn||"").toLowerCase().includes(q)
+  ).slice(0,50);
+  if(!hits.length){box.innerHTML=`<div style="font-size:.78rem;color:var(--ink-dim)">没找到「${q}」</div>`;return}
+  box.innerHTML=hits.map(w=>`<div class="mistake-item" style="cursor:pointer" onclick="reviewWord('${w.id}')">
+    <div style="flex:1"><div class="w" style="font-size:.95rem">${w.word}${w.phonetic?`<span style="font-size:.7rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${w.phonetic}</span>`:""}</div>
+      <div class="c">${w.cn||""}</div></div>
+    <span style="font-size:.64rem;color:var(--ink-dim);white-space:nowrap">${catName(w.cat)}</span>
+  </div>`).join("")+(hits.length>=50?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:8px">只显示前 50 个，再输入细化</div>`:"");
+}
 function catName(c){
   const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",codepath:"Codepath 编程",__phrase__:"短语复习"};
   if(typeof c==="string"&&c.indexOf("art_")===0){const a=articles.find(x=>artCatKey(x.id)===c);return a?("📄 "+a.title):"文章"}
@@ -589,6 +624,9 @@ function renderHome(v){
     </div>`;
 
   v.innerHTML=`<div style="padding-top:8px">
+    <div onclick="openSearch()" style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px;cursor:pointer;color:var(--ink-dim)">
+      🔍 <span style="font-size:.86rem">搜索单词或释义…</span>
+    </div>
     ${todayPanel}
     <div class="sec-fold-hd" onclick="toggleHomeCats()" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:10px">
       <p style="color:var(--ink-dim);font-size:.82rem;margin:0">或按分类自己选</p>
@@ -830,28 +868,36 @@ function flip(){flipped=true;render();maybeEnrichWord()}
 let __enriching=false;
 async function maybeEnrichWord(){
   if(!cur||cur._phrase)return;
-  if(!cur.fromArticle)return;                  // 只补文章词
   if(__enriching)return;
-  const needPhonetic=!cur.phonetic;
-  const needExCn=cur.exampleEn&&!cur.exampleCn;
-  if(!needPhonetic&&!needExCn)return;          // 不缺就不补
-  if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider]))return; // 没key算了
+  const w=imported.find(x=>x.id===cur.id);
+  if(!w)return;                                // 只补导入的词，内置词不动
+  const needPhonetic=!w.phonetic;
+  const needEx=!w.exampleEn;                    // 缺英文例句
+  const needExCn=w.exampleEn&&!w.exampleCn;     // 有英文例句但缺翻译
+  if(!needPhonetic&&!needEx&&!needExCn)return;  // 不缺就不补
+  if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider]))return;
   __enriching=true;
-  const sys=`只返回 JSON，不要任何其他文字：{"phonetic":"该词的国际音标(带斜杠)","exampleCn":"这句英文的中文翻译"}`;
-  const payload=`单词：${cur.word}\n例句：${cur.exampleEn||""}`;
+  let sys,payload;
+  if(needEx){
+    // 缺例句：补 音标 + 英文例句 + 翻译（快速录入瘦身后走这里）
+    sys=`你是英语老师。为这个单词补全词条，只返回 JSON，不要其他文字：{"phonetic":"国际音标(带斜杠)","exampleEn":"一个地道的英文例句","exampleCn":"该例句的中文翻译"}`;
+    payload=`单词：${w.word}（${w.cn||""}）`;
+  }else{
+    // 只缺音标或例句翻译（文章词场景）
+    sys=`只返回 JSON，不要任何其他文字：{"phonetic":"该词的国际音标(带斜杠)","exampleCn":"这句英文的中文翻译"}`;
+    payload=`单词：${w.word}\n例句：${w.exampleEn||""}`;
+  }
   try{
-    let raw=await callAI([{role:"user",content:payload}],sys,200);
+    let raw=await callAI([{role:"user",content:payload}],sys,300);
     raw=raw.replace(/```json|```/g,"").trim();
     const a=raw.indexOf("{"),b=raw.lastIndexOf("}");
     if(a>=0&&b>a)raw=raw.slice(a,b+1);
     const o=JSON.parse(raw);
-    const w=imported.find(x=>x.id===cur.id);
-    if(w){
-      if(needPhonetic&&o.phonetic)w.phonetic=o.phonetic;
-      if(needExCn&&o.exampleCn)w.exampleCn=o.exampleCn;
-      save(IMP_KEY,imported);
-      if(cur&&cur.id===w.id){cur.phonetic=w.phonetic;cur.exampleCn=w.exampleCn;if(flipped)render()}
-    }
+    if(needPhonetic&&o.phonetic)w.phonetic=o.phonetic;
+    if(needEx&&o.exampleEn)w.exampleEn=o.exampleEn;
+    if((needEx||needExCn)&&o.exampleCn)w.exampleCn=o.exampleCn;
+    save(IMP_KEY,imported);
+    if(cur&&cur.id===w.id){cur.phonetic=w.phonetic;cur.exampleEn=w.exampleEn;cur.exampleCn=w.exampleCn;if(flipped)render()}
   }catch(e){/* 补全失败静默，不影响背词 */}
   __enriching=false;
 }
@@ -2304,11 +2350,11 @@ async function quickAddGo(mode){
     if(!words.length)return toast("先贴要加的词");
     if(words.length>50)return toast("一次最多 50 个，多了分几次");
     aBtn.disabled=true;aBtn.textContent="补全中…";res.textContent="处理中…";
-    const sys=`你是英语老师。为用户给的每个英文单词/短语生成词条，一个都不能漏。
+    const sys=`你是英语老师。为用户给的每个英文单词/短语生成简洁词条，一个都不能漏，不要例句（例句以后再补）。
 分类 cat 只能填这7个之一：dev(科技开发)、tv(影视口语)、life(日常生活)、biz(职场商务)、academic(学术阅读)、news(新闻时事)、other(其他)。
-只返回JSON数组：[{"word":"原词","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","tip":"简短提示","exampleEn":"英文例句","exampleCn":"中文翻译","scene":"专业场景特殊含义或空","cat":"7个key之一"}]`;
+只返回JSON数组，字段精简：[{"word":"原词","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","cat":"7个key之一"}]`;
     try{
-      const text=await callAI([{role:"user",content:words.join(", ")}],sys,4500);
+      const text=await callAI([{role:"user",content:words.join(", ")}],sys,3000);
       const arr=parseJsonArrayLoose(text);
       if(!arr.length)throw new Error("没生成出来，重试一次");
       showQuickAddPreview(arr,valid);
