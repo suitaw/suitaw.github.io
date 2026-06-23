@@ -717,10 +717,10 @@ function backHtml(){
       <div class="cn">${cur.cn}${pos}</div>
       <button class="gear" id="fav-btn" onclick="event.stopPropagation();toggleFav()">${fav}</button>
     </div>
-    <div class="tip">💡 ${cur.tip}</div>
+    ${cur.tip?`<div class="tip">💡 ${cur.tip}</div>`:""}
     ${scene}
-    <div class="ex">${cur.exampleEn}</div>
-    <div class="ex-cn">${cur.exampleCn}</div>
+    ${cur.exampleEn?`<div class="ex">${cur.exampleEn}</div>`:""}
+    ${cur.exampleCn?`<div class="ex-cn">${cur.exampleCn}</div>`:""}
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="gear" onclick="event.stopPropagation();speakWord('${(cur.exampleEn||'').replace(/'/g,'')}')">🔊 读例句</button>
       <button class="gear" id="dissect-btn" onclick="event.stopPropagation();dissectExample()">🔍 拆解这句话</button>
@@ -744,12 +744,41 @@ function gradesHtml(){return `
 }
 function aiHtml(){return `
   <div class="ai-box">
-    <textarea id="sentence" placeholder="用 ${cur.word} 造个句子，AI 帮你批改（可选）"></textarea>
-    <button class="ai-btn" id="check-btn" onclick="checkSentence()">AI 批改造句</button>
+    <textarea id="sentence" placeholder="关于 ${cur.word}，问 AI 任何问题（用法、例句、区别，或贴句子让它批改）"></textarea>
+    <button class="ai-btn" id="check-btn" onclick="askWord()">问 AI</button>
     <div class="ai-result" id="ai-result"></div>
   </div>`;
 }
-function flip(){flipped=true;render()}
+function flip(){flipped=true;render();maybeEnrichWord()}
+// 文章词缺音标/例句翻译时，自动 AI 补全一次并存好（方案A）
+let __enriching=false;
+async function maybeEnrichWord(){
+  if(!cur||cur._phrase)return;
+  if(!cur.fromArticle)return;                  // 只补文章词
+  if(__enriching)return;
+  const needPhonetic=!cur.phonetic;
+  const needExCn=cur.exampleEn&&!cur.exampleCn;
+  if(!needPhonetic&&!needExCn)return;          // 不缺就不补
+  if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider]))return; // 没key算了
+  __enriching=true;
+  const sys=`只返回 JSON，不要任何其他文字：{"phonetic":"该词的国际音标(带斜杠)","exampleCn":"这句英文的中文翻译"}`;
+  const payload=`单词：${cur.word}\n例句：${cur.exampleEn||""}`;
+  try{
+    let raw=await callAI([{role:"user",content:payload}],sys,200);
+    raw=raw.replace(/```json|```/g,"").trim();
+    const a=raw.indexOf("{"),b=raw.lastIndexOf("}");
+    if(a>=0&&b>a)raw=raw.slice(a,b+1);
+    const o=JSON.parse(raw);
+    const w=imported.find(x=>x.id===cur.id);
+    if(w){
+      if(needPhonetic&&o.phonetic)w.phonetic=o.phonetic;
+      if(needExCn&&o.exampleCn)w.exampleCn=o.exampleCn;
+      save(IMP_KEY,imported);
+      if(cur&&cur.id===w.id){cur.phonetic=w.phonetic;cur.exampleCn=w.exampleCn;if(flipped)render()}
+    }
+  }catch(e){/* 补全失败静默，不影响背词 */}
+  __enriching=false;
+}
 
 // ===== 例句拆解（短语/语法/记忆法），结果可一键入库 =====
 // 拆解结果缓存：按词 id 存，翻面重渲染/切走再回来都能恢复
@@ -1753,7 +1782,27 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
   return full;
 }
 
-// ===== AI 造句批改 + 追问 =====
+// ===== AI 自由问答（针对当前词，流式）=====
+async function askWord(){
+  const ta=document.getElementById("sentence");if(!ta)return;
+  const q=ta.value.trim();
+  if(!q)return toast("先输入问题");
+  const btn=document.getElementById("check-btn");if(btn){btn.disabled=true;btn.textContent="思考中…"}
+  const box=document.getElementById("ai-result");
+  if(box){box.classList.add("show");box.innerHTML=`<div id="ask-ans" style="font-size:.85rem;line-height:1.7;white-space:pre-wrap"></div>`}
+  const sys=`你是英语老师，学生是中文母语初学者。围绕单词「${cur.word}」(${cur.cn||""})回答问题。用中文讲，简明清楚。如果学生贴了英文句子，就帮他批改并给出改好的句子。不要用 Markdown 符号。`;
+  try{
+    let ans="";
+    await callAIStream([{role:"user",content:q}],sys,(full)=>{
+      ans=stripMd(full);const el=document.getElementById("ask-ans");if(el)el.textContent=ans;
+    },800,false);
+    if(!ans){const el=document.getElementById("ask-ans");if(el)el.textContent="(没有返回内容，请重试)"}
+  }catch(e){
+    const el=document.getElementById("ask-ans");if(el)el.textContent="出错了："+(e.message||"检查 Key 或网络");
+  }finally{if(btn){btn.disabled=false;btn.textContent="问 AI"}}
+}
+
+// ===== AI 造句批改 + 追问（旧功能，保留备用）=====
 async function checkSentence(){
   const txt=document.getElementById("sentence").value.trim();
   if(!txt)return toast("先写句话");
