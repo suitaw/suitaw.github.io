@@ -865,6 +865,48 @@ async function punctuateArticle(){
 }
 // 分段精读状态
 let artChunks=[],artChunkIdx=0,artId=null,artAllWords=[];
+// ===== 精读进度持久化（切后台/刷新可恢复）=====
+const ART_PROG_KEY="vocab_v5_art_progress";
+function saveArtProgress(){
+  if(!artId){localStorage.removeItem(ART_PROG_KEY);return}
+  save(ART_PROG_KEY,{artId,artChunks,artChunkIdx,artStat,artMode,done:false});
+}
+function clearArtProgress(){artId=null;localStorage.removeItem(ART_PROG_KEY)}
+// 启动时若有未完成精读，提示继续
+function checkArtProgress(){
+  let prog;try{prog=load(ART_PROG_KEY,null)}catch(e){return}
+  if(!prog||!prog.artId)return;
+  const art=articles.find(a=>a.id===prog.artId);
+  if(!art){localStorage.removeItem(ART_PROG_KEY);return}
+  const total=(prog.artChunks||[]).length;
+  // 已全部讲完的不提示
+  if(prog.artChunkIdx>=total-1&&prog.done){localStorage.removeItem(ART_PROG_KEY);return}
+  setTimeout(()=>{
+    if(confirm(`上次有一篇文章《${art.title}》精读到第 ${Math.min(prog.artChunkIdx+1,total)}/${total} 段，是否继续？`)){
+      resumeArtProgress(prog);
+    }else{
+      localStorage.removeItem(ART_PROG_KEY);
+    }
+  },600);
+}
+function resumeArtProgress(prog){
+  artId=prog.artId;artChunks=prog.artChunks||[];artChunkIdx=prog.artChunkIdx||0;
+  artStat=prog.artStat||{w:0,p:0,g:0};artMode=prog.artMode||"deep";
+  const art=articles.find(a=>a.id===artId);if(!art){clearArtProgress();return}
+  go("assistant");
+  setTimeout(()=>{
+    openArticleReader();
+    // 用已存的精讲填充显示，跳过输入，直接到"继续"状态
+    const box=document.getElementById("art-result");
+    if(box)box.innerHTML=`<div id="art-explain" style="font-size:.84rem;line-height:1.7;white-space:pre-wrap">${(art.explain||"").replace(/</g,"&lt;")}</div><div id="art-step" style="margin-top:12px"></div>`;
+    const goBtn=document.getElementById("art-go");if(goBtn)goBtn.style.display="none";
+    const total=artChunks.length;
+    const stepEl=document.getElementById("art-step");
+    // 正在讲的那段被中断过，从当前段重新讲（已讲完的段在 explain 里保留）
+    if(stepEl)stepEl.innerHTML=`<div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">已恢复 · 已收录 ${artStat.w} 词 / ${artStat.p} 短语 / ${artStat.g} 语法。点继续接着讲第 ${Math.min(artChunkIdx+1,total)}/${total} 段。</div>
+      <button class="ai-btn" onclick="runArticleChunk()">继续精读（第 ${Math.min(artChunkIdx+1,total)}/${total} 段）</button>`;
+  },80);
+}
 function startArticleSession(){
   const text=(document.getElementById("art-text")||{}).value||"";
   if(text.trim().length<20)return toast("文章太短了");
@@ -877,6 +919,7 @@ function startArticleSession(){
   // 先建文章（explain 随每段追加）
   articles.unshift({id:artId,title,text,mode:artMode,explain:"",createdAt:Date.now()});
   saveArticles();
+  saveArtProgress();  // 存精读进度，切后台回来可恢复
   const box=document.getElementById("art-result");
   if(box)box.innerHTML=`<div id="art-explain" style="font-size:.84rem;line-height:1.7;white-space:pre-wrap"></div>
     <div id="art-step" style="margin-top:12px"></div>`;
@@ -899,28 +942,33 @@ async function runArticleChunk(){
 条理清楚，不要用 Markdown 符号（不要 * # 等）。`;
   const sysGist="你是英语老师，面向中文母语初学者。用中文概括下面这段的大意和要点，简明扼要。不要 Markdown 符号。";
   const base=art.explain;
+  let segFull="";
   try{
     await callAIStream([{role:"user",content:chunk}], artMode==="deep"?sysDeep:sysGist, (fullText)=>{
-      const piece=stripMd(fullText);
-      art.explain=base+segText+piece;
-      if(explainEl)explainEl.textContent=art.explain;
+      segFull=stripMd(fullText);
+      // 实时显示（base + 本段标题 + 本段内容），但先不写进 art.explain（防中断留残段）
+      if(explainEl)explainEl.textContent=base+segText+segFull;
     }, 3000, false);
   }catch(e){
     if(stepEl)stepEl.innerHTML=`<div style="color:var(--accent);font-size:.8rem">这段精讲失败：${e.message}</div>
       <button class="gear" style="margin-top:8px" onclick="runArticleChunk()">重试这段</button>`;
     return;
   }
+  // 本段完整讲完，才正式写入并落盘
+  art.explain=base+segText+segFull;
   saveArticles();
   // 提取本段涉及的 单词/短语/语法，自动入库（方案B：不再手动挑）
   if(stepEl)stepEl.insertAdjacentHTML("beforeend",`<div id="art-pick" style="font-size:.78rem;color:var(--ink-dim);margin-top:8px">自动收录词句中…</div>`);
   const ext=await extractFromChunk(chunk);
   if(ext)autoFileExtract(ext);
   const pickEl=document.getElementById("art-pick");if(pickEl)pickEl.remove();
-  // 下一段 or 完成
+  // 本段处理完，推进进度并存盘
   if(idx<total-1){
+    artChunkIdx=idx+1;saveArtProgress();
     if(stepEl)stepEl.innerHTML=`<div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">已讲完 ${idx+1}/${total} 段 · 已收录 ${artStat.w} 词 / ${artStat.p} 短语 / ${artStat.g} 语法。读完点继续。</div>
-      <button class="ai-btn" onclick="artChunkIdx++;runArticleChunk()">继续下一段（${idx+2}/${total}）</button>`;
+      <button class="ai-btn" onclick="runArticleChunk()">继续下一段（${idx+2}/${total}）</button>`;
   }else{
+    clearArtProgress();  // 全部讲完，清掉恢复点
     renderArticleDone();
   }
 }
@@ -952,6 +1000,7 @@ function autoFileExtract(ext){
     if(addGrammar({point,cn:it.cn||"",example:it.eg||"",topic:"other"}))artStat.g++;
   });
   save(IMP_KEY,imported);save(SRS_KEY,srs);
+  saveArtProgress();
 }
 function renderArticleDone(){
   const stepEl=document.getElementById("art-step");if(!stepEl)return;
@@ -2223,6 +2272,8 @@ bindCfg();
   }
   window.addEventListener("scroll",onScroll,{passive:true});
 })();
-render();</script>
+render();
+checkArtProgress();
+</script>
 </body>
 </html>
