@@ -136,6 +136,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <button class="gear" onclick="clearKey()">清空 Key</button>
     </div>
     <button class="gear" style="width:100%;margin-top:8px" onclick="exportImported()">导出我导入的词（JSON）</button>
+    <label class="gear" style="display:block;width:100%;margin-top:8px;text-align:center;cursor:pointer;box-sizing:border-box">导入备份（覆盖现有词）<input type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)"></label>
   </div>
 
   <div id="view"></div>
@@ -430,6 +431,77 @@ function render(){
     if(box){lastDissect=dissectCache[cur.id];box.style.display="block";renderDissect(box,lastDissect)}
   }
 }
+// ===== 分类管理：合并/重命名/删除 =====
+const FIXED_CAT_KEYS=["nce2","dev","tv","life","biz","academic","news"];
+function allCatsWithCount(){
+  const all=allWords();
+  const cats=[...new Set(all.map(w=>w.cat).filter(Boolean))];
+  return cats.map(c=>({cat:c,name:catName(c),n:all.filter(w=>w.cat===c).length,
+    isFixed:FIXED_CAT_KEYS.includes(c),isArt:isArtCat(c),isSys:c==="import"||c==="other"||c==="codepath"}))
+    .sort((a,b)=>b.n-a.n);
+}
+// 把 from 分类的所有词改成 to（合并/重命名通用）
+function moveCatWords(from,to){
+  let n=0;
+  imported.forEach(w=>{if(w.cat===from){w.cat=to;n++}});
+  save(IMP_KEY,imported);
+  return n;
+}
+function openCatManager(){
+  const ov=document.getElementById("import-overlay");if(!ov)return;
+  ov.classList.add("open");
+  renderCatManager();
+}
+function renderCatManager(){
+  const ov=document.getElementById("import-overlay");if(!ov)return;
+  const cats=allCatsWithCount();
+  const rows=cats.map(c=>{
+    const tag=c.isFixed?'<span style="font-size:.66rem;color:var(--ink-dim)">固定</span>':
+      c.isArt?'<span style="font-size:.66rem;color:var(--ink-dim)">文章</span>':
+      c.isSys?'<span style="font-size:.66rem;color:var(--ink-dim)">系统</span>':
+      '<span style="font-size:.66rem;color:var(--accent)">自定义</span>';
+    // 自定义分类可重命名；非收藏类可合并；文章类不在这里动（去"我的文章"删）
+    const canRename=!c.isFixed&&!c.isArt&&c.cat!=="import";
+    const canMerge=c.cat!=="import";
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
+      <div style="flex:1"><div style="font-weight:600;font-size:.86rem">${c.name} ${tag}</div>
+        <div style="font-size:.72rem;color:var(--ink-dim)">${c.n} 词</div></div>
+      ${canRename?`<button class="gear" style="font-size:.72rem;padding:4px 8px" onclick="renameCat('${c.cat}')">改名</button>`:""}
+      ${canMerge?`<button class="gear" style="font-size:.72rem;padding:4px 8px" onclick="mergeCat('${c.cat}')">合并</button>`:""}
+    </div>`;
+  }).join("");
+  ov.innerHTML=`<div class="import-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="font-family:Fraunces,serif;font-size:1.3rem">⚙ 管理分类</h2>
+      <button class="gear" onclick="closeImport()">✕ 关闭</button>
+    </div>
+    <p style="font-size:.74rem;color:var(--ink-dim);margin-bottom:10px">改名：给自定义分类换名字。合并：把这个分类的词并入另一个分类。文章分类请去「我的文章」里删整篇。</p>
+    ${rows||'<div style="color:var(--ink-dim);font-size:.8rem">还没有分类</div>'}
+  </div>`;
+}
+function renameCat(cat){
+  const cur=catName(cat);
+  const name=prompt(`把分类「${cur}」改成什么名字？`,cur);
+  if(!name||!name.trim()||name.trim()===cur)return;
+  const nn=name.trim();
+  // 重命名 = 把该 cat 的词改成新 cat 名（用新名作 key）
+  moveCatWords(cat,nn);
+  toast(`已改名为「${nn}」`);
+  renderCatManager();
+}
+function mergeCat(cat){
+  const cats=allCatsWithCount().filter(c=>c.cat!==cat&&!c.isArt);
+  if(!cats.length)return toast("没有可合并到的分类");
+  const list=cats.map((c,i)=>`${i+1}. ${c.name}（${c.n}词）`).join("\n");
+  const pick=prompt(`把「${catName(cat)}」的词合并到哪个分类？输入序号：\n\n${list}`,"1");
+  if(!pick)return;
+  const idx=parseInt(pick,10)-1;
+  if(isNaN(idx)||idx<0||idx>=cats.length)return toast("序号无效");
+  const to=cats[idx];
+  const n=moveCatWords(cat,to.cat);
+  toast(`已把 ${n} 个词合并到「${to.name}」`);
+  renderCatManager();
+}
 function catName(c){
   const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",codepath:"Codepath 编程",__phrase__:"短语复习"};
   if(typeof c==="string"&&c.indexOf("art_")===0){const a=articles.find(x=>artCatKey(x.id)===c);return a?("📄 "+a.title):"文章"}
@@ -526,6 +598,10 @@ function renderHome(v){
       <div class="mistake-item" style="cursor:pointer" onclick="openArticleList()">
         <div><div class="w">📄 我的文章</div><div class="c">精读文章·自动攒生词 · 共 ${articles.length} 篇</div></div>
         <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${articles.reduce((s,a)=>s+wordsOfArticle(a.id).length,0)}</div><div class="c">词</div></div>
+      </div>
+      <div class="mistake-item" style="cursor:pointer" onclick="openCatManager()">
+        <div><div class="w">⚙ 管理分类</div><div class="c">合并·改名·整理分类</div></div>
+        <div style="text-align:right;font-size:1.2rem;color:var(--ink-dim)">›</div>
       </div>
       ${rows.map(r=>`<div class="mistake-item" style="cursor:pointer" onclick="openCatPreview('${r.key}')">
         <div><div class="w">${r.name}</div><div class="c">${r.desc} · 共 ${r.n} 词</div></div>
@@ -2142,6 +2218,35 @@ function exportImported(){
   URL.revokeObjectURL(url);
   toast("已导出 JSON");
 }
+// 导入备份：覆盖现有 imported（带确认+格式校验）
+function importBackup(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let arr;
+    try{arr=JSON.parse(r.result)}catch(e){toast("文件不是有效 JSON");input.value="";return}
+    if(!Array.isArray(arr)){toast("格式不对，应是词条数组");input.value="";return}
+    // 简单校验：每条至少有 word
+    const valid=arr.filter(w=>w&&typeof w.word==="string"&&w.word.trim());
+    if(!valid.length){toast("没找到有效词条");input.value="";return}
+    if(!confirm(`将用备份里的 ${valid.length} 个词【覆盖】当前的 ${imported.length} 个词。\n建议先导出当前词做备份。确定覆盖吗？`)){input.value="";return}
+    // 规范化字段，补 id（缺失则生成）
+    imported=valid.map((w,i)=>({
+      id:w.id||("imp"+Date.now()+"_"+i),
+      word:w.word,phonetic:w.phonetic||"",pos:w.pos||"",cn:w.cn||"",
+      tip:w.tip||"",exampleEn:w.exampleEn||"",exampleCn:w.exampleCn||"",
+      scene:w.scene||"",cat:w.cat||"import",
+      ...(w.fromArticle?{fromArticle:w.fromArticle}:{})
+    }));
+    save(IMP_KEY,imported);
+    input.value="";
+    toast(`已导入 ${imported.length} 个词`);
+    togglePanel();  // 关设置面板
+    if(page==="home"&&!studyStarted)render();
+  };
+  r.onerror=()=>{toast("读取失败");input.value=""};
+  r.readAsText(f);
+}
 
 // ===== 快速加词：任意页浮动按钮，贴词→AI秒补全→直接入库 =====
 let qaImage=null;  // 快捷加词选的图片 {b64,mime}
@@ -2197,13 +2302,13 @@ async function quickAddGo(mode){
   if(mode==="all"){
     const words=raw.split(/[\n,，]+/).map(s=>s.trim()).filter(Boolean);
     if(!words.length)return toast("先贴要加的词");
-    if(words.length>15)return toast("一次最多 15 个，多了分几次");
+    if(words.length>50)return toast("一次最多 50 个，多了分几次");
     aBtn.disabled=true;aBtn.textContent="补全中…";res.textContent="处理中…";
     const sys=`你是英语老师。为用户给的每个英文单词/短语生成词条，一个都不能漏。
 分类 cat 只能填这7个之一：dev(科技开发)、tv(影视口语)、life(日常生活)、biz(职场商务)、academic(学术阅读)、news(新闻时事)、other(其他)。
 只返回JSON数组：[{"word":"原词","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","tip":"简短提示","exampleEn":"英文例句","exampleCn":"中文翻译","scene":"专业场景特殊含义或空","cat":"7个key之一"}]`;
     try{
-      const text=await callAI([{role:"user",content:words.join(", ")}],sys,3000);
+      const text=await callAI([{role:"user",content:words.join(", ")}],sys,4500);
       const arr=parseJsonArrayLoose(text);
       if(!arr.length)throw new Error("没生成出来，重试一次");
       showQuickAddPreview(arr,valid);
