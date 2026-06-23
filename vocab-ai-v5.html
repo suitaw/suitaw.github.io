@@ -976,25 +976,20 @@ async function runArticleChunk(){
 let artStat={w:0,p:0,g:0};
 // 自动把提取结果分类入库（去重）：单词→文章词库进SRS带例句；短语→短语库进复习；语法→语法库进回顾
 function autoFileExtract(ext){
-  // 单词
+  // 单词（当新词：不预建 SRS，背过后再进复习曲线，显示为"新词"）
   (ext.words||[]).forEach(it=>{
     const word=(it.w||"").trim();if(!word)return;
     if(allWords().some(x=>x.word.toLowerCase()===word.toLowerCase()))return;
     const id="aw"+Date.now()+"_"+artStat.w+"_"+Math.floor(Math.random()*1000);
     imported.push({id,word,phonetic:"",pos:"",cn:it.cn||"",tip:"",exampleEn:it.eg||"",exampleCn:"",scene:"",cat:artCatKey(artId),fromArticle:artId});
-    srs[id]={ef:2.5,interval:0,reps:0,due:Date.now()};
     artStat.w++;
   });
-  // 短语（进短语库并加入复习曲线）
+  // 短语（进短语库，当新短语：不立刻进复习曲线，与单词一致）
   (ext.phrases||[]).forEach(it=>{
     const ph=(it.w||"").trim();if(!ph)return;
-    if(addPhrase({phrase:ph,cn:it.cn||"",tip:it.eg||"",type:"other"})){
-      const added=phrases[phrases.length-1];
-      setPhraseReview(added.id,true);
-      artStat.p++;
-    }
+    if(addPhrase({phrase:ph,cn:it.cn||"",tip:it.eg||"",type:"other"}))artStat.p++;
   });
-  // 语法（进语法库，自动进7天回顾）
+  // 语法（进语法库，自动进7天回顾——语法本就是入库即回顾，保持不变）
   (ext.grammar||[]).forEach(it=>{
     const point=(it.point||"").trim();if(!point)return;
     if(addGrammar({point,cn:it.cn||"",example:it.eg||"",topic:"other"}))artStat.g++;
