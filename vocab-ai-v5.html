@@ -138,7 +138,12 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <button class="ai-btn" style="flex:1" onclick="saveCfg()">保存设置</button>
       <button class="gear" onclick="clearKey()">清空 Key</button>
     </div>
-    <button class="gear" style="width:100%;margin-top:8px" onclick="exportImported()">导出我导入的词（JSON）</button>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+      <div style="font-size:.78rem;font-weight:600;margin-bottom:6px">💾 完整备份（含复习进度/文章/语法/错题，换设备必备）</div>
+      <button class="ai-btn" style="width:100%" onclick="exportAll()">导出全部数据</button>
+      <label class="gear" style="display:block;width:100%;margin-top:8px;text-align:center;cursor:pointer;box-sizing:border-box">恢复全部数据（覆盖现有）<input type="file" accept=".json,application/json" style="display:none" onchange="importAll(this)"></label>
+    </div>
+    <button class="gear" style="width:100%;margin-top:8px" onclick="exportImported()">导出我导入的词（仅单词）</button>
     <label class="gear" style="display:block;width:100%;margin-top:8px;text-align:center;cursor:pointer;box-sizing:border-box">导入备份（覆盖现有词）<input type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)"></label>
   </div>
 
@@ -211,7 +216,14 @@ function stripMd(s){
 const IMP_KEY="vocab_v5_imported";
 let imported=load(IMP_KEY,[]);   // 用户导入的词，结构同 WORDS，cat:"import"
 // 全局词表 = 内置 + 导入。所有取词的地方用 allWords()
-function allWords(){return WORDS.concat(imported)}
+const CATOVR_KEY="vocab_v5_catoverride";
+let catOverride=load(CATOVR_KEY,{});   // {wordId: newCat} 主要给内置词改分类用（imported 词直接改 w.cat）
+function allWords(){
+  const ovr=catOverride;
+  const hasOvr=ovr&&Object.keys(ovr).length;
+  const base=hasOvr?WORDS.map(w=>ovr[w.id]?{...w,cat:ovr[w.id]}:w):WORDS;
+  return base.concat(imported);
+}
 
 // ===== 短语库 / 语法库 =====
 const PHRASE_KEY="vocab_v5_phrases";
@@ -365,20 +377,23 @@ function inScope(w){
 }
 function buildQueue(){
   const now=Date.now();
+  const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
   // 到期短语（已加入复习且到点）→ 闪卡对象，与词共用队列
   const duePhrases=phrases.filter(p=>p.inReview&&srs[p.id]&&srs[p.id].due&&srs[p.id].due<=now).map(phraseCard);
+  const limit=cfg.dailyLimit||20;
   if(cfg.scope==="__due__"){
     // 只复习已学过且到期的词 + 到期短语
-    queue=allWords().filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=now).concat(duePhrases);
+    queue=shuffle(allWords().filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=now).concat(duePhrases)).slice(0,limit);
   }else if(cfg.scope==="__new__"){
     // 只背还没学过的新词
-    queue=allWords().filter(w=>!srs[w.id]);
+    queue=shuffle(allWords().filter(w=>!srs[w.id])).slice(0,limit);
   }else{
-    queue=allWords().filter(inScope).filter(w=>{
-      const c=srs[w.id];return !c||!c.due||c.due<=now;
-    });
+    // 普通分类：到期复习词优先，新词填剩余名额，各自打乱（避免复习被新词挤掉、总背靠前那批）
+    const pool=allWords().filter(inScope);
+    const due=shuffle(pool.filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=now).concat(duePhrases));
+    const fresh=shuffle(pool.filter(w=>!srs[w.id]));
+    queue=due.concat(fresh).slice(0,limit);
   }
-  queue=queue.slice(0,cfg.dailyLimit||20);
 }
 
 // ===== 渲染 =====
@@ -424,7 +439,7 @@ function render(){
       <div class="card" id="card" onclick="if(!flipped)flip()">
         <span class="cat-tag">${catName(cur.cat)}</span>
         <div class="word">${cur.word}</div>
-        <div class="phonetic">${cur.phonetic}</div>
+        ${cur.phonetic?`<div class="phonetic">${cur.phonetic}</div>`:""}
         <button class="speak" onclick="event.stopPropagation();speak(this)">🔊 发音</button>
         ${flipped?backHtml():`<div class="flip-hint">点卡片看释义 · 左滑下一个，右滑返回</div>`}
       </div>
@@ -450,8 +465,15 @@ function allCatsWithCount(){
 // 把 from 分类的所有词改成 to（合并/重命名通用）
 function moveCatWords(from,to){
   let n=0;
+  // imported 词：直接改 cat
   imported.forEach(w=>{if(w.cat===from){w.cat=to;n++}});
   save(IMP_KEY,imported);
+  // 内置词：通过 catOverride 改（WORDS 是常量改不了）。注意 from 可能本身就是覆盖后的分类
+  WORDS.forEach(w=>{
+    const cur=catOverride[w.id]||w.cat;
+    if(cur===from){catOverride[w.id]=to;n++}
+  });
+  save(CATOVR_KEY,catOverride);
   return n;
 }
 function openCatManager(){
@@ -738,7 +760,8 @@ function renderPreview(v){
     return `<div class="mistake-item" style="cursor:pointer" onclick="startStudyAt('${cat}','${w.id}')">
       <div style="flex:1">${enBlock}${cnBlock}</div>
       <span style="font-size:.66rem;color:${st.col};border:1px solid ${st.col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st.t}</span>
-      <button class="gear" style="margin-left:6px;padding:2px 8px" onclick="event.stopPropagation();delArticleWord('${w.id}')">🗑</button>
+      <button class="gear" style="margin-left:6px;padding:2px 8px" onclick="event.stopPropagation();moveWordTo('${w.id}')" title="移到某一课">↪</button>
+      <button class="gear" style="margin-left:4px;padding:2px 8px" onclick="event.stopPropagation();delArticleWord('${w.id}')">🗑</button>
     </div>`;
   }).join("");
   v.innerHTML=`<div style="padding-top:8px">
@@ -796,7 +819,7 @@ function renderArticleDetail(v){
     </div>
     <details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-dim)">📖 原文</summary>
       <button class="gear" style="margin-top:8px" onclick="speakSynth(articles.find(a=>a.id==='${a.id}').text,this);this.classList.toggle('playing')">🔊 朗读原文</button>
-      <button class="gear" style="margin-top:8px" onclick="speechSynthesis.cancel()">⏹ 停止</button>
+      <button class="gear" style="margin-top:8px" onclick="stopSpeak()">⏹ 停止</button>
       <div style="font-size:.84rem;line-height:1.7;white-space:pre-wrap;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px">${(a.text||"").replace(/</g,"&lt;")}</div></details>
     <details open style="margin-bottom:12px"><summary style="cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-dim)">🤖 AI 精讲（${a.mode==="deep"?"精读":"大意"}）</summary>
       <div style="font-size:.84rem;line-height:1.7;white-space:pre-wrap;margin-top:8px">${(a.explain||"").replace(/</g,"&lt;")}</div></details>
@@ -1259,6 +1282,34 @@ function delArticleWord(wid){
   save(IMP_KEY,imported);save(SRS_KEY,srs);
   render();
 }
+// 把单个词移到另一个分类（支持内置词，通过 catOverride；imported 词直接改 cat）
+function moveWordTo(wid){
+  const w=allWords().find(x=>x.id===wid);
+  if(!w)return;
+  // 列出可选目标：文章分类 + 新建一课
+  const artOpts=articles.map((a,i)=>`${i+1}. 📄 ${a.title}`);
+  const list=artOpts.length?artOpts.join("\n"):"（暂无课文，可输入 0 新建一课）";
+  const pick=prompt(`把「${w.word}」移到哪一课？输入序号：\n\n${list}\n\n0. ➕ 新建一课`,artOpts.length?"1":"0");
+  if(pick===null)return;
+  let targetCat;
+  const idx=parseInt(pick,10);
+  if(idx===0){
+    const title=(prompt("新课/文章名称（如：NCE2 L5 No Wrong Numbers）")||"").trim();
+    if(!title)return;
+    const id="art"+Date.now();
+    articles.unshift({id,title,text:"",mode:"manual",explain:"",createdAt:Date.now()});
+    saveArticles();
+    targetCat=artCatKey(id);
+  }else if(idx>=1&&idx<=articles.length){
+    targetCat=artCatKey(articles[idx-1].id);
+  }else{return toast("序号无效")}
+  // 执行移动
+  const imp=imported.find(x=>x.id===wid);
+  if(imp){imp.cat=targetCat;imp.fromArticle=targetCat.slice(4);save(IMP_KEY,imported)}
+  else{catOverride[wid]=targetCat;save(CATOVR_KEY,catOverride)}  // 内置词
+  toast(`已移到「${catName(targetCat)}」`);
+  render();
+}
 const TAGS=[
   {k:"collo",label:"词组搭配",ask:"列出这个词最常用的 3-5 个词组/固定搭配，每行：英文搭配 + 空格 + 中文意思。只列搭配本身，不要例句、不要解释、不要编号。"},
   {k:"deriv",label:"派生词",ask:"列出这个词的常见派生词（加前后缀变出的词，如 happy→happiness/unhappy），每行：派生词(词性) + 空格 + 中文意思。最多 5 个，没有就写「无明显派生词」。"},
@@ -1483,10 +1534,12 @@ function resetStreak(id){const m=mistakes.find(x=>x.id===id);if(m&&m.streak){m.s
 // ===== 发音 =====
 // 单词：有道真人发音（更准）；句子：浏览器语音合成（带语调，不机械）
 function isSentence(s){return /\s/.test(s.trim())&&s.trim().split(/\s+/).length>=2}
+let speakStop=false;   // 朗读停止标志，stopSpeak 置真后队列不再续播
 function speakSynth(text,btn){
   const done=()=>{if(btn)btn.classList.remove("playing")};
   if(!window.speechSynthesis){done();toast("此浏览器不支持句子朗读");return}
   speechSynthesis.cancel();
+  speakStop=false;   // 新一次朗读，重置停止标志
   // 选英语嗓音
   let voice=null;
   const pick=()=>{
@@ -1506,7 +1559,7 @@ function speakSynth(text,btn){
   if(!chunks.length){done();return}
   let i=0;
   const speakNext=()=>{
-    if(i>=chunks.length){done();return}
+    if(speakStop||i>=chunks.length){done();return}   // 已停止或读完，不再续播
     const u=new SpeechSynthesisUtterance(chunks[i]);
     u.lang="en-US";u.rate=.92;u.pitch=1;if(voice)u.voice=voice;
     u.onend=()=>{i++;speakNext()};
@@ -1515,6 +1568,8 @@ function speakSynth(text,btn){
   };
   speakNext();
 }
+// 停止朗读：置停止标志 + 清空队列（供停止按钮调用）
+function stopSpeak(){speakStop=true;if(window.speechSynthesis)speechSynthesis.cancel();document.querySelectorAll(".speak.playing").forEach(b=>b.classList.remove("playing"))}
 function playAudio(text,btn){
   const w=(text||"").trim();if(!w)return;
   if(btn)btn.classList.add("playing");
@@ -2291,7 +2346,7 @@ function saveImported(){
   if(!picks.length)return toast("一个都没勾");
   let n=0;
   picks.forEach(c=>{
-    if(imported.some(w=>w.word.toLowerCase()===c.word.toLowerCase()))return;
+    if(allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase()))return;
     imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn,tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",cat:c.cat||"import"});
   });
   save(IMP_KEY,imported);
@@ -2306,6 +2361,36 @@ function exportImported(){
   const a=document.createElement("a");a.href=url;a.download="vocab-imported.json";a.click();
   URL.revokeObjectURL(url);
   toast("已导出 JSON");
+}
+// 完整备份：导出全部 localStorage 数据（含复习进度/文章/语法/错题/统计等）
+const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride"];
+function exportAll(){
+  const dump={__vocab_backup__:true,version:5,date:new Date().toISOString(),data:{}};
+  ALL_BACKUP_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)dump.data[k]=v});
+  const blob=new Blob([JSON.stringify(dump)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const d=new Date();const stamp=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
+  const a=document.createElement("a");a.href=url;a.download=`vocab-backup-${stamp}.json`;a.click();
+  URL.revokeObjectURL(url);
+  toast("已导出完整备份 ✓",2600);
+}
+function importAll(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let obj;
+    try{obj=JSON.parse(r.result)}catch(e){toast("文件不是有效 JSON");input.value="";return}
+    if(!obj||!obj.__vocab_backup__||!obj.data){toast("这不是完整备份文件（请用「导出全部数据」生成的文件）");input.value="";return}
+    const keys=Object.keys(obj.data);
+    if(!confirm(`将用备份【完全覆盖】当前所有数据（单词、复习进度、文章、语法、错题等共 ${keys.length} 项）。\n此操作不可撤销，确定吗？`)){input.value="";return}
+    ALL_BACKUP_KEYS.forEach(k=>{
+      if(obj.data[k]!==undefined)localStorage.setItem(k,obj.data[k]);
+    });
+    toast("已恢复，正在重新加载…",2000);
+    setTimeout(()=>location.reload(),800);  // 重载以让所有内存变量重新从 localStorage 读取
+  };
+  r.onerror=()=>{toast("读取失败");input.value=""};
+  r.readAsText(f);
 }
 // 导入备份：覆盖现有 imported（带确认+格式校验）
 function importBackup(input){
