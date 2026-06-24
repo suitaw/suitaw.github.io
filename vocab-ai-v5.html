@@ -782,9 +782,10 @@ function renderArticleDetail(v){
     const st=!c?"新词":due?"待复习":"复习中";
     const col=!c?"var(--ink-dim)":due?"var(--accent)":"var(--green)";
     return `<div class="mistake-item" style="cursor:pointer" onclick="startStudyAt('${artCatKey(a.id)}','${w.id}')">
-      <div style="flex:1"><div class="w" style="font-size:1rem">${w.word}${w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${w.phonetic}</span>`:""}</div>
+      <div style="flex:1"><div class="w" style="font-size:1rem">${w.word}${w.pos==="phrase"?'<span style="font-size:.62rem;color:var(--ink-dim);border:1px solid var(--line);border-radius:8px;padding:0 5px;margin-left:6px">短语</span>':""}${w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${w.phonetic}</span>`:""}</div>
         <div class="c">${w.cn||""}</div></div>
       <span style="font-size:.66rem;color:${col};border:1px solid ${col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st}</span>
+      <button class="gear" style="margin-left:6px;padding:2px 8px" onclick="event.stopPropagation();delArticleWord('${w.id}')">🗑</button>
     </div>`;
   }).join("");
   v.innerHTML=`<div style="padding-top:8px">
@@ -1135,10 +1136,13 @@ function autoFileExtract(ext){
     imported.push({id,word,phonetic:"",pos:"",cn:it.cn||"",tip:"",exampleEn:it.eg||"",exampleCn:"",scene:"",cat:artCatKey(artId),fromArticle:artId});
     artStat.w++;
   });
-  // 短语（进短语库，当新短语：不立刻进复习曲线，与单词一致）
+  // 短语（路径A：与单词一起归到本文章名下，进 imported，可与单词一起背）
   (ext.phrases||[]).forEach(it=>{
     const ph=(it.w||"").trim();if(!ph)return;
-    if(addPhrase({phrase:ph,cn:it.cn||"",tip:it.eg||"",type:"other"}))artStat.p++;
+    if(allWords().some(x=>x.word.toLowerCase()===ph.toLowerCase()))return;
+    const id="ap"+Date.now()+"_"+artStat.p+"_"+Math.floor(Math.random()*1000);
+    imported.push({id,word:ph,phonetic:"",pos:"phrase",cn:it.cn||"",tip:"",exampleEn:it.eg||"",exampleCn:"",scene:"",cat:artCatKey(artId),fromArticle:artId});
+    artStat.p++;
   });
   // 语法（进语法库，自动进7天回顾——语法本就是入库即回顾，保持不变）
   (ext.grammar||[]).forEach(it=>{
@@ -1153,7 +1157,7 @@ function renderArticleDone(){
   stepEl.innerHTML=`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:10px">
     <div style="font-weight:600;font-size:.9rem;margin-bottom:6px">✅ 全文讲完，已自动收录：</div>
     <div style="font-size:.84rem;line-height:1.8">📘 单词 ${artStat.w} 个（进「我的文章」词库，可背）<br>
-    🔗 短语 ${artStat.p} 个（进短语库，已加入复习）<br>
+    🔗 短语 ${artStat.p} 个（进「我的文章」词库，与单词一起背）<br>
     📖 语法 ${artStat.g} 个（进语法库，已加入回顾）</div>
     <div style="font-size:.74rem;color:var(--ink-dim);margin-top:10px">文章和精讲已保存，可在学习页「我的文章」重看。</div>
     <button class="gear" style="margin-top:10px" onclick="closeImport()">完成</button>
@@ -1243,6 +1247,17 @@ function delArticle(id){
   save(IMP_KEY,imported);save(SRS_KEY,srs);
   curArticle=null;render();
 }
+// 删除文章里的单个词/短语：从 imported 移除，清掉它的 srs 和标签缓存
+function delArticleWord(wid){
+  const w=imported.find(x=>x.id===wid);
+  if(!w)return;
+  if(!confirm(`删除「${w.word}」？`))return;
+  imported=imported.filter(x=>x.id!==wid);
+  delete srs[wid];
+  if(typeof tagCache!=="undefined"&&tagCache[wid]){delete tagCache[wid];save(TAG_KEY,tagCache)}
+  save(IMP_KEY,imported);save(SRS_KEY,srs);
+  render();
+}
 const TAGS=[
   {k:"collo",label:"词组搭配",ask:"列出这个词最常用的 3-5 个词组/固定搭配，每行：英文搭配 + 空格 + 中文意思。只列搭配本身，不要例句、不要解释、不要编号。"},
   {k:"deriv",label:"派生词",ask:"列出这个词的常见派生词（加前后缀变出的词，如 happy→happiness/unhappy），每行：派生词(词性) + 空格 + 中文意思。最多 5 个，没有就写「无明显派生词」。"},
@@ -1268,7 +1283,15 @@ function tagBtnsHtml(){
 function tagResultHtml(txt){
   const lines=String(txt).split("\n").filter(l=>l.trim());
   return `<div style="background:var(--card-soft,#f5f1ea);border-radius:10px;padding:10px 12px;font-size:.82rem;line-height:1.7">${
-    lines.map(l=>`<div>${l.replace(/[*#`]/g,"")}</div>`).join("")}</div>`;
+    lines.map(l=>`<div>${l.replace(/[*#`]/g,"")}</div>`).join("")}
+    <button class="gear" style="margin-top:8px;font-size:.72rem;padding:2px 9px" onclick="event.stopPropagation();regenTag()">🔄 重新生成</button></div>`;
+}
+// 重新生成当前展开标签的内容：清掉缓存，重新调 AI
+function regenTag(){
+  if(!cur||!openTag)return;
+  if(tagCache[cur.id]){delete tagCache[cur.id][openTag];save(TAG_KEY,tagCache)}
+  const k=openTag;openTag=null;   // 清空 openTag 让 queryTag 走"重新请求"分支
+  queryTag(k);
 }
 async function queryTag(k){
   if(!cur)return;
@@ -2305,6 +2328,14 @@ function openQuickAdd(){
       <h2 style="font-family:Fraunces,serif;font-size:1.3rem">加词</h2>
       <button class="gear" onclick="closeQuickAdd()">✕</button>
     </div>
+    <div style="margin-bottom:8px">
+      <label style="font-size:.76rem;color:var(--ink-dim);display:block;margin-bottom:4px">归入分类</label>
+      <select id="qa-target" onchange="onQaTargetChange()" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px;font-family:inherit;font-size:.86rem;background:var(--paper);color:var(--ink)">
+        <option value="__auto__">自动（AI 按主题归类）</option>
+        ${articles.map(a=>`<option value="${artCatKey(a.id)}">📄 ${a.title}</option>`).join("")}
+        <option value="__new__">➕ 新建一课…</option>
+      </select>
+    </div>
     <p style="font-size:.76rem;color:var(--ink-dim);margin-bottom:8px">三种用法：①贴一串词→秒补全全要 ②贴一段英文/传图片→AI 挑生词 ③传文本文件</p>
     <textarea id="qa-input" placeholder="贴词（一行一个或逗号隔开）：&#10;resilient, ubiquitous&#10;&#10;或贴一段英文文章，让 AI 挑生词" style="width:100%;min-height:100px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.88rem;background:var(--paper);resize:vertical"></textarea>
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -2331,6 +2362,27 @@ function onPickQaImage(input){
   }).catch(e=>toast(e.message));
 }
 function clearQaImage(){qaImage=null;const p=document.getElementById("qa-img-preview");if(p)p.innerHTML=""}
+// 加词归类：用户选"新建一课"时弹输入框建空文章，把新课的 art_id 设为当前目标
+function onQaTargetChange(){
+  const sel=document.getElementById("qa-target");if(!sel)return;
+  if(sel.value==="__new__"){
+    const title=(prompt("新课/文章名称（如：NCE2 L5 No Wrong Numbers）")||"").trim();
+    if(!title){sel.value="__auto__";return}
+    const id="art"+Date.now();
+    articles.unshift({id,title,text:"",mode:"manual",explain:"",createdAt:Date.now()});
+    saveArticles();
+    // 重建下拉，选中刚建的这一课
+    const opts=[`<option value="__auto__">自动（AI 按主题归类）</option>`]
+      .concat(articles.map(a=>`<option value="${artCatKey(a.id)}"${a.id===id?" selected":""}>📄 ${a.title}</option>`))
+      .concat([`<option value="__new__">➕ 新建一课…</option>`]);
+    sel.innerHTML=opts.join("");
+  }
+}
+// 读取加词弹窗当前选定的目标分类：__auto__ 表示用 AI 分类，否则返回 art_<id>
+function qaTargetCat(){
+  const sel=document.getElementById("qa-target");
+  return sel?sel.value:"__auto__";
+}
 function onPickQaText(input){
   const f=input.files&&input.files[0];if(!f)return;
   readTextFile(f).then(txt=>{
@@ -2414,11 +2466,16 @@ function showQuickAddPreview(arr,valid){
   </div>`;
 }
 function confirmQuickAdd(){
+  const target=qaTargetCat();           // __auto__ 或 art_<id>
+  const forceCat=(target&&target!=="__auto__")?target:null;
   let n=0;const byCat={};
   qaCandidates.forEach(c=>{
     if(!c.checked||c.dup)return;
-    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic,pos:c.pos,cn:c.cn,tip:c.tip,exampleEn:c.exampleEn,exampleCn:c.exampleCn,scene:c.scene,cat:c.cat});
-    byCat[c.cat]=(byCat[c.cat]||0)+1;
+    const useCat=forceCat||c.cat;        // 选了具体课就归到那课，否则用 AI 分类
+    const rec={id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic,pos:c.pos,cn:c.cn,tip:c.tip,exampleEn:c.exampleEn,exampleCn:c.exampleCn,scene:c.scene,cat:useCat};
+    if(forceCat&&isArtCat(forceCat))rec.fromArticle=forceCat.slice(4);  // 与文章抽词保持一致，带上来源文章
+    imported.push(rec);
+    byCat[useCat]=(byCat[useCat]||0)+1;
   });
   save(IMP_KEY,imported);
   if(n){
