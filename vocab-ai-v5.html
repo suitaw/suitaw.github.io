@@ -1486,16 +1486,34 @@ function isSentence(s){return /\s/.test(s.trim())&&s.trim().split(/\s+/).length>
 function speakSynth(text,btn){
   const done=()=>{if(btn)btn.classList.remove("playing")};
   if(!window.speechSynthesis){done();toast("此浏览器不支持句子朗读");return}
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang="en-US";u.rate=.92;u.pitch=1;
-  // 尽量选一个英语嗓音
+  speechSynthesis.cancel();
+  // 选英语嗓音
+  let voice=null;
   const pick=()=>{
     const vs=speechSynthesis.getVoices().filter(v=>/en[-_]/i.test(v.lang));
-    if(vs.length){const pref=vs.find(v=>/US|United States/i.test(v.lang+v.name));u.voice=pref||vs[0]}
+    if(vs.length){const pref=vs.find(v=>/US|United States/i.test(v.lang+v.name));voice=pref||vs[0]}
   };
-  pick();if(!u.voice)speechSynthesis.onvoiceschanged=pick;
-  u.onend=done;u.onerror=done;
-  speechSynthesis.cancel();speechSynthesis.speak(u);
+  pick();if(!voice)speechSynthesis.onvoiceschanged=pick;
+  // 长文本按句子切分，逐段排队朗读（绕开部分引擎单次朗读字符上限）
+  const segs=String(text).match(/[^.!?。！？\n]+[.!?。！？]?/g)||[String(text)];
+  const raw=segs.map(s=>s.trim()).filter(Boolean);
+  // 合并过短的段（如 "Mr." "Mrs." 等缩写被误断），并到下一段
+  const chunks=[];
+  raw.forEach(s=>{
+    if(chunks.length&&chunks[chunks.length-1].length<=4){chunks[chunks.length-1]+=" "+s}
+    else chunks.push(s);
+  });
+  if(!chunks.length){done();return}
+  let i=0;
+  const speakNext=()=>{
+    if(i>=chunks.length){done();return}
+    const u=new SpeechSynthesisUtterance(chunks[i]);
+    u.lang="en-US";u.rate=.92;u.pitch=1;if(voice)u.voice=voice;
+    u.onend=()=>{i++;speakNext()};
+    u.onerror=()=>{i++;speakNext()};   // 某段失败跳过，继续读后面
+    speechSynthesis.speak(u);
+  };
+  speakNext();
 }
 function playAudio(text,btn){
   const w=(text||"").trim();if(!w)return;
