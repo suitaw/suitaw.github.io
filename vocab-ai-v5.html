@@ -738,6 +738,7 @@ function renderPreview(v){
     return `<div class="mistake-item" style="cursor:pointer" onclick="startStudyAt('${cat}','${w.id}')">
       <div style="flex:1">${enBlock}${cnBlock}</div>
       <span style="font-size:.66rem;color:${st.col};border:1px solid ${st.col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st.t}</span>
+      <button class="gear" style="margin-left:6px;padding:2px 8px" onclick="event.stopPropagation();delArticleWord('${w.id}')">🗑</button>
     </div>`;
   }).join("");
   v.innerHTML=`<div style="padding-top:8px">
@@ -2379,6 +2380,7 @@ function onQaTargetChange(){
   }
 }
 // 读取加词弹窗当前选定的目标分类：__auto__ 表示用 AI 分类，否则返回 art_<id>
+let qaLockedCat="__auto__";   // quickAddGo 时锁定，confirmQuickAdd 时读取（避免 DOM 被预览覆盖后读不到）
 function qaTargetCat(){
   const sel=document.getElementById("qa-target");
   return sel?sel.value:"__auto__";
@@ -2394,6 +2396,7 @@ function closeQuickAdd(){const ov=document.getElementById("quickadd-overlay");ov
 // mode: 'all'=贴词全部补全录入；'extract'=贴文章/图片让AI挑生词
 async function quickAddGo(mode){
   const raw=(document.getElementById("qa-input")||{}).value||"";
+  qaLockedCat=qaTargetCat();   // DOM 被预览覆盖前先锁定用户选的分类
   const res=document.getElementById("qa-result");
   const valid=["dev","tv","life","biz","academic","news","other"];
   const eBtn=document.getElementById("qa-extract"),aBtn=document.getElementById("qa-all");
@@ -2466,7 +2469,7 @@ function showQuickAddPreview(arr,valid){
   </div>`;
 }
 function confirmQuickAdd(){
-  const target=qaTargetCat();           // __auto__ 或 art_<id>
+  const target=qaLockedCat;             // 用锁定的分类（下拉框此时已被预览覆盖）
   const forceCat=(target&&target!=="__auto__")?target:null;
   let n=0;const byCat={};
   qaCandidates.forEach(c=>{
