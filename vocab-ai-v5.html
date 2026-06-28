@@ -145,6 +145,11 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
     </div>
     <button class="gear" style="width:100%;margin-top:8px" onclick="exportImported()">导出我导入的词（仅单词）</button>
     <label class="gear" style="display:block;width:100%;margin-top:8px;text-align:center;cursor:pointer;box-sizing:border-box">导入备份（覆盖现有词）<input type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)"></label>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+      <div style="font-size:.78rem;font-weight:600;margin-bottom:4px">🗑 清理本应用旧数据（NCE 改由课程库提供后用一次）</div>
+      <div style="font-size:.68rem;color:var(--ink-dim);margin-bottom:6px">仅删除本应用残留的旧短语/旧语法/旧 NCE 导入词，不影响军考等其他应用。</div>
+      <button class="gear" style="width:100%" onclick="cleanupLegacyData()">清理旧短语 / 旧语法 / 旧 NCE 导入词</button>
+    </div>
   </div>
 
   <div id="view"></div>
@@ -2437,6 +2442,35 @@ function exportImported(){
   const a=document.createElement("a");a.href=url;a.download="vocab-imported.json";a.click();
   URL.revokeObjectURL(url);
   toast("已导出 JSON");
+}
+// 清理本应用旧数据: 旧短语/旧语法/旧 NCE 导入词(现由 nce.js 提供)。只动 vocab 自己的 key。
+function cleanupLegacyData(){
+  // 统计将清理的量
+  const oldPh=userPhrases.length, oldGr=userGrammar.length;
+  const oldNceWords=imported.filter(w=>(w.cat||"").indexOf("art_nce2_")===0);
+  if(!oldPh&&!oldGr&&!oldNceWords.length){toast("没有需要清理的旧数据 ✓",2000);return}
+  if(!confirm(`将清理：\n· 旧短语 ${oldPh} 条\n· 旧语法 ${oldGr} 条\n· 旧 NCE 导入词 ${oldNceWords.length} 个\n\n(NCE 内容已由课程库提供，这些是冗余残留)\n不影响军考等其他应用。确定？`))return;
+  // 1. 删旧 NCE 导入词 + 其 srs
+  const delIds=oldNceWords.map(w=>w.id);
+  imported=imported.filter(w=>(w.cat||"").indexOf("art_nce2_")!==0);
+  delIds.forEach(id=>delete srs[id]);
+  // 2. 清旧短语/语法 + 其 srs(ph*/gr* 前缀, 排除 NCE 的 nce2_*_ph/gr)
+  userPhrases.forEach(p=>{if(p.id&&srs[p.id])delete srs[p.id]});
+  userGrammar.forEach(g=>{if(g.id&&srs[g.id])delete srs[g.id]});
+  userPhrases=[]; userGrammar=[];
+  // 3. 删用户文章里残留的 nce2_* (上一轮导入遗留)
+  userArticles=userArticles.filter(a=>String(a.id||"").indexOf("nce2_")!==0);
+  // 4. 持久化
+  save(IMP_KEY,imported);
+  save(SRS_KEY,srs);
+  save(PHRASE_KEY,userPhrases);
+  save(GRAMMAR_KEY,userGrammar);
+  save(ART_KEY,userArticles);
+  // 5. 重建内存视图
+  rebuildPhraseGrammar();
+  articles=NCE_ARTICLES.concat(userArticles);
+  toast(`已清理 ${oldPh+oldGr+oldNceWords.length} 项旧数据 ✓`,2400);
+  setTimeout(()=>location.reload(),900);
 }
 // 完整备份：导出全部 localStorage 数据（含复习进度/文章/语法/错题/统计等）
 const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride"];
