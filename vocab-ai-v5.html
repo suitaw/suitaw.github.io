@@ -166,7 +166,8 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 </div>
 <div class="import-overlay" id="quickadd-overlay"></div>
 
-<script src="words.js?v=20260621"></script>
+<script src="words.js?v=20260628"></script>
+<script src="nce.js?v=20260628"></script>
 <script>
 // ===== 状态 =====
 const SRS_KEY="gh_vocab_srs_v1";
@@ -212,37 +213,86 @@ function stripMd(s){
     .trim();
 }
 
+// ===== NCE 课程库注入 (来自 nce.js, 只读内置内容) =====
+// 把 NCE_COURSES 展开成 WORDS 同构对象 / 文章 / 短语 / 语法。
+// id 用 课次+序号 保证稳定(跨设备一致, SRS 进度不丢)。这些不写 localStorage。
+let NCE_WORDS=[], NCE_ARTICLES=[], NCE_PHRASES=[], NCE_GRAMMAR=[];
+(function buildNCE(){
+  if(typeof NCE_COURSES==="undefined")return;
+  Object.keys(NCE_COURSES).forEach(ckey=>{
+    const course=NCE_COURSES[ckey];
+    (course.lessons||[]).forEach(L=>{
+      // 生词 -> WORDS 同构, cat=课程key(如 nce2), lid 记课次用于文章绑定
+      (L.words||[]).forEach((w,i)=>{
+        NCE_WORDS.push({
+          id:L.lid+"_w"+i, word:w.word, phonetic:w.phonetic||"", pos:w.pos||"",
+          cn:w.cn||"", tip:w.tip||"", exampleEn:w.exampleEn||"", exampleCn:w.exampleCn||"",
+          scene:"", cat:ckey, lid:L.lid, fromArticle:L.lid, _nce:true
+        });
+      });
+      // 文章: 正文+注释译文; lid 即文章 id
+      NCE_ARTICLES.push({
+        id:L.lid, title:L.title, text:L.text||"", mode:"deep",
+        explain:L.explain||"", createdAt:0, _nce:true, course:ckey
+      });
+      // 短语
+      (L.phrases||[]).forEach((p,i)=>{
+        NCE_PHRASES.push({id:L.lid+"_ph"+i, phrase:p.phrase, cn:p.cn||"", tip:p.tip||"",
+          type:p.type||"other", lid:L.lid, _nce:true});
+      });
+      // 语法
+      (L.grammar||[]).forEach((g,i)=>{
+        NCE_GRAMMAR.push({id:L.lid+"_gr"+i, point:g.point, cn:g.cn||"", example:g.example||"",
+          topic:g.topic||"other", lid:L.lid, _nce:true});
+      });
+    });
+  });
+})();
+
 // ===== 导入词库 =====
 const IMP_KEY="vocab_v5_imported";
 let imported=load(IMP_KEY,[]);   // 用户导入的词，结构同 WORDS，cat:"import"
-// 全局词表 = 内置 + 导入。所有取词的地方用 allWords()
+// 全局词表 = 内置 + NCE课程 + 导入。所有取词的地方用 allWords()
 const CATOVR_KEY="vocab_v5_catoverride";
 let catOverride=load(CATOVR_KEY,{});   // {wordId: newCat} 主要给内置词改分类用（imported 词直接改 w.cat）
 function allWords(){
   const ovr=catOverride;
   const hasOvr=ovr&&Object.keys(ovr).length;
   const base=hasOvr?WORDS.map(w=>ovr[w.id]?{...w,cat:ovr[w.id]}:w):WORDS;
-  return base.concat(imported);
+  const nce=hasOvr?NCE_WORDS.map(w=>ovr[w.id]?{...w,cat:ovr[w.id]}:w):NCE_WORDS;
+  return base.concat(nce).concat(imported);
 }
 
 // ===== 短语库 / 语法库 =====
 const PHRASE_KEY="vocab_v5_phrases";
 const GRAMMAR_KEY="vocab_v5_grammar";
-let phrases=load(PHRASE_KEY,[]);  // [{id,phrase,cn,tip,type,inReview?}]  inReview=true 时 srs[id] 存在
-let grammar=load(GRAMMAR_KEY,[]); // [{id,point,cn,example,topic,detail?,due?,lastReview?}]
+let userPhrases=load(PHRASE_KEY,[]);  // 用户自建短语(存 localStorage)
+let userGrammar=load(GRAMMAR_KEY,[]); // 用户自建语法(存 localStorage)
+// NCE 课程短语/语法补默认复习字段(内置, due 让其立即可复习)
+NCE_PHRASES.forEach(p=>{if(typeof p.inReview==="undefined")p.inReview=false});
+NCE_GRAMMAR.forEach(g=>{if(typeof g.due!=="number")g.due=0});
+// phrases/grammar = NCE(只读) + 用户自建。用于全局读取/复习
+let phrases=NCE_PHRASES.concat(userPhrases);
+let grammar=NCE_GRAMMAR.concat(userGrammar);
+function rebuildPhraseGrammar(){
+  phrases=NCE_PHRASES.concat(userPhrases);
+  grammar=NCE_GRAMMAR.concat(userGrammar);
+}
+function isNcePhrase(id){return id&&id.indexOf("_ph")>0&&NCE_PHRASES.some(p=>p.id===id)}
+function isNceGrammar(id){return id&&id.indexOf("_gr")>0&&NCE_GRAMMAR.some(g=>g.id===id)}
 const GRAMMAR_REVIEW_DAYS=7;      // 语法回顾间隔（天）：展开详解一次后顺延这么久
 function addPhrase(p){
   if(phrases.some(x=>x.phrase.toLowerCase()===(p.phrase||"").toLowerCase()))return false;
   const validT=["phrasal","collocation","prep","other"];
-  phrases.push({id:"ph"+Date.now()+"_"+phrases.length,phrase:p.phrase,cn:p.cn||"",tip:p.tip||"",type:validT.includes(p.type)?p.type:"other"});
-  save(PHRASE_KEY,phrases);return true;
+  userPhrases.push({id:"ph"+Date.now()+"_"+userPhrases.length,phrase:p.phrase,cn:p.cn||"",tip:p.tip||"",type:validT.includes(p.type)?p.type:"other"});
+  save(PHRASE_KEY,userPhrases);rebuildPhraseGrammar();return true;
 }
 function addGrammar(g){
   if(grammar.some(x=>x.point===(g.point||"")))return false;
   const validTopic=["tense","word","sentence","other"];
   // 新加语法点立即进回顾队列：due=now，回顾后顺延
-  grammar.push({id:"gr"+Date.now()+"_"+grammar.length,point:g.point,cn:g.cn||"",example:g.example||"",topic:validTopic.includes(g.topic)?g.topic:"other",due:Date.now()});
-  save(GRAMMAR_KEY,grammar);return true;
+  userGrammar.push({id:"gr"+Date.now()+"_"+userGrammar.length,point:g.point,cn:g.cn||"",example:g.example||"",topic:validTopic.includes(g.topic)?g.topic:"other",due:Date.now()});
+  save(GRAMMAR_KEY,userGrammar);rebuildPhraseGrammar();return true;
 }
 // 短语→闪卡对象（带齐卡片渲染所需字段，复用整套词卡渲染/评分；id 仍是 ph 前缀不与词撞）
 function phraseCard(p){
@@ -253,13 +303,15 @@ function setPhraseReview(id,on){
   const p=phrases.find(x=>x.id===id);if(!p)return;
   if(on){if(!srs[id])srs[id]={ef:2.5,interval:0,reps:0,due:Date.now()};p.inReview=true}
   else{delete srs[id];p.inReview=false}
-  save(SRS_KEY,srs);save(PHRASE_KEY,phrases);
+  // 用户短语的 inReview 要持久化; NCE 短语 inReview 仅存于内存(复习状态靠 srs[id] 持久)
+  if(!isNcePhrase(id))save(PHRASE_KEY,userPhrases);
+  save(SRS_KEY,srs);
 }
 // 一次性迁移：清理旧 phraseToReview 留下的 import 脏词条 + 旧字段
 (function migrateB(){
   let dirty=false;
   // 旧 hack：phrase 上有 srsId 回指一个 import 词条。把复习状态迁到短语本身，删脏词条
-  phrases.forEach(p=>{
+  userPhrases.forEach(p=>{
     if(p.srsId){
       const old=srs[p.srsId];
       if(old){srs[p.id]=old;delete srs[p.srsId];dirty=true}
@@ -268,11 +320,11 @@ function setPhraseReview(id,on){
   });
   // 删掉 hack 产生的 import 词条（word 等于某个短语、cat=import、pos=phr.）
   const before=imported.length;
-  imported=imported.filter(w=>!(w.cat==="import"&&w.pos==="phr."&&phrases.some(p=>p.phrase===w.word)));
+  imported=imported.filter(w=>!(w.cat==="import"&&w.pos==="phr."&&userPhrases.some(p=>p.phrase===w.word)));
   if(imported.length!==before){save(IMP_KEY,imported);dirty=true}
   // 语法补 due（旧数据没有）
-  grammar.forEach(g=>{if(typeof g.due!=="number"){g.due=Date.now();dirty=true}});
-  if(dirty){save(SRS_KEY,srs);save(PHRASE_KEY,phrases);save(GRAMMAR_KEY,grammar)}
+  userGrammar.forEach(g=>{if(typeof g.due!=="number"){g.due=Date.now();dirty=true}});
+  if(dirty){save(SRS_KEY,srs);save(PHRASE_KEY,userPhrases);save(GRAMMAR_KEY,userGrammar);rebuildPhraseGrammar()}
 })();
 
 // ===== 设置面板 =====
@@ -937,14 +989,24 @@ const TAG_KEY="vocab_v5_tagcache";
 let tagCache=load(TAG_KEY,{});   // {wordId:{tagKey:文本}}
 // ===== 文章精读 =====
 const ART_KEY="vocab_v5_articles";
-let articles=load(ART_KEY,[]);   // [{id,title,text,mode,explain,createdAt}]
+let userArticles=load(ART_KEY,[]);   // 用户自建文章(存 localStorage) [{id,title,text,mode,explain,createdAt}]
+// articles = NCE课程文章(只读) + 用户文章。NCE 在前(按课次自然顺序)
+let articles=NCE_ARTICLES.concat(userArticles);
 let curArticle=null;             // 正在查看的文章 id（文章详情页）
 let articleListOpen=false;       // 是否在文章列表页
 let lastArtWords=null;           // 最近一次抽出的生词（供预览入库）
 function artCatKey(id){return "art_"+id}
-// 该文章挑出的生词（存在 imported，cat=art_<id>）
-function wordsOfArticle(id){return imported.filter(w=>w.cat===artCatKey(id))}
-function saveArticles(){save(ART_KEY,articles)}
+// 该文章的生词:
+//   NCE 课文 -> 从 NCE_WORDS 按 lid 筛(内置, 带例句)
+//   用户文章 -> 从 imported 按 cat=art_<id> 筛(原逻辑)
+function wordsOfArticle(id){
+  const nce=NCE_WORDS.filter(w=>w.lid===id);
+  if(nce.length)return nce;
+  return imported.filter(w=>w.cat===artCatKey(id));
+}
+// 是否 NCE 内置文章(只读, 不可删/不可改)
+function isNceArticle(id){return NCE_ARTICLES.some(a=>a.id===id)}
+function saveArticles(){save(ART_KEY,userArticles)}  // 只存用户文章
 // 打开精读输入面板
 function openArticleReader(){
   const ov=document.getElementById("import-overlay");if(!ov)return;
@@ -1093,7 +1155,9 @@ function startArticleSession(){
   artChunkIdx=0;artAllWords=[];artStat={w:0,p:0,g:0};
   artId="a"+Date.now();
   // 先建文章（explain 随每段追加）
-  articles.unshift({id:artId,title,text,mode:artMode,explain:"",createdAt:Date.now()});
+  const _newArt={id:artId,title,text,mode:artMode,explain:"",createdAt:Date.now()};
+  userArticles.unshift(_newArt);
+  articles=NCE_ARTICLES.concat(userArticles);
   saveArticles();
   saveArtProgress();  // 存精读进度，切后台回来可恢复
   const box=document.getElementById("art-result");
@@ -1262,8 +1326,10 @@ function openArticleList(){articleListOpen=true;curArticle=null;previewCat=null;
 function closeArticleList(){articleListOpen=false;curArticle=null;render()}
 function openArticleDetail(id){curArticle=id;render()}
 function delArticle(id){
+  if(isNceArticle(id)){toast("NCE 课程文章为内置内容，不可删除");return}
   if(!confirm("删除这篇文章？挑出的生词也会一并移除。"))return;
-  articles=articles.filter(a=>a.id!==id);saveArticles();
+  userArticles=userArticles.filter(a=>a.id!==id);saveArticles();
+  articles=NCE_ARTICLES.concat(userArticles);  // 重建合并列表
   // 删该文章的词 + srs
   const del=imported.filter(w=>w.cat===artCatKey(id)).map(w=>w.id);
   imported=imported.filter(w=>w.cat!==artCatKey(id));
@@ -1297,7 +1363,8 @@ function moveWordTo(wid){
     const title=(prompt("新课/文章名称（如：NCE2 L5 No Wrong Numbers）")||"").trim();
     if(!title)return;
     const id="art"+Date.now();
-    articles.unshift({id,title,text:"",mode:"manual",explain:"",createdAt:Date.now()});
+    userArticles.unshift({id,title,text:"",mode:"manual",explain:"",createdAt:Date.now()});
+    articles=NCE_ARTICLES.concat(userArticles);
     saveArticles();
     targetCat=artCatKey(id);
   }else if(idx>=1&&idx<=articles.length){
@@ -1703,7 +1770,8 @@ async function explainGrammar(id){
   if(grammarOpen[id]){grammarOpen[id]=false;renderMistake(document.getElementById("view"));return}
   grammarOpen[id]=true;
   // 展开即算一次回顾：顺延下次提醒
-  g.due=Date.now()+GRAMMAR_REVIEW_DAYS*86400000;g.lastReview=Date.now();save(GRAMMAR_KEY,grammar);
+  g.due=Date.now()+GRAMMAR_REVIEW_DAYS*86400000;g.lastReview=Date.now();
+  if(!isNceGrammar(id))save(GRAMMAR_KEY,userGrammar);
   // 有缓存直接显示（重渲染让按钮文字变“收起”）
   if(g.detail){renderMistake(document.getElementById("view"));return}
   // 无缓存：先把按钮态刷新成展开，再异步取内容
@@ -1712,7 +1780,7 @@ async function explainGrammar(id){
   const sys="你是耐心的英语老师，面向中文初学者。把给定语法点讲透：用简单中文解释它是什么、什么时候用、初学者常踩的坑，并给 2-3 个由易到难的例句（英文+中文）。纯文本，不要 Markdown 符号。260 字内。";
   try{
     const text=await callAI([{role:"user",content:`语法点：${g.point}\n已知简述：${g.cn}`}],sys,800);
-    g.detail=text;save(GRAMMAR_KEY,grammar);
+    g.detail=text;if(!isNceGrammar(id))save(GRAMMAR_KEY,userGrammar);
     const box3=document.getElementById("gexp-"+id);
     if(grammarOpen[id]&&box3)box3.innerHTML=grammarDetailHtml(text);  // 期间没被收起才显示
   }catch(e){const box3=document.getElementById("gexp-"+id);if(box3)box3.innerHTML=`<div style="font-size:.78rem;color:var(--accent)">详解失败：${e.message||"检查 Key"}</div>`}
@@ -1720,8 +1788,16 @@ async function explainGrammar(id){
 function grammarDetailHtml(text){
   return `<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;white-space:pre-wrap">${text}</div>`;
 }
-function delPhrase(id){const i=phrases.findIndex(p=>p.id===id);if(i>=0){phrases.splice(i,1);delete srs[id];save(SRS_KEY,srs);save(PHRASE_KEY,phrases);renderMistake(document.getElementById("view"))}}
-function delGrammar(id){const i=grammar.findIndex(g=>g.id===id);if(i>=0){grammar.splice(i,1);save(GRAMMAR_KEY,grammar);renderMistake(document.getElementById("view"))}}
+function delPhrase(id){
+  if(isNcePhrase(id)){toast("NCE 课程短语为内置内容，不可删除");return}
+  const i=userPhrases.findIndex(p=>p.id===id);
+  if(i>=0){userPhrases.splice(i,1);delete srs[id];save(SRS_KEY,srs);save(PHRASE_KEY,userPhrases);rebuildPhraseGrammar();renderMistake(document.getElementById("view"))}
+}
+function delGrammar(id){
+  if(isNceGrammar(id)){toast("NCE 课程语法为内置内容，不可删除");return}
+  const i=userGrammar.findIndex(g=>g.id===id);
+  if(i>=0){userGrammar.splice(i,1);save(GRAMMAR_KEY,userGrammar);rebuildPhraseGrammar();renderMistake(document.getElementById("view"))}
+}
 function speakWord(w){playAudio(w,null)}
 
 // ===== 统计 =====
@@ -2473,7 +2549,8 @@ function onQaTargetChange(){
     const title=(prompt("新课/文章名称（如：NCE2 L5 No Wrong Numbers）")||"").trim();
     if(!title){sel.value="__auto__";return}
     const id="art"+Date.now();
-    articles.unshift({id,title,text:"",mode:"manual",explain:"",createdAt:Date.now()});
+    userArticles.unshift({id,title,text:"",mode:"manual",explain:"",createdAt:Date.now()});
+    articles=NCE_ARTICLES.concat(userArticles);
     saveArticles();
     // 重建下拉，选中刚建的这一课
     const opts=[`<option value="__auto__">自动（AI 按主题归类）</option>`]
