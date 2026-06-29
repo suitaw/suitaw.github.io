@@ -892,23 +892,40 @@ function scrollToLastWord(){
   });
 }
 function renderArticleList(v){
-  const rows=articles.map(a=>{
+  // 单篇文章卡（showDel: 是否显示删除按钮; showDate: 是否显示日期）
+  const card=(a,showDel,showDate)=>{
     const n=wordsOfArticle(a.id).length;
     const d=new Date(a.createdAt);
-    const date=`${d.getMonth()+1}/${d.getDate()}`;
+    const date=showDate&&a.createdAt?` · ${d.getMonth()+1}/${d.getDate()}`:"";
     return `<div class="mistake-item" style="cursor:pointer" onclick="openArticleDetail('${a.id}')">
       <div style="flex:1"><div class="w" style="font-size:.98rem">${a.title}</div>
-        <div class="c">${a.mode==="deep"?"精读":"大意"} · ${n} 词 · ${date}</div></div>
-      <button class="gear" onclick="event.stopPropagation();delArticle('${a.id}')">🗑</button>
+        <div class="c">${a.mode==="deep"?"精读":"大意"} · ${n} 词${date}</div></div>
+      ${showDel?`<button class="gear" onclick="event.stopPropagation();delArticle('${a.id}')">🗑</button>`:""}
     </div>`;
-  }).join("");
+  };
+  // 分组标题（可折叠）
+  const header=(key,label,count)=>{
+    const open=!collapsed[key];
+    return `<div class="grp-header" onclick="toggleGroup('${key}')" style="display:flex;align-items:center;gap:5px;font-size:.78rem;color:var(--ink-dim);margin:14px 0 8px;font-weight:600;cursor:pointer;user-select:none"><span style="display:inline-block;width:12px;transition:transform .15s;transform:rotate(${open?90:0}deg)">▸</span>${label}（${count}）</div>`;
+  };
+  const nceList=articles.filter(a=>isNceArticle(a.id));
+  const mineList=articles.filter(a=>!isNceArticle(a.id));
+  let body="";
+  if(nceList.length){
+    body+=header("art_grp_nce","📘 NCE 课文",nceList.length);
+    if(!collapsed["art_grp_nce"])body+=nceList.map(a=>card(a,false,false)).join("");
+  }
+  if(mineList.length){
+    body+=header("art_grp_mine","📄 我的精读",mineList.length);
+    if(!collapsed["art_grp_mine"])body+=mineList.map(a=>card(a,true,true)).join("");
+  }
   v.innerHTML=`<div style="padding-top:8px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <button class="gear" onclick="closeArticleList()">← 返回</button>
       <div style="font-family:Fraunces,serif;font-size:1.15rem;font-weight:700">📄 我的文章</div>
     </div>
     <button class="ai-btn" style="margin-bottom:12px" onclick="go('assistant');setTimeout(openArticleReader,50)">＋ 精读一篇新文章</button>
-    ${articles.length?rows:`<div class="done"><p>还没有精读过的文章。点上面按钮，粘贴一篇试试。</p></div>`}
+    ${articles.length?body:`<div class="done"><p>还没有精读过的文章。点上面按钮，粘贴一篇试试。</p></div>`}
   </div>`;
 }
 function renderArticleDetail(v){
@@ -938,13 +955,58 @@ function renderArticleDetail(v){
       <div style="font-size:.84rem;line-height:1.7;white-space:pre-wrap;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px">${(a.text||"").replace(/</g,"&lt;")}</div></details>
     <details open style="margin-bottom:12px"><summary style="cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-dim)">🤖 AI 精讲（${a.mode==="deep"?"精读":"大意"}）</summary>
       <div style="font-size:.84rem;line-height:1.7;white-space:pre-wrap;margin-top:8px">${(a.explain||"").replace(/</g,"&lt;")}</div></details>
+    <button class="gear" style="width:100%;margin-bottom:12px" onclick="deepLesson('${a.id}')">${lessonOpen[a.id]?'📚 收起课文精讲':(lessonExplain[a.id]?'📚 展开课文精讲（词汇·句型·语法）':'📚 课文精讲（词汇用法+句型+语法点，AI 按教材风格讲透）')}</button>
+    <div id="lesson-exp-${a.id}" style="margin-bottom:12px">${lessonOpen[a.id]&&lessonExplain[a.id]?lessonDetailHtml(lessonExplain[a.id]):""}</div>
     <div style="font-weight:600;font-size:.88rem;margin:14px 0 8px">生词短语（${words.length}）</div>
     ${words.length?wordRows:`<div style="font-size:.78rem;color:var(--ink-dim)">这篇没有入库的生词。</div>`}
     ${words.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${artCatKey(a.id)}')">▶ 背这篇的 ${words.length} 个词</button>`:""}
   </div>`;
   scrollToLastWord();
 }
-function startStudy(cat){lastEnteredWordId=null;previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();roundTotal=queue.length;roundDone=new Set();cur=queue[0]||null;render()}
+// 课文精讲详解的 HTML 包装（与语法详解同款卡片样式）
+function lessonDetailHtml(text){
+  return `<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.84rem;line-height:1.7;white-space:pre-wrap">${(text||"").replace(/</g,"&lt;")}</div>`;
+}
+// 课文精讲：按新概念教材配套精讲风格，AI 现场展开并缓存（可展开可收起）
+async function deepLesson(id){
+  const a=articles.find(x=>x.id===id);if(!a)return;
+  // 已展开 → 收起
+  if(lessonOpen[id]){lessonOpen[id]=false;render();return}
+  lessonOpen[id]=true;
+  // 有缓存直接显示（重渲染让按钮文字变“收起”）
+  if(lessonExplain[id]){render();return}
+  if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider])){lessonOpen[id]=false;return toast("先在设置里填 API Key")}
+  // 无缓存：先刷新成展开态，再异步流式取内容
+  render();
+  const box=document.getElementById("lesson-exp-"+id);
+  if(box)box.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
+  const sys=`你是新概念英语教材的配套精讲老师，面向中文母语的初学者。请仿照教材课后精讲的风格，把整篇课文讲透，严格按以下结构用中文讲解（不要 Markdown 符号，不要 * # 等）：
+
+一、词汇用法
+逐个讲课文里的关键单词：词性、核心含义、常见搭配、近义词辨析（如有）、初学者易错点。每个词配一个你自己原创的简短例句（英文+中文），不要照抄课文原句。
+
+二、重点句型
+挑出课文里 3-5 个值得学的句型/结构（key structures），先列结构公式，再说明用法和适用场景，各配一个原创例句。
+
+三、语法点
+归纳本课涉及的核心语法（如时态、从句、特殊结构等），讲清楚规则和用法，配例句说明。
+
+讲解要有教材的条理感和深度，但语言通俗。`;
+  let finalText="";
+  try{
+    await callAIStream([{role:"user",content:`课文标题：${a.title}\n\n课文正文：\n${a.text||""}`}], sys, (fullText)=>{
+      finalText=stripMd(fullText);  // onChunk 收到累积全文，用 =
+      const b=document.getElementById("lesson-exp-"+id);
+      if(lessonOpen[id]&&b)b.innerHTML=lessonDetailHtml(finalText);
+    }, 3000, false);
+  }catch(e){
+    const b=document.getElementById("lesson-exp-"+id);
+    if(b)b.innerHTML=`<div style="font-size:.8rem;color:var(--accent)">精讲生成失败：${e.message||"检查 Key"}<br><button class="gear" style="margin-top:8px" onclick="deepLesson('${id}')">重试</button></div>`;
+    return;
+  }
+  // 生成成功：缓存落盘
+  if(finalText){lessonExplain[id]=finalText;save(LESSON_KEY,lessonExplain)}
+}
 // 记录从词表进入背诵时点的那个词，返回时滚动定位回去
 let lastEnteredWordId=null;
 // 从词表点某个词直接开背：把该词排到队首
@@ -1061,6 +1123,10 @@ let userArticles=load(ART_KEY,[]);   // 用户自建文章(存 localStorage) [{i
 let articles=NCE_ARTICLES.concat(userArticles);
 let curArticle=null;             // 正在查看的文章 id（文章详情页）
 let articleListOpen=false;       // 是否在文章列表页
+// 课文精讲缓存 {文章id:精讲文本}（NCE+用户文章统一存，独立于 explain）
+const LESSON_KEY="vocab_v5_lesson_explain";
+let lessonExplain=load(LESSON_KEY,{});
+let lessonOpen={};               // {文章id:true} 哪些精讲当前展开
 let lastArtWords=null;           // 最近一次抽出的生词（供预览入库）
 function artCatKey(id){return "art_"+id}
 // 该文章的生词:
@@ -1402,6 +1468,9 @@ function delArticle(id){
   imported=imported.filter(w=>w.cat!==artCatKey(id));
   del.forEach(wid=>delete srs[wid]);
   save(IMP_KEY,imported);save(SRS_KEY,srs);
+  // 清掉该文章的精讲缓存
+  if(lessonExplain[id]){delete lessonExplain[id];save(LESSON_KEY,lessonExplain)}
+  delete lessonOpen[id];
   curArticle=null;render();
 }
 // 删除文章里的单个词/短语：从 imported 移除，清掉它的 srs 和标签缓存
@@ -1726,9 +1795,9 @@ function addMistake(w,from){const ex=mistakes.find(m=>m.id===w.id);if(ex){if(fro
 function removeMistake(id){const i=mistakes.findIndex(m=>m.id===id);if(i>=0){mistakes.splice(i,1);save(MIS_KEY,mistakes)}}
 function delMistake(id){removeMistake(id);renderMistake(document.getElementById("view"))}
 let mistakeTab=load("vocab_v5_mtab","mistake");  // mistake | phrase | grammar
-// 短语/语法分组折叠状态 {组key:true=折叠}，记住上次
+// 分组折叠状态 {组key:true=折叠}，记住上次。短语/语法/文章列表通用
 let collapsed=load("vocab_v5_collapsed",{});
-function toggleGroup(key){collapsed[key]=!collapsed[key];save("vocab_v5_collapsed",collapsed);renderMistake(document.getElementById("view"))}
+function toggleGroup(key){collapsed[key]=!collapsed[key];save("vocab_v5_collapsed",collapsed);render()}
 if(!["mistake","phrase","grammar"].includes(mistakeTab))mistakeTab="mistake";
 function renderMistake(v){
   const tabBar=`<div style="display:flex;gap:6px;margin-bottom:14px">
@@ -2556,7 +2625,7 @@ function cleanupLegacyData(){
   setTimeout(()=>location.reload(),900);
 }
 // 完整备份：导出全部 localStorage 数据（含复习进度/文章/语法/错题/统计等）
-const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride"];
+const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride","vocab_v5_lesson_explain"];
 function exportAll(){
   const dump={__vocab_backup__:true,version:5,date:new Date().toISOString(),data:{}};
   ALL_BACKUP_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)dump.data[k]=v});
