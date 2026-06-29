@@ -31,6 +31,12 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .panel label{display:block;font-size:.72rem;color:var(--ink-dim);margin:10px 0 4px;font-weight:500}
 .panel input,.panel select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-size:.85rem;color:var(--ink);font-family:inherit}
 .panel .hint{font-size:.68rem;color:var(--ink-dim);margin-top:6px;line-height:1.5}
+.set-group{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+.set-group>summary{cursor:pointer;font-size:.82rem;font-weight:600;color:var(--ink);list-style:none;display:flex;align-items:center;gap:6px;user-select:none}
+.set-group>summary::before{content:"▸";display:inline-block;transition:transform .15s;color:var(--ink-dim)}
+.set-group[open]>summary::before{transform:rotate(90deg)}
+.set-group>summary::-webkit-details-marker{display:none}
+.set-group-body{margin-top:10px}
 
 /* 闪卡 */
 .stage{text-align:center;padding:8px 0}
@@ -142,20 +148,25 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <button class="gear" onclick="clearKey()">清空 Key</button>
     </div>
     <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
-      <div style="font-size:.78rem;font-weight:600;margin-bottom:6px">💾 完整备份（含复习进度/文章/语法/错题，换设备必备）</div>
-      <button class="ai-btn" style="width:100%" onclick="exportAll()">导出全部数据</button>
-      <label class="gear" style="display:block;width:100%;margin-top:8px;text-align:center;cursor:pointer;box-sizing:border-box">恢复全部数据（覆盖现有）<input type="file" accept=".json,application/json" style="display:none" onchange="importAll(this)"></label>
+      <button class="gear" style="width:100%" onclick="openTrash()">🗑 回收站（找回删除的内容）</button>
     </div>
-    <button class="gear" style="width:100%;margin-top:8px" onclick="exportImported()">导出我导入的词（仅单词）</button>
-    <label class="gear" style="display:block;width:100%;margin-top:8px;text-align:center;cursor:pointer;box-sizing:border-box">导入备份（覆盖现有词）<input type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)"></label>
-    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
-      <button class="gear" style="width:100%" onclick="openTrash()">🗑 回收站（找回删除的词/短语/语法/文章）</button>
-    </div>
-    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
-      <div style="font-size:.78rem;font-weight:600;margin-bottom:4px">🗑 清理本应用旧数据（NCE 改由课程库提供后用一次）</div>
-      <div style="font-size:.68rem;color:var(--ink-dim);margin-bottom:6px">仅删除本应用残留的旧短语/旧语法/旧 NCE 导入词，不影响军考等其他应用。</div>
-      <button class="gear" style="width:100%" onclick="cleanupLegacyData()">清理旧短语 / 旧语法 / 旧 NCE 导入词</button>
-    </div>
+    <details class="set-group">
+      <summary>💾 数据备份与导入导出</summary>
+      <div class="set-group-body">
+        <div class="hint" style="margin-bottom:8px">完整备份含复习进度/文章/语法/错题，换设备必备。</div>
+        <button class="ai-btn" style="width:100%" onclick="exportAll()">导出全部数据</button>
+        <label class="gear" style="display:block;width:100%;margin-top:8px;text-align:center;cursor:pointer;box-sizing:border-box">恢复全部数据（覆盖现有）<input type="file" accept=".json,application/json" style="display:none" onchange="importAll(this)"></label>
+        <button class="gear" style="width:100%;margin-top:8px" onclick="exportImported()">导出我导入的词（仅单词）</button>
+        <label class="gear" style="display:block;width:100%;margin-top:8px;text-align:center;cursor:pointer;box-sizing:border-box">导入备份（覆盖现有词）<input type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)"></label>
+      </div>
+    </details>
+    <details class="set-group">
+      <summary>🧹 清理旧数据（一般用不到）</summary>
+      <div class="set-group-body">
+        <div class="hint" style="margin-bottom:6px">仅删除本应用残留的旧短语/旧语法/旧 NCE 导入词，不影响军考等其他应用。NCE 改由课程库提供后用一次即可。</div>
+        <button class="gear" style="width:100%" onclick="cleanupLegacyData()">清理旧短语 / 旧语法 / 旧 NCE 导入词</button>
+      </div>
+    </details>
   </div>
 
   <div id="view"></div>
@@ -575,7 +586,7 @@ function render(){
         <div style="height:100%;width:${roundTotal?Math.round(roundDone.size/roundTotal*100):0}%;background:var(--accent);border-radius:2px;transition:width .3s"></div>
       </div>
       <div class="card" id="card" onclick="if(!flipped)flip()">
-        <span class="cat-tag">${catName(cur.cat)}</span>
+        <span class="cat-tag" onclick="event.stopPropagation();gotoSource()" style="cursor:pointer" title="查看来源">${catName(cur.cat)} ↗</span>
         <div class="word">${cur.word}</div>
         ${cur.phonetic?`<div class="phonetic">${cur.phonetic}</div>`:""}
         <button class="speak" onclick="event.stopPropagation();speak(this)">🔊 发音</button>
@@ -916,6 +927,23 @@ function toggleCell(ev,el){
   if(shown)hideCell(el);else revealCell(el);
 }
 function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;render()}
+// 从背词卡片点右上角来源标签 → 跳到来源（文章详情 / 分类预览）。背词进度已存 session，可稍后恢复
+function gotoSource(){
+  if(!cur)return;
+  saveSession();  // 保留当前背词进度
+  const c=cur.cat;
+  // 短语复习卡/复习本卡等无明确来源 → 不跳
+  if(c==="__phrase__"){toast("短语复习没有单独来源页");return}
+  studyStarted=false;flipped=false;
+  if(cur.lid){  // NCE 文章词：lid 即文章 id
+    previewCat=null;curArticle=cur.lid;cur=null;page="home";go("home");return;
+  }
+  if(isArtCat(c)){  // 用户文章词：art_<文章id>
+    previewCat=null;curArticle=c.slice(4);cur=null;page="home";go("home");return;
+  }
+  // 普通分类 → 分类预览
+  cur=null;openCatPreview(c);
+}
 function closeCatPreview(){previewCat=null;render()}
 function renderPreview(v){
   const cat=previewCat;
