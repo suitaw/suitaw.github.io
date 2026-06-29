@@ -536,6 +536,7 @@ function mistakeQueue(){
 function startMistakeReview(){
   const n=mistakes.length+phrases.filter(p=>p.inReview&&srs[p.id]).length;
   if(!n){toast("复习本和待复习短语都是空的");return}
+  if(tryResumeSession("__mistake__"))return;   // 有未背完的复习本会话→接着背
   previewCat=null;cfg.scope="__mistake__";save(CFG_KEY,cfg);
   studyStarted=true;cur=null;flipped=false;viewed=[];
   buildQueue();roundTotal=queue.length;roundDone=new Set();
@@ -576,7 +577,10 @@ function render(){
   v.innerHTML=`
     <div class="stage">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <button class="gear" onclick="backToHome()">← 返回</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="gear" onclick="backToHome()">← 返回</button>
+          <button class="gear" onclick="restartStudy()" title="放弃当前组，重新洗一组新词">🔄 换一组</button>
+        </div>
         <div style="display:flex;gap:8px;align-items:center">
           ${viewed.length?`<button class="gear" onclick="prevWord()">↩ 上一个</button>`:""}
           <div class="progress" style="margin:0">已过 ${roundDone.size} / ${roundTotal||queue.length}</div>
@@ -749,7 +753,7 @@ function restoreSession(){
 }
 function backToHome(){
   studyStarted=false;cur=null;flipped=false;viewed=[];
-  clearSession();
+  // 注意：不清会话，进度保留，下次同 scope 进入可接着背（主动换组用 restartStudy）
   const sp=cfg.scope;
   if(sp==="__mistake__"){previewCat=null;mistakeTab="mistake";save("vocab_v5_mtab","mistake");go("mistake");return}
   if(isArtCat(sp)){const a=articles.find(x=>artCatKey(x.id)===sp);curArticle=a?a.id:null;previewCat=null}
@@ -1121,7 +1125,39 @@ async function deepLesson(id){
   // 生成成功：缓存落盘
   if(finalText){lessonExplain[id]=finalText;save(LESSON_KEY,lessonExplain)}
 }
-function startStudy(cat){lastEnteredWordId=null;previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();roundTotal=queue.length;roundDone=new Set();cur=queue[0]||null;saveSession();render()}
+function startStudy(cat){
+  // 若有同一入口(scope)未背完的会话，接着背而不是开新组
+  if(tryResumeSession(cat))return;
+  doStartStudy(cat);
+}
+// 强制开一组新词（放弃当前未完成会话）
+function restartStudy(){
+  const cat=cfg.scope;
+  clearSession();
+  doStartStudy(cat);
+  toast("已重新开一组 🔄");
+}
+function doStartStudy(cat){
+  lastEnteredWordId=null;previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);
+  studyStarted=true;cur=null;flipped=false;viewed=[];
+  buildQueue();roundTotal=queue.length;roundDone=new Set();
+  cur=queue[0]||null;saveSession();render();
+}
+// 尝试恢复指定 scope 的未完成会话；成功返回 true
+function tryResumeSession(cat){
+  const s=load(SESSION_KEY,null);
+  if(!s||!s.queue||!s.queue.length)return false;
+  if(s.scope!==cat)return false;                       // 不是同一入口，不接续
+  if(s.ts&&Date.now()-s.ts>24*3600000){clearSession();return false}  // 超 24h 不接续
+  cfg.scope=s.scope;save(CFG_KEY,cfg);
+  queue=s.queue;viewed=s.viewed||[];flipped=!!s.flipped;
+  roundTotal=s.roundTotal||queue.length;roundDone=new Set(s.roundDone||[]);
+  cur=queue[0]||null;
+  if(!cur){clearSession();return false}
+  studyStarted=true;previewCat=null;curArticle=null;articleListOpen=false;
+  render();
+  return true;
+}
 // 记录从词表进入背诵时点的那个词，返回时滚动定位回去
 let lastEnteredWordId=null;
 // 从词表点某个词直接开背：把该词排到队首
