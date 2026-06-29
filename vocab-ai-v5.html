@@ -75,6 +75,10 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .ai-result .label{font-size:.7rem;color:var(--ink-dim)}
 .ai-result .row{margin-top:8px}
 .ai-result .rw{font-style:italic;color:var(--accent)}
+.ai-thread{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.ai-msg{font-size:.84rem;line-height:1.65;white-space:pre-wrap;padding:8px 11px;border-radius:12px;border:1px solid var(--line);word-break:break-word}
+.ai-msg.user{background:var(--accent-soft);border-color:var(--accent);align-self:flex-end;max-width:88%}
+.ai-msg.assistant{background:var(--card);align-self:flex-start;max-width:96%}
 
 /* 完成态 / 空态 */
 .done{text-align:center;padding:48px 20px;color:var(--ink-dim)}
@@ -553,6 +557,8 @@ function go(p){
 let studyStarted=false;  // 是否已从分类页进入学习
 let roundTotal=0;        // 本轮词数（建队列时定）
 let roundDone=new Set(); // 本轮已过关的去重词 id（点难/记得/秒答即过关，忘了不算）
+let askHistory=[];       // 问 AI 当前词的多轮对话历史 [{role,content}]
+let askWordId=null;      // askHistory 归属的词 id；切到别的词时自动作废
 function render(){
   const v=document.getElementById("view");
   // 快速加词浮动按钮：背单词卡片态隐藏（不挡操作），其余显示
@@ -745,6 +751,8 @@ function restoreSession(){
   flipped=!!s.flipped;
   roundTotal=s.roundTotal||queue.length;
   roundDone=new Set(s.roundDone||[]);
+  // 已背完的轮次不恢复（避免"30/30 还在背"残留状态在刷新后复活）
+  if(roundTotal>0&&roundDone.size>=roundTotal){clearSession();return false}
   cur=queue[0]||null;
   if(!cur){clearSession();return false}
   studyStarted=true;
@@ -948,6 +956,17 @@ function gotoSource(){
   // 普通分类 → 分类预览
   cur=null;openCatPreview(c);
 }
+// 是否存在可恢复的未完成背词会话（用于来源页显示"回到背词"入口；与 restoreSession 同一过期判断）
+function hasSession(){
+  const s=load(SESSION_KEY,null);
+  return !!(s&&s.queue&&s.queue.length&&!(s.ts&&Date.now()-s.ts>24*3600000));
+}
+// 从来源页（分类预览/文章详情）一键跳回背词，接着上次进度。复用 tryResumeSession，scope 取会话里存的
+function resumeStudy(){
+  const s=load(SESSION_KEY,null);
+  if(s&&s.queue&&s.queue.length&&tryResumeSession(s.scope))return;
+  toast("没有可恢复的背词进度");
+}
 function closeCatPreview(){previewCat=null;render()}
 function renderPreview(v){
   const cat=previewCat;
@@ -987,6 +1006,7 @@ function renderPreview(v){
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       <button class="gear" onclick="closeCatPreview()">← 返回</button>
       <div style="font-family:Fraunces,serif;font-size:1.15rem;font-weight:700">${catName(cat)}</div>
+      ${hasSession()?`<button class="gear" style="margin-left:auto;border-color:var(--accent);color:var(--accent);white-space:nowrap" onclick="resumeStudy()">↩ 回到背词</button>`:""}
     </div>
     <div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:10px">共 ${list.length} 词 · 新词 ${newN} · 待复习 ${dueN}</div>
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${sortBtns}</div>
@@ -1066,6 +1086,7 @@ function renderArticleDetail(v){
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <button class="gear" onclick="openArticleList()">← 文章列表</button>
       <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:700;flex:1">${a.title}</div>
+      ${hasSession()?`<button class="gear" style="border-color:var(--accent);color:var(--accent);white-space:nowrap" onclick="resumeStudy()">↩ 回到背词</button>`:""}
     </div>
     <details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-dim)">📖 原文</summary>
       <button class="gear" style="margin-top:8px" onclick="speakSynth(articles.find(a=>a.id==='${a.id}').text,this);this.classList.toggle('playing')">🔊 朗读原文</button>
@@ -1130,12 +1151,22 @@ function startStudy(cat){
   if(tryResumeSession(cat))return;
   doStartStudy(cat);
 }
-// 强制开一组新词（放弃当前未完成会话）
+// 强制开一组新词（放弃当前未完成会话）；保留当前正在看的词，重洗后仍排在队首，避免"换一组把当前词换没了"
 function restartStudy(){
   const cat=cfg.scope;
+  const keep=cur;
   clearSession();
-  doStartStudy(cat);
-  toast("已重新开一组 🔄");
+  lastEnteredWordId=null;previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);
+  studyStarted=true;flipped=false;viewed=[];
+  buildQueue();
+  if(keep){
+    const i=queue.findIndex(w=>w.id===keep.id);
+    if(i>0){const p=queue.splice(i,1)[0];queue.unshift(p)}      // 已在队列→提到队首
+    else if(i<0){queue.unshift(keep)}                           // 不在新队列→补回队首
+  }
+  roundTotal=queue.length;roundDone=new Set();
+  cur=queue[0]||keep||null;saveSession();render();
+  toast("已重新洗一组 🔄");
 }
 function doStartStudy(cat){
   lastEnteredWordId=null;previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);
@@ -1152,6 +1183,7 @@ function tryResumeSession(cat){
   cfg.scope=s.scope;save(CFG_KEY,cfg);
   queue=s.queue;viewed=s.viewed||[];flipped=!!s.flipped;
   roundTotal=s.roundTotal||queue.length;roundDone=new Set(s.roundDone||[]);
+  if(roundTotal>0&&roundDone.size>=roundTotal){clearSession();return false}  // 已背完不接续
   cur=queue[0]||null;
   if(!cur){clearSession();return false}
   studyStarted=true;previewCat=null;curArticle=null;articleListOpen=false;
@@ -1213,10 +1245,20 @@ function gradesHtml(){return `
     <button class="grade g-good" onclick="rate(5)">秒答<small>easy</small></button>
   </div>`;
 }
-function aiHtml(){return `
+function aiHtml(){
+  const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  const has=askWordId===cur.id&&askHistory.length;
+  const thread=has?`<div class="ai-thread" id="ai-thread">`+askHistory.map(m=>
+    `<div class="ai-msg ${m.role}">${m.role==="user"?"🙋 ":"🤖 "}${esc(m.content)}</div>`).join("")+`</div>`
+    :`<div class="ai-thread" id="ai-thread"></div>`;
+  return `
   <div class="ai-box">
-    <textarea id="sentence" placeholder="关于 ${cur.word}，问 AI 任何问题（用法、例句、区别，或贴句子让它批改）"></textarea>
-    <button class="ai-btn" id="check-btn" onclick="askWord()">问 AI</button>
+    ${thread}
+    <textarea id="sentence" placeholder="关于 ${cur.word}，问 AI 任何问题（可连续追问；换词自动清空）"></textarea>
+    <div style="display:flex;gap:8px;align-items:stretch">
+      <button class="ai-btn" id="check-btn" style="flex:1" onclick="askWord()">问 AI</button>
+      ${has?`<button class="gear" onclick="clearAsk()">清空</button>`:""}
+    </div>
     <div class="ai-result" id="ai-result"></div>
   </div>`;
 }
@@ -2017,8 +2059,12 @@ function rate(q){
   queue.shift();
   if(q<3)queue.push(cur);
   cur=queue[0]||null;flipped=false;openTag=null;
-  if(cur)saveSession();else clearSession();   // 还有词→存进度；背完→清会话
-  render();
+  if(cur){saveSession();render();return}
+  // 一组背完：清进度+清会话+回首页，不静默续接新队列（避免"30/30 还在背"和刷新自动跳进背词）
+  const done=roundDone.size;
+  clearSession();roundDone=new Set();roundTotal=0;
+  toast("这组背完啦 🎉 共 "+done+" 个");
+  backToHome();
 }
 function resetStreak(id){const m=mistakes.find(x=>x.id===id);if(m&&m.streak){m.streak=0;save(MIS_KEY,mistakes)}}
 
@@ -2542,23 +2588,35 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
 
 // ===== AI 自由问答（针对当前词，流式）=====
 async function askWord(){
+  if(!cur)return;
   const ta=document.getElementById("sentence");if(!ta)return;
   const q=ta.value.trim();
   if(!q)return toast("先输入问题");
+  if(askWordId!==cur.id){askWordId=cur.id;askHistory=[]}   // 切到新词→开新对话
+  askHistory.push({role:"user",content:q});
+  ta.value="";
+  render();                                                 // 立即显示用户气泡、清空输入框
   const btn=document.getElementById("check-btn");if(btn){btn.disabled=true;btn.textContent="思考中…"}
-  const box=document.getElementById("ai-result");
-  if(box){box.classList.add("show");box.innerHTML=`<div id="ask-ans" style="font-size:.85rem;line-height:1.7;white-space:pre-wrap"></div>`}
-  const sys=`你是英语老师，学生是中文母语初学者。围绕单词「${cur.word}」(${cur.cn||""})回答问题。用中文讲，简明清楚。如果学生贴了英文句子，就帮他批改并给出改好的句子。不要用 Markdown 符号。`;
+  const thread=document.getElementById("ai-thread");
+  let bubble=null;
+  if(thread){bubble=document.createElement("div");bubble.className="ai-msg assistant";bubble.textContent="🤖 …";thread.appendChild(bubble)}
+  const sys=`你是英语老师，学生是中文母语初学者。围绕单词「${cur.word}」(${cur.cn||""})进行多轮答疑：记住前面聊过的内容，结合上下文回答。用中文讲，简明清楚。如果学生贴了英文句子，就帮他批改并给出改好的句子。不要用 Markdown 符号。`;
+  let ans="";
   try{
-    let ans="";
-    await callAIStream([{role:"user",content:q}],sys,(full)=>{
-      ans=stripMd(full);const el=document.getElementById("ask-ans");if(el)el.textContent=ans;
+    await callAIStream(askHistory.map(m=>({role:m.role,content:m.content})),sys,(full)=>{
+      ans=stripMd(full);if(bubble)bubble.textContent="🤖 "+ans;   // onChunk 累积全文，用 =
     },800,false);
-    if(!ans){const el=document.getElementById("ask-ans");if(el)el.textContent="(没有返回内容，请重试)"}
+    if(!ans)ans="(没有返回内容，请重试)";
+    if(bubble)bubble.textContent="🤖 "+ans;
+    askHistory.push({role:"assistant",content:ans});         // 落进历史，后续追问带上下文
   }catch(e){
-    const el=document.getElementById("ask-ans");if(el)el.textContent="出错了："+(e.message||"检查 Key 或网络");
+    if(bubble)bubble.textContent="🤖 出错了："+(e.message||"检查 Key 或网络");
+    askHistory.pop();                                        // 回滚本次提问，保持历史交替合法
+    const ta2=document.getElementById("sentence");if(ta2)ta2.value=q;  // 问题填回输入框便于重试
   }finally{if(btn){btn.disabled=false;btn.textContent="问 AI"}}
 }
+// 清空当前词的问 AI 对话
+function clearAsk(){askHistory=[];askWordId=cur?cur.id:null;render()}
 
 // ===== AI 造句批改 + 追问（旧功能，保留备用）=====
 async function checkSentence(){
