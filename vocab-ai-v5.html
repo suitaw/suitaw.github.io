@@ -93,6 +93,9 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .scroll-btn:active{transform:scale(.92)}
 .import-box{max-width:560px;margin:20px auto;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 40px rgba(43,38,32,.2)}
 .toast.show{opacity:1}
+.undobar{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:12px;font-size:.8rem;display:none;align-items:center;gap:12px;z-index:100;box-shadow:0 6px 20px rgba(0,0,0,.28);max-width:92vw}
+.undobar.show{display:flex}
+.undobar button{background:transparent;border:1px solid rgba(255,255,255,.4);color:var(--paper);border-radius:8px;padding:5px 12px;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 .typing{display:inline-flex;gap:4px;align-items:center;padding:4px 2px}
 .typing span{width:7px;height:7px;border-radius:50%;background:var(--ink-dim);opacity:.4;animation:typing-bounce 1.2s infinite ease-in-out}
@@ -146,6 +149,9 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
     <button class="gear" style="width:100%;margin-top:8px" onclick="exportImported()">导出我导入的词（仅单词）</button>
     <label class="gear" style="display:block;width:100%;margin-top:8px;text-align:center;cursor:pointer;box-sizing:border-box">导入备份（覆盖现有词）<input type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)"></label>
     <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+      <button class="gear" style="width:100%" onclick="openTrash()">🗑 回收站（找回删除的词/短语/语法/文章）</button>
+    </div>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
       <div style="font-size:.78rem;font-weight:600;margin-bottom:4px">🗑 清理本应用旧数据（NCE 改由课程库提供后用一次）</div>
       <div style="font-size:.68rem;color:var(--ink-dim);margin-bottom:6px">仅删除本应用残留的旧短语/旧语法/旧 NCE 导入词，不影响军考等其他应用。</div>
       <button class="gear" style="width:100%" onclick="cleanupLegacyData()">清理旧短语 / 旧语法 / 旧 NCE 导入词</button>
@@ -163,6 +169,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="undobar" id="undobar"><span id="undobar-msg"></span><button onclick="undoLast()">↩ 撤回</button></div>
 <div class="import-overlay" id="import-overlay"></div>
 <button id="quick-add-fab" onclick="openQuickAdd()" title="快速加词">＋词</button>
 <div id="scroll-nav" style="position:fixed;right:16px;bottom:134px;z-index:140;display:none;flex-direction:column;gap:8px">
@@ -512,6 +519,7 @@ function render(){
   if(page==="assistant")return renderAssistant(v);
   if(page==="mistake")return renderMistake(v);
   if(page==="stats")return renderStats(v);
+  if(page==="trash")return renderTrash(v);
   // home：未开始学习时显示分类选择/词表预览，已开始则显示卡片
   if(page==="home"&&!studyStarted){
     if(curArticle!==null)return renderArticleDetail(v);
@@ -1468,17 +1476,133 @@ function saveArticleWords(){
   toast(n?`已加入 ${n} 个词，进“我的文章”`:"没有勾选新词");
   closeImport();
 }
+// ===== 回收站 / 撤回 =====
+const TRASH_KEY="vocab_v5_trash";
+let trash=load(TRASH_KEY,[]);          // [{type,data,label,deletedAt,extra}]
+const TRASH_MAX=100, TRASH_DAYS=30;
+let undoTimer=null;
+// 入站：存删除快照并弹撤回条。type: word|mistake|phrase|grammar|article
+function trashPush(type,data,label,extra){
+  trash.push({type,data,label:label||"",deletedAt:Date.now(),extra:extra||null});
+  // 清理超期/超量（按时间，保留最近的）
+  const cut=Date.now()-TRASH_DAYS*86400000;
+  trash=trash.filter(t=>t.deletedAt>=cut);
+  if(trash.length>TRASH_MAX)trash=trash.slice(trash.length-TRASH_MAX);
+  save(TRASH_KEY,trash);
+  showUndoBar(label||"已删除");
+}
+function showUndoBar(label){
+  const bar=document.getElementById("undobar"),msg=document.getElementById("undobar-msg");
+  if(!bar||!msg)return;
+  msg.textContent=`已删除：${label}`;
+  bar.classList.add("show");
+  if(undoTimer)clearTimeout(undoTimer);
+  undoTimer=setTimeout(()=>bar.classList.remove("show"),5000);
+}
+function hideUndoBar(){const bar=document.getElementById("undobar");if(bar)bar.classList.remove("show");if(undoTimer)clearTimeout(undoTimer)}
+// 撤回最近一条删除
+function undoLast(){
+  if(!trash.length){hideUndoBar();return}
+  const entry=trash[trash.length-1];
+  doRestore(entry);
+  trash.pop();save(TRASH_KEY,trash);
+  hideUndoBar();
+  toast("已撤回 ↩");
+}
+// 从回收站恢复指定条（回收站页用）
+function restoreTrash(idx){
+  const entry=trash[idx];if(!entry)return;
+  doRestore(entry);
+  trash.splice(idx,1);save(TRASH_KEY,trash);
+  toast("已恢复 ✓");
+  renderTrash(document.getElementById("view"));
+}
+// 实际把一条回收记录还原回数据
+function doRestore(entry){
+  const {type,data,extra}=entry;
+  if(type==="word"){
+    if(!imported.find(w=>w.id===data.word.id))imported.push(data.word);
+    if(data.srs)srs[data.word.id]=data.srs;
+    if(data.tag&&typeof tagCache!=="undefined"){tagCache[data.word.id]=data.tag;save(TAG_KEY,tagCache)}
+    save(IMP_KEY,imported);save(SRS_KEY,srs);
+  }else if(type==="mistake"){
+    if(!mistakes.find(m=>m.id===data.mistake.id))mistakes.push(data.mistake);
+    save(MIS_KEY,mistakes);
+  }else if(type==="phrase"){
+    if(!userPhrases.find(p=>p.id===data.phrase.id))userPhrases.push(data.phrase);
+    if(data.srs)srs[data.phrase.id]=data.srs;
+    save(PHRASE_KEY,userPhrases);save(SRS_KEY,srs);rebuildPhraseGrammar();
+  }else if(type==="grammar"){
+    if(!userGrammar.find(g=>g.id===data.grammar.id))userGrammar.push(data.grammar);
+    save(GRAMMAR_KEY,userGrammar);rebuildPhraseGrammar();
+  }else if(type==="article"){
+    if(!userArticles.find(a=>a.id===data.article.id))userArticles.push(data.article);
+    saveArticles();articles=NCE_ARTICLES.concat(userArticles);
+    // 恢复文章的词 + srs
+    (data.words||[]).forEach(w=>{if(!imported.find(x=>x.id===w.id))imported.push(w)});
+    Object.assign(srs,data.srsMap||{});
+    if(data.lessonExplain)lessonExplain[data.article.id]=data.lessonExplain;
+    save(IMP_KEY,imported);save(SRS_KEY,srs);save(LESSON_KEY,lessonExplain);
+  }
+  render();
+}
+// 彻底删除回收站某条
+function purgeTrash(idx){
+  if(!confirm("彻底删除？此操作不可恢复。"))return;
+  trash.splice(idx,1);save(TRASH_KEY,trash);
+  renderTrash(document.getElementById("view"));
+}
+function clearTrash(){
+  if(!trash.length)return toast("回收站是空的");
+  if(!confirm(`彻底清空回收站（${trash.length} 项）？此操作不可恢复。`))return;
+  trash=[];save(TRASH_KEY,trash);renderTrash(document.getElementById("view"));
+}
+const TRASH_TYPE_LABEL={word:"单词",mistake:"复习本",phrase:"短语",grammar:"语法",article:"文章"};
+function openTrash(){const p=document.getElementById("panel");if(p)p.classList.remove("open");page="trash";render()}
+function renderTrash(v){
+  if(!v)return;
+  // 倒序：最近删的在前
+  const items=trash.map((t,i)=>({t,i})).reverse();
+  const rows=items.map(({t,i})=>{
+    const d=new Date(t.deletedAt);
+    const date=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    return `<div class="mistake-item">
+      <div style="flex:1"><div class="w" style="font-size:.92rem">${(t.label||"(无标题)").replace(/</g,"&lt;")}</div>
+        <div class="c">${TRASH_TYPE_LABEL[t.type]||t.type} · ${date}</div></div>
+      <button class="gear" style="padding:4px 10px" onclick="restoreTrash(${i})">恢复</button>
+      <button class="gear" style="padding:4px 8px;margin-left:4px" onclick="purgeTrash(${i})">🗑</button>
+    </div>`;
+  }).join("");
+  v.innerHTML=`<div style="padding-top:8px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <button class="gear" onclick="go('home')">← 返回</button>
+      <div style="font-family:Fraunces,serif;font-size:1.15rem;font-weight:700">🗑 回收站</div>
+    </div>
+    <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:12px">删除的单词/短语/语法/复习本/文章会在这里保留最多 ${TRASH_DAYS} 天，可随时恢复（含复习进度）。</p>
+    ${trash.length?`<button class="gear" style="width:100%;margin-bottom:12px" onclick="clearTrash()">清空回收站</button>${rows}`:`<div class="done"><p>回收站是空的。删错了东西可以来这里找回。</p></div>`}
+  </div>`;
+}
 // 文章列表页
 function openArticleList(){articleListOpen=true;curArticle=null;previewCat=null;studyStarted=false;go("home")}
 function closeArticleList(){articleListOpen=false;curArticle=null;render()}
 function openArticleDetail(id){curArticle=id;render()}
 function delArticle(id){
   if(isNceArticle(id)){toast("NCE 课程文章为内置内容，不可删除");return}
-  if(!confirm("删除这篇文章？挑出的生词也会一并移除。"))return;
+  if(!confirm("删除这篇文章？挑出的生词也会一并移除（可在回收站找回）。"))return;
+  const art=userArticles.find(a=>a.id===id);
+  const artWords=imported.filter(w=>w.cat===artCatKey(id));
+  const srsMap={};artWords.forEach(w=>{if(srs[w.id])srsMap[w.id]=JSON.parse(JSON.stringify(srs[w.id]))});
+  // 打包快照进回收站
+  if(art)trashPush("article",{
+    article:JSON.parse(JSON.stringify(art)),
+    words:JSON.parse(JSON.stringify(artWords)),
+    srsMap,
+    lessonExplain:lessonExplain[id]||null
+  },(art.title||"文章")+`（含 ${artWords.length} 词）`);
   userArticles=userArticles.filter(a=>a.id!==id);saveArticles();
   articles=NCE_ARTICLES.concat(userArticles);  // 重建合并列表
   // 删该文章的词 + srs
-  const del=imported.filter(w=>w.cat===artCatKey(id)).map(w=>w.id);
+  const del=artWords.map(w=>w.id);
   imported=imported.filter(w=>w.cat!==artCatKey(id));
   del.forEach(wid=>delete srs[wid]);
   save(IMP_KEY,imported);save(SRS_KEY,srs);
@@ -1491,7 +1615,11 @@ function delArticle(id){
 function delArticleWord(wid){
   const w=imported.find(x=>x.id===wid);
   if(!w)return;
-  if(!confirm(`删除「${w.word}」？`))return;
+  trashPush("word",{
+    word:JSON.parse(JSON.stringify(w)),
+    srs:srs[wid]?JSON.parse(JSON.stringify(srs[wid])):null,
+    tag:(typeof tagCache!=="undefined"&&tagCache[wid])?JSON.parse(JSON.stringify(tagCache[wid])):null
+  },w.word||"单词");
   imported=imported.filter(x=>x.id!==wid);
   delete srs[wid];
   if(typeof tagCache!=="undefined"&&tagCache[wid]){delete tagCache[wid];save(TAG_KEY,tagCache)}
@@ -1807,7 +1935,11 @@ let mistakes=load(MIS_KEY,[]);
 (function(){let c=false;mistakes.forEach(m=>{if(m.from==="答错收录"){m.from="忘了";c=true}});if(c)save(MIS_KEY,mistakes)})();
 function addMistake(w,from){const ex=mistakes.find(m=>m.id===w.id);if(ex){if(from)ex.from=from;save(MIS_KEY,mistakes)}else{mistakes.push({id:w.id,word:w.word,cn:w.cn,from:from||"收藏"});save(MIS_KEY,mistakes)}}
 function removeMistake(id){const i=mistakes.findIndex(m=>m.id===id);if(i>=0){mistakes.splice(i,1);save(MIS_KEY,mistakes)}}
-function delMistake(id){removeMistake(id);renderMistake(document.getElementById("view"))}
+function delMistake(id){
+  const m=mistakes.find(x=>x.id===id);
+  if(m)trashPush("mistake",{mistake:JSON.parse(JSON.stringify(m))},m.word||m.cn||"复习本词条");
+  removeMistake(id);renderMistake(document.getElementById("view"));
+}
 let mistakeTab=load("vocab_v5_mtab","mistake");  // mistake | phrase | grammar
 // 分组折叠状态 {组key:true=折叠}，记住上次。短语/语法/文章列表通用
 let collapsed=load("vocab_v5_collapsed",{});
@@ -1969,12 +2101,18 @@ function grammarDetailHtml(text){
 function delPhrase(id){
   if(isNcePhrase(id)){toast("NCE 课程短语为内置内容，不可删除");return}
   const i=userPhrases.findIndex(p=>p.id===id);
-  if(i>=0){userPhrases.splice(i,1);delete srs[id];save(SRS_KEY,srs);save(PHRASE_KEY,userPhrases);rebuildPhraseGrammar();renderMistake(document.getElementById("view"))}
+  if(i>=0){
+    const p=userPhrases[i];
+    trashPush("phrase",{phrase:JSON.parse(JSON.stringify(p)),srs:srs[id]?JSON.parse(JSON.stringify(srs[id])):null},p.phrase||"短语");
+    userPhrases.splice(i,1);delete srs[id];save(SRS_KEY,srs);save(PHRASE_KEY,userPhrases);rebuildPhraseGrammar();renderMistake(document.getElementById("view"))}
 }
 function delGrammar(id){
   if(isNceGrammar(id)){toast("NCE 课程语法为内置内容，不可删除");return}
   const i=userGrammar.findIndex(g=>g.id===id);
-  if(i>=0){userGrammar.splice(i,1);save(GRAMMAR_KEY,userGrammar);rebuildPhraseGrammar();renderMistake(document.getElementById("view"))}
+  if(i>=0){
+    const g=userGrammar[i];
+    trashPush("grammar",{grammar:JSON.parse(JSON.stringify(g))},g.point||"语法点");
+    userGrammar.splice(i,1);save(GRAMMAR_KEY,userGrammar);rebuildPhraseGrammar();renderMistake(document.getElementById("view"))}
 }
 function speakWord(w){playAudio(w,null)}
 
@@ -2646,7 +2784,7 @@ function cleanupLegacyData(){
   setTimeout(()=>location.reload(),900);
 }
 // 完整备份：导出全部 localStorage 数据（含复习进度/文章/语法/错题/统计等）
-const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride","vocab_v5_lesson_explain"];
+const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride","vocab_v5_lesson_explain","vocab_v5_trash"];
 function exportAll(){
   const dump={__vocab_backup__:true,version:5,date:new Date().toISOString(),data:{}};
   ALL_BACKUP_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)dump.data[k]=v});
