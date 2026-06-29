@@ -719,7 +719,7 @@ function runSearch(q){
   </div>`).join("")+(hits.length>=50?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:8px">只显示前 50 个，再输入细化</div>`:"");
 }
 function catName(c){
-  const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",codepath:"Codepath 编程",__phrase__:"短语复习"};
+  const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",__fav__:"我的收藏",codepath:"Codepath 编程",__phrase__:"短语复习"};
   if(typeof c==="string"&&c.indexOf("art_")===0){const a=articles.find(x=>artCatKey(x.id)===c);return a?("📄 "+a.title):"文章"}
   return fixed[c]||c;
 }
@@ -938,7 +938,7 @@ function toggleCell(ev,el){
   const shown=el.querySelector(".pv-show").style.display!=="none";
   if(shown)hideCell(el);else revealCell(el);
 }
-function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;render()}
+function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;catSuggestItems=null;catSuggestLoading=false;render()}
 // 从背词卡片点右上角来源标签 → 跳到来源（文章详情 / 分类预览）。背词进度已存 session，可稍后恢复
 function gotoSource(){
   if(!cur)return;
@@ -967,8 +967,84 @@ function resumeStudy(){
   if(s&&s.queue&&s.queue.length&&tryResumeSession(s.scope))return;
   toast("没有可恢复的背词进度");
 }
-function closeCatPreview(){previewCat=null;render()}
+function closeCatPreview(){previewCat=null;catSuggestItems=null;catSuggestLoading=false;render()}
+// ===== AI 一键归类（把"我的收藏"里的零散词按词义自动归到主题大类，复核后写入）=====
+let catSuggestItems=null;    // 非空=正在复核 AI 建议：[{id,word,cn,cat}]
+let catSuggestLoading=false; // AI 归类请求进行中
+// 可归入的目标主题大类：固定 7 类 + 已存在的自定义实体大类（排除文章/NCE/短语/import）
+function classifyCats(){
+  const fixed=[["dev","科技开发"],["tv","影视口语"],["life","日常生活"],["biz","职场商务"],["academic","学术阅读"],["news","新闻时事"],["other","其他"]];
+  const seen=new Set(fixed.map(f=>f[0]));seen.add("import");
+  const extra=[];
+  allWords().forEach(w=>{const c=catOverride[w.id]||w.cat;
+    if(!c||seen.has(c))return;seen.add(c);
+    if(c.indexOf("art_")!==0&&!(typeof NCE_COURSES!=="undefined"&&NCE_COURSES[c])&&c!=="__phrase__")extra.push([c,catName(c)]);});
+  return fixed.concat(extra);
+}
+// 让 AI 按词义给"我的收藏"里的零散词建议分类，结果进复核面板
+async function aiClassifyFav(){
+  if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider]))return toast("先在设置里填 API Key");
+  const words=sortWords(wordsOfCat("__fav__"));
+  if(!words.length)return toast("没有可归类的词");
+  catSuggestItems=null;catSuggestLoading=true;render();
+  const cats=classifyCats();
+  const catText=cats.map(c=>c[0]+"="+c[1]).join("，");
+  const listText=words.map((w,i)=>i+". "+w.word+" "+(w.cn||"")).join("\n");
+  const sys=`你是英语词汇分类助手。把下面每个单词按词义归到最合适的主题分类。只能从这些分类里选（用左边的 key）：${catText}。无法判断就归 other。\n只输出一个 JSON 数组，每项形如 {"i":序号,"c":"分类key"}，序号与输入一致。不要解释、不要 Markdown 代码块、不要多余文字。`;
+  let full="";
+  try{
+    await callAIStream([{role:"user",content:listText}],sys,(t)=>{full=t;},1800,false);
+    const mm=full.match(/\[[\s\S]*\]/);                 // 抓出 JSON 数组，容忍前后杂讯
+    const arr=JSON.parse(mm?mm[0]:full.replace(/```json|```/g,"").trim());
+    const valid=new Set(cats.map(c=>c[0]));
+    const map={};arr.forEach(o=>{if(o&&typeof o.i==="number")map[o.i]=valid.has(o.c)?o.c:"other"});
+    catSuggestItems=words.map((w,i)=>({id:w.id,word:w.word,cn:w.cn||"",cat:map[i]||"other"}));
+    catSuggestLoading=false;render();
+  }catch(e){
+    catSuggestItems=null;catSuggestLoading=false;render();
+    toast("AI 归类失败："+(e.message||"返回格式异常，重试一下"));
+  }
+}
+// 复核面板：每词一个下拉，默认 AI 建议，可改
+function renderCatSuggest(v){
+  const cats=classifyCats();
+  const rows=catSuggestItems.map((it,idx)=>`
+    <div class="mistake-item">
+      <div style="flex:1"><div class="w" style="font-size:.96rem">${it.word}</div><div class="c">${it.cn}</div></div>
+      <select id="cs-${idx}" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:.8rem;background:var(--paper);color:var(--ink)">
+        ${cats.map(c=>`<option value="${c[0]}"${c[0]===it.cat?" selected":""}>${c[1]}</option>`).join("")}
+      </select>
+    </div>`).join("");
+  v.innerHTML=`<div style="padding-top:8px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <button class="gear" onclick="cancelCatSuggest()">← 取消</button>
+      <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:700">🤖 AI 归类建议</div>
+    </div>
+    <div style="font-size:.76rem;color:var(--ink-dim);margin-bottom:10px">AI 已按词义建议分类，下拉可改，确认后写入。共 ${catSuggestItems.length} 词。</div>
+    ${rows}
+    <button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyCatSuggest()">✓ 确认归类这 ${catSuggestItems.length} 个词</button>
+  </div>`;
+}
+function cancelCatSuggest(){catSuggestItems=null;catSuggestLoading=false;render()}
+// 确认写入：读每个下拉的最终选择，按 imported→改 cat / 内置→catOverride 落盘
+function applyCatSuggest(){
+  if(!catSuggestItems)return;
+  let impDirty=false,ovrDirty=false,n=0;
+  catSuggestItems.forEach((it,idx)=>{
+    const sel=document.getElementById("cs-"+idx);const cat=sel?sel.value:it.cat;
+    const imp=imported.find(x=>x.id===it.id);
+    if(imp){imp.cat=cat;if(imp.fromArticle)delete imp.fromArticle;impDirty=true;n++}
+    else{catOverride[it.id]=cat;ovrDirty=true;n++}
+  });
+  if(impDirty)save(IMP_KEY,imported);
+  if(ovrDirty)save(CATOVR_KEY,catOverride);
+  catSuggestItems=null;catSuggestLoading=false;
+  toast("已归类 "+n+" 个词 🎉");
+  render();
+}
 function renderPreview(v){
+  if(catSuggestLoading){v.innerHTML=`<div class="done" style="padding-top:48px"><div class="typing"><span></span><span></span><span></span></div><p>AI 正在按词义归类…</p></div>`;return}
+  if(catSuggestItems)return renderCatSuggest(v);
   const cat=previewCat;
   const list=sortWords(wordsOfCat(cat));
   const now=Date.now();
@@ -1011,6 +1087,7 @@ function renderPreview(v){
     <div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:10px">共 ${list.length} 词 · 新词 ${newN} · 待复习 ${dueN}</div>
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${sortBtns}</div>
     <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${maskBtns}</div>
+    ${cat==="__fav__"&&list.length?`<button class="gear" style="margin-bottom:12px;border-color:var(--accent);color:var(--accent)" onclick="aiClassifyFav()">🤖 AI 一键归类这 ${list.length} 个零散词</button>`:""}
     ${list.length?rows:`<div class="done"><p>这个分类还没有词。</p></div>`}
     ${list.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
   </div>`;
