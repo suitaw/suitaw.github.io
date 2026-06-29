@@ -7,25 +7,12 @@
 
 const WORDS = [
   // ========== 新概念二 Lesson 1-5 生词 (cat: nce2) ==========
-  {id:"nce001", word:"private", phonetic:"/ˈpraɪvət/", pos:"adj.", cn:"私人的；私密的", tip:"反义词 public（公开的）。private message = 私信", exampleEn:"This is a private room, please knock first.", exampleCn:"这是私人房间，请先敲门。", scene:"", cat:"nce2"},
-  {id:"nce002", word:"conversation", phonetic:"/ˌkɑːnvərˈseɪʃn/", pos:"n.", cn:"谈话；交谈", tip:"have a conversation 进行交谈", exampleEn:"We had a long conversation about our plans.", exampleCn:"我们就计划进行了长谈。", scene:"", cat:"nce2"},
-  {id:"nce003", word:"theatre", phonetic:"/ˈθiːətər/", pos:"n.", cn:"剧院；戏院", tip:"英式拼 theatre，美式拼 theater", exampleEn:"They went to the theatre to watch a play.", exampleCn:"他们去剧院看戏。", scene:"", cat:"nce2"},
-  {id:"nce004", word:"attention", phonetic:"/əˈtenʃn/", pos:"n.", cn:"注意；关注", tip:"pay attention to 注意……", exampleEn:"Please pay attention to the road signs.", exampleCn:"请注意路标。", scene:"", cat:"nce2"},
-  {id:"nce005", word:"bear", phonetic:"/ber/", pos:"v.", cn:"忍受；承受", tip:"过去式 bore。= stand / tolerate", exampleEn:"I cannot bear this noise any longer.", exampleCn:"我再也忍受不了这噪音了。", scene:"另义作名词时指“熊”", cat:"nce2"},
-  {id:"nce006", word:"business", phonetic:"/ˈbɪznəs/", pos:"n.", cn:"事；商业；事务", tip:"It's none of your business 不关你的事", exampleEn:"How I spend my money is my own business.", exampleCn:"我怎么花钱是我自己的事。", scene:"", cat:"nce2"},
-  {id:"nce007", word:"angrily", phonetic:"/ˈæŋɡrɪli/", pos:"adv.", cn:"生气地", tip:"angry 的副词形式，修饰动词", exampleEn:"She closed the door angrily and left.", exampleCn:"她生气地关上门走了。", scene:"", cat:"nce2"},
-  {id:"nce008", word:"outside", phonetic:"/ˌaʊtˈsaɪd/", pos:"adv./n.", cn:"外面；在外面", tip:"反义词 inside（里面）", exampleEn:"It is raining outside, so take an umbrella.", exampleCn:"外面在下雨，带把伞吧。", scene:"", cat:"nce2"},
   {id:"nce009", word:"ripe", phonetic:"/raɪp/", pos:"adj.", cn:"成熟的（果实）", tip:"形容水果熟了。ripe banana 熟香蕉", exampleEn:"These apples are ripe and ready to eat.", exampleCn:"这些苹果熟了，可以吃了。", scene:"", cat:"nce2"},
   {id:"nce010", word:"weigh", phonetic:"/weɪ/", pos:"v.", cn:"称……的重量；重达", tip:"名词形式 weight（重量）", exampleEn:"Can you weigh this box for me?", exampleCn:"你能帮我称一下这个箱子吗？", scene:"", cat:"nce2"},
   {id:"nce011", word:"customer", phonetic:"/ˈkʌstəmər/", pos:"n.", cn:"顾客", tip:"区别于 client（客户/委托人）", exampleEn:"The shop was full of customers this morning.", exampleCn:"今天上午店里满是顾客。", scene:"", cat:"nce2"},
-  {id:"nce012", word:"send", phonetic:"/send/", pos:"v.", cn:"寄；发送", tip:"过去式 sent。send sb sth 给某人发某物", exampleEn:"Please send me the file by email.", exampleCn:"请把文件用邮件发给我。", scene:"", cat:"nce2"},
-  {id:"nce013", word:"postcard", phonetic:"/ˈpoʊstkɑːrd/", pos:"n.", cn:"明信片", tip:"post（邮寄）+ card（卡片）", exampleEn:"I sent her a postcard from Paris.", exampleCn:"我从巴黎给她寄了张明信片。", scene:"", cat:"nce2"},
-  {id:"nce014", word:"spoil", phonetic:"/spɔɪl/", pos:"v.", cn:"破坏；糟蹋", tip:"过去式 spoiled / spoilt 都行", exampleEn:"The bad weather spoiled our trip.", exampleCn:"坏天气破坏了我们的旅行。", scene:"另义：宠坏（孩子）", cat:"nce2"},
   {id:"nce015", word:"decide", phonetic:"/dɪˈsaɪd/", pos:"v.", cn:"决定", tip:"decide to do 决定做某事。名词 decision", exampleEn:"We decided to stay home tonight.", exampleCn:"我们决定今晚待在家里。", scene:"", cat:"nce2"},
   {id:"nce016", word:"lonely", phonetic:"/ˈloʊnli/", pos:"adj.", cn:"孤独的", tip:"注意：lonely 是孤独感，alone 只是独自一人", exampleEn:"He felt lonely in the new city.", exampleCn:"在新城市里他感到孤独。", scene:"", cat:"nce2"},
-  {id:"nce017", word:"exciting", phonetic:"/ɪkˈsaɪtɪŋ/", pos:"adj.", cn:"令人兴奋的", tip:"修饰事物用 exciting，人感到兴奋用 excited", exampleEn:"The football match was really exciting.", exampleCn:"那场足球赛真令人兴奋。", scene:"", cat:"nce2"},
   {id:"nce018", word:"diary", phonetic:"/ˈdaɪəri/", pos:"n.", cn:"日记", tip:"keep a diary 记日记。别和 dairy（乳制品）混", exampleEn:"She writes in her diary every night.", exampleCn:"她每晚都写日记。", scene:"", cat:"nce2"},
-  {id:"nce019", word:"abroad", phonetic:"/əˈbrɔːd/", pos:"adv.", cn:"在国外；到国外", tip:"副词，前面不加介词。go abroad 出国", exampleEn:"He wants to study abroad next year.", exampleCn:"他想明年出国留学。", scene:"", cat:"nce2"},
   {id:"nce020", word:"capital", phonetic:"/ˈkæpɪtl/", pos:"n.", cn:"首都；资本；大写字母", tip:"一词多义，看语境", exampleEn:"Beijing is the capital of China.", exampleCn:"北京是中国的首都。", scene:"金融里指“资本/本金”；排版里指“大写字母”", cat:"nce2"},
   {id:"nce021", word:"exhibition", phonetic:"/ˌeksɪˈbɪʃn/", pos:"n.", cn:"展览；展览会", tip:"动词 exhibit（展出）", exampleEn:"We saw an art exhibition at the museum.", exampleCn:"我们在博物馆看了一场艺术展。", scene:"", cat:"nce2"},
   {id:"nce022", word:"latest", phonetic:"/ˈleɪtɪst/", pos:"adj.", cn:"最新的", tip:"late 的最高级之一，指时间最近的", exampleEn:"Have you read the latest news?", exampleCn:"你看最新消息了吗？", scene:"", cat:"nce2"},
@@ -114,7 +101,6 @@ const WORDS = [
   {id:"dev052", word:"print", phonetic:"/prɪnt/", pos:"v.", cn:"打印输出", tip:"日常是“打印”，编程是“输出到屏幕”", exampleEn:"Print the result to check it.", exampleCn:"打印结果检查一下。", scene:"编程里指“输出到控制台”；日常指“打印/印刷”", cat:"dev"},
   // -- 数据/文件 --
   {id:"dev053", word:"dataset", phonetic:"/ˈdeɪtəset/", pos:"n.", cn:"数据集", tip:"训练模型用的成批数据", exampleEn:"This dataset has 10,000 images.", exampleCn:"这个数据集有一万张图。", scene:"AI 里指训练用的“数据集”", cat:"dev"},
-  {id:"dev054", word:"parse", phonetic:"/pɑːrs/", pos:"v.", cn:"解析", tip:"把数据拆成可用结构", exampleEn:"Parse the CSV into rows.", exampleCn:"把 CSV 解析成一行行。", scene:"编程里指“解析”数据", cat:"dev"},
   {id:"dev055", word:"format", phonetic:"/ˈfɔːrmæt/", pos:"n./v.", cn:"格式；格式化", tip:"数据/文本的排列方式", exampleEn:"Save the file in JSON format.", exampleCn:"用 JSON 格式保存文件。", scene:"编程里指数据“格式”或“格式化”", cat:"dev"},
   {id:"dev056", word:"directory", phonetic:"/dəˈrektəri/", pos:"n.", cn:"目录；文件夹", tip:"= folder，命令行常说 dir", exampleEn:"Change to the project directory.", exampleCn:"切换到项目目录。", scene:"系统里指“目录/文件夹”", cat:"dev"},
   {id:"dev057", word:"path", phonetic:"/pæθ/", pos:"n.", cn:"路径", tip:"文件的位置地址", exampleEn:"Give the full path to the file.", exampleCn:"给出文件的完整路径。", scene:"系统里指文件“路径”；日常指“小路”", cat:"dev"},

@@ -267,13 +267,43 @@ let imported=load(IMP_KEY,[]);   // 用户导入的词，结构同 WORDS，cat:"
 // 全局词表 = 内置 + NCE课程 + 导入。所有取词的地方用 allWords()
 const CATOVR_KEY="vocab_v5_catoverride";
 let catOverride=load(CATOVR_KEY,{});   // {wordId: newCat} 主要给内置词改分类用（imported 词直接改 w.cat）
+const HIDDEN_KEY="vocab_v5_hidden";
+let hiddenWords=load(HIDDEN_KEY,{});   // {wordId:true} 被"删除"的内置词（不真删 NCE_WORDS，渲染时过滤；可进回收站恢复）
 function allWords(){
   const ovr=catOverride;
   const hasOvr=ovr&&Object.keys(ovr).length;
   const base=hasOvr?WORDS.map(w=>ovr[w.id]?{...w,cat:ovr[w.id]}:w):WORDS;
   const nce=hasOvr?NCE_WORDS.map(w=>ovr[w.id]?{...w,cat:ovr[w.id]}:w):NCE_WORDS;
-  return base.concat(nce).concat(imported);
+  let list=base.concat(nce).concat(imported);
+  // 过滤被隐藏（"删除"）的内置词
+  const hasHidden=hiddenWords&&Object.keys(hiddenWords).length;
+  if(hasHidden)list=list.filter(w=>!hiddenWords[w.id]);
+  return list;
 }
+// 一次性迁移：words.js 旧 NCE 词(nce001..)已删，把其复习进度迁移给新课程库同名词，并清理旧 srs/imported 残留
+(function migrateOldNce(){
+  const OLD={nce001:"private",nce002:"conversation",nce003:"theatre",nce004:"attention",nce005:"bear",nce006:"business",nce007:"angrily",nce008:"outside",nce012:"send",nce013:"postcard",nce014:"spoil",nce017:"exciting",nce019:"abroad"};
+  let changed=false;
+  Object.keys(OLD).forEach(oldId=>{
+    const word=OLD[oldId];
+    const prog=srs[oldId];
+    if(!prog)return;
+    // 找新库同名词
+    const nw=NCE_WORDS.find(w=>(w.word||"").toLowerCase()===word.toLowerCase());
+    if(nw){
+      // 新词没进度→直接迁移；都有→保留 reps 更多的那个（更熟）
+      if(!srs[nw.id]||((prog.reps||0)>(srs[nw.id].reps||0)))srs[nw.id]=prog;
+    }
+    delete srs[oldId];changed=true;
+  });
+  // 清理 imported 里可能残留的旧 NCE 词（早期版本导入过）
+  const before=imported.length;
+  imported=imported.filter(w=>!OLD[w.id]);
+  if(imported.length!==before){save(IMP_KEY,imported);changed=true}
+  // words.js 内部重复 parse：dev054 已删，进度并入 dev021
+  if(srs.dev054){if(!srs.dev021||((srs.dev054.reps||0)>(srs.dev021.reps||0)))srs.dev021=srs.dev054;delete srs.dev054;changed=true}
+  if(changed)save(SRS_KEY,srs);
+})();
 
 // ===== 短语库 / 语法库 =====
 const PHRASE_KEY="vocab_v5_phrases";
@@ -1155,9 +1185,10 @@ function artCatKey(id){return "art_"+id}
 //   NCE 课文 -> 从 NCE_WORDS 按 lid 筛(内置, 带例句)
 //   用户文章 -> 从 imported 按 cat=art_<id> 筛(原逻辑)
 function wordsOfArticle(id){
-  const nce=NCE_WORDS.filter(w=>w.lid===id);
+  const hasHidden=hiddenWords&&Object.keys(hiddenWords).length;
+  const nce=NCE_WORDS.filter(w=>w.lid===id&&!(hasHidden&&hiddenWords[w.id]));
   if(nce.length)return nce;
-  return imported.filter(w=>w.cat===artCatKey(id));
+  return imported.filter(w=>w.cat===artCatKey(id)&&!(hasHidden&&hiddenWords[w.id]));
 }
 // 是否 NCE 内置文章(只读, 不可删/不可改)
 function isNceArticle(id){return NCE_ARTICLES.some(a=>a.id===id)}
@@ -1535,6 +1566,9 @@ function doRestore(entry){
   }else if(type==="grammar"){
     if(!userGrammar.find(g=>g.id===data.grammar.id))userGrammar.push(data.grammar);
     save(GRAMMAR_KEY,userGrammar);rebuildPhraseGrammar();
+  }else if(type==="hiddenword"){
+    delete hiddenWords[data.id];save(HIDDEN_KEY,hiddenWords);
+    if(data.srs)srs[data.id]=data.srs;save(SRS_KEY,srs);
   }else if(type==="article"){
     if(!userArticles.find(a=>a.id===data.article.id))userArticles.push(data.article);
     saveArticles();articles=NCE_ARTICLES.concat(userArticles);
@@ -1557,7 +1591,7 @@ function clearTrash(){
   if(!confirm(`彻底清空回收站（${trash.length} 项）？此操作不可恢复。`))return;
   trash=[];save(TRASH_KEY,trash);renderTrash(document.getElementById("view"));
 }
-const TRASH_TYPE_LABEL={word:"单词",mistake:"复习本",phrase:"短语",grammar:"语法",article:"文章"};
+const TRASH_TYPE_LABEL={word:"单词",hiddenword:"单词",mistake:"复习本",phrase:"短语",grammar:"语法",article:"文章"};
 function openTrash(){const p=document.getElementById("panel");if(p)p.classList.remove("open");page="trash";render()}
 function renderTrash(v){
   if(!v)return;
@@ -1613,17 +1647,28 @@ function delArticle(id){
 }
 // 删除文章里的单个词/短语：从 imported 移除，清掉它的 srs 和标签缓存
 function delArticleWord(wid){
+  // 先在 imported 找；找不到再看是不是内置词
   const w=imported.find(x=>x.id===wid);
-  if(!w)return;
-  trashPush("word",{
-    word:JSON.parse(JSON.stringify(w)),
-    srs:srs[wid]?JSON.parse(JSON.stringify(srs[wid])):null,
-    tag:(typeof tagCache!=="undefined"&&tagCache[wid])?JSON.parse(JSON.stringify(tagCache[wid])):null
-  },w.word||"单词");
-  imported=imported.filter(x=>x.id!==wid);
-  delete srs[wid];
-  if(typeof tagCache!=="undefined"&&tagCache[wid]){delete tagCache[wid];save(TAG_KEY,tagCache)}
-  save(IMP_KEY,imported);save(SRS_KEY,srs);
+  if(w){
+    trashPush("word",{
+      word:JSON.parse(JSON.stringify(w)),
+      srs:srs[wid]?JSON.parse(JSON.stringify(srs[wid])):null,
+      tag:(typeof tagCache!=="undefined"&&tagCache[wid])?JSON.parse(JSON.stringify(tagCache[wid])):null
+    },w.word||"单词");
+    imported=imported.filter(x=>x.id!==wid);
+    delete srs[wid];
+    if(typeof tagCache!=="undefined"&&tagCache[wid]){delete tagCache[wid];save(TAG_KEY,tagCache)}
+    save(IMP_KEY,imported);save(SRS_KEY,srs);
+    render();return;
+  }
+  // 内置 NCE 词：不真删，加入隐藏列表（可恢复）。同时保存其复习进度以便恢复
+  const nw=NCE_WORDS.find(x=>x.id===wid)||WORDS.find(x=>x.id===wid);
+  if(!nw)return;
+  trashPush("hiddenword",{
+    id:wid,
+    srs:srs[wid]?JSON.parse(JSON.stringify(srs[wid])):null
+  },nw.word||"内置词");
+  hiddenWords[wid]=true;save(HIDDEN_KEY,hiddenWords);
   render();
 }
 // 把单个词移到另一个分类（支持内置词，通过 catOverride；imported 词直接改 cat）
@@ -2784,7 +2829,7 @@ function cleanupLegacyData(){
   setTimeout(()=>location.reload(),900);
 }
 // 完整备份：导出全部 localStorage 数据（含复习进度/文章/语法/错题/统计等）
-const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride","vocab_v5_lesson_explain","vocab_v5_trash"];
+const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride","vocab_v5_lesson_explain","vocab_v5_trash","vocab_v5_hidden"];
 function exportAll(){
   const dump={__vocab_backup__:true,version:5,date:new Date().toISOString(),data:{}};
   ALL_BACKUP_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)dump.data[k]=v});
