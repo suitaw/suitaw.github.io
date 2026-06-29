@@ -764,10 +764,23 @@ function renderHome(v){
         <div><div class="w">⚙ 管理分类</div><div class="c">合并·改名·整理分类</div></div>
         <div style="text-align:right;font-size:1.2rem;color:var(--ink-dim)">›</div>
       </div>
-      ${rows.map(r=>`<div class="mistake-item" style="cursor:pointer" onclick="openCatPreview('${r.key}')">
-        <div><div class="w">${r.name}</div><div class="c">${r.desc} · 共 ${r.n} 词</div></div>
-        <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${r.due}</div><div class="c">待学</div></div>
-      </div>`).join("")}
+      ${(()=>{
+        // 常用区置顶（按指定顺序），其余收进「更多分类」可折叠
+        const PIN=["all","dev","nce2","codepath"];
+        const rowHtml=r=>`<div class="mistake-item" style="cursor:pointer" onclick="openCatPreview('${r.key}')">
+          <div><div class="w">${r.name}</div><div class="c">${r.desc} · 共 ${r.n} 词</div></div>
+          <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${r.due}</div><div class="c">待学</div></div>
+        </div>`;
+        const pinned=PIN.map(k=>rows.find(r=>r.key===k)).filter(Boolean);
+        const others=rows.filter(r=>!PIN.includes(r.key));
+        let html=pinned.map(rowHtml).join("");
+        if(others.length){
+          const open=!collapsed["home_more"];
+          html+=`<div class="grp-header" onclick="toggleGroup('home_more')" style="display:flex;align-items:center;gap:5px;font-size:.8rem;color:var(--ink-dim);margin:12px 0 8px;font-weight:600;cursor:pointer;user-select:none"><span style="display:inline-block;width:12px;transition:transform .15s;transform:rotate(${open?90:0}deg)">▸</span>更多分类（${others.length}）</div>`;
+          if(open)html+=others.map(rowHtml).join("");
+        }
+        return html;
+      })()}
     </div>
   </div>`;
 }
@@ -1007,6 +1020,7 @@ async function deepLesson(id){
   // 生成成功：缓存落盘
   if(finalText){lessonExplain[id]=finalText;save(LESSON_KEY,lessonExplain)}
 }
+function startStudy(cat){lastEnteredWordId=null;previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();roundTotal=queue.length;roundDone=new Set();cur=queue[0]||null;render()}
 // 记录从词表进入背诵时点的那个词，返回时滚动定位回去
 let lastEnteredWordId=null;
 // 从词表点某个词直接开背：把该词排到队首
@@ -1909,7 +1923,7 @@ function renderGrammarTab(v,tabBar){
 }
 // 单个语法条目（hot=到期高亮）
 function grammarItem(g,hot){
-  return `<div class="mistake-item" style="flex-direction:column;align-items:stretch${hot?';border-color:var(--accent);background:var(--accent-soft)':''}">
+  return `<div class="mistake-item" id="gitem-${g.id}" style="flex-direction:column;align-items:stretch${hot?';border-color:var(--accent);background:var(--accent-soft)':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div style="flex:1"><div class="w" style="font-size:1rem">${g.point}</div><div class="c">${g.cn}</div>${g.example?`<div class="c" style="margin-top:3px;font-style:italic">例：${g.example}</div>`:""}</div>
         <button class="gear" onclick="delGrammar('${g.id}')">🗑</button>
@@ -1924,15 +1938,15 @@ async function explainGrammar(id){
   const g=grammar.find(x=>x.point&&x.id===id);if(!g)return;
   const box=document.getElementById("gexp-"+id);if(!box)return;
   // 已展开 → 收起
-  if(grammarOpen[id]){grammarOpen[id]=false;renderMistake(document.getElementById("view"));return}
+  if(grammarOpen[id]){grammarOpen[id]=false;renderMistake(document.getElementById("view"));scrollToGrammar(id);return}
   grammarOpen[id]=true;
   // 展开即算一次回顾：顺延下次提醒
   g.due=Date.now()+GRAMMAR_REVIEW_DAYS*86400000;g.lastReview=Date.now();
   if(!isNceGrammar(id))save(GRAMMAR_KEY,userGrammar);
   // 有缓存直接显示（重渲染让按钮文字变“收起”）
-  if(g.detail){renderMistake(document.getElementById("view"));return}
+  if(g.detail){renderMistake(document.getElementById("view"));scrollToGrammar(id);return}
   // 无缓存：先把按钮态刷新成展开，再异步取内容
-  renderMistake(document.getElementById("view"));
+  renderMistake(document.getElementById("view"));scrollToGrammar(id);
   const box2=document.getElementById("gexp-"+id);if(box2)box2.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
   const sys="你是耐心的英语老师，面向中文初学者。把给定语法点讲透：用简单中文解释它是什么、什么时候用、初学者常踩的坑，并给 2-3 个由易到难的例句（英文+中文）。纯文本，不要 Markdown 符号。260 字内。";
   try{
@@ -1941,6 +1955,13 @@ async function explainGrammar(id){
     const box3=document.getElementById("gexp-"+id);
     if(grammarOpen[id]&&box3)box3.innerHTML=grammarDetailHtml(text);  // 期间没被收起才显示
   }catch(e){const box3=document.getElementById("gexp-"+id);if(box3)box3.innerHTML=`<div style="font-size:.78rem;color:var(--accent)">详解失败：${e.message||"检查 Key"}</div>`}
+}
+// 展开/收起详解后把该语法条目滚回视口（重渲染会丢失滚动位置，避免“跳走”）
+function scrollToGrammar(id){
+  requestAnimationFrame(()=>{
+    const el=document.getElementById("gitem-"+id);
+    if(el)el.scrollIntoView({block:"nearest"});
+  });
 }
 function grammarDetailHtml(text){
   return `<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;white-space:pre-wrap">${text}</div>`;
