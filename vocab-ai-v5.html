@@ -438,6 +438,11 @@ function buildQueue(){
   // 到期短语（已加入复习且到点）→ 闪卡对象，与词共用队列
   const duePhrases=phrases.filter(p=>p.inReview&&srs[p.id]&&srs[p.id].due&&srs[p.id].due<=now).map(phraseCard);
   const limit=cfg.dailyLimit||20;
+  if(cfg.scope==="__mistake__"){
+    // 复习本一键复习：复习本所有词 + 已加入复习的短语；不限量、不随机，按排序来
+    queue=mistakeQueue();
+    return;
+  }
   if(cfg.scope==="__due__"){
     // 只复习已学过且到期的词 + 到期短语
     queue=shuffle(allWords().filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=now).concat(duePhrases)).slice(0,limit);
@@ -451,6 +456,44 @@ function buildQueue(){
     const fresh=shuffle(pool.filter(w=>!srs[w.id]));
     queue=due.concat(fresh).slice(0,limit);
   }
+}
+// ===== 复习本一键复习 =====
+// 排序：unfamiliar(最不熟优先)/recent(最近加入)/alpha(字母序)
+let mistakeSort=load("vocab_v5_mistakesort","unfamiliar");
+const MISTAKE_SORT_LABELS={unfamiliar:"最不熟优先",recent:"最近加入",alpha:"字母序"};
+function setMistakeSort(m){mistakeSort=m;save("vocab_v5_mistakesort",m);renderMistake(document.getElementById("view"))}
+// 把一个 mistake 词条解析成可背的卡片词对象（优先用 allWords 里的完整词，回退到 mistake 自存字段）
+function mistakeToCard(m){
+  const w=allWords().find(x=>x.id===m.id);
+  if(w)return w;
+  return {id:m.id,word:m.word,phonetic:"",pos:"",cn:m.cn||"",tip:"",exampleEn:"",exampleCn:"",scene:"",cat:"import"};
+}
+// "不熟度"：连对越少越不熟；mistakes 用 streak，短语用 srs.reps；缺省算最不熟(=-1)
+function unfamiliarScore(id,isPhrase){
+  if(isPhrase){const c=srs[id];return c&&typeof c.reps==="number"?c.reps:-1}
+  const m=mistakes.find(x=>x.id===id);
+  return m&&typeof m.streak==="number"?m.streak:-1;
+}
+// 复习本队列：复习本单词 + 已加入复习的短语；按 mistakeSort 排序
+function mistakeQueue(){
+  const wordCards=mistakes.map(m=>Object.assign(mistakeToCard(m),{_mid:m.id}));
+  const phraseCards=phrases.filter(p=>p.inReview&&srs[p.id]).map(p=>Object.assign(phraseCard(p),{_pid:p.id}));
+  let list=wordCards.concat(phraseCards);
+  if(mistakeSort==="alpha")list.sort((a,b)=>(a.word||"").toLowerCase().localeCompare((b.word||"").toLowerCase()));
+  else if(mistakeSort==="recent")list.reverse();  // mistakes/phrases 数组本身按加入先后，倒序=最近在前
+  else list.sort((a,b)=>unfamiliarScore(a.id,a._phrase)-unfamiliarScore(b.id,b._phrase)); // unfamiliar：连对少的在前
+  return list;
+}
+// 进入复习本一键复习
+function startMistakeReview(){
+  const n=mistakes.length+phrases.filter(p=>p.inReview&&srs[p.id]).length;
+  if(!n){toast("复习本和待复习短语都是空的");return}
+  previewCat=null;cfg.scope="__mistake__";save(CFG_KEY,cfg);
+  studyStarted=true;cur=null;flipped=false;viewed=[];
+  buildQueue();roundTotal=queue.length;roundDone=new Set();
+  cur=queue[0]||null;page="home";save("vocab_v5_page","home");
+  ["home","assistant","mistake","stats"].forEach(x=>{const el=document.getElementById("nav-"+x);if(el)el.classList.toggle("active",x==="home")});
+  render();
 }
 
 // ===== 渲染 =====
@@ -624,6 +667,7 @@ function catName(c){
 function backToHome(){
   studyStarted=false;cur=null;flipped=false;viewed=[];
   const sp=cfg.scope;
+  if(sp==="__mistake__"){previewCat=null;mistakeTab="mistake";save("vocab_v5_mtab","mistake");go("mistake");return}
   if(isArtCat(sp)){const a=articles.find(x=>artCatKey(x.id)===sp);curArticle=a?a.id:null;previewCat=null}
   else if(sp&&sp!=="__due__"&&sp!=="__new__"&&sp!=="__fav__"){previewCat=sp}
   else{previewCat=null}
@@ -814,7 +858,7 @@ function renderPreview(v){
     const enBlock=`<div class="w" style="font-size:1rem">${cell(enReal,maskMode==="en","••• 点击显示单词")}</div>`;
     const cnReal=`${w.cn||""}`;
     const cnBlock=`<div class="c">${cell(cnReal,maskMode==="cn","••• 点击显示意思")}</div>`;
-    return `<div class="mistake-item" style="cursor:pointer" onclick="startStudyAt('${cat}','${w.id}')">
+    return `<div class="mistake-item" id="pv-row-${w.id}" style="cursor:pointer" onclick="startStudyAt('${cat}','${w.id}')">
       <div style="flex:1">${enBlock}${cnBlock}</div>
       <span style="font-size:.66rem;color:${st.col};border:1px solid ${st.col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st.t}</span>
       <button class="gear" style="margin-left:6px;padding:2px 8px" onclick="event.stopPropagation();moveWordTo('${w.id}')" title="移到某一课">↪</button>
@@ -832,6 +876,20 @@ function renderPreview(v){
     ${list.length?rows:`<div class="done"><p>这个分类还没有词。</p></div>`}
     ${list.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
   </div>`;
+  scrollToLastWord();
+}
+// 返回词表时滚动定位到刚才进入的那个词并高亮闪一下
+function scrollToLastWord(){
+  if(!lastEnteredWordId)return;
+  const id=lastEnteredWordId;lastEnteredWordId=null;
+  requestAnimationFrame(()=>{
+    const el=document.getElementById("pv-row-"+id);
+    if(!el)return;
+    el.scrollIntoView({block:"center"});
+    const orig=el.style.background;
+    el.style.transition="background .4s";el.style.background="var(--accent-soft)";
+    setTimeout(()=>{el.style.background=orig},900);
+  });
 }
 function renderArticleList(v){
   const rows=articles.map(a=>{
@@ -862,7 +920,7 @@ function renderArticleDetail(v){
     const c=srs[w.id];const due=c&&c.due&&c.due<=now;
     const st=!c?"新词":due?"待复习":"复习中";
     const col=!c?"var(--ink-dim)":due?"var(--accent)":"var(--green)";
-    return `<div class="mistake-item" style="cursor:pointer" onclick="startStudyAt('${artCatKey(a.id)}','${w.id}')">
+    return `<div class="mistake-item" id="pv-row-${w.id}" style="cursor:pointer" onclick="startStudyAt('${artCatKey(a.id)}','${w.id}')">
       <div style="flex:1"><div class="w" style="font-size:1rem">${w.word}${w.pos==="phrase"?'<span style="font-size:.62rem;color:var(--ink-dim);border:1px solid var(--line);border-radius:8px;padding:0 5px;margin-left:6px">短语</span>':""}${w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${w.phonetic}</span>`:""}</div>
         <div class="c">${w.cn||""}</div></div>
       <span style="font-size:.66rem;color:${col};border:1px solid ${col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st}</span>
@@ -884,10 +942,14 @@ function renderArticleDetail(v){
     ${words.length?wordRows:`<div style="font-size:.78rem;color:var(--ink-dim)">这篇没有入库的生词。</div>`}
     ${words.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${artCatKey(a.id)}')">▶ 背这篇的 ${words.length} 个词</button>`:""}
   </div>`;
+  scrollToLastWord();
 }
-function startStudy(cat){previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();roundTotal=queue.length;roundDone=new Set();cur=queue[0]||null;render()}
+function startStudy(cat){lastEnteredWordId=null;previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();roundTotal=queue.length;roundDone=new Set();cur=queue[0]||null;render()}
+// 记录从词表进入背诵时点的那个词，返回时滚动定位回去
+let lastEnteredWordId=null;
 // 从词表点某个词直接开背：把该词排到队首
 function startStudyAt(cat,id){
+  lastEnteredWordId=id;
   previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;flipped=false;viewed=[];buildQueue();
   const i=queue.findIndex(w=>w.id===id);
   if(i>0){const picked=queue.splice(i,1)[0];queue.unshift(picked)}
@@ -1664,6 +1726,9 @@ function addMistake(w,from){const ex=mistakes.find(m=>m.id===w.id);if(ex){if(fro
 function removeMistake(id){const i=mistakes.findIndex(m=>m.id===id);if(i>=0){mistakes.splice(i,1);save(MIS_KEY,mistakes)}}
 function delMistake(id){removeMistake(id);renderMistake(document.getElementById("view"))}
 let mistakeTab=load("vocab_v5_mtab","mistake");  // mistake | phrase | grammar
+// 短语/语法分组折叠状态 {组key:true=折叠}，记住上次
+let collapsed=load("vocab_v5_collapsed",{});
+function toggleGroup(key){collapsed[key]=!collapsed[key];save("vocab_v5_collapsed",collapsed);renderMistake(document.getElementById("view"))}
 if(!["mistake","phrase","grammar"].includes(mistakeTab))mistakeTab="mistake";
 function renderMistake(v){
   const tabBar=`<div style="display:flex;gap:6px;margin-bottom:14px">
@@ -1674,9 +1739,23 @@ function renderMistake(v){
   if(mistakeTab==="phrase")return renderPhraseTab(v,tabBar);
   if(mistakeTab==="grammar")return renderGrammarTab(v,tabBar);
   if(!mistakes.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>复习本是空的</h2><p>背单词点“忘了/难”自动进来；翻面点☆也能手动收藏。</p></div></div>`;return}
+  const phraseInReview=phrases.filter(p=>p.inReview&&srs[p.id]).length;
+  const reviewN=mistakes.length+phraseInReview;
+  const sortBtns=Object.keys(MISTAKE_SORT_LABELS).map(m=>
+    `<button class="gear" style="${mistakeSort===m?'background:var(--accent-soft);border-color:var(--accent);color:var(--accent)':''}" onclick="setMistakeSort('${m}')">${MISTAKE_SORT_LABELS[m]}</button>`
+  ).join("");
+  const sortedMistakes=(function(){
+    const a=mistakes.slice();
+    if(mistakeSort==="alpha")a.sort((x,y)=>(x.word||"").toLowerCase().localeCompare((y.word||"").toLowerCase()));
+    else if(mistakeSort==="recent")a.reverse();
+    else a.sort((x,y)=>(x.streak||0)-(y.streak||0));  // 最不熟优先
+    return a;
+  })();
   v.innerHTML=`<div style="padding-top:8px">${tabBar}
-    <p style="color:var(--ink-dim);font-size:.76rem;margin-bottom:12px">点“忘了/难”自动收录，或翻面点☆手动收藏。复习时连续点 ${GRADUATE_STREAK} 次“记得/秒答”自动毕业移出。</p>
-    ${mistakes.map(m=>{
+    <p style="color:var(--ink-dim);font-size:.76rem;margin-bottom:10px">点“忘了/难”自动收录，或翻面点☆手动收藏。复习时连续点 ${GRADUATE_STREAK} 次“记得/秒答”自动毕业移出。</p>
+    <button class="ai-btn" style="margin-bottom:10px" onclick="startMistakeReview()">▶ 一键复习这 ${reviewN} 个${phraseInReview?`（含 ${phraseInReview} 短语）`:""}</button>
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${sortBtns}</div>
+    ${sortedMistakes.map(m=>{
       const tag=m.from==="忘了"?`<span style="color:var(--accent);font-weight:600">忘了</span>`
         :m.from==="难"?`<span style="color:var(--gold);font-weight:600">难</span>`
         :`<span style="opacity:.7">${m.from||"收藏"}</span>`;
@@ -1701,7 +1780,9 @@ function renderPhraseTab(v,tabBar){
   groups.forEach(([key,name])=>{
     const list=phrases.filter(p=>(p.type||"other")===key);
     if(!list.length)return;
-    body+=`<div style="font-size:.72rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600">${name}（${list.length}）</div>`;
+    const open=!collapsed["ph_"+key];
+    body+=`<div class="grp-header" onclick="toggleGroup('ph_${key}')" style="display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600;cursor:pointer;user-select:none"><span style="display:inline-block;width:12px;transition:transform .15s;transform:rotate(${open?90:0}deg)">▸</span>${name}（${list.length}）</div>`;
+    if(!open)return;
     body+=list.map(p=>{
       const c=p.inReview?srs[p.id]:null;
       const due=c&&c.due&&c.due<=now;
@@ -1748,7 +1829,9 @@ function renderGrammarTab(v,tabBar){
   groups.forEach(([key,name])=>{
     const list=grammar.filter(g=>(g.topic||"other")===key&&!(g.due&&g.due<=now));
     if(!list.length)return;
-    body+=`<div style="font-size:.72rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600">${name}（${list.length}）</div>`;
+    const open=!collapsed["gr_"+key];
+    body+=`<div class="grp-header" onclick="toggleGroup('gr_${key}')" style="display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600;cursor:pointer;user-select:none"><span style="display:inline-block;width:12px;transition:transform .15s;transform:rotate(${open?90:0}deg)">▸</span>${name}（${list.length}）</div>`;
+    if(!open)return;
     body+=list.map(g=>grammarItem(g,false)).join("");
   });
   v.innerHTML=`<div style="padding-top:8px">${tabBar}
