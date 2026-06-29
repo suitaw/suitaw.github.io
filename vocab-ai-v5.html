@@ -530,7 +530,7 @@ function startMistakeReview(){
   buildQueue();roundTotal=queue.length;roundDone=new Set();
   cur=queue[0]||null;page="home";save("vocab_v5_page","home");
   ["home","assistant","mistake","stats"].forEach(x=>{const el=document.getElementById("nav-"+x);if(el)el.classList.toggle("active",x==="home")});
-  render();
+  saveSession();render();
 }
 
 // ===== 渲染 =====
@@ -702,8 +702,43 @@ function catName(c){
   if(typeof c==="string"&&c.indexOf("art_")===0){const a=articles.find(x=>artCatKey(x.id)===c);return a?("📄 "+a.title):"文章"}
   return fixed[c]||c;
 }
+// ===== 背词会话持久化（中途切走/刷新可自动恢复）=====
+const SESSION_KEY="vocab_v5_session";
+// 存当前背词进度。queue 含完整对象（含短语卡/复习本卡标记），保证恢复后词序与状态不变
+function saveSession(){
+  if(!studyStarted||!cur){clearSession();return}
+  try{
+    save(SESSION_KEY,{
+      scope:cfg.scope,
+      queue, viewed, flipped,
+      roundTotal,
+      roundDone:[...roundDone],
+      ts:Date.now()
+    });
+  }catch(e){/* 配额异常等忽略，不影响背词 */}
+}
+function clearSession(){localStorage.removeItem(SESSION_KEY)}
+// 启动时尝试恢复未完成的背词会话；成功返回 true
+function restoreSession(){
+  const s=load(SESSION_KEY,null);
+  if(!s||!s.queue||!s.queue.length)return false;
+  // 过期保护：超过 24 小时的会话不自动恢复（避免恢复很旧的队列）
+  if(s.ts&&Date.now()-s.ts>24*3600000){clearSession();return false}
+  cfg.scope=s.scope;
+  queue=s.queue;
+  viewed=s.viewed||[];
+  flipped=!!s.flipped;
+  roundTotal=s.roundTotal||queue.length;
+  roundDone=new Set(s.roundDone||[]);
+  cur=queue[0]||null;
+  if(!cur){clearSession();return false}
+  studyStarted=true;
+  previewCat=null;curArticle=null;articleListOpen=false;
+  return true;
+}
 function backToHome(){
   studyStarted=false;cur=null;flipped=false;viewed=[];
+  clearSession();
   const sp=cfg.scope;
   if(sp==="__mistake__"){previewCat=null;mistakeTab="mistake";save("vocab_v5_mtab","mistake");go("mistake");return}
   if(isArtCat(sp)){const a=articles.find(x=>artCatKey(x.id)===sp);curArticle=a?a.id:null;previewCat=null}
@@ -1058,7 +1093,7 @@ async function deepLesson(id){
   // 生成成功：缓存落盘
   if(finalText){lessonExplain[id]=finalText;save(LESSON_KEY,lessonExplain)}
 }
-function startStudy(cat){lastEnteredWordId=null;previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();roundTotal=queue.length;roundDone=new Set();cur=queue[0]||null;render()}
+function startStudy(cat){lastEnteredWordId=null;previewCat=null;cfg.scope=cat;save(CFG_KEY,cfg);studyStarted=true;cur=null;flipped=false;viewed=[];buildQueue();roundTotal=queue.length;roundDone=new Set();cur=queue[0]||null;saveSession();render()}
 // 记录从词表进入背诵时点的那个词，返回时滚动定位回去
 let lastEnteredWordId=null;
 // 从词表点某个词直接开背：把该词排到队首
@@ -1069,7 +1104,7 @@ function startStudyAt(cat,id){
   if(i>0){const picked=queue.splice(i,1)[0];queue.unshift(picked)}
   else if(i<0){const w=allWords().find(x=>x.id===id);if(w)queue.unshift(w)}
   roundTotal=queue.length;roundDone=new Set();
-  cur=queue[0]||null;render();
+  cur=queue[0]||null;saveSession();render();
 }
 function backHtml(){
   // 短语卡：只展示释义+用法提示，不收藏、无例句、不拆解
@@ -1121,7 +1156,7 @@ function aiHtml(){return `
     <div class="ai-result" id="ai-result"></div>
   </div>`;
 }
-function flip(){flipped=true;render();maybeEnrichWord()}
+function flip(){flipped=true;saveSession();render();maybeEnrichWord()}
 // 文章词缺音标/例句翻译时，自动 AI 补全一次并存好（方案A）
 let __enriching=false;
 async function maybeEnrichWord(){
@@ -1845,7 +1880,7 @@ function nextWord(){
   if(queue.length<=1){toast("就剩这一个啦");return false}
   viewed.push(cur);
   const w=queue.shift();queue.push(w);
-  cur=queue[0];flipped=false;openTag=null;render();
+  cur=queue[0];flipped=false;openTag=null;saveSession();render();
   return true;
 }
 // 上一词（左滑）：从历史弹回，重新放回队首
@@ -1858,7 +1893,7 @@ function prevWord(){
   const pi=queue.indexOf(prev);
   if(pi>=0)queue.splice(pi,1);
   queue.unshift(prev);
-  cur=prev;flipped=false;openTag=null;render();
+  cur=prev;flipped=false;openTag=null;saveSession();render();
   return true;
 }
 // 左右滑（只在正面生效）：右滑下一词，左滑返回上一词
@@ -1917,7 +1952,9 @@ function rate(q){
   viewed=[];                        // 评分推进了进度，历史清空
   queue.shift();
   if(q<3)queue.push(cur);
-  cur=queue[0]||null;flipped=false;openTag=null;render();
+  cur=queue[0]||null;flipped=false;openTag=null;
+  if(cur)saveSession();else clearSession();   // 还有词→存进度；背完→清会话
+  render();
 }
 function resetStreak(id){const m=mistakes.find(x=>x.id===id);if(m&&m.streak){m.streak=0;save(MIS_KEY,mistakes)}}
 
@@ -3098,6 +3135,8 @@ bindCfg();
   }
   window.addEventListener("scroll",onScroll,{passive:true});
 })();
+// 启动：若有未完成的背词会话则自动恢复（中途切走/刷新回到原处）
+restoreSession();
 render();
 checkArtProgress();
 </script>
