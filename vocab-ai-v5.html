@@ -938,7 +938,7 @@ function toggleCell(ev,el){
   const shown=el.querySelector(".pv-show").style.display!=="none";
   if(shown)hideCell(el);else revealCell(el);
 }
-function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;catSuggestItems=null;catSuggestLoading=false;render()}
+function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;catSuggestItems=null;catSuggestLoading=false;dedupGroups=null;render()}
 // 从背词卡片点右上角来源标签 → 跳到来源（文章详情 / 分类预览）。背词进度已存 session，可稍后恢复
 function gotoSource(){
   if(!cur)return;
@@ -967,7 +967,7 @@ function resumeStudy(){
   if(s&&s.queue&&s.queue.length&&tryResumeSession(s.scope))return;
   toast("没有可恢复的背词进度");
 }
-function closeCatPreview(){previewCat=null;catSuggestItems=null;catSuggestLoading=false;render()}
+function closeCatPreview(){previewCat=null;catSuggestItems=null;catSuggestLoading=false;dedupGroups=null;render()}
 // ===== AI 一键归类（把"我的收藏"里的零散词按词义自动归到主题大类，复核后写入）=====
 let catSuggestItems=null;    // 非空=正在复核 AI 建议：[{id,word,cn,cat}]
 let catSuggestLoading=false; // AI 归类请求进行中
@@ -1042,7 +1042,58 @@ function applyCatSuggest(){
   toast("已归类 "+n+" 个词 🎉");
   render();
 }
+// ===== 查重清理：全库扫描拼写相同的词，保留1个、其余进回收站（可恢复）=====
+let dedupGroups=null;   // 非空=正在复核查重结果：[{word,keepId,removeIds[],total,on}]
+// 找出全库拼写重复的词（排除短语卡）。每组选保留：复习次数最高 → 并列时内置优先
+function findDupGroups(){
+  const all=allWords().filter(w=>w.cat!=="__phrase__"&&!w._phrase);
+  const map={};
+  all.forEach(w=>{const k=(w.word||"").trim().toLowerCase();if(!k)return;(map[k]=map[k]||[]).push(w)});
+  const isBuiltin=w=>WORDS.some(x=>x.id===w.id)||NCE_WORDS.some(x=>x.id===w.id);
+  const reps=w=>(srs[w.id]&&srs[w.id].reps)||0;
+  const groups=[];
+  Object.keys(map).forEach(k=>{
+    const arr=map[k];if(arr.length<2)return;
+    const sorted=arr.slice().sort((a,b)=>{const dr=reps(b)-reps(a);if(dr)return dr;return (isBuiltin(b)?1:0)-(isBuiltin(a)?1:0)});
+    groups.push({word:arr[0].word,keepId:sorted[0].id,removeIds:sorted.slice(1).map(w=>w.id),total:arr.length,on:true});
+  });
+  groups.sort((a,b)=>b.total-a.total);
+  return groups;
+}
+function openDedup(){
+  const groups=findDupGroups();
+  if(!groups.length){toast("没找到重复词 👍 当前数量是真实的");return}
+  dedupGroups=groups;render();
+}
+function toggleDedup(i){if(dedupGroups&&dedupGroups[i])dedupGroups[i].on=!dedupGroups[i].on;render()}
+function cancelDedup(){dedupGroups=null;render()}
+function applyDedup(){
+  if(!dedupGroups)return;
+  let n=0;
+  dedupGroups.filter(g=>g.on).forEach(g=>g.removeIds.forEach(id=>{removeWordById(id);n++}));
+  dedupGroups=null;
+  toast("已清理 "+n+" 个重复词（回收站可恢复）");
+  render();
+}
+function renderDedup(v){
+  const totalRemove=dedupGroups.filter(g=>g.on).reduce((s,g)=>s+g.removeIds.length,0);
+  const rows=dedupGroups.map((g,i)=>`
+    <div class="mistake-item" style="cursor:pointer" onclick="toggleDedup(${i})">
+      <span style="font-size:1.1rem;margin-right:6px">${g.on?"☑":"☐"}</span>
+      <div style="flex:1"><div class="w" style="font-size:.96rem">${g.word}</div><div class="c">共 ${g.total} 个 · 保留 1 · 删 ${g.removeIds.length}</div></div>
+    </div>`).join("");
+  v.innerHTML=`<div style="padding-top:8px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <button class="gear" onclick="cancelDedup()">← 取消</button>
+      <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:700">🧹 查重清理</div>
+    </div>
+    <div style="font-size:.76rem;color:var(--ink-dim);margin-bottom:10px">全库找到 ${dedupGroups.length} 组拼写重复的词。每组保留 1 个（优先保留有复习进度/内置的），其余进回收站可恢复。点行可排除该组。</div>
+    ${rows}
+    ${totalRemove?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyDedup()">🗑 删除选中的 ${totalRemove} 个重复词（可恢复）</button>`:`<div style="font-size:.76rem;color:var(--ink-dim);margin-top:14px">未选中任何组。</div>`}
+  </div>`;
+}
 function renderPreview(v){
+  if(dedupGroups)return renderDedup(v);
   if(catSuggestLoading){v.innerHTML=`<div class="done" style="padding-top:48px"><div class="typing"><span></span><span></span><span></span></div><p>AI 正在按词义归类…</p></div>`;return}
   if(catSuggestItems)return renderCatSuggest(v);
   const cat=previewCat;
@@ -1088,6 +1139,7 @@ function renderPreview(v){
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${sortBtns}</div>
     <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${maskBtns}</div>
     ${cat==="__fav__"&&list.length?`<button class="gear" style="margin-bottom:12px;border-color:var(--accent);color:var(--accent)" onclick="aiClassifyFav()">🤖 AI 一键归类这 ${list.length} 个零散词</button>`:""}
+    ${list.length?`<button class="gear" style="margin-bottom:12px" onclick="openDedup()">🧹 查重清理（扫全部分类）</button>`:""}
     ${list.length?rows:`<div class="done"><p>这个分类还没有词。</p></div>`}
     ${list.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
   </div>`;
@@ -1864,8 +1916,8 @@ function delArticle(id){
   curArticle=null;render();
 }
 // 删除文章里的单个词/短语：从 imported 移除，清掉它的 srs 和标签缓存
-function delArticleWord(wid){
-  // 先在 imported 找；找不到再看是不是内置词
+// 删除一个词（imported→移出+存进度到回收站；内置→隐藏+存进度）。不触发 render，供批量复用
+function removeWordById(wid){
   const w=imported.find(x=>x.id===wid);
   if(w){
     trashPush("word",{
@@ -1877,9 +1929,8 @@ function delArticleWord(wid){
     delete srs[wid];
     if(typeof tagCache!=="undefined"&&tagCache[wid]){delete tagCache[wid];save(TAG_KEY,tagCache)}
     save(IMP_KEY,imported);save(SRS_KEY,srs);
-    render();return;
+    return;
   }
-  // 内置 NCE 词：不真删，加入隐藏列表（可恢复）。同时保存其复习进度以便恢复
   const nw=NCE_WORDS.find(x=>x.id===wid)||WORDS.find(x=>x.id===wid);
   if(!nw)return;
   trashPush("hiddenword",{
@@ -1887,8 +1938,8 @@ function delArticleWord(wid){
     srs:srs[wid]?JSON.parse(JSON.stringify(srs[wid])):null
   },nw.word||"内置词");
   hiddenWords[wid]=true;save(HIDDEN_KEY,hiddenWords);
-  render();
 }
+function delArticleWord(wid){removeWordById(wid);render()}
 // 把单个词移到另一个分类（支持内置词，通过 catOverride；imported 词直接改 cat）
 function moveWordTo(wid){
   const w=allWords().find(x=>x.id===wid);
