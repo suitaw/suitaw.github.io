@@ -638,7 +638,7 @@ function render(){
           <button class="gear" onclick="restartStudy()" title="放弃当前组，重新洗一组新词">🔄 换一组</button>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
-          ${viewed.length?`<button class="gear" onclick="prevWord()">↩ 上一个</button>`:""}
+          <button class="gear" ${viewed.length?`onclick="prevWord()"`:`disabled style="opacity:.4;cursor:default"`}>↩ 上一个</button>
           <div class="progress" style="margin:0">已过 ${roundDone.size} / ${roundTotal||queue.length}</div>
         </div>
       </div>
@@ -869,8 +869,9 @@ function renderHome(v){
   const dueNow=dueWords+duePhraseCount;
   // 新词 = 还没建立 srs 记录的词
   const newCount=all.filter(w=>!srs[w.id]).length;
-  // 复习本待复习
-  const misCount=mistakes.length;
+  // 复习本待复习：单词 + 已加入复习的短语（跟 startMistakeReview 判空口径保持一致，
+  // 否则复习本主要是短语的用户，这张卡片会一直被误判成"空的"而不显示）
+  const misCount=mistakes.length+phrases.filter(p=>p.inReview&&srs[p.id]).length;
   // 到期待回顾的语法点（不进闪卡，点击跳语法库）
   const dueGrammar=grammar.filter(g=>g.due&&g.due<=Date.now()).length;
 
@@ -903,6 +904,10 @@ function renderHome(v){
         <div><div class="w">📄 我的文章</div><div class="c">精读文章·自动攒生词 · 共 ${articles.length} 篇</div></div>
         <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${articles.reduce((s,a)=>s+wordsOfArticle(a.id).length,0)}</div><div class="c">词</div></div>
       </div>
+      ${misCount?`<div class="mistake-item" style="cursor:pointer" onclick="startMistakeReview()">
+        <div><div class="w">🔖 复习本</div><div class="c">收录的难词/忘词 · 连对3次自动毕业</div></div>
+        <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${misCount}</div><div class="c">词</div></div>
+      </div>`:""}
       <div class="mistake-item" style="cursor:pointer" onclick="openCatManager()">
         <div><div class="w">⚙ 管理分类</div><div class="c">合并·改名·整理分类</div></div>
         <div style="text-align:right;font-size:1.2rem;color:var(--ink-dim)">›</div>
