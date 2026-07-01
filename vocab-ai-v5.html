@@ -1076,7 +1076,7 @@ function toggleCell(ev,el){
   const shown=el.querySelector(".pv-show").style.display!=="none";
   if(shown)hideCell(el);else revealCell(el);
 }
-function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;catSuggestItems=null;catSuggestLoading=false;dedupGroups=null;render()}
+function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;catSuggestItems=null;catSuggestLoading=false;reclassifyProgress=null;dedupGroups=null;render()}
 // 从背词卡片点右上角来源标签 → 跳到来源（文章详情 / 分类预览）。背词进度已存 session，可稍后恢复
 function gotoSource(){
   if(!cur)return;
@@ -1105,7 +1105,7 @@ function resumeStudy(){
   if(s&&s.queue&&s.queue.length&&tryResumeSession(s.scope))return;
   toast("没有可恢复的背词进度");
 }
-function closeCatPreview(){previewCat=null;catSuggestItems=null;catSuggestLoading=false;dedupGroups=null;render()}
+function closeCatPreview(){previewCat=null;catSuggestItems=null;catSuggestLoading=false;reclassifyProgress=null;dedupGroups=null;render()}
 // ===== AI 一键归类（把"我的收藏"里的零散词按词义自动归到主题大类，复核后写入）=====
 let catSuggestItems=null;    // 非空=正在复核 AI 建议：[{id,word,cn,cat}]
 let catSuggestLoading=false; // AI 归类请求进行中
@@ -1143,6 +1143,43 @@ async function aiClassifyFav(){
     toast("AI 归类失败："+(e.message||"返回格式异常，重试一下"));
   }
 }
+// 全库重新分类：只针对 imported（自己导入的词），内置词库/NCE课程词不动
+// （它们的分类由数据结构决定，不该被AI重新判断，重判反而可能引入新错误）
+// 分批处理：避免一次性把几百个词塞进一个请求导致返回截断/解析失败
+let reclassifyProgress=null;   // 非空=分批处理进行中：{done,total}
+const RECLASSIFY_BATCH=40;
+async function aiReclassifyAll(){
+  if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider]))return toast("先在设置里填 API Key");
+  if(!imported.length)return toast("还没有自己导入的词");
+  catSuggestItems=null;catSuggestLoading=true;reclassifyProgress={done:0,total:imported.length};render();
+  const cats=classifyCats();
+  const catText=cats.map(c=>c[0]+"="+c[1]).join("，");
+  const sys=`你是英语词汇分类助手。把下面每个单词按词义归到最合适的主题分类。只能从这些分类里选（用左边的 key）：${catText}。
+特别注意：优先按词的"专业语境"判断，而不是字面意思——例如 print/debug/deploy 这类词即使日常也会用到，只要主要在编程/技术场景出现就归 dev；deadline/meeting/invoice 这类词归 biz 而非 life；只有真正描述衣食住行、日常社交、情感状态的词才归 life。无法判断就归 other。
+只输出一个 JSON 数组，每项形如 {"i":序号,"c":"分类key"}，序号与输入一致。不要解释、不要 Markdown 代码块、不要多余文字。`;
+  const results=[];
+  try{
+    for(let i=0;i<imported.length;i+=RECLASSIFY_BATCH){
+      const batch=imported.slice(i,i+RECLASSIFY_BATCH);
+      const listText=batch.map((w,j)=>j+". "+w.word+" "+(w.cn||"")).join("\n");
+      let full="";
+      await callAIStream([{role:"user",content:listText}],sys,(t)=>{full=t;},1800,false);
+      const mm=full.match(/\[[\s\S]*\]/);
+      const arr=JSON.parse(mm?mm[0]:full.replace(/```json|```/g,"").trim());
+      const valid=new Set(cats.map(c=>c[0]));
+      const map={};arr.forEach(o=>{if(o&&typeof o.i==="number")map[o.i]=valid.has(o.c)?o.c:"other"});
+      batch.forEach((w,j)=>results.push({id:w.id,word:w.word,cn:w.cn||"",cat:map[j]||w.cat||"other"}));
+      reclassifyProgress={done:Math.min(i+RECLASSIFY_BATCH,imported.length),total:imported.length};
+      render();  // 每批完成刷新一次进度，让用户看到在动
+    }
+    catSuggestItems=results;catSuggestLoading=false;reclassifyProgress=null;
+    render();
+  }catch(e){
+    catSuggestItems=null;catSuggestLoading=false;reclassifyProgress=null;
+    render();
+    toast("重新分类失败："+(e.message||"返回格式异常，重试一下")+"（已处理的批次不会丢，重新点一次会跳过已处理完的词）");
+  }
+}
 // 复核面板：每词一个下拉，默认 AI 建议，可改
 function renderCatSuggest(v){
   const cats=classifyCats();
@@ -1163,7 +1200,7 @@ function renderCatSuggest(v){
     <button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyCatSuggest()">✓ 确认归类这 ${catSuggestItems.length} 个词</button>
   </div>`;
 }
-function cancelCatSuggest(){catSuggestItems=null;catSuggestLoading=false;render()}
+function cancelCatSuggest(){catSuggestItems=null;catSuggestLoading=false;reclassifyProgress=null;render()}
 // 确认写入：读每个下拉的最终选择，按 imported→改 cat / 内置→catOverride 落盘
 function applyCatSuggest(){
   if(!catSuggestItems)return;
@@ -1305,7 +1342,7 @@ function renderEnrichPhonetic(v){
 function renderPreview(v){
   if(dedupGroups)return renderDedup(v);
   if(enrichPhoneticState)return renderEnrichPhonetic(v);
-  if(catSuggestLoading){v.innerHTML=`<div class="done" style="padding-top:48px"><div class="typing"><span></span><span></span><span></span></div><p>AI 正在按词义归类…</p></div>`;return}
+  if(catSuggestLoading){v.innerHTML=`<div class="done" style="padding-top:48px"><div class="typing"><span></span><span></span><span></span></div><p>AI 正在按词义归类…${reclassifyProgress?`（${reclassifyProgress.done}/${reclassifyProgress.total}）`:""}</p></div>`;return}
   if(catSuggestItems)return renderCatSuggest(v);
   const cat=previewCat;
   const list=sortWords(wordsOfCat(cat));
@@ -1356,6 +1393,7 @@ function renderPreview(v){
     ${cat==="__fav__"&&list.length?`<button class="gear" style="margin-bottom:12px;border-color:var(--accent);color:var(--accent)" onclick="aiClassifyFav()">🤖 AI 一键归类这 ${list.length} 个零散词</button>`:""}
     ${list.length?`<button class="gear" style="margin-bottom:12px" onclick="openDedup()">🧹 查重清理（扫全部分类）</button>`:""}
     ${list.length?`<button class="gear" style="margin-bottom:12px" onclick="openEnrichPhonetic()">🔤 批量补音标（扫全部分类）</button>`:""}
+    ${imported.length?`<button class="gear" style="margin-bottom:12px" onclick="aiReclassifyAll()">🗂 AI重新分类我导入的 ${imported.length} 个词</button>`:""}
     ${list.length?rows:`<div class="done"><p>这个分类还没有词。</p></div>`}
     ${list.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
   </div>
