@@ -220,7 +220,14 @@ let queue=[], cur=null, flipped=false, page=load("vocab_v5_page","home");
 if(!["home","assistant","mistake","stats"].includes(page))page="home";
 
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}}
-function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
+function save(k,v){
+  try{localStorage.setItem(k,JSON.stringify(v))}
+  catch(e){
+    // 常见于 localStorage 配额已满（安卓 WebView 常见 5-10MB 上限）
+    console.error("save失败",k,e);
+    if(typeof toast==="function")toast("存储空间可能已满，建议去回收站清理或导出备份",3200);
+  }
+}
 // 容错解析 AI 返回的 JSON 数组：先去 markdown，整体 parse 失败时逐个对象提取（应对被截断/多说话）
 function parseJsonArrayLoose(text){
   let t=(text||"").replace(/```json|```/g,"").trim();
@@ -234,6 +241,26 @@ function parseJsonArrayLoose(text){
   return out;
 }
 function toast(m,ms){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),ms||1600)}
+// AI 请求超时：连接建立超时 + 流式读取时单次无响应超时（代理抖动/断线常见，避免按钮卡死不恢复）
+const AI_CONNECT_TIMEOUT=20000;   // 建立连接/拿到首个响应头
+const AI_STREAM_IDLE_TIMEOUT=25000; // 流式读取中，两次数据之间最长静默时间
+async function fetchWithTimeout(url,opts,ms){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),ms||AI_CONNECT_TIMEOUT);
+  try{
+    return await fetch(url,{...opts,signal:ctrl.signal});
+  }catch(e){
+    if(e.name==="AbortError")throw new Error("网络超时，请检查网络/代理后重试");
+    throw e;
+  }finally{clearTimeout(timer)}
+}
+// 给一个 promise 包超时，超时则 reject（用于流式 reader.read() 防止卡死不返回）
+function withIdleTimeout(promise,ms,msg){
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>reject(new Error(msg||"网络超时，请重试")),ms);
+    promise.then(v=>{clearTimeout(timer);resolve(v)},e=>{clearTimeout(timer);reject(e)});
+  });
+}
 // 去 Markdown 符号兜底（豆包爱用 #、DeepSeek 爱用 **）
 function stripMd(s){
   if(!s)return s;
@@ -246,6 +273,17 @@ function stripMd(s){
     .replace(/^\s*([-*_])\1{2,}\s*$/gm,"")
     .trim();
 }
+// HTML 转义：用户自建内容/AI返回内容拼进 innerHTML 前过一遍，防止内容里恰好带 <> 等字符破坏渲染
+function escapeHtml(s){
+  if(s==null)return "";
+  return String(s)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+}
+
 
 // ===== NCE 课程库注入 (来自 nce.js, 只读内置内容) =====
 // 把 NCE_COURSES 展开成 WORDS 同构对象 / 文章 / 短语 / 语法。
@@ -604,8 +642,8 @@ function render(){
       </div>
       <div class="card" id="card" onclick="if(!flipped)flip()">
         <span class="cat-tag" onclick="event.stopPropagation();gotoSource()" style="cursor:pointer" title="查看来源">${catName(cur.cat)} ↗</span>
-        <div class="word">${cur.word}</div>
-        ${cur.phonetic?`<div class="phonetic">${cur.phonetic}</div>`:""}
+        <div class="word">${escapeHtml(cur.word)}</div>
+        ${cur.phonetic?`<div class="phonetic">${escapeHtml(cur.phonetic)}</div>`:""}
         <button class="speak" onclick="event.stopPropagation();speak(this)">🔊 发音</button>
         ${flipped?backHtml():`<div class="flip-hint">点卡片看释义 · 左滑下一个，右滑返回</div>`}
       </div>
@@ -1146,11 +1184,11 @@ function renderPreview(v){
   };
   const rows=list.map(w=>{
     const st=wordStatus(w.id);
-    const ph=w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${w.phonetic}</span>`:"";
+    const ph=w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${escapeHtml(w.phonetic)}</span>`:"";
     // 英文行（含音标）：遮英文模式下遮住，露音标保留提示性可选——这里整块遮，点开露英文+音标
-    const enReal=`${w.word}${ph}`;
+    const enReal=`${escapeHtml(w.word)}${ph}`;
     const enBlock=`<div class="w" style="font-size:1rem">${cell(enReal,maskMode==="en","••• 点击显示单词")}</div>`;
-    const cnReal=`${w.cn||""}`;
+    const cnReal=`${escapeHtml(w.cn||"")}`;
     const cnBlock=`<div class="c">${cell(cnReal,maskMode==="cn","••• 点击显示意思")}</div>`;
     return `<div class="mistake-item" id="pv-row-${w.id}" style="cursor:pointer" onclick="startStudyAt('${cat}','${w.id}')">
       <div style="flex:1">${enBlock}${cnBlock}</div>
@@ -1405,27 +1443,28 @@ function backHtml(){
   if(cur._phrase){
     return `
   <div class="back">
-    <div class="cn">${cur.cn}<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">phr.</span></div>
-    ${cur.tip?`<div class="tip">💡 ${cur.tip}</div>`:""}
+    <div class="cn">${escapeHtml(cur.cn)}<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">phr.</span></div>
+    ${cur.tip?`<div class="tip">💡 ${escapeHtml(cur.tip)}</div>`:""}
   </div>`;
   }
   const fav=mistakes.find(m=>m.id===cur.id)?"★ 已收藏":"☆ 收藏";
-  const pos=cur.pos?`<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">${cur.pos}</span>`:"";
-  const scene=cur.scene?`<div class="tip" style="background:#eef3ec;border-left:3px solid var(--green)">🎬 ${cur.scene}</div>`:"";
+  const pos=cur.pos?`<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">${escapeHtml(cur.pos)}</span>`:"";
+  const scene=cur.scene?`<div class="tip" style="background:#eef3ec;border-left:3px solid var(--green)">🎬 ${escapeHtml(cur.scene)}</div>`:"";
   return `
   <div class="back">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <div class="cn">${cur.cn}${pos}</div>
+      <div class="cn">${escapeHtml(cur.cn)}${pos}</div>
       <button class="gear" id="fav-btn" onclick="event.stopPropagation();toggleFav()">${fav}</button>
     </div>
-    ${cur.tip?`<div class="tip">💡 ${cur.tip}</div>`:""}
+    ${cur.tip?`<div class="tip">💡 ${escapeHtml(cur.tip)}</div>`:""}
     ${scene}
-    ${cur.exampleEn?`<div class="ex">${cur.exampleEn}</div>`:""}
-    ${cur.exampleCn?`<div class="ex-cn">${cur.exampleCn}</div>`:""}
+    ${cur.exampleEn?`<div class="ex">${escapeHtml(cur.exampleEn)}</div>`:""}
+    ${cur.exampleCn?`<div class="ex-cn">${escapeHtml(cur.exampleCn)}</div>`:""}
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="gear" onclick="event.stopPropagation();speakWord('${(cur.exampleEn||'').replace(/'/g,'')}')">🔊 读例句</button>
       <button class="gear" id="dissect-btn" onclick="event.stopPropagation();dissectExample()">🔍 拆解这句话</button>
     </div>
+
     <div id="dissect-result" style="display:none;margin-top:10px"></div>
     ${tagBarHtml()}
   </div>`;
@@ -1444,15 +1483,14 @@ function gradesHtml(){return `
   </div>`;
 }
 function aiHtml(){
-  const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
   const has=askWordId===cur.id&&askHistory.length;
   const thread=has?`<div class="ai-thread" id="ai-thread">`+askHistory.map(m=>
-    `<div class="ai-msg ${m.role}">${m.role==="user"?"🙋 ":"🤖 "}${esc(m.content)}</div>`).join("")+`</div>`
+    `<div class="ai-msg ${m.role}">${m.role==="user"?"🙋 ":"🤖 "}${escapeHtml(m.content)}</div>`).join("")+`</div>`
     :`<div class="ai-thread" id="ai-thread"></div>`;
   return `
   <div class="ai-box">
     ${thread}
-    <textarea id="sentence" placeholder="关于 ${cur.word}，问 AI 任何问题（可连续追问；换词自动清空）"></textarea>
+    <textarea id="sentence" placeholder="关于 ${escapeHtml(cur.word)}，问 AI 任何问题（可连续追问；换词自动清空）"></textarea>
     <div style="display:flex;gap:8px;align-items:stretch">
       <button class="ai-btn" id="check-btn" style="flex:1" onclick="askWord()">问 AI</button>
       ${has?`<button class="gear" onclick="clearAsk()">清空</button>`:""}
@@ -2670,7 +2708,7 @@ async function callAI(messages, sys, maxTokens=600, images=null){
     if(p==="kimi")body.thinking={type:"disabled"};  // Kimi 默认快速模式，不思考
     readText=d=>d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
   }
-  const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});
+  const r=await fetchWithTimeout(url,{method:"POST",headers,body:JSON.stringify(body)});
   const d=await r.json();
   if(d.error)throw new Error(d.error.message||"接口报错");
   const text=readText(d);
@@ -2762,12 +2800,12 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
     if(p==="kimi")body.thinking={type:isThink?"enabled":"disabled"};  // Kimi 跟随思考开关，默认关=快
     parseLine=obj=>(obj.choices&&obj.choices[0]&&obj.choices[0].delta&&obj.choices[0].delta.content)||"";
   }
-  const r=await fetch(url,{method:"POST",headers,body:JSON.stringify(body)});
+  const r=await fetchWithTimeout(url,{method:"POST",headers,body:JSON.stringify(body)});
   if(!r.ok){let e="接口报错";try{const j=await r.json();e=j.error&&j.error.message||e}catch(x){}throw new Error(e)}
   const reader=r.body.getReader();const dec=new TextDecoder();
   let buf="",full="";
   while(true){
-    const {done,value}=await reader.read();
+    const {done,value}=await withIdleTimeout(reader.read(),AI_STREAM_IDLE_TIMEOUT,"响应中断，网络超时，请重试");
     if(done)break;
     buf+=dec.decode(value,{stream:true});
     const lines=buf.split("\n");buf=lines.pop();
