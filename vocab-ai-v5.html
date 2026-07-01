@@ -638,26 +638,30 @@ function render(){
           <button class="gear" onclick="restartStudy()" title="放弃当前组，重新洗一组新词">🔄 换一组</button>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="gear" ${viewed.length?`onclick="prevWord()"`:`disabled style="opacity:.4;cursor:default"`}>↩ 上一个</button>
+          ${peekSnapshot?"":`<button class="gear" ${viewed.length?`onclick="prevWord()"`:`disabled style="opacity:.4;cursor:default"`}>↩ 上一个</button>`}
           <div class="progress" style="margin:0">已过 ${roundDone.size} / ${roundTotal||queue.length}</div>
         </div>
       </div>
+      ${peekSnapshot?`<div style="background:var(--accent-soft);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:.78rem;color:var(--accent);display:flex;justify-content:space-between;align-items:center">
+        <span>👀 回看上一个（不影响进度）</span>
+        <button class="ai-btn" style="width:auto;padding:6px 14px;margin:0" onclick="resumeFromPeek()">继续背 →</button>
+      </div>`:""}
       <div style="height:4px;background:var(--line);border-radius:2px;margin-bottom:12px;overflow:hidden">
         <div style="height:100%;width:${roundTotal?Math.round(roundDone.size/roundTotal*100):0}%;background:var(--accent);border-radius:2px;transition:width .3s"></div>
       </div>
-      <div class="card" id="card" onclick="if(!flipped)flip()">
+      <div class="card" id="card" onclick="if(!flipped&&!peekSnapshot)flip()">
         <span class="cat-tag" onclick="event.stopPropagation();gotoSource()" style="cursor:pointer" title="查看来源">${catName(cur.cat)} ↗</span>
         <div class="word">${escapeHtml(cur.word)}</div>
         ${cur.phonetic?`<div class="phonetic">${escapeHtml(cur.phonetic)}</div>`:""}
         <button class="speak" onclick="event.stopPropagation();speak(this)">🔊 发音</button>
         ${flipped?backHtml():`<div class="flip-hint">点卡片看释义 · 左滑下一个，右滑返回</div>`}
       </div>
-      ${flipped?gradesHtml():""}
-      ${flipped?aiHtml():""}
+      ${(flipped&&!peekSnapshot)?gradesHtml():""}
+      ${(flipped&&!peekSnapshot)?aiHtml():""}
     </div>`;
   bindSwipe();
   // 翻面后：若该词已拆解过，自动恢复显示（修复切走再回来丢失）
-  if(flipped&&cur&&dissectCache[cur.id]){
+  if(flipped&&cur&&dissectCache[cur.id]&&!peekSnapshot){
     const box=document.getElementById("dissect-result");
     if(box){lastDissect=dissectCache[cur.id];box.style.display="block";renderDissect(box,lastDissect)}
   }
@@ -2282,26 +2286,34 @@ function saveGrammarFromDissect(i,btn){
 }
 // 浏览历史栈：记看过的词，支持左滑返回
 let viewed=[];
+// 只读回看态：点"上一个"时不再重排队列，只是临时展示 viewed 里的词；
+// peekSnapshot 保存回看前的真实状态(cur/flipped)，点"继续背"时原样恢复
+let peekSnapshot=null;
 // 下一词（右滑）：当前词丢回队尾，记入历史
 function nextWord(){
+  if(peekSnapshot){resumeFromPeek()}  // 回看中先恢复，再正常前进（理论上按钮已禁用，双保险）
   if(queue.length<=1){toast("就剩这一个啦");return false}
   viewed.push(cur);
   const w=queue.shift();queue.push(w);
   cur=queue[0];flipped=false;openTag=null;saveSession();render();
   return true;
 }
-// 上一词（左滑）：从历史弹回，重新放回队首
+// 上一词：只读展示 viewed 里最后一个词，不改动 queue/进度，看完点"继续背"原样恢复
 function prevWord(){
   if(!viewed.length){toast("已经是第一个了");return false}
-  const idx=queue.indexOf(cur);
-  if(idx>=0)queue.splice(idx,1);
-  queue.unshift(cur);
-  const prev=viewed.pop();
-  const pi=queue.indexOf(prev);
-  if(pi>=0)queue.splice(pi,1);
-  queue.unshift(prev);
-  cur=prev;flipped=false;openTag=null;saveSession();render();
+  if(!peekSnapshot)peekSnapshot={cur,flipped};  // 第一次点"上一个"时才存快照，避免连续点多次时把快照覆盖成回看态本身
+  cur=viewed[viewed.length-1];
+  flipped=true;   // 回看直接展示释义面，不用再点一次卡片
+  openTag=null;
+  render();
   return true;
+}
+// 继续背：从只读回看态恢复到真正在背的那个词，进度/队列完全不受影响
+function resumeFromPeek(){
+  if(!peekSnapshot)return;
+  cur=peekSnapshot.cur;flipped=peekSnapshot.flipped;
+  peekSnapshot=null;openTag=null;
+  render();
 }
 // 左右滑（只在正面生效）：右滑下一词，左滑返回上一词
 function bindSwipe(){
@@ -2356,7 +2368,7 @@ function rate(q){
       else save(MIS_KEY,mistakes);
     }
   }
-  viewed=[];                        // 评分推进了进度，历史清空
+  viewed.push(cur);                 // 评分推进：跟左滑一样记入历史，允许评分后"上一个"回看
   queue.shift();
   if(q<3)queue.push(cur);
   cur=queue[0]||null;flipped=false;openTag=null;
