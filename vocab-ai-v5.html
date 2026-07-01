@@ -94,6 +94,13 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .mistake-item .w{font-family:Fraunces,serif;font-weight:600;font-size:1.05rem}
 .mistake-item .c{font-size:.78rem;color:var(--ink-dim)}
 
+/* 字母索引侧边栏 */
+.az-index{position:fixed;right:2px;top:50%;transform:translateY(-50%);z-index:60;display:flex;flex-direction:column;align-items:center;padding:4px 3px;border-radius:10px;background:rgba(255,253,247,.55);touch-action:none}
+.az-index .az-item{font-size:.6rem;line-height:1;color:var(--ink-dim);padding:1.5px 4px;cursor:pointer;font-weight:600;border-radius:3px}
+.az-index .az-item.dim{opacity:.32;cursor:default}
+.az-index .az-item.hit{background:var(--accent);color:#fff}
+.az-bubble{position:fixed;right:34px;top:50%;transform:translateY(-50%);z-index:61;background:var(--ink);color:var(--paper);width:44px;height:44px;border-radius:50%;display:none;align-items:center;justify-content:center;font-family:Fraunces,serif;font-size:1.3rem;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.28)}
+.az-bubble.show{display:flex}
 .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:20px;font-size:.78rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
 .import-overlay{display:none;position:fixed;inset:0;background:rgba(43,38,32,.4);z-index:200;overflow-y:auto;padding:20px 12px}
 .import-overlay.open{display:block}
@@ -918,6 +925,29 @@ function wordStatus(id){
   if(c.due&&c.due<=Date.now())return {t:"待复习",col:"var(--accent)"};
   return {t:"复习中",col:"var(--green)"};
 }
+// 字母索引：与当前 sortMode 无关，始终按字母序找出每个字母第一个词的 id，供侧边栏跳转
+function buildAzMap(list){
+  const map={};
+  list.forEach(w=>{
+    const ch=(w.word||"").trim()[0];
+    if(!ch)return;
+    const letter=ch.toUpperCase();
+    if(letter<"A"||letter>"Z")return;   // 非英文字母开头的词不参与索引
+    if(!(letter in map))map[letter]=w.id;
+  });
+  return map;
+}
+// 跳到某字母对应的词行（无该字母词时不动）
+function jumpToLetter(letter){
+  const id=window.__azMap&&window.__azMap[letter];
+  if(!id)return;
+  const el=document.getElementById("pv-row-"+id);
+  if(!el)return;
+  el.scrollIntoView({block:"center"});
+  const orig=el.style.background;
+  el.style.transition="background .4s";el.style.background="var(--accent-soft)";
+  setTimeout(()=>{el.style.background=orig},700);
+}
 const SORT_LABELS={recent:"最新在前",alpha:"字母序",default:"默认"};
 function setSortMode(m){sortMode=m;save("vocab_v5_sortmode",m);renderPreview(document.getElementById("view"))}
 // 遮义模式：none(全显)/cn(遮中文,先认英文)/en(遮英文,练拼写回想)
@@ -1129,6 +1159,10 @@ function renderPreview(v){
       <button class="gear" style="margin-left:4px;padding:2px 8px" onclick="event.stopPropagation();delArticleWord('${w.id}')">🗑</button>
     </div>`;
   }).join("");
+  window.__azMap=buildAzMap(list);   // 与显示排序无关，始终按字母序建索引
+  const azLetters="ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l=>
+    `<div class="az-item${window.__azMap[l]?"":" dim"}" data-l="${l}">${l}</div>`
+  ).join("");
   v.innerHTML=`<div style="padding-top:8px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       <button class="gear" onclick="closeCatPreview()">← 返回</button>
@@ -1142,8 +1176,10 @@ function renderPreview(v){
     ${list.length?`<button class="gear" style="margin-bottom:12px" onclick="openDedup()">🧹 查重清理（扫全部分类）</button>`:""}
     ${list.length?rows:`<div class="done"><p>这个分类还没有词。</p></div>`}
     ${list.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
-  </div>`;
+  </div>
+  ${list.length?`<div class="az-index" id="az-index">${azLetters}</div><div class="az-bubble" id="az-bubble"></div>`:""}`;
   scrollToLastWord();
+  if(list.length)initAzIndex();
 }
 // 返回词表时滚动定位到刚才进入的那个词并高亮闪一下
 function scrollToLastWord(){
@@ -1156,6 +1192,39 @@ function scrollToLastWord(){
     const orig=el.style.background;
     el.style.transition="background .4s";el.style.background="var(--accent-soft)";
     setTimeout(()=>{el.style.background=orig},900);
+  });
+}
+// 字母侧边栏：点击单个字母 或 按住上下滑动连续跳转，都会定位到该字母对应词行
+function initAzIndex(){
+  const box=document.getElementById("az-index");
+  if(!box)return;
+  const bubble=document.getElementById("az-bubble");
+  const items=Array.from(box.querySelectorAll(".az-item"));
+  let lastLetter=null;
+  const clearHit=()=>items.forEach(it=>it.classList.remove("hit"));
+  const letterAtY=(clientY)=>{
+    const rect=box.getBoundingClientRect();
+    let y=clientY-rect.top;
+    if(y<0)y=0;if(y>rect.height)y=rect.height;
+    const idx=Math.min(25,Math.floor(y/rect.height*26));
+    return items[idx]?items[idx].dataset.l:null;
+  };
+  const activate=(letter,clientY)=>{
+    if(!letter||letter===lastLetter)return;
+    lastLetter=letter;
+    clearHit();
+    const it=items.find(x=>x.dataset.l===letter);
+    if(it)it.classList.add("hit");
+    if(bubble){bubble.textContent=letter;bubble.classList.add("show");if(clientY!=null)bubble.style.top=clientY+"px",bubble.style.transform="translateY(-50%)"}
+    jumpToLetter(letter);
+  };
+  const end=()=>{lastLetter=null;clearHit();if(bubble)bubble.classList.remove("show")};
+  box.addEventListener("touchstart",e=>{const t=e.touches[0];activate(letterAtY(t.clientY),t.clientY)},{passive:true});
+  box.addEventListener("touchmove",e=>{const t=e.touches[0];activate(letterAtY(t.clientY),t.clientY)},{passive:true});
+  box.addEventListener("touchend",end);
+  box.addEventListener("touchcancel",end);
+  items.forEach(it=>{
+    it.addEventListener("click",()=>{if(it.classList.contains("dim"))return;activate(it.dataset.l,null);setTimeout(end,500)});
   });
 }
 function renderArticleList(v){
