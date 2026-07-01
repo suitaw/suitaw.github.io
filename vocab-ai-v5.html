@@ -1230,8 +1230,81 @@ function renderDedup(v){
     ${totalRemove?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyDedup()">🗑 删除选中的 ${totalRemove} 个重复词（可恢复）</button>`:`<div style="font-size:.76rem;color:var(--ink-dim);margin-top:14px">未选中任何组。</div>`}
   </div>`;
 }
+
+// ===== 批量补音标：全库扫描导入词里缺音标的，逐个调 AI 补全 =====
+let enrichPhoneticState=null;   // null=未开始；否则 {list:[word对象], idx, done, failed, running}
+// 只扫导入词（内置词/NCE词不缺音标，也不该被这个功能碰）
+function findMissingPhoneticWords(){
+  return imported.filter(w=>!w.phonetic&&w.word);
+}
+function openEnrichPhonetic(){
+  const list=findMissingPhoneticWords();
+  if(!list.length){toast("没有缺音标的词 👍");return}
+  if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider])){toast("先在设置里填 API Key");return}
+  enrichPhoneticState={list,idx:0,done:0,failed:0,running:false};
+  render();
+}
+function cancelEnrichPhonetic(){
+  if(enrichPhoneticState)enrichPhoneticState.running=false;  // 标记停止，进行中的那个请求走完后不再继续
+  enrichPhoneticState=null;render();
+}
+// 单个词的音标补全：只请求音标，prompt跟maybeEnrichWord里"只缺音标"分支保持一致
+async function enrichOnePhonetic(w){
+  const sys=`只返回 JSON，不要任何其他文字：{"phonetic":"该单词的国际音标(美式优先，带斜杠)"}`;
+  const raw0=await callAI([{role:"user",content:`单词：${w.word}`}],sys,120);
+  let raw=raw0.replace(/```json|```/g,"").trim();
+  const a=raw.indexOf("{"),b=raw.lastIndexOf("}");
+  if(a>=0&&b>a)raw=raw.slice(a,b+1);
+  const o=JSON.parse(raw);
+  if(!o.phonetic)throw new Error("空音标");
+  return o.phonetic;
+}
+// 串行跑完整个补全队列（避免并发打爆API/触发限流），每完成一个就刷新一次界面
+async function runEnrichPhonetic(){
+  if(!enrichPhoneticState||enrichPhoneticState.running)return;
+  enrichPhoneticState.running=true;
+  while(enrichPhoneticState&&enrichPhoneticState.running&&enrichPhoneticState.idx<enrichPhoneticState.list.length){
+    const w=enrichPhoneticState.list[enrichPhoneticState.idx];
+    try{
+      const phonetic=await enrichOnePhonetic(w);
+      // 用id去imported里找真身写回（enrichPhoneticState.list里的引用理论上和imported同源，双重保险按id查一次）
+      const real=imported.find(x=>x.id===w.id);
+      if(real)real.phonetic=phonetic;
+      if(enrichPhoneticState)enrichPhoneticState.done++;
+    }catch(e){
+      if(enrichPhoneticState)enrichPhoneticState.failed++;
+    }
+    save(IMP_KEY,imported);
+    if(enrichPhoneticState){enrichPhoneticState.idx++;render()}
+  }
+  if(enrichPhoneticState)enrichPhoneticState.running=false;
+}
+function renderEnrichPhonetic(v){
+  const st=enrichPhoneticState;
+  const total=st.list.length;
+  const finished=st.idx>=total;
+  const cur=st.list[st.idx];
+  v.innerHTML=`<div style="padding-top:8px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <button class="gear" onclick="cancelEnrichPhonetic()">${finished?"← 完成，返回":"← 停止并返回"}</button>
+      <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:700">🔤 批量补音标</div>
+    </div>
+    <div style="font-size:.76rem;color:var(--ink-dim);margin-bottom:12px">全库找到 ${total} 个缺音标的词，逐个用 AI 生成中，别切走页面。</div>
+    <div style="height:6px;background:var(--line);border-radius:3px;margin-bottom:10px;overflow:hidden">
+      <div style="height:100%;width:${Math.round(st.idx/total*100)}%;background:var(--accent);border-radius:3px;transition:width .3s"></div>
+    </div>
+    <div style="text-align:center;margin-bottom:14px">
+      ${finished
+        ?`<div class="done" style="padding:24px 0"><h2>补全完成 🎉</h2><p>成功 ${st.done} 个${st.failed?`，失败 ${st.failed} 个（可能是生僻词，重开一次本功能会再试一遍）`:""}</p></div>`
+        :`<div class="typing"><span></span><span></span><span></span></div><p style="margin-top:8px;font-size:.84rem;color:var(--ink-dim)">正在补全「${cur?escapeHtml(cur.word):""}」 · ${st.idx}/${total}</p>`
+      }
+    </div>
+  </div>`;
+  if(!finished&&!st.running)runEnrichPhonetic();
+}
 function renderPreview(v){
   if(dedupGroups)return renderDedup(v);
+  if(enrichPhoneticState)return renderEnrichPhonetic(v);
   if(catSuggestLoading){v.innerHTML=`<div class="done" style="padding-top:48px"><div class="typing"><span></span><span></span><span></span></div><p>AI 正在按词义归类…</p></div>`;return}
   if(catSuggestItems)return renderCatSuggest(v);
   const cat=previewCat;
@@ -1282,6 +1355,7 @@ function renderPreview(v){
     <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${maskBtns}</div>
     ${cat==="__fav__"&&list.length?`<button class="gear" style="margin-bottom:12px;border-color:var(--accent);color:var(--accent)" onclick="aiClassifyFav()">🤖 AI 一键归类这 ${list.length} 个零散词</button>`:""}
     ${list.length?`<button class="gear" style="margin-bottom:12px" onclick="openDedup()">🧹 查重清理（扫全部分类）</button>`:""}
+    ${list.length?`<button class="gear" style="margin-bottom:12px" onclick="openEnrichPhonetic()">🔤 批量补音标（扫全部分类）</button>`:""}
     ${list.length?rows:`<div class="done"><p>这个分类还没有词。</p></div>`}
     ${list.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
   </div>
