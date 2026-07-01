@@ -100,6 +100,11 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .az-index .az-item.dim{opacity:.32;cursor:default}
 .az-index .az-item.hit{background:var(--accent);color:#fff}
 .az-bubble{position:fixed;right:34px;top:50%;transform:translateY(-50%);z-index:61;background:var(--ink);color:var(--paper);width:44px;height:44px;border-radius:50%;display:none;align-items:center;justify-content:center;font-family:Fraunces,serif;font-size:1.3rem;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.28)}
+/* 首页分类卡片：长按拖拽排序 */
+.cat-row{position:relative;transition:transform .18s ease}
+.cat-row.dragging{opacity:.9;box-shadow:0 8px 24px rgba(43,38,32,.25);z-index:50;transition:none;cursor:grabbing}
+.cat-row.drag-placeholder{opacity:.3;background:var(--paper2);border-style:dashed}
+.cat-row .drag-handle{color:var(--ink-dim);font-size:1rem;padding:0 4px;cursor:grab;touch-action:none;align-self:center}
 .az-bubble.show{display:flex}
 .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:20px;font-size:.78rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
 .import-overlay{display:none;position:fixed;inset:0;background:rgba(43,38,32,.4);z-index:200;overflow-y:auto;padding:20px 12px}
@@ -892,11 +897,8 @@ function renderHome(v){
       🔍 <span style="font-size:.86rem">搜索单词或释义…</span>
     </div>
     ${todayPanel}
-    <div class="sec-fold-hd" onclick="toggleHomeCats()" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:10px">
-      <p style="color:var(--ink-dim);font-size:.82rem;margin:0">或按分类自己选</p>
-      <span id="homecats-arrow" style="font-size:.8rem;color:var(--ink-dim)">${homeCatsOpen?'收起 ▾':'展开 ▸'}</span>
-    </div>
-    <div id="home-cats" style="display:${homeCatsOpen?'block':'none'}">
+    <p style="color:var(--ink-dim);font-size:.82rem;margin-bottom:10px">或按分类自己选 · 长按卡片可拖动排序</p>
+    <div id="home-cats">
       <div class="mistake-item" style="cursor:pointer" onclick="openArticleList()">
         <div><div class="w">📄 我的文章</div><div class="c">精读文章·自动攒生词 · 共 ${articles.length} 篇</div></div>
         <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${articles.reduce((s,a)=>s+wordsOfArticle(a.id).length,0)}</div><div class="c">词</div></div>
@@ -905,32 +907,91 @@ function renderHome(v){
         <div><div class="w">⚙ 管理分类</div><div class="c">合并·改名·整理分类</div></div>
         <div style="text-align:right;font-size:1.2rem;color:var(--ink-dim)">›</div>
       </div>
-      ${(()=>{
-        // 常用区置顶（按指定顺序），其余收进「更多分类」可折叠
-        const PIN=["all","dev","nce2","codepath"];
-        const rowHtml=r=>`<div class="mistake-item" style="cursor:pointer" onclick="openCatPreview('${r.key}')">
-          <div><div class="w">${r.name}</div><div class="c">${r.desc} · 共 ${r.n} 词</div></div>
-          <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${r.due}</div><div class="c">待学</div></div>
-        </div>`;
-        const pinned=PIN.map(k=>rows.find(r=>r.key===k)).filter(Boolean);
-        const others=rows.filter(r=>!PIN.includes(r.key));
-        let html=pinned.map(rowHtml).join("");
-        if(others.length){
-          const open=!collapsed["home_more"];
-          html+=`<div class="grp-header" onclick="toggleGroup('home_more')" style="display:flex;align-items:center;gap:5px;font-size:.8rem;color:var(--ink-dim);margin:12px 0 8px;font-weight:600;cursor:pointer;user-select:none"><span style="display:inline-block;width:12px;transition:transform .15s;transform:rotate(${open?90:0}deg)">▸</span>更多分类（${others.length}）</div>`;
-          if(open)html+=others.map(rowHtml).join("");
-        }
-        return html;
-      })()}
+      <div id="cat-sort-list">${renderSortedCatRows(rows)}</div>
     </div>
   </div>`;
+  initCatDrag();
 }
-let homeCatsOpen=load("vocab_v5_homecats_open",true);
-function toggleHomeCats(){
-  homeCatsOpen=!homeCatsOpen;save("vocab_v5_homecats_open",homeCatsOpen);
-  const c=document.getElementById("home-cats"),a=document.getElementById("homecats-arrow");
-  if(c)c.style.display=homeCatsOpen?"block":"none";
-  if(a)a.textContent=homeCatsOpen?"收起 ▾":"展开 ▸";
+// 分类卡片自定义顺序：存分类key的数组；未出现过的key（新分类/内置分类首次出现）追加到末尾
+const HOMECAT_ORDER_KEY="vocab_v5_homecat_order";
+function getHomeCatOrder(){return load(HOMECAT_ORDER_KEY,[])}
+function saveHomeCatOrder(order){save(HOMECAT_ORDER_KEY,order)}
+// 按已保存的自定义顺序重排 rows；没记录过的分类保持原有相对顺序追加在后面
+function sortRowsByOrder(rows){
+  const order=getHomeCatOrder();
+  const idx=k=>{const i=order.indexOf(k);return i===-1?Infinity:i};
+  return rows.slice().sort((a,b)=>{
+    const ia=idx(a.key),ib=idx(b.key);
+    if(ia!==ib)return ia-ib;
+    return 0;   // 都不在自定义顺序里的，保持原相对顺序（sort是稳定排序）
+  });
+}
+function renderSortedCatRows(rows){
+  const sorted=sortRowsByOrder(rows);
+  return sorted.map(r=>`<div class="mistake-item cat-row" data-key="${r.key}" style="cursor:pointer;display:flex;align-items:center;gap:2px" onclick="openCatPreview('${r.key}')">
+    <span class="drag-handle" onclick="event.stopPropagation()">⠿</span>
+    <div style="flex:1;min-width:0">
+      <div><div class="w">${r.name}</div><div class="c">${r.desc} · 共 ${r.n} 词</div></div>
+    </div>
+    <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${r.due}</div><div class="c">待学</div></div>
+  </div>`).join("");
+}
+// 长按拖拽排序：触摸版实现（不用HTML5 dragndrop，手机浏览器兼容性更好）
+function initCatDrag(){
+  const list=document.getElementById("cat-sort-list");
+  if(!list)return;
+  let dragEl=null,startY=0,startIndex=-1,longPressTimer=null,dragging=false;
+  const rowsEls=()=>Array.from(list.querySelectorAll(".cat-row"));
+
+  function onTouchStart(e,row){
+    const touch=e.touches[0];
+    startY=touch.clientY;
+    longPressTimer=setTimeout(()=>{
+      dragging=true;
+      dragEl=row;
+      startIndex=rowsEls().indexOf(row);
+      row.classList.add("dragging");
+      if(navigator.vibrate)navigator.vibrate(12);   // 轻微震动反馈，有则用，没有静默忽略
+    },350);   // 350ms长按阈值，避免和点击/滚动冲突
+  }
+  function onTouchMove(e){
+    const touch=e.touches[0];
+    if(!dragging){
+      // 还没触发长按前，如果手指已经明显移动（说明用户在滚动），取消长按计时
+      if(Math.abs(touch.clientY-startY)>10)clearTimeout(longPressTimer);
+      return;
+    }
+    e.preventDefault();   // 拖拽中阻止页面滚动
+    const y=touch.clientY;
+    dragEl.style.transform=`translateY(${y-startY}px)`;
+    // 找到当前手指位置对应要插入的位置，实时重排DOM
+    const els=rowsEls().filter(el=>el!==dragEl);
+    let target=null;
+    for(const el of els){
+      const rect=el.getBoundingClientRect();
+      if(y<rect.top+rect.height/2){target=el;break}
+    }
+    if(target)list.insertBefore(dragEl,target);
+    else list.appendChild(dragEl);
+    dragEl.style.transform=`translateY(${y-startY}px)`;   // 重新插入后DOM位置变了，transform要基于新位置重算更精确，这里简化保留原有位移量
+  }
+  function onTouchEnd(){
+    clearTimeout(longPressTimer);
+    if(!dragging){return}
+    dragging=false;
+    dragEl.classList.remove("dragging");
+    dragEl.style.transform="";
+    const newOrder=rowsEls().map(el=>el.dataset.key);
+    saveHomeCatOrder(newOrder);
+    toast("排序已保存");
+    dragEl=null;
+  }
+  rowsEls().forEach(row=>{
+    row.addEventListener("touchstart",e=>onTouchStart(e,row),{passive:true});
+  });
+  list.addEventListener("touchmove",onTouchMove,{passive:false});
+  list.addEventListener("touchend",onTouchEnd);
+  list.addEventListener("touchcancel",onTouchEnd);
 }
 // 收藏聚合分类的判断
 function isFavWord(w,looseCats){return w.cat==="import"||w.cat==="other"||(looseCats&&looseCats.includes(w.cat))}
@@ -3499,7 +3560,3 @@ checkArtProgress();
 </script>
 </body>
 </html>
-这是一次测试修改 Wed Jul  1 18:55:12 CST 2026
-这是一次测试修改 Wed Jul  1 19:00:10 CST 2026
-测试内容 Wed Jul  1 19:05:27 CST 2026
-测试内容 Wed Jul  1 19:08:29 CST 2026
