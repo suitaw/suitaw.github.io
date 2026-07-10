@@ -195,6 +195,51 @@
     border-radius: 6px;
   }
 
+  .cycle-group {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .cycle-group summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .cycle-group summary::-webkit-details-marker {
+    display: none;
+  }
+  .cycle-group-summary {
+    padding: 12px 14px;
+    background: var(--bg);
+  }
+  .cycle-group-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .cycle-group[open] .cycle-group-title .details-arrow {
+    transform: rotate(180deg);
+  }
+  .cycle-group-sum {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .cycle-group-sum span:first-child {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .cycle-group-body {
+    padding: 12px;
+  }
+  .cycle-group-body .record-card:last-child {
+    margin-bottom: 0;
+  }
+
   .record-card {
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -725,27 +770,70 @@ function renderTable() {
     return;
   }
   emptyState.style.display = 'none';
-  const sorted = [...records].sort((a, b) => a.date < b.date ? 1 : -1);
-  list.innerHTML = sorted.map(rec => {
-    const t = computeRecordTotals(rec);
+
+  // 按周期分组：key用周期起始日区分，值是该周期内的记录列表
+  const groups = {};
+  records.forEach(rec => {
+    const info = getCycleInfo(rec.date);
+    const key = info.cycleStart;
+    if (!groups[key]) groups[key] = { cycleStart: info.cycleStart, cycleEnd: info.cycleEnd, records: [] };
+    groups[key].records.push(rec);
+  });
+
+  // 周期分组按起始日倒序（最新周期在最上面）
+  const groupList = Object.values(groups).sort((a, b) => a.cycleStart < b.cycleStart ? 1 : -1);
+  const todayCycleStart = getCycleInfo(todayStr()).cycleStart;
+
+  list.innerHTML = groupList.map((group, idx) => {
+    const sortedRecs = [...group.records].sort((a, b) => a.date < b.date ? 1 : -1);
+    let sumIncome = 0, sumOrders = 0;
+    sortedRecs.forEach(rec => {
+      sumIncome += computeRecordTotals(rec).totalIncome;
+      sumOrders += rec.orders;
+    });
+    const isCurrentCycle = group.cycleStart === todayCycleStart;
+    const startShow = group.cycleStart.slice(5).replace('-', '/');
+    const endShow = group.cycleEnd.slice(5).replace('-', '/');
+
+    const cardsHtml = sortedRecs.map(rec => {
+      const t = computeRecordTotals(rec);
+      return `
+        <div class="record-card">
+          <div class="record-card-top">
+            <div class="record-card-date">${rec.date}</div>
+            <div class="record-card-income">¥${fmtMoney(t.totalIncome)}</div>
+          </div>
+          <div class="record-card-detail">
+            <span>${rec.orders} 单</span>
+            <span>运费 ¥${fmtMoney(rec.baseIncome)}</span>
+            <span>日程 ¥${fmtMoney(t.scheduleBonus)}</span>
+            ${rec.eventBonus > 0 ? `<span>活动 ¥${fmtMoney(rec.eventBonus)}</span>` : ''}
+            <span>${t.hourly !== null ? '时薪 ¥' + fmtMoney(t.hourly) : '未填时长'}</span>
+          </div>
+          <div class="record-card-actions">
+            <button class="icon-btn edit" data-date="${rec.date}">改</button>
+            <button class="icon-btn del" data-date="${rec.date}">删</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 当前周期默认展开，历史周期默认折叠，减少滑动距离
     return `
-      <div class="record-card">
-        <div class="record-card-top">
-          <div class="record-card-date">${rec.date}</div>
-          <div class="record-card-income">¥${fmtMoney(t.totalIncome)}</div>
-        </div>
-        <div class="record-card-detail">
-          <span>${rec.orders} 单</span>
-          <span>运费 ¥${fmtMoney(rec.baseIncome)}</span>
-          <span>日程 ¥${fmtMoney(t.scheduleBonus)}</span>
-          ${rec.eventBonus > 0 ? `<span>活动 ¥${fmtMoney(rec.eventBonus)}</span>` : ''}
-          <span>${t.hourly !== null ? '时薪 ¥' + fmtMoney(t.hourly) : '未填时长'}</span>
-        </div>
-        <div class="record-card-actions">
-          <button class="icon-btn edit" data-date="${rec.date}">改</button>
-          <button class="icon-btn del" data-date="${rec.date}">删</button>
-        </div>
-      </div>
+      <details class="cycle-group" ${isCurrentCycle ? 'open' : ''}>
+        <summary class="cycle-group-summary">
+          <div class="cycle-group-title">
+            <span>${startShow} - ${endShow}${isCurrentCycle ? ' (本周期)' : ''}</span>
+            <span class="details-arrow">▾</span>
+          </div>
+          <div class="cycle-group-sum">
+            <span>¥${fmtMoney(sumIncome)}</span>
+            <span>${sumOrders}单</span>
+            <span>${sortedRecs.length}天</span>
+          </div>
+        </summary>
+        <div class="cycle-group-body">${cardsHtml}</div>
+      </details>
     `;
   }).join('');
 
