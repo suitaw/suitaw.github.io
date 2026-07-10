@@ -1029,13 +1029,14 @@ function renderTable() {
 function editRecord(dateStr) {
   const rec = records.find(r => r.date === dateStr);
   if (!rec) return;
-  document.getElementById('inputCard').open = true;
+  const inputCard = document.getElementById('inputCard');
+  inputCard.open = true;
   inDate.value = rec.date;
   inCumOrders.value = rec.cumOrders;
   inCumIncome.value = rec.cumIncome;
   inBonus.value = rec.eventBonus || 0;
   setHoursInputs(rec.hours);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  inputCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   showToast('已载入 ' + dateStr + '，改完点保存即可覆盖');
 }
 
