@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>跑单收入统计</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --text: #1a1d24;
+    --text-dim: #6b7280;
+    --border: #e5e7eb;
+    --accent: #2563eb;
+    --accent-dim: #eff6ff;
+    --good: #16a34a;
+    --warn: #d97706;
+    --bad: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 40px;
+  }
+  header {
+    background: var(--card);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 18px;
+    margin: 0;
+  }
+  header p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 15px;
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .form-grid .full { grid-column: 1 / -1; }
+  .hours-input-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .hours-input-group input {
+    min-width: 0;
+    flex: 1;
+    text-align: center;
+  }
+  .hours-input-sep {
+    font-size: 12px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--card);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn:active { opacity: 0.7; }
+  .btn-primary { background: var(--accent); color: white; width: 100%; margin-top: 4px; }
+  .btn-secondary { background: var(--accent-dim); color: var(--accent); }
+  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-danger { background: #fef2f2; color: var(--bad); }
+  .btn-sm { padding: 6px 10px; font-size: 12px; }
+
+  .row-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+  #importArea {
+    width: 100%;
+    min-height: 90px;
+    resize: vertical;
+    font-family: monospace;
+    font-size: 13px;
+  }
+
+  .stats-grid {
+    display: block;
+  }
+  .stats-grid-inner {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .stat-box {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-box .val {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .stat-box .lbl {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .today-card {
+    background: linear-gradient(135deg, var(--accent) 0%, #1d4ed8 100%);
+    border-radius: 12px;
+    padding: 16px;
+    color: white;
+  }
+  .today-card-head {
+    font-size: 13px;
+    opacity: 0.85;
+    margin-bottom: 10px;
+  }
+  .today-card-main {
+    display: flex;
+    gap: 24px;
+  }
+  .today-big .val {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .today-big .lbl {
+    font-size: 12px;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+  .today-sub {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+    font-size: 12px;
+    opacity: 0.9;
+  }
+  .today-sub span {
+    background: rgba(255,255,255,0.15);
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+
+  .record-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .record-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .record-card-date {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .record-card-income {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .record-card-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .record-card-detail span {
+    background: var(--bg);
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .record-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: flex-end;
+  }
+  .icon-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 4px 10px;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .icon-btn.del { color: var(--bad); border-color: #fecaca; }
+
+  .empty-state {
+    text-align: center;
+    padding: 30px 10px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  canvas { width: 100%; height: 180px; }
+
+  .modal-mask {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-mask.show { display: flex; }
+  .modal {
+    background: var(--card);
+    width: 100%;
+    max-width: 720px;
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .modal h3 { margin: 0 0 12px; font-size: 16px; }
+
+  .preview-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .preview-item.error { border-color: var(--bad); background: #fef2f2; }
+  .preview-item .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  .preview-item .fields label { font-size: 11px; }
+  .preview-item .fields input { padding: 6px 8px; font-size: 13px; }
+  .small-note { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1d24;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .toast.show { opacity: 1; }
+
+  .details-card {
+    padding: 0;
+  }
+  .details-card summary {
+    list-style: none;
+  }
+  .details-card summary::-webkit-details-marker {
+    display: none;
+  }
+  .details-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .details-arrow {
+    color: var(--text-dim);
+    font-size: 13px;
+    transition: transform 0.15s;
+  }
+  .details-card[open] .details-arrow {
+    transform: rotate(180deg);
+  }
+  .details-body {
+    padding: 0 16px 16px;
+  }
+  .cycle-info {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .cycle-info .cycle-days-left {
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .cycle-info.cycle-warn .cycle-days-left {
+    color: var(--warn);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🛵 跑单收入统计</h1>
+  <p>累计数字自动换算成每日收入 · 数据仅存本机</p>
+</header>
+
+<div class="container">
+
+  <!-- 统计概览 -->
+  <div class="card">
+    <h2>📊 概览</h2>
+    <div class="stats-grid" id="statsGrid"></div>
+    <div id="cycleInfo" class="cycle-info"></div>
+  </div>
+
+  <!-- 每日录入（默认折叠） -->
+  <details class="card details-card" id="inputCard">
+    <summary class="details-summary">
+      <span>📝 每日录入</span>
+      <span class="details-arrow">▾</span>
+    </summary>
+    <div class="details-body">
+      <div class="form-grid">
+        <div class="full">
+          <label>日期</label>
+          <input type="date" id="inDate">
+        </div>
+        <div>
+          <label>今日累计单量（App上看到的数字）</label>
+          <input type="number" id="inCumOrders" placeholder="例如 320" inputmode="numeric">
+        </div>
+        <div>
+          <label>今日累计收入（元，App上看到的数字）</label>
+          <input type="number" id="inCumIncome" placeholder="例如 1560.5" inputmode="decimal">
+        </div>
+        <div>
+          <label>今日活动奖励（元，没有填0）</label>
+          <input type="number" id="inBonus" placeholder="0" value="0" inputmode="decimal">
+        </div>
+        <div>
+          <label>今日出勤时长</label>
+          <div class="hours-input-group">
+            <input type="number" id="inHoursH" placeholder="小时" inputmode="numeric" min="0">
+            <span class="hours-input-sep">时</span>
+            <input type="number" id="inHoursM" placeholder="分钟" inputmode="numeric" min="0" max="59">
+            <span class="hours-input-sep">分</span>
+          </div>
+        </div>
+      </div>
+      <div id="cycleWarning" class="small-note" style="display:none; color: var(--warn);"></div>
+      <button class="btn btn-primary" id="btnSave">保存今日记录</button>
+      <div class="row-actions">
+        <button class="btn btn-secondary btn-sm" id="btnImport">批量导入</button>
+        <button class="btn btn-ghost btn-sm" id="btnExport">导出备份</button>
+        <button class="btn btn-ghost btn-sm" id="btnImportFile">导入备份</button>
+        <input type="file" id="fileInput" accept="application/json" style="display:none">
+      </div>
+    </div>
+  </details>
+
+  <!-- 趋势图 -->
+  <div class="card">
+    <h2>📈 近14天趋势</h2>
+    <canvas id="trendChart"></canvas>
+  </div>
+
+  <!-- 历史记录 -->
+  <div class="card">
+    <h2>📋 历史记录</h2>
+    <div id="recordList"></div>
+    <div class="empty-state" id="emptyState" style="display:none;">还没有记录，先在上面填今天的数据</div>
+  </div>
+
+</div>
+
+<!-- 批量导入弹窗 -->
+<div class="modal-mask" id="importModal">
+  <div class="modal">
+    <h3>批量导入</h3>
+    <p class="small-note">把App截图里抄下来的文字，或账单复制的内容粘贴进去，每行一条。工具会尝试识别"日期、累计单量、累计收入"，识别不准的会标红，你可以手动改。</p>
+    <textarea id="importArea" placeholder="例如：
+2026-07-01 320单 1560.5元
+2026-07-02 345单 1680元
+7月3日 单量360 收入1750.2"></textarea>
+    <div class="row-actions">
+      <button class="btn btn-secondary btn-sm" id="btnParse">解析</button>
+      <button class="btn btn-ghost btn-sm" id="btnCloseImport">取消</button>
+    </div>
+    <div id="previewList" style="margin-top:14px;"></div>
+    <button class="btn btn-primary" id="btnConfirmImport" style="display:none;">确认导入</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'delivery_income_records_v1';
+
+// 周期设置：4周(28天)一个周期，起始日 2026-06-29（用户提供）
+// 后续周期自动往后推算，不用每28天手动改这个值
+const CYCLE_START = '2026-06-29';
+const CYCLE_LENGTH_DAYS = 28;
+
+function getCycleInfo(dateStr) {
+  const start = new Date(CYCLE_START);
+  const target = new Date(dateStr);
+  const diffDays = Math.floor((target - start) / 86400000);
+  const cycleIndex = Math.floor(diffDays / CYCLE_LENGTH_DAYS);
+  const cycleStartOffset = cycleIndex * CYCLE_LENGTH_DAYS;
+  const cycleStartDate = new Date(start.getTime() + cycleStartOffset * 86400000);
+  const cycleEndDate = new Date(cycleStartDate.getTime() + (CYCLE_LENGTH_DAYS - 1) * 86400000);
+  const daysLeft = Math.floor((cycleEndDate - target) / 86400000);
+  return {
+    cycleStart: cycleStartDate.toISOString().slice(0, 10),
+    cycleEnd: cycleEndDate.toISOString().slice(0, 10),
+    daysLeft
+  };
+}
+
+function loadRecords() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('读取记录失败', e);
+    return [];
+  }
+}
+
+function saveRecords(records) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function todayStr() {
+  const d = new Date();
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d - tz).toISOString().slice(0, 10);
+}
+
+function fmtMoney(n) {
+  return (Math.round(n * 100) / 100).toFixed(2);
+}
+
+// 获取某日期之前最近一条记录（按日期排序）
+function getPrevRecord(records, dateStr) {
+  const sorted = records.filter(r => r.date < dateStr).sort((a, b) => a.date < b.date ? 1 : -1);
+  return sorted[0] || null;
+}
+
+// 核心计算：给定当日累计单量/收入 + 前一条记录，算出当日单量/基础运费
+// 返回 { orders, baseIncome, cycleReset: bool }
+function computeDaily(cumOrders, cumIncome, prevRecord) {
+  if (!prevRecord) {
+    // 没有历史记录，第一条：不能拿累计值当日值，必须手动输入
+    return { orders: null, baseIncome: null, cycleReset: false, isFirst: true };
+  }
+  const prevOrders = prevRecord.cumOrders;
+  const prevIncome = prevRecord.cumIncome;
+  if (cumOrders < prevOrders || cumIncome < prevIncome) {
+    // 周期清零：无法用减法推算，标记需要手动输入
+    return { orders: null, baseIncome: null, cycleReset: true };
+  }
+  return {
+    orders: cumOrders - prevOrders,
+    baseIncome: cumIncome - prevIncome,
+    cycleReset: false
+  };
+}
+
+function computeRecordTotals(rec) {
+  const scheduleBonus = rec.orders * 0.5;
+  const totalIncome = rec.baseIncome + scheduleBonus + (rec.eventBonus || 0);
+  const hourly = rec.hours > 0 ? totalIncome / rec.hours : null;
+  return { scheduleBonus, totalIncome, hourly };
+}
+
+let records = loadRecords();
+
+// ---------- 每日录入表单 ----------
+const inDate = document.getElementById('inDate');
+const inCumOrders = document.getElementById('inCumOrders');
+const inCumIncome = document.getElementById('inCumIncome');
+const inBonus = document.getElementById('inBonus');
+const inHoursH = document.getElementById('inHoursH');
+const inHoursM = document.getElementById('inHoursM');
+const cycleWarning = document.getElementById('cycleWarning');
+
+inDate.value = todayStr();
+
+// 把"小时+分钟"两个输入框换算成小数小时，例如 3小时25分钟 -> 3.42
+function getHoursFromInputs() {
+  const h = parseFloat(inHoursH.value) || 0;
+  const m = parseFloat(inHoursM.value) || 0;
+  return h + m / 60;
+}
+
+// 把小数小时反向拆成"小时+分钟"填回两个输入框，用于编辑已有记录时回显
+function setHoursInputs(decimalHours) {
+  if (!decimalHours) {
+    inHoursH.value = '';
+    inHoursM.value = '';
+    return;
+  }
+  const h = Math.floor(decimalHours);
+  const m = Math.round((decimalHours - h) * 60);
+  inHoursH.value = h;
+  inHoursM.value = m;
+}
+
+function checkCycleWarning() {
+  const dateStr = inDate.value;
+  const cumOrders = parseFloat(inCumOrders.value);
+  const cumIncome = parseFloat(inCumIncome.value);
+  if (!dateStr || isNaN(cumOrders) || isNaN(cumIncome)) {
+    cycleWarning.style.display = 'none';
+    return;
+  }
+  const prev = getPrevRecord(records, dateStr);
+  if (prev && (cumOrders < prev.cumOrders || cumIncome < prev.cumIncome)) {
+    cycleWarning.style.display = 'block';
+    const info = getCycleInfo(dateStr);
+    const expected = info.daysLeft <= 1 || info.daysLeft < 0;
+    const prefix = expected
+      ? '✅ 累计值比上一条小，且正好是周期切换的日子，符合预期。'
+      : '⚠️ 累计值比上一条小，但按周期算还没到清零的日子，先确认是不是填错了数字。';
+    cycleWarning.textContent = prefix + ' 保存后会让你手动填今日的单量和基础运费（无法自动换算）。';
+  } else {
+    cycleWarning.style.display = 'none';
+  }
+}
+inCumOrders.addEventListener('input', checkCycleWarning);
+inCumIncome.addEventListener('input', checkCycleWarning);
+inDate.addEventListener('change', checkCycleWarning);
+
+document.getElementById('btnSave').addEventListener('click', () => {
+  const dateStr = inDate.value;
+  const cumOrders = parseFloat(inCumOrders.value);
+  const cumIncome = parseFloat(inCumIncome.value);
+  const eventBonus = parseFloat(inBonus.value) || 0;
+  const hours = getHoursFromInputs();
+
+  if (!dateStr) { showToast('请选择日期'); return; }
+  if (isNaN(cumOrders) || isNaN(cumIncome)) { showToast('请填写累计单量和累计收入'); return; }
+
+  const prev = getPrevRecord(records, dateStr);
+  const result = computeDaily(cumOrders, cumIncome, prev);
+
+  let orders, baseIncome;
+  if (result.cycleReset) {
+    const manualOrders = prompt('周期清零，无法自动换算。请手动输入今日单量：');
+    const manualIncome = prompt('请手动输入今日基础运费（元）：');
+    orders = parseFloat(manualOrders);
+    baseIncome = parseFloat(manualIncome);
+    if (isNaN(orders) || isNaN(baseIncome)) { showToast('输入无效，已取消保存'); return; }
+  } else if (result.isFirst) {
+    const manualOrders = prompt('这是第一条记录，没法用累计值推算今天实际跑了多少。\n请手动输入今天实际的单量：');
+    const manualIncome = prompt('请手动输入今天实际的基础运费（元）：');
+    orders = parseFloat(manualOrders);
+    baseIncome = parseFloat(manualIncome);
+    if (isNaN(orders) || isNaN(baseIncome)) { showToast('输入无效，已取消保存'); return; }
+  } else {
+    orders = result.orders;
+    baseIncome = result.baseIncome;
+  }
+
+  const existingIdx = records.findIndex(r => r.date === dateStr);
+  const newRec = { date: dateStr, cumOrders, cumIncome, orders, baseIncome, eventBonus, hours };
+  if (existingIdx >= 0) {
+    records[existingIdx] = newRec;
+    showToast('已更新 ' + dateStr + ' 的记录');
+  } else {
+    records.push(newRec);
+    showToast('已保存 ' + dateStr + ' 的记录');
+  }
+  records.sort((a, b) => a.date < b.date ? -1 : 1);
+  saveRecords(records);
+  renderAll();
+
+  // 保存的是今天的记录时，自动收起表单让用户看到概览结果；改的是历史日期就不打扰
+  if (dateStr === todayStr()) {
+    document.getElementById('inputCard').open = false;
+  }
+
+  // 清空活动奖励，保留其他方便连续录入
+  inBonus.value = '0';
+});
+
+// ---------- 渲染：统计概览 ----------
+function renderStats() {
+  const grid = document.getElementById('statsGrid');
+  if (records.length === 0) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">暂无数据</div>';
+    return;
+  }
+
+  const today = todayStr();
+  const last = records[records.length - 1];
+  const isToday = last.date === today;
+  const lastTotals = computeRecordTotals(last);
+
+  const now = new Date();
+  const last7 = records.filter(r => (now - new Date(r.date)) / 86400000 <= 7);
+  const last30 = records.filter(r => (now - new Date(r.date)) / 86400000 <= 30);
+
+  function sumTotals(list) {
+    let income = 0, orders = 0, hours = 0;
+    list.forEach(r => {
+      const t = computeRecordTotals(r);
+      income += t.totalIncome;
+      orders += r.orders;
+      hours += r.hours;
+    });
+    return { income, orders, hours, hourly: hours > 0 ? income / hours : null };
+  }
+
+  const s7 = sumTotals(last7);
+  const s30 = sumTotals(last30);
+
+  // 今日大卡片：标题区分"今天"还是"最近一次记录"（比如今天还没填，显示的是昨天数据）
+  const todayLabel = isToday ? '今天' : `最近记录（${last.date}）`;
+  const todayHtml = `
+    <div class="today-card">
+      <div class="today-card-head">${todayLabel}</div>
+      <div class="today-card-main">
+        <div class="today-big">
+          <div class="val">¥${fmtMoney(lastTotals.totalIncome)}</div>
+          <div class="lbl">总收入</div>
+        </div>
+        <div class="today-big">
+          <div class="val">${lastTotals.hourly !== null ? '¥' + fmtMoney(lastTotals.hourly) : '--'}</div>
+          <div class="lbl">时薪</div>
+        </div>
+      </div>
+      <div class="today-sub">
+        <span>${last.orders} 单</span>
+        <span>基础运费 ¥${fmtMoney(last.baseIncome)}</span>
+        <span>日程 ¥${fmtMoney(lastTotals.scheduleBonus)}</span>
+        ${last.eventBonus > 0 ? `<span>活动 ¥${fmtMoney(last.eventBonus)}</span>` : ''}
+      </div>
+    </div>
+  `;
+
+  // 7天/30天汇总：数据不足7/30天时说明实际覆盖天数，避免"总收入相同"造成的困惑
+  const summaryHtml = `
+    <div class="stat-box"><div class="val">¥${fmtMoney(s7.income)}</div><div class="lbl">近7天收入（${last7.length}天有记录）</div></div>
+    <div class="stat-box"><div class="val">${s7.orders}</div><div class="lbl">近7天单量</div></div>
+    <div class="stat-box"><div class="val">¥${fmtMoney(s30.income)}</div><div class="lbl">近30天收入（${last30.length}天有记录）</div></div>
+    <div class="stat-box"><div class="val">${s30.hourly !== null ? '¥' + fmtMoney(s30.hourly) : '--'}</div><div class="lbl">近30天平均时薪</div></div>
+  `;
+
+  grid.innerHTML = todayHtml + `<div class="stats-grid-inner">${summaryHtml}</div>`;
+}
+
+// ---------- 渲染：历史记录卡片 ----------
+function renderTable() {
+  const list = document.getElementById('recordList');
+  const emptyState = document.getElementById('emptyState');
+  if (records.length === 0) {
+    list.innerHTML = '';
+    emptyState.style.display = 'block';
+    return;
+  }
+  emptyState.style.display = 'none';
+  const sorted = [...records].sort((a, b) => a.date < b.date ? 1 : -1);
+  list.innerHTML = sorted.map(rec => {
+    const t = computeRecordTotals(rec);
+    return `
+      <div class="record-card">
+        <div class="record-card-top">
+          <div class="record-card-date">${rec.date}</div>
+          <div class="record-card-income">¥${fmtMoney(t.totalIncome)}</div>
+        </div>
+        <div class="record-card-detail">
+          <span>${rec.orders} 单</span>
+          <span>运费 ¥${fmtMoney(rec.baseIncome)}</span>
+          <span>日程 ¥${fmtMoney(t.scheduleBonus)}</span>
+          ${rec.eventBonus > 0 ? `<span>活动 ¥${fmtMoney(rec.eventBonus)}</span>` : ''}
+          <span>${t.hourly !== null ? '时薪 ¥' + fmtMoney(t.hourly) : '未填时长'}</span>
+        </div>
+        <div class="record-card-actions">
+          <button class="icon-btn edit" data-date="${rec.date}">改</button>
+          <button class="icon-btn del" data-date="${rec.date}">删</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  list.querySelectorAll('.icon-btn.edit').forEach(btn => {
+    btn.addEventListener('click', () => editRecord(btn.dataset.date));
+  });
+  list.querySelectorAll('.icon-btn.del').forEach(btn => {
+    btn.addEventListener('click', () => deleteRecord(btn.dataset.date));
+  });
+}
+
+function editRecord(dateStr) {
+  const rec = records.find(r => r.date === dateStr);
+  if (!rec) return;
+  document.getElementById('inputCard').open = true;
+  inDate.value = rec.date;
+  inCumOrders.value = rec.cumOrders;
+  inCumIncome.value = rec.cumIncome;
+  inBonus.value = rec.eventBonus || 0;
+  setHoursInputs(rec.hours);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  showToast('已载入 ' + dateStr + '，改完点保存即可覆盖');
+}
+
+function deleteRecord(dateStr) {
+  if (!confirm('确定删除 ' + dateStr + ' 的记录？')) return;
+  records = records.filter(r => r.date !== dateStr);
+  saveRecords(records);
+  renderAll();
+  showToast('已删除');
+}
+
+// ---------- 渲染：趋势图（原生canvas，无依赖）----------
+function renderChart() {
+  const canvas = document.getElementById('trendChart');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 180 * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, rect.width, 180);
+
+  const sorted = [...records].sort((a, b) => a.date < b.date ? -1 : 1).slice(-14);
+  if (sorted.length < 2) {
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('再记录几天就能看到趋势了', rect.width / 2, 90);
+    ctx.textAlign = 'left';
+    return;
+  }
+
+  const data = sorted.map(r => computeRecordTotals(r).totalIncome);
+  const maxVal = Math.max(...data, 1);
+  const w = rect.width;
+  const h = 180;
+  const padL = 40, padR = 10, padT = 15, padB = 25;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+  const stepX = sorted.length > 1 ? chartW / (sorted.length - 1) : 0;
+
+  // 网格线 + y轴标签
+  ctx.strokeStyle = '#e5e7eb';
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '10px sans-serif';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 3; i++) {
+    const y = padT + chartH - (chartH * i / 3);
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(w - padR, y);
+    ctx.stroke();
+    ctx.fillText(Math.round(maxVal * i / 3), 4, y + 3);
+  }
+
+  // 折线
+  ctx.strokeStyle = '#2563eb';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  sorted.forEach((r, i) => {
+    const x = padL + i * stepX;
+    const y = padT + chartH - (data[i] / maxVal) * chartH;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // 数据点
+  ctx.fillStyle = '#2563eb';
+  sorted.forEach((r, i) => {
+    const x = padL + i * stepX;
+    const y = padT + chartH - (data[i] / maxVal) * chartH;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // x轴日期标签（只显示部分避免拥挤）
+  ctx.fillStyle = '#9ca3af';
+  const labelEvery = Math.ceil(sorted.length / 5);
+  sorted.forEach((r, i) => {
+    if (i % labelEvery !== 0 && i !== sorted.length - 1) return;
+    const x = padL + i * stepX;
+    const label = r.date.slice(5);
+    ctx.fillText(label, x - 12, h - 6);
+  });
+}
+
+function renderAll() {
+  renderStats();
+  renderTable();
+  renderChart();
+  renderCycleInfo();
+}
+
+// 显示当前周期区间和剩余天数，快到清零日时提示会更明显
+function renderCycleInfo() {
+  const el = document.getElementById('cycleInfo');
+  const info = getCycleInfo(todayStr());
+  el.classList.toggle('cycle-warn', info.daysLeft <= 2);
+  const startShow = info.cycleStart.slice(5).replace('-', '/');
+  const endShow = info.cycleEnd.slice(5).replace('-', '/');
+  let daysLeftText;
+  if (info.daysLeft < 0) {
+    daysLeftText = '已进入新周期';
+  } else if (info.daysLeft === 0) {
+    daysLeftText = '今天是周期最后一天';
+  } else {
+    daysLeftText = `还剩${info.daysLeft}天`;
+  }
+  el.innerHTML = `<span>本周期 ${startShow} - ${endShow}</span><span class="cycle-days-left">${daysLeftText}</span>`;
+}
+
+// 只在页面首次加载时判断：今天没记录就自动展开录入表单，之后交给用户自己点开/收起
+function initInputCardState() {
+  const inputCard = document.getElementById('inputCard');
+  const hasToday = records.some(r => r.date === todayStr());
+  inputCard.open = !hasToday;
+}
+
+// ---------- 批量导入 ----------
+const importModal = document.getElementById('importModal');
+document.getElementById('btnImport').addEventListener('click', () => {
+  importModal.classList.add('show');
+  document.getElementById('previewList').innerHTML = '';
+  document.getElementById('btnConfirmImport').style.display = 'none';
+});
+document.getElementById('btnCloseImport').addEventListener('click', () => {
+  importModal.classList.remove('show');
+});
+
+// 宽松解析：从一行文本里尝试抓 日期、单量、金额
+function parseLine(line, idx) {
+  const raw = line.trim();
+  if (!raw) return null;
+
+  const result = { raw, date: null, cumOrders: null, cumIncome: null, error: null };
+
+  // 日期匹配： 2026-07-01 / 2026/7/1 / 7月1日 / 7-1
+  let dateMatch = raw.match(/(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})/);
+  if (dateMatch) {
+    const [, y, m, d] = dateMatch;
+    result.date = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  } else {
+    dateMatch = raw.match(/(\d{1,2})月(\d{1,2})[日号]/);
+    if (dateMatch) {
+      const [, m, d] = dateMatch;
+      const y = new Date().getFullYear();
+      result.date = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+  }
+
+  // 单量匹配：优先找"单量""数量"这类关键词后面的数字（冒号可有可无），
+  // 找不到再退回"数字后面跟单/笔"这种松散模式
+  const orderKeywordMatch = raw.match(/(?:累计)?单量[：:]\s*(\d+)/) || raw.match(/(?:总)?数量[：:]\s*(\d+)/);
+  if (orderKeywordMatch) {
+    result.cumOrders = parseFloat(orderKeywordMatch[1]);
+  } else {
+    const orderMatch = raw.match(/(\d+)\s*(?:单|笔)/);
+    if (orderMatch) {
+      result.cumOrders = parseFloat(orderMatch[1]);
+    }
+  }
+
+  // 金额匹配：优先找"收入""金额"这类关键词后面的数字，
+  // 找不到再退回"¥数字"或"数字元"这种松散模式
+  const incomeKeywordMatch = raw.match(/(?:累计)?收入[：:]\s*(\d+(?:\.\d+)?)/) || raw.match(/金额[：:]\s*(\d+(?:\.\d+)?)/);
+  if (incomeKeywordMatch) {
+    result.cumIncome = parseFloat(incomeKeywordMatch[1]);
+  } else {
+    const incomeMatch = raw.match(/[¥￥]\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*元/);
+    if (incomeMatch) {
+      result.cumIncome = parseFloat(incomeMatch[1] || incomeMatch[2]);
+    }
+  }
+
+  if (!result.date) result.error = '未识别到日期';
+  else if (result.cumOrders === null) result.error = '未识别到单量';
+  else if (result.cumIncome === null) result.error = '未识别到金额';
+
+  return result;
+}
+
+document.getElementById('btnParse').addEventListener('click', () => {
+  const text = document.getElementById('importArea').value;
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) { showToast('请先粘贴内容'); return; }
+
+  const parsed = lines.map((l, i) => parseLine(l, i));
+  renderPreview(parsed);
+});
+
+function renderPreview(parsed) {
+  const container = document.getElementById('previewList');
+  container.innerHTML = parsed.map((p, i) => `
+    <div class="preview-item ${p.error ? 'error' : ''}" data-idx="${i}">
+      <div>${p.error ? '⚠️ ' + p.error + ' — 原文：' + escapeHtml(p.raw) : '✓ 识别成功'}</div>
+      <div class="fields">
+        <div>
+          <label>日期</label>
+          <input type="date" class="pv-date" value="${p.date || ''}">
+        </div>
+        <div>
+          <label>累计单量</label>
+          <input type="number" class="pv-orders" value="${p.cumOrders !== null ? p.cumOrders : ''}">
+        </div>
+        <div>
+          <label>累计收入</label>
+          <input type="number" class="pv-income" value="${p.cumIncome !== null ? p.cumIncome : ''}">
+        </div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('btnConfirmImport').style.display = 'block';
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+document.getElementById('btnConfirmImport').addEventListener('click', () => {
+  const items = document.querySelectorAll('.preview-item');
+  let imported = 0, skipped = 0;
+  const rows = [];
+  items.forEach(item => {
+    const date = item.querySelector('.pv-date').value;
+    const cumOrders = parseFloat(item.querySelector('.pv-orders').value);
+    const cumIncome = parseFloat(item.querySelector('.pv-income').value);
+    if (!date || isNaN(cumOrders) || isNaN(cumIncome)) { skipped++; return; }
+    rows.push({ date, cumOrders, cumIncome });
+  });
+
+  // 按日期排序后依次计算：优先用"批次内部前一行"做差值，
+  // 只有批次里的第一行才去查已保存记录里最近的一条作为参照
+  // （之前的bug：每一行都只查已保存records，导致批次内部连续多天全被误判成"无历史记录"而跳过）
+  rows.sort((a, b) => a.date < b.date ? -1 : 1);
+  let prevInBatch = null;
+  rows.forEach(row => {
+    const prev = prevInBatch || getPrevRecord(records, row.date);
+    const result = computeDaily(row.cumOrders, row.cumIncome, prev);
+    let orders, baseIncome;
+    if (result.cycleReset) {
+      // 批量导入时遇到清零，跳过并提示，避免弹窗打断流程
+      skipped++;
+      prevInBatch = { date: row.date, cumOrders: row.cumOrders, cumIncome: row.cumIncome };
+      return;
+    }
+    if (result.isFirst) {
+      // 批次里也没有更早的行、本地也没有历史记录，没法自动推算，跳过让用户单独手动录入
+      skipped++;
+      prevInBatch = { date: row.date, cumOrders: row.cumOrders, cumIncome: row.cumIncome };
+      return;
+    }
+    orders = result.orders;
+    baseIncome = result.baseIncome;
+
+    const existingIdx = records.findIndex(r => r.date === row.date);
+    const newRec = { date: row.date, cumOrders: row.cumOrders, cumIncome: row.cumIncome, orders, baseIncome, eventBonus: 0, hours: 0 };
+    if (existingIdx >= 0) records[existingIdx] = newRec;
+    else records.push(newRec);
+    imported++;
+    prevInBatch = newRec;
+  });
+
+  records.sort((a, b) => a.date < b.date ? -1 : 1);
+  saveRecords(records);
+  renderAll();
+  importModal.classList.remove('show');
+  const skipNote = skipped > 0 ? '（跳过的可能是最早一条没有更早数据可比对，或者遇到周期清零，需要单独手动录入）' : '';
+  showToast(`导入完成：成功${imported}条，跳过${skipped}条${skipNote}`);
+});
+
+// ---------- 导出/导入备份 ----------
+document.getElementById('btnExport').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `跑单收入备份_${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('btnImportFile').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const data = JSON.parse(evt.target.result);
+      if (!Array.isArray(data)) throw new Error('格式不对');
+      if (!confirm(`备份文件里有${data.length}条记录，导入会与现有数据合并（同日期覆盖），确定吗？`)) return;
+      data.forEach(rec => {
+        const idx = records.findIndex(r => r.date === rec.date);
+        if (idx >= 0) records[idx] = rec;
+        else records.push(rec);
+      });
+      records.sort((a, b) => a.date < b.date ? -1 : 1);
+      saveRecords(records);
+      renderAll();
+      showToast('备份导入成功');
+    } catch (err) {
+      showToast('文件格式不对，导入失败');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// 窗口resize时重绘图表
+window.addEventListener('resize', renderChart);
+
+renderAll();
+initInputCardState();
+</script>
+
+</body>
+</html>
