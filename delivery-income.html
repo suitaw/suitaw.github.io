@@ -373,6 +373,30 @@
   }
   .toast.show { opacity: 1; }
 
+  .scroll-fab-group {
+    position: fixed;
+    right: 16px;
+    bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 50;
+  }
+  .scroll-fab {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text-dim);
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    cursor: pointer;
+  }
+  .scroll-fab:active {
+    opacity: 0.6;
+  }
+
   .details-card {
     padding: 0;
   }
@@ -617,6 +641,11 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="scroll-fab-group">
+  <button class="scroll-fab" id="btnScrollTop" title="回到顶部">▲</button>
+  <button class="scroll-fab" id="btnScrollBottom" title="到底部">▼</button>
+</div>
 
 <script>
 const STORAGE_KEY = 'delivery_income_records_v1';
@@ -878,7 +907,7 @@ function renderStats() {
       <div class="today-card today-card-empty">
         <div class="today-card-head">${displayDate}</div>
         <div class="today-empty-msg">这天没有记录</div>
-        <button class="btn btn-secondary btn-sm" id="btnGoRecordEmptyDay">去补录这天</button>
+        <button class="btn btn-secondary btn-sm" id="btnGoRecordEmptyDay" data-date="${displayDate}">去补录这天</button>
       </div>
     `;
   } else {
@@ -911,7 +940,7 @@ function renderStats() {
           ${displayRec.eventBonus > 0 ? `<span>活动 ¥${fmtMoney(displayRec.eventBonus)}</span>` : ''}
         </div>
         <div class="today-card-actions">
-          <button class="btn btn-ghost btn-sm today-back-btn" id="btnEditThisDay">改这天</button>
+          <button class="btn btn-ghost btn-sm today-back-btn" id="btnEditThisDay" data-date="${displayDate}">改这天</button>
           ${viewingDate ? '<button class="btn btn-ghost btn-sm today-back-btn" id="btnBackToLatest">回到最新记录</button>' : ''}
         </div>
       </div>
@@ -928,15 +957,16 @@ function renderStats() {
 
   grid.innerHTML = todayHtml + `<div class="stats-grid-inner">${summaryHtml}</div>`;
 
-  // 绑定卡片内的交互按钮
+  // 绑定卡片内的交互按钮：改这天/去补录 都从 data-date 属性读取日期，
+  // 而不是用闭包捕获的displayDate变量，避免快速连续点击日历时绑定时序错乱导致日期对不上
   const backBtn = document.getElementById('btnBackToLatest');
   if (backBtn) backBtn.addEventListener('click', () => { viewingDate = null; renderStats(); });
   const editBtn = document.getElementById('btnEditThisDay');
-  if (editBtn) editBtn.addEventListener('click', () => editRecord(displayDate));
+  if (editBtn) editBtn.addEventListener('click', () => editRecord(editBtn.dataset.date));
   const recordEmptyBtn = document.getElementById('btnGoRecordEmptyDay');
   if (recordEmptyBtn) recordEmptyBtn.addEventListener('click', () => {
     document.getElementById('inputCard').open = true;
-    inDate.value = displayDate;
+    inDate.value = recordEmptyBtn.dataset.date;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 }
@@ -1430,6 +1460,13 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
 
 // 窗口resize时重绘图表
 window.addEventListener('resize', renderChart);
+
+document.getElementById('btnScrollTop').addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+document.getElementById('btnScrollBottom').addEventListener('click', () => {
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+});
 
 renderAll();
 initInputCardState();
