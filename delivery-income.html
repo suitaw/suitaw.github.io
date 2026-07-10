@@ -194,6 +194,25 @@
     padding: 3px 8px;
     border-radius: 6px;
   }
+  .today-back-btn {
+    margin-top: 12px;
+    width: 100%;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: none;
+  }
+  .today-card-empty {
+    text-align: center;
+    padding: 8px 0 4px;
+  }
+  .today-empty-msg {
+    font-size: 15px;
+    opacity: 0.9;
+    margin: 14px 0 16px;
+  }
+  .today-card-empty .btn-secondary {
+    background: rgba(255,255,255,0.9);
+  }
 
   .cycle-group {
     border: 1px solid var(--border);
@@ -477,35 +496,6 @@
   .cal-day.cycle-boundary {
     box-shadow: inset 0 2px 0 0 var(--warn);
   }
-
-  .day-modal-body {
-    padding: 4px 0;
-  }
-  .day-modal-income {
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--accent);
-    margin-bottom: 10px;
-  }
-  .day-modal-detail {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--text-dim);
-    margin-bottom: 16px;
-  }
-  .day-modal-detail span {
-    background: var(--bg);
-    padding: 4px 10px;
-    border-radius: 6px;
-  }
-  .day-modal-empty {
-    text-align: center;
-    padding: 20px 10px;
-    color: var(--text-dim);
-    font-size: 14px;
-  }
 </style>
 </head>
 <body>
@@ -517,25 +507,31 @@
 
 <div class="container">
 
+  <!-- 日历 -->
+  <details class="card details-card" id="calendarCard" open>
+    <summary class="details-summary">
+      <span>📅 日历</span>
+      <span class="details-arrow">▾</span>
+    </summary>
+    <div class="details-body">
+      <div class="calendar-header">
+        <button class="cal-nav-btn" id="calPrevBtn">‹</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button class="cal-nav-btn" id="calNextBtn">›</button>
+      </div>
+      <div id="calCycleNote" class="cal-cycle-note"></div>
+      <div class="calendar-weekdays">
+        <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+  </details>
+
   <!-- 统计概览 -->
   <div class="card">
     <h2>📊 概览</h2>
     <div class="stats-grid" id="statsGrid"></div>
     <div id="cycleInfo" class="cycle-info"></div>
-  </div>
-
-  <!-- 日历 -->
-  <div class="card">
-    <div class="calendar-header">
-      <button class="cal-nav-btn" id="calPrevBtn">‹</button>
-      <div class="cal-title" id="calTitle"></div>
-      <button class="cal-nav-btn" id="calNextBtn">›</button>
-    </div>
-    <div id="calCycleNote" class="cal-cycle-note"></div>
-    <div class="calendar-weekdays">
-      <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
-    </div>
-    <div class="calendar-grid" id="calendarGrid"></div>
   </div>
 
   <!-- 每日录入（默认折叠） -->
@@ -552,11 +548,11 @@
         </div>
         <div>
           <label>今日累计单量（App上看到的数字）</label>
-          <input type="number" id="inCumOrders" placeholder="例如 320" inputmode="numeric">
+          <input type="number" id="inCumOrders" inputmode="numeric">
         </div>
         <div>
           <label>今日累计收入（元，App上看到的数字）</label>
-          <input type="number" id="inCumIncome" placeholder="例如 1560.5" inputmode="decimal">
+          <input type="number" id="inCumIncome" inputmode="decimal">
         </div>
         <div>
           <label>今日活动奖励（元，没有填0）</label>
@@ -596,15 +592,6 @@
     <div class="empty-state" id="emptyState" style="display:none;">还没有记录，先在上面填今天的数据</div>
   </div>
 
-</div>
-
-<!-- 日期详情弹窗 -->
-<div class="modal-mask" id="dayModal">
-  <div class="modal">
-    <h3 id="dayModalTitle"></h3>
-    <div class="day-modal-body" id="dayModalBody"></div>
-    <button class="btn btn-ghost" id="btnCloseDayModal">关闭</button>
-  </div>
 </div>
 
 <!-- 批量导入弹窗 -->
@@ -815,6 +802,11 @@ document.getElementById('btnSave').addEventListener('click', () => {
   }
   records.sort((a, b) => a.date < b.date ? -1 : 1);
   saveRecords(records);
+
+  // 如果正在查看的就是这一天（包括之前是空态），保存后让概览区跟着刷新显示新数据
+  if (viewingDate === dateStr || viewingDate === ('empty:' + dateStr)) {
+    viewingDate = dateStr;
+  }
   renderAll();
 
   // 保存的是今天的记录时，自动收起表单让用户看到概览结果；改的是历史日期就不打扰
@@ -827,6 +819,10 @@ document.getElementById('btnSave').addEventListener('click', () => {
 });
 
 // ---------- 渲染：统计概览 ----------
+// 当前概览大卡片正在查看的日期：null 表示"跟随最新记录"（默认行为），
+// 点日历某天后会被设成具体日期字符串，若那天没数据则记录为特殊标记 'empty:日期'
+let viewingDate = null;
+
 function renderStats() {
   const grid = document.getElementById('statsGrid');
   if (records.length === 0) {
@@ -835,9 +831,23 @@ function renderStats() {
   }
 
   const today = todayStr();
-  const last = records[records.length - 1];
-  const isToday = last.date === today;
-  const lastTotals = computeRecordTotals(last);
+
+  // 确定大卡片要展示的记录：优先用户点选的日期，否则回退到"最新一条记录"
+  let displayRec = null;
+  let displayDate = null;
+  let isEmpty = false;
+
+  if (viewingDate && viewingDate.startsWith('empty:')) {
+    displayDate = viewingDate.slice(6);
+    isEmpty = true;
+  } else if (viewingDate) {
+    displayRec = records.find(r => r.date === viewingDate);
+    displayDate = viewingDate;
+    if (!displayRec) isEmpty = true;
+  } else {
+    displayRec = records[records.length - 1];
+    displayDate = displayRec.date;
+  }
 
   const now = new Date();
   const last7 = records.filter(r => (now - new Date(r.date)) / 86400000 <= 7);
@@ -857,29 +867,49 @@ function renderStats() {
   const s7 = sumTotals(last7);
   const s30 = sumTotals(last30);
 
-  // 今日大卡片：标题区分"今天"还是"最近一次记录"（比如今天还没填，显示的是昨天数据）
-  const todayLabel = isToday ? '今天' : `最近记录（${last.date}）`;
-  const todayHtml = `
-    <div class="today-card">
-      <div class="today-card-head">${todayLabel}</div>
-      <div class="today-card-main">
-        <div class="today-big">
-          <div class="val">¥${fmtMoney(lastTotals.totalIncome)}</div>
-          <div class="lbl">总收入</div>
-        </div>
-        <div class="today-big">
-          <div class="val">${lastTotals.hourly !== null ? '¥' + fmtMoney(lastTotals.hourly) : '--'}</div>
-          <div class="lbl">时薪</div>
-        </div>
+  let todayHtml;
+  if (isEmpty) {
+    // 点了日历上没有数据的一天：提示未记录，给个快捷入口去补录
+    todayHtml = `
+      <div class="today-card today-card-empty">
+        <div class="today-card-head">${displayDate}</div>
+        <div class="today-empty-msg">这天没有记录</div>
+        <button class="btn btn-secondary btn-sm" id="btnGoRecordEmptyDay">去补录这天</button>
       </div>
-      <div class="today-sub">
-        <span>${last.orders} 单</span>
-        <span>基础运费 ¥${fmtMoney(last.baseIncome)}</span>
-        <span>日程 ¥${fmtMoney(lastTotals.scheduleBonus)}</span>
-        ${last.eventBonus > 0 ? `<span>活动 ¥${fmtMoney(last.eventBonus)}</span>` : ''}
+    `;
+  } else {
+    const t = computeRecordTotals(displayRec);
+    const isToday = displayDate === today;
+    const isLatest = displayRec === records[records.length - 1];
+    let label;
+    if (viewingDate) {
+      label = displayDate + (isToday ? '（今天）' : '');
+    } else {
+      label = isToday ? '今天' : `最近记录（${displayDate}）`;
+    }
+    todayHtml = `
+      <div class="today-card">
+        <div class="today-card-head">${label}</div>
+        <div class="today-card-main">
+          <div class="today-big">
+            <div class="val">¥${fmtMoney(t.totalIncome)}</div>
+            <div class="lbl">总收入</div>
+          </div>
+          <div class="today-big">
+            <div class="val">${t.hourly !== null ? '¥' + fmtMoney(t.hourly) : '--'}</div>
+            <div class="lbl">时薪</div>
+          </div>
+        </div>
+        <div class="today-sub">
+          <span>${displayRec.orders} 单</span>
+          <span>基础运费 ¥${fmtMoney(displayRec.baseIncome)}</span>
+          <span>日程 ¥${fmtMoney(t.scheduleBonus)}</span>
+          ${displayRec.eventBonus > 0 ? `<span>活动 ¥${fmtMoney(displayRec.eventBonus)}</span>` : ''}
+        </div>
+        ${viewingDate ? '<button class="btn btn-ghost btn-sm today-back-btn" id="btnBackToLatest">回到最新记录</button>' : ''}
       </div>
-    </div>
-  `;
+    `;
+  }
 
   // 7天/30天汇总：数据不足7/30天时说明实际覆盖天数，避免"总收入相同"造成的困惑
   const summaryHtml = `
@@ -890,6 +920,16 @@ function renderStats() {
   `;
 
   grid.innerHTML = todayHtml + `<div class="stats-grid-inner">${summaryHtml}</div>`;
+
+  // 绑定卡片内的交互按钮
+  const backBtn = document.getElementById('btnBackToLatest');
+  if (backBtn) backBtn.addEventListener('click', () => { viewingDate = null; renderStats(); });
+  const recordEmptyBtn = document.getElementById('btnGoRecordEmptyDay');
+  if (recordEmptyBtn) recordEmptyBtn.addEventListener('click', () => {
+    document.getElementById('inputCard').open = true;
+    inDate.value = displayDate;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 }
 
 // ---------- 渲染：历史记录卡片 ----------
@@ -994,6 +1034,7 @@ function deleteRecord(dateStr) {
   if (!confirm('确定删除 ' + dateStr + ' 的记录？')) return;
   records = records.filter(r => r.date !== dateStr);
   saveRecords(records);
+  if (viewingDate === dateStr) viewingDate = null;
   renderAll();
   showToast('已删除');
 }
@@ -1157,7 +1198,7 @@ function renderCalendar() {
 
   // 绑定点击事件
   document.querySelectorAll('.cal-day:not(.empty)').forEach(cell => {
-    cell.addEventListener('click', () => openDayModal(cell.dataset.date));
+    cell.addEventListener('click', () => selectCalendarDay(cell.dataset.date));
   });
 }
 
@@ -1170,58 +1211,13 @@ document.getElementById('calNextBtn').addEventListener('click', () => {
   renderCalendar();
 });
 
-// 点某一天弹出详情
-function openDayModal(dateStr) {
+// 点日历某一天：更新概览卡片显示这一天的数据，不再弹窗
+function selectCalendarDay(dateStr) {
   const rec = records.find(r => r.date === dateStr);
-  const modal = document.getElementById('dayModal');
-  const title = document.getElementById('dayModalTitle');
-  const body = document.getElementById('dayModalBody');
-  title.textContent = dateStr;
-
-  if (!rec) {
-    body.innerHTML = `
-      <div class="day-modal-empty">这天没有记录</div>
-      <button class="btn btn-primary" id="btnGoRecordThisDay">去补录这天</button>
-    `;
-    modal.classList.add('show');
-    document.getElementById('btnGoRecordThisDay').addEventListener('click', () => {
-      modal.classList.remove('show');
-      document.getElementById('inputCard').open = true;
-      inDate.value = dateStr;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-    return;
-  }
-
-  const t = computeRecordTotals(rec);
-  body.innerHTML = `
-    <div class="day-modal-income">¥${fmtMoney(t.totalIncome)}</div>
-    <div class="day-modal-detail">
-      <span>${rec.orders} 单</span>
-      <span>运费 ¥${fmtMoney(rec.baseIncome)}</span>
-      <span>日程 ¥${fmtMoney(t.scheduleBonus)}</span>
-      ${rec.eventBonus > 0 ? `<span>活动 ¥${fmtMoney(rec.eventBonus)}</span>` : ''}
-      <span>${t.hourly !== null ? '时薪 ¥' + fmtMoney(t.hourly) : '未填时长'}</span>
-    </div>
-    <div class="row-actions">
-      <button class="btn btn-secondary btn-sm" id="btnEditFromModal">改这天</button>
-      <button class="btn btn-danger btn-sm" id="btnDeleteFromModal">删这天</button>
-    </div>
-  `;
-  modal.classList.add('show');
-  document.getElementById('btnEditFromModal').addEventListener('click', () => {
-    modal.classList.remove('show');
-    editRecord(dateStr);
-  });
-  document.getElementById('btnDeleteFromModal').addEventListener('click', () => {
-    modal.classList.remove('show');
-    deleteRecord(dateStr);
-  });
+  viewingDate = rec ? dateStr : ('empty:' + dateStr);
+  renderStats();
+  document.getElementById('statsGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-
-document.getElementById('btnCloseDayModal').addEventListener('click', () => {
-  document.getElementById('dayModal').classList.remove('show');
-});
 
 // 只在页面首次加载时判断：今天没记录就自动展开录入表单，之后交给用户自己点开/收起
 function initInputCardState() {
