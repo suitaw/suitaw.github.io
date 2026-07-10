@@ -381,20 +381,38 @@
     flex-direction: column;
     gap: 10px;
     z-index: 50;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .scroll-fab-group.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
   }
   .scroll-fab {
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--card);
-    color: var(--text-dim);
-    font-size: 14px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    border: none;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(6px);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.18), 0 1px 3px rgba(0,0,0,0.08);
     cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .scroll-fab svg {
+    width: 18px;
+    height: 18px;
   }
   .scroll-fab:active {
-    opacity: 0.6;
+    transform: scale(0.9);
+    box-shadow: 0 2px 8px rgba(37,99,235,0.18);
   }
 
   .details-card {
@@ -642,9 +660,13 @@
 
 <div class="toast" id="toast"></div>
 
-<div class="scroll-fab-group">
-  <button class="scroll-fab" id="btnScrollTop" title="回到顶部">▲</button>
-  <button class="scroll-fab" id="btnScrollBottom" title="到底部">▼</button>
+<div class="scroll-fab-group" id="scrollFabGroup">
+  <button class="scroll-fab" id="btnScrollTop" title="回到顶部">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+  </button>
+  <button class="scroll-fab" id="btnScrollBottom" title="到底部">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
 </div>
 
 <script>
@@ -1467,6 +1489,17 @@ document.getElementById('btnScrollTop').addEventListener('click', () => {
 document.getElementById('btnScrollBottom').addEventListener('click', () => {
   window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 });
+
+// 悬浮按钮默认隐藏，滑动时淡入，停止滑动一段时间后自动淡出
+const scrollFabGroup = document.getElementById('scrollFabGroup');
+let scrollHideTimer = null;
+window.addEventListener('scroll', () => {
+  scrollFabGroup.classList.add('visible');
+  clearTimeout(scrollHideTimer);
+  scrollHideTimer = setTimeout(() => {
+    scrollFabGroup.classList.remove('visible');
+  }, 1200);
+}, { passive: true });
 
 renderAll();
 initInputCardState();
