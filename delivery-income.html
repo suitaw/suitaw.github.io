@@ -194,9 +194,13 @@
     padding: 3px 8px;
     border-radius: 6px;
   }
-  .today-back-btn {
+  .today-card-actions {
+    display: flex;
+    gap: 8px;
     margin-top: 12px;
-    width: 100%;
+  }
+  .today-back-btn {
+    flex: 1;
     background: rgba(255,255,255,0.15);
     color: white;
     border: none;
@@ -906,7 +910,10 @@ function renderStats() {
           <span>日程 ¥${fmtMoney(t.scheduleBonus)}</span>
           ${displayRec.eventBonus > 0 ? `<span>活动 ¥${fmtMoney(displayRec.eventBonus)}</span>` : ''}
         </div>
-        ${viewingDate ? '<button class="btn btn-ghost btn-sm today-back-btn" id="btnBackToLatest">回到最新记录</button>' : ''}
+        <div class="today-card-actions">
+          <button class="btn btn-ghost btn-sm today-back-btn" id="btnEditThisDay">改这天</button>
+          ${viewingDate ? '<button class="btn btn-ghost btn-sm today-back-btn" id="btnBackToLatest">回到最新记录</button>' : ''}
+        </div>
       </div>
     `;
   }
@@ -924,6 +931,8 @@ function renderStats() {
   // 绑定卡片内的交互按钮
   const backBtn = document.getElementById('btnBackToLatest');
   if (backBtn) backBtn.addEventListener('click', () => { viewingDate = null; renderStats(); });
+  const editBtn = document.getElementById('btnEditThisDay');
+  if (editBtn) editBtn.addEventListener('click', () => editRecord(displayDate));
   const recordEmptyBtn = document.getElementById('btnGoRecordEmptyDay');
   if (recordEmptyBtn) recordEmptyBtn.addEventListener('click', () => {
     document.getElementById('inputCard').open = true;
@@ -1216,7 +1225,7 @@ function selectCalendarDay(dateStr) {
   const rec = records.find(r => r.date === dateStr);
   viewingDate = rec ? dateStr : ('empty:' + dateStr);
   renderStats();
-  document.getElementById('statsGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('statsGrid').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // 只在页面首次加载时判断：今天没记录就自动展开录入表单，之后交给用户自己点开/收起
