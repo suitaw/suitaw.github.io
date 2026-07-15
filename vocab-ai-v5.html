@@ -612,6 +612,9 @@ let askHistory=[];       // 问 AI 当前词的多轮对话历史 [{role,content
 let askWordId=null;      // askHistory 归属的词 id；切到别的词时自动作废
 function render(){
   const v=document.getElementById("view");
+  // 记录"当前是否真的在背词卡片视图"，供刷新后 restoreSession 判断是否需要拉回卡片
+  // （page==="home" 还包含分类预览/文章详情/文章列表等子状态，不能仅凭 page 判断）
+  save("vocab_v5_studying",page==="home"&&studyStarted);
   // 快速加词浮动按钮：背单词卡片态隐藏（不挡操作），其余显示
   const fab=document.getElementById("quick-add-fab");
   if(fab)fab.style.display=(page==="home"&&(studyStarted||previewCat!==null))?"none":"block";
@@ -795,14 +798,15 @@ function saveSession(){
 }
 function clearSession(){localStorage.removeItem(SESSION_KEY)}
 // 启动时尝试恢复未完成的背词会话；成功返回 true
-// 注意：只有刷新前本来就停留在 home 页时才自动跳回卡片界面；
-// 如果刷新前在别的页（AI助手/统计等），保留会话数据但不强行拉回背词，避免"刷新哪页都被拽回背词卡"
+// 注意：只有刷新前确实停留在背词卡片视图时才自动跳回卡片界面；
+// 如果刷新前在别的页（AI助手/统计等）或 home 内的其他子状态（分类预览/文章详情/文章列表等），
+// 保留会话数据但不强行拉回背词，避免"刷新哪页都被拽回背词卡"
 function restoreSession(){
   const s=load(SESSION_KEY,null);
   if(!s||!s.queue||!s.queue.length)return false;
   // 过期保护：超过 24 小时的会话不自动恢复（避免恢复很旧的队列）
   if(s.ts&&Date.now()-s.ts>24*3600000){clearSession();return false}
-  if(page!=="home")return false;  // 刷新前不在home页，不强制切回背词卡片，留在原页面
+  if(page!=="home"||!load("vocab_v5_studying",false))return false;  // 刷新前不在背词卡片视图，不强制切回，留在原页面
   cfg.scope=s.scope;
   queue=s.queue;
   viewed=s.viewed||[];
