@@ -795,11 +795,14 @@ function saveSession(){
 }
 function clearSession(){localStorage.removeItem(SESSION_KEY)}
 // 启动时尝试恢复未完成的背词会话；成功返回 true
+// 注意：只有刷新前本来就停留在 home 页时才自动跳回卡片界面；
+// 如果刷新前在别的页（AI助手/统计等），保留会话数据但不强行拉回背词，避免"刷新哪页都被拽回背词卡"
 function restoreSession(){
   const s=load(SESSION_KEY,null);
   if(!s||!s.queue||!s.queue.length)return false;
   // 过期保护：超过 24 小时的会话不自动恢复（避免恢复很旧的队列）
   if(s.ts&&Date.now()-s.ts>24*3600000){clearSession();return false}
+  if(page!=="home")return false;  // 刷新前不在home页，不强制切回背词卡片，留在原页面
   cfg.scope=s.scope;
   queue=s.queue;
   viewed=s.viewed||[];
@@ -3628,7 +3631,7 @@ async function quickAddGo(mode){
   if(!raw.trim()&&!qaImages.length)return toast("贴段英文，或选图片");
   if(qaImages.length&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到豆包/Kimi/Claude");
   eBtn.disabled=true;eBtn.textContent="提取中…";res.textContent="AI 正在挑生词…";
-  const sys=`你是英语老师，面向中文母语的英语学习者。从用户给的英文文章或图片里挑出值得学的生词/短语（跳过 the/is 这类太简单的），为每个生成词条。如果给了多张图片，请综合所有图片里的内容一起挑词，不要重复。
+  const sys=`你是英语老师，面向中文母语的英语学习者。从用户给的英文文章或图片里尽量全面地挑出值得学的生词/短语（只跳过 the/is/have 这类最基础的词，中等难度及以上的都挑出来，宁可挑多不要漏），为每个生成词条。如果给了多张图片，请综合所有图片里的内容一起挑词，覆盖每张图里出现的生词，不要重复。
 分类 cat 只能填：dev、tv、life、biz、academic、news、other。
 只返回JSON数组：[{"word":"原词","phonetic":"音标","pos":"词性","cn":"中文释义","tip":"提示","exampleEn":"例句","exampleCn":"翻译","scene":"或空","cat":"key"}]`;
   const prompt=qaImages.length?(raw.trim()||"提取图片里值得学的英文生词"):raw.trim();
@@ -3677,24 +3680,46 @@ function confirmQuickAdd(){
   const target=qaLockedCat;             // 用锁定的分类（下拉框此时已被预览覆盖）
   const forceCat=(target&&target!=="__auto__")?target:null;
   let n=0;const byCat={};
+  const justAdded=[];  // 本次实际加入的词，用于加入后原地展示确认列表
   qaCandidates.forEach(c=>{
     if(!c.checked||c.dup)return;
     const useCat=forceCat||c.cat;        // 选了具体课就归到那课，否则用 AI 分类
     const rec={id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic,pos:c.pos,cn:c.cn,tip:c.tip,exampleEn:c.exampleEn,exampleCn:c.exampleCn,scene:c.scene,cat:useCat};
     if(forceCat&&isArtCat(forceCat))rec.fromArticle=forceCat.slice(4);  // 与文章抽词保持一致，带上来源文章
     imported.push(rec);
+    justAdded.push(rec);
     byCat[useCat]=(byCat[useCat]||0)+1;
   });
   save(IMP_KEY,imported);
-  if(n){
-    const detail=Object.keys(byCat).map(c=>`${catName(c)} ${byCat[c]}`).join("、");
-    toast(`已加入 ${n} 个词 → ${detail}`,3200);
-  }else{
-    toast("没有勾选要加入的词");
-  }
   qaCandidates=[];
-  closeQuickAdd();
-  if(page==="home"&&!studyStarted)render();
+  if(!n){toast("没有勾选要加入的词");closeQuickAdd();return}
+  if(page==="home"&&!studyStarted)render();  // home分类页在背景同步刷新计数
+  showJustAddedConfirm(justAdded,byCat);
+}
+// 加词成功后：原地展示本次加入了哪些词，不跳转页面，方便立刻确认/找到
+function showJustAddedConfirm(list,byCat){
+  const ov=document.getElementById("quickadd-overlay");
+  if(!ov){return}
+  const detail=Object.keys(byCat).map(c=>`${catName(c)} ${byCat[c]}`).join("、");
+  const rows=list.map(w=>`
+    <div style="padding:10px 0;border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <span style="font-family:Fraunces,serif;font-size:1.05rem;font-weight:600">${w.word}</span>
+        ${w.phonetic?`<span style="color:var(--accent);font-size:.8rem">${w.phonetic}</span>`:""}
+        ${w.pos?`<span style="font-size:.72rem;color:var(--ink-dim)">${w.pos}</span>`:""}
+      </div>
+      <div style="font-size:.82rem;color:var(--ink-dim);margin-top:2px">${w.cn||""}</div>
+      <div style="font-size:.7rem;color:var(--ink-dim);margin-top:2px">→ ${catName(w.cat)}</div>
+    </div>`).join("");
+  ov.innerHTML=`<div class="import-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h2 style="font-family:Fraunces,serif;font-size:1.2rem">✓ 已加入 ${list.length} 个词</h2>
+      <button class="gear" onclick="closeQuickAdd()">✕</button>
+    </div>
+    <p style="font-size:.78rem;color:var(--ink-dim);margin-bottom:10px">${detail}</p>
+    <div>${rows}</div>
+    <button class="ai-btn" style="margin-top:14px" onclick="closeQuickAdd()">好，知道了</button>
+  </div>`;
 }
 
 
