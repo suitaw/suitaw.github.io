@@ -248,6 +248,7 @@ function parseJsonArrayLoose(text){
 function toast(m,ms){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),ms||1600)}
 // AI 请求超时：连接建立超时 + 流式读取时单次无响应超时（代理抖动/断线常见，避免按钮卡死不恢复）
 const AI_CONNECT_TIMEOUT=20000;   // 建立连接/拿到首个响应头
+const AI_IMAGE_TIMEOUT=45000;     // 带图片的请求：base64体积大+多模态推理慢，超时放宽
 const AI_STREAM_IDLE_TIMEOUT=25000; // 流式读取中，两次数据之间最长静默时间
 async function fetchWithTimeout(url,opts,ms){
   const ctrl=new AbortController();
@@ -2898,7 +2899,7 @@ async function callAI(messages, sys, maxTokens=600, images=null){
     if(p==="kimi")body.thinking={type:"disabled"};  // Kimi 默认快速模式，不思考
     readText=d=>d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
   }
-  const r=await fetchWithTimeout(url,{method:"POST",headers,body:JSON.stringify(body)});
+  const r=await fetchWithTimeout(url,{method:"POST",headers,body:JSON.stringify(body)},(images&&images.length)?AI_IMAGE_TIMEOUT:AI_CONNECT_TIMEOUT);
   const d=await r.json();
   if(d.error)throw new Error(d.error.message||"接口报错");
   const text=readText(d);
@@ -2990,7 +2991,7 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
     if(p==="kimi")body.thinking={type:isThink?"enabled":"disabled"};  // Kimi 跟随思考开关，默认关=快
     parseLine=obj=>(obj.choices&&obj.choices[0]&&obj.choices[0].delta&&obj.choices[0].delta.content)||"";
   }
-  const r=await fetchWithTimeout(url,{method:"POST",headers,body:JSON.stringify(body)});
+  const r=await fetchWithTimeout(url,{method:"POST",headers,body:JSON.stringify(body)},(images&&images.length)?AI_IMAGE_TIMEOUT:AI_CONNECT_TIMEOUT);
   if(!r.ok){let e="接口报错";try{const j=await r.json();e=j.error&&j.error.message||e}catch(x){}throw new Error(e)}
   const reader=r.body.getReader();const dec=new TextDecoder();
   let buf="",full="";
@@ -3473,10 +3474,10 @@ function importBackup(input){
 }
 
 // ===== 快速加词：任意页浮动按钮，贴词→AI秒补全→直接入库 =====
-let qaImage=null;  // 快捷加词选的图片 {b64,mime}
+let qaImages=[];  // 快捷加词选的图片 [{b64,mime}, ...]
 function openQuickAdd(){
   const ov=document.getElementById("quickadd-overlay");
-  ov.classList.add("open");qaImage=null;
+  ov.classList.add("open");qaImages=[];
   ov.innerHTML=`<div class="import-box">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <h2 style="font-family:Fraunces,serif;font-size:1.3rem">加词</h2>
@@ -3490,11 +3491,11 @@ function openQuickAdd(){
         <option value="__new__">➕ 新建一课…</option>
       </select>
     </div>
-    <p style="font-size:.76rem;color:var(--ink-dim);margin-bottom:8px">三种用法：①贴一串词→秒补全全要 ②贴一段英文/传图片→AI 挑生词 ③传文本文件</p>
+    <p style="font-size:.76rem;color:var(--ink-dim);margin-bottom:8px">三种用法：①贴一串词→秒补全全要 ②贴一段英文/传图片（可多选）→AI 挑生词 ③传文本文件</p>
     <textarea id="qa-input" placeholder="贴词（一行一个或逗号隔开）：&#10;resilient, ubiquitous&#10;&#10;或贴一段英文文章，让 AI 挑生词" style="width:100%;min-height:100px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.88rem;background:var(--paper);resize:vertical"></textarea>
     <div style="display:flex;gap:8px;margin-top:8px">
       <label style="flex:1;border:1px dashed var(--line);border-radius:10px;padding:9px;text-align:center;font-size:.76rem;color:var(--ink-dim);cursor:pointer">
-        📷 图片<input type="file" accept="image/*" style="display:none" onchange="onPickQaImage(this)"></label>
+        📷 图片<input type="file" accept="image/*" multiple style="display:none" onchange="onPickQaImage(this)"></label>
       <label style="flex:1;border:1px dashed var(--line);border-radius:10px;padding:9px;text-align:center;font-size:.76rem;color:var(--ink-dim);cursor:pointer">
         📄 文本文件<input type="file" accept=".txt,.md,text/*" style="display:none" onchange="onPickQaText(this)"></label>
     </div>
@@ -3507,15 +3508,37 @@ function openQuickAdd(){
   </div>`;
   setTimeout(()=>{const t=document.getElementById("qa-input");if(t)t.focus()},100);
 }
+const QA_MAX_IMAGES=6; // 一次最多附几张图，避免请求体过大/AI处理过慢
 function onPickQaImage(input){
-  const f=input.files&&input.files[0];if(!f)return;
-  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("读图需切到豆包/Kimi/Claude");return}
-  readImageFile(f).then(img=>{
-    qaImage=img;
-    document.getElementById("qa-img-preview").innerHTML=`<div style="font-size:.76rem;color:var(--green)">✓ 已选图片，点「AI 挑生词」提取 <button class="gear" onclick="clearQaImage()">移除</button></div>`;
-  }).catch(e=>toast(e.message));
+  const files=input.files?Array.from(input.files):[];
+  if(!files.length)return;
+  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("读图需切到豆包/Kimi/Claude");input.value="";return}
+  const room=QA_MAX_IMAGES-qaImages.length;
+  if(room<=0){toast(`最多 ${QA_MAX_IMAGES} 张，先移除几张再选`);input.value="";return}
+  const picked=files.slice(0,room);
+  if(files.length>room)toast(`最多 ${QA_MAX_IMAGES} 张，只取前 ${room} 张`);
+  Promise.all(picked.map(f=>readImageFile(f).catch(e=>{toast(f.name+"："+e.message);return null})))
+    .then(results=>{
+      results.filter(Boolean).forEach(img=>qaImages.push(img));
+      renderQaImagePreview();
+    });
+  input.value="";  // 允许连续选同一张文件也能触发onchange
 }
-function clearQaImage(){qaImage=null;const p=document.getElementById("qa-img-preview");if(p)p.innerHTML=""}
+function renderQaImagePreview(){
+  const p=document.getElementById("qa-img-preview");
+  if(!p)return;
+  if(!qaImages.length){p.innerHTML="";return}
+  const thumbs=qaImages.map((img,i)=>
+    `<span style="position:relative;display:inline-block">
+      <img src="data:${img.mime};base64,${img.b64}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">
+      <button onclick="removeQaImage(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--paper);border:none;font-size:.6rem;line-height:1;cursor:pointer">✕</button>
+    </span>`
+  ).join("");
+  p.innerHTML=`<div style="font-size:.76rem;color:var(--green);margin-bottom:6px">✓ 已选 ${qaImages.length} 张图片，点「AI 挑生词」提取 <button class="gear" onclick="clearQaImage()">全部移除</button></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${thumbs}</div>`;
+}
+function removeQaImage(i){qaImages.splice(i,1);renderQaImagePreview()}
+function clearQaImage(){qaImages=[];const p=document.getElementById("qa-img-preview");if(p)p.innerHTML=""}
 // 加词归类：用户选"新建一课"时弹输入框建空文章，把新课的 art_id 设为当前目标
 function onQaTargetChange(){
   const sel=document.getElementById("qa-target");if(!sel)return;
@@ -3546,7 +3569,7 @@ function onPickQaText(input){
     toast("已读入文本，点「AI 挑生词」");
   }).catch(e=>toast(e.message));
 }
-function closeQuickAdd(){const ov=document.getElementById("quickadd-overlay");ov.classList.remove("open");ov.innerHTML="";qaImage=null}
+function closeQuickAdd(){const ov=document.getElementById("quickadd-overlay");ov.classList.remove("open");ov.innerHTML="";qaImages=[]}
 // mode: 'all'=贴词全部补全录入；'extract'=贴文章/图片让AI挑生词
 async function quickAddGo(mode){
   const raw=(document.getElementById("qa-input")||{}).value||"";
@@ -3574,15 +3597,15 @@ async function quickAddGo(mode){
   }
 
   // extract：贴文章 或 图片
-  if(!raw.trim()&&!qaImage)return toast("贴段英文，或选张图片");
-  if(qaImage&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到豆包/Kimi/Claude");
+  if(!raw.trim()&&!qaImages.length)return toast("贴段英文，或选图片");
+  if(qaImages.length&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到豆包/Kimi/Claude");
   eBtn.disabled=true;eBtn.textContent="提取中…";res.textContent="AI 正在挑生词…";
-  const sys=`你是英语老师，面向中文母语的英语学习者。从用户给的英文文章或图片里挑出值得学的生词/短语（跳过 the/is 这类太简单的），为每个生成词条。
+  const sys=`你是英语老师，面向中文母语的英语学习者。从用户给的英文文章或图片里挑出值得学的生词/短语（跳过 the/is 这类太简单的），为每个生成词条。如果给了多张图片，请综合所有图片里的内容一起挑词，不要重复。
 分类 cat 只能填：dev、tv、life、biz、academic、news、other。
 只返回JSON数组：[{"word":"原词","phonetic":"音标","pos":"词性","cn":"中文释义","tip":"提示","exampleEn":"例句","exampleCn":"翻译","scene":"或空","cat":"key"}]`;
-  const prompt=qaImage?(raw.trim()||"提取图片里值得学的英文生词"):raw.trim();
+  const prompt=qaImages.length?(raw.trim()||"提取图片里值得学的英文生词"):raw.trim();
   try{
-    const text=await callAI([{role:"user",content:prompt}],sys,3000,qaImage?[qaImage]:null);
+    const text=await callAI([{role:"user",content:prompt}],sys,3000,qaImages.length?qaImages:null);
     const arr=parseJsonArrayLoose(text);
     if(!arr.length)throw new Error("没挑出生词，换段文字或图片");
     showQuickAddPreview(arr,valid);
