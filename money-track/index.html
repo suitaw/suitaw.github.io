@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>记账</title>
+<style>
+  :root {
+    --bg: #0b0d0f;
+    --bg-elevated: #131619;
+    --line: #202428;
+    --ink: #eef1f0;
+    --ink-dim: #7c8590;
+    --ink-faint: #454b52;
+    --up: #4fd1a5;
+    --up-dim: #2a5c48;
+    --down: #e8756a;
+    --down-dim: #5c332e;
+    --accent: #4fd1a5;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    overflow-x: hidden;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* 顶部水位线 */
+  #waterline {
+    width: 100%;
+    height: 88px;
+    display: block;
+  }
+
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 20px 48px;
+  }
+
+  header {
+    padding: 18px 0 6px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  header .title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-dim);
+  }
+
+  header .date {
+    font-size: 13px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 今日净收入 - 主视觉 */
+  .hero {
+    padding: 28px 0 8px;
+  }
+
+  .hero .label {
+    font-size: 13px;
+    color: var(--ink-dim);
+    margin-bottom: 6px;
+  }
+
+  .hero .amount {
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .hero .amount .sign { font-size: 32px; font-weight: 600; opacity: 0.7; }
+  .hero .amount.positive { color: var(--up); }
+  .hero .amount.negative { color: var(--down); }
+  .hero .amount.neutral { color: var(--ink-faint); }
+
+  .hero .sub {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--ink-faint);
+  }
+  .hero .sub b { color: var(--ink-dim); font-weight: 500; }
+
+  /* 输入区 */
+  .input-card {
+    margin-top: 28px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px;
+  }
+
+  .input-card .cap {
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  #amountInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--ink);
+    font-size: 26px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    min-width: 0;
+    border-bottom: 1.5px solid var(--line);
+    padding: 6px 2px 10px;
+    transition: border-color 0.15s ease;
+  }
+  #amountInput:focus { border-color: var(--accent); }
+  #amountInput::placeholder { color: var(--ink-faint); font-weight: 400; }
+
+  #submitBtn {
+    background: var(--accent);
+    color: #08110d;
+    border: none;
+    border-radius: 12px;
+    padding: 0 22px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.15s ease;
+  }
+  #submitBtn:active { transform: scale(0.96); }
+  #submitBtn:disabled { opacity: 0.35; }
+
+  .hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--ink-faint);
+    min-height: 16px;
+  }
+  .hint.warn { color: var(--down); }
+  .hint.ok { color: var(--up); }
+
+  /* 统计条 */
+  .stats {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+
+  .stat .k { font-size: 11px; color: var(--ink-faint); margin-bottom: 4px; }
+  .stat .v { font-size: 18px; font-weight: 700; }
+  .stat .v.up { color: var(--up); }
+  .stat .v.down { color: var(--down); }
+
+  /* 历史列表 */
+  .section-title {
+    margin-top: 32px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--ink-dim);
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .section-title .clear {
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-weight: 400;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+
+  .history-item {
+    background: var(--bg-elevated);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .history-item .left { display: flex; flex-direction: column; gap: 3px; }
+  .history-item .date { font-size: 13px; color: var(--ink); font-weight: 500; }
+  .history-item .total { font-size: 12px; color: var(--ink-faint); }
+  .history-item .diff { font-size: 16px; font-weight: 700; }
+  .history-item .diff.up { color: var(--up); }
+  .history-item .diff.down { color: var(--down); }
+  .history-item .diff.zero { color: var(--ink-faint); }
+
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-faint);
+    font-size: 13px;
+  }
+
+  footer {
+    margin-top: 36px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+</style>
+</head>
+<body>
+
+<svg id="waterline" preserveAspectRatio="none"></svg>
+
+<div class="wrap">
+  <header>
+    <div class="title">记账</div>
+    <div class="date num" id="todayLabel">--</div>
+  </header>
+
+  <div class="hero">
+    <div class="label">今日净收入</div>
+    <div class="amount neutral num" id="heroAmount">
+      <span id="heroValue">--</span>
+    </div>
+    <div class="sub" id="heroSub">还没有记录</div>
+  </div>
+
+  <div class="input-card">
+    <div class="cap">输入当前累计金额</div>
+    <div class="input-row">
+      <input type="number" inputmode="decimal" id="amountInput" placeholder="0.00" step="0.01">
+      <button id="submitBtn">记录</button>
+    </div>
+    <div class="hint" id="hint"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="k">记录天数</div>
+      <div class="v num" id="statDays">0</div>
+    </div>
+    <div class="stat">
+      <div class="k">累计净收入</div>
+      <div class="v num" id="statTotal">0</div>
+    </div>
+    <div class="stat">
+      <div class="k">日均</div>
+      <div class="v num" id="statAvg">0</div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <span>历史记录</span>
+    <span class="clear" id="clearBtn">清空</span>
+  </div>
+  <div class="history-list" id="historyList">
+    <div class="empty">暂无记录，输入今天的金额开始</div>
+  </div>
+
+  <footer>数据仅保存在本机浏览器</footer>
+</div>
+
+<script>
+const STORAGE_KEY = 'money-track-records-v1';
+
+function loadRecords() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveRecords(records) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+}
+
+function todayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function formatDate(dateStr) {
+  const [y, m, d] = dateStr.split('-');
+  return `${m}/${d}`;
+}
+
+function fmtMoney(n) {
+  const abs = Math.abs(n);
+  return abs.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtSigned(n) {
+  const sign = n > 0 ? '+' : n < 0 ? '-' : '';
+  return sign + fmtMoney(n);
+}
+
+let records = loadRecords();
+records.sort((a, b) => a.date.localeCompare(b.date));
+
+const todayLabel = document.getElementById('todayLabel');
+const heroAmount = document.getElementById('heroAmount');
+const heroValue = document.getElementById('heroValue');
+const heroSub = document.getElementById('heroSub');
+const amountInput = document.getElementById('amountInput');
+const submitBtn = document.getElementById('submitBtn');
+const hint = document.getElementById('hint');
+const historyList = document.getElementById('historyList');
+const statDays = document.getElementById('statDays');
+const statTotal = document.getElementById('statTotal');
+const statAvg = document.getElementById('statAvg');
+const clearBtn = document.getElementById('clearBtn');
+const waterline = document.getElementById('waterline');
+
+function render() {
+  const today = todayStr();
+  todayLabel.textContent = formatDate(today) + ' ' + ['日','一','二','三','四','五','六'][new Date().getDay()];
+
+  records.sort((a, b) => a.date.localeCompare(b.date));
+
+  // 今天的记录 & diff
+  const todayRec = records.find(r => r.date === today);
+  const idx = records.findIndex(r => r.date === today);
+  let heroDiff = null;
+  if (todayRec) {
+    heroDiff = todayRec.diff;
+  }
+
+  heroAmount.classList.remove('positive', 'negative', 'neutral');
+  if (heroDiff === null) {
+    heroValue.textContent = '--';
+    heroAmount.classList.add('neutral');
+    heroSub.textContent = '今天还没有记录';
+  } else if (heroDiff > 0) {
+    heroValue.innerHTML = '<span class="sign">+</span>' + fmtMoney(heroDiff);
+    heroAmount.classList.add('positive');
+    heroSub.innerHTML = `累计 <b>${fmtMoney(todayRec.amount)}</b>`;
+  } else if (heroDiff < 0) {
+    heroValue.innerHTML = '<span class="sign">-</span>' + fmtMoney(heroDiff);
+    heroAmount.classList.add('negative');
+    heroSub.innerHTML = `累计 <b>${fmtMoney(todayRec.amount)}</b>`;
+  } else {
+    heroValue.textContent = '0.00';
+    heroAmount.classList.add('neutral');
+    heroSub.innerHTML = `首次记录，累计 <b>${fmtMoney(todayRec.amount)}</b>`;
+  }
+
+  // 统计
+  const withDiff = records.filter(r => r.diff !== null && r.diff !== undefined);
+  const total = withDiff.reduce((s, r) => s + r.diff, 0);
+  statDays.textContent = records.length;
+  statTotal.textContent = fmtSigned(total);
+  statTotal.className = 'v num' + (total > 0 ? ' up' : total < 0 ? ' down' : '');
+  const avg = withDiff.length ? total / withDiff.length : 0;
+  statAvg.textContent = fmtSigned(avg);
+  statAvg.className = 'v num' + (avg > 0 ? ' up' : avg < 0 ? ' down' : '');
+
+  // 历史列表（倒序）
+  if (records.length === 0) {
+    historyList.innerHTML = '<div class="empty">暂无记录，输入今天的金额开始</div>';
+  } else {
+    const rev = [...records].reverse();
+    historyList.innerHTML = rev.map(r => {
+      let diffClass = 'zero', diffText = '首次';
+      if (r.diff !== null && r.diff !== undefined) {
+        diffClass = r.diff > 0 ? 'up' : r.diff < 0 ? 'down' : 'zero';
+        diffText = fmtSigned(r.diff);
+      }
+      return `<div class="history-item">
+        <div class="left">
+          <div class="date">${formatDate(r.date)}</div>
+          <div class="total">累计 ${fmtMoney(r.amount)}</div>
+        </div>
+        <div class="diff ${diffClass} num">${diffText}</div>
+      </div>`;
+    }).join('');
+  }
+
+  drawWaterline();
+}
+
+function drawWaterline() {
+  const w = waterline.clientWidth || 480;
+  const h = 88;
+  waterline.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+  if (records.length < 2) {
+    waterline.innerHTML = `<rect width="${w}" height="${h}" fill="#0b0d0f"/>`;
+    return;
+  }
+
+  const amounts = records.map(r => r.amount);
+  const min = Math.min(...amounts);
+  const max = Math.max(...amounts);
+  const range = max - min || 1;
+  const pad = 14;
+
+  const pts = records.map((r, i) => {
+    const x = (i / (records.length - 1)) * w;
+    const y = h - pad - ((r.amount - min) / range) * (h - pad * 2);
+    return [x, y];
+  });
+
+  const linePath = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  const areaPath = linePath + ` L${w},${h} L0,${h} Z`;
+
+  const lastUp = records[records.length - 1].diff >= 0;
+  const strokeColor = lastUp ? '#4fd1a5' : '#e8756a';
+
+  waterline.innerHTML = `
+    <defs>
+      <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.28"/>
+        <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <rect width="${w}" height="${h}" fill="#0b0d0f"/>
+    <path d="${areaPath}" fill="url(#grad)"/>
+    <path d="${linePath}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="3.5" fill="${strokeColor}"/>
+  `;
+}
+
+// 按日期排序后，统一重算每条记录相对前一条的 diff
+// 保证补录较早日期时，后续记录的 diff 也能正确刷新
+function recalcDiffs(list) {
+  const sorted = [...list].sort((a, b) => a.date.localeCompare(b.date));
+  for (let i = 0; i < sorted.length; i++) {
+    if (i === 0) {
+      sorted[i].diff = null;
+    } else {
+      sorted[i].diff = Math.round((sorted[i].amount - sorted[i - 1].amount) * 100) / 100;
+    }
+  }
+  return sorted;
+}
+
+function submit() {
+  const val = parseFloat(amountInput.value);
+  if (isNaN(val) || amountInput.value.trim() === '') {
+    hint.textContent = '请输入有效数字';
+    hint.className = 'hint warn';
+    return;
+  }
+
+  const today = todayStr();
+  const existingIdx = records.findIndex(r => r.date === today);
+
+  if (existingIdx >= 0) {
+    records[existingIdx].amount = val;
+  } else {
+    records.push({ date: today, amount: val, diff: null });
+  }
+
+  records = recalcDiffs(records);
+  saveRecords(records);
+  amountInput.value = '';
+  hint.textContent = '已记录';
+  hint.className = 'hint ok';
+  setTimeout(() => { hint.textContent = ''; hint.className = 'hint'; }, 1800);
+
+  render();
+}
+
+submitBtn.addEventListener('click', submit);
+amountInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') submit();
+});
+
+clearBtn.addEventListener('click', () => {
+  if (confirm('确定清空全部记录？此操作不可恢复。')) {
+    records = [];
+    saveRecords(records);
+    render();
+  }
+});
+
+window.addEventListener('resize', drawWaterline);
+
+// 预填今天已有的值（如果存在）方便修改
+const todayExisting = records.find(r => r.date === todayStr());
+if (todayExisting) {
+  amountInput.placeholder = fmtMoney(todayExisting.amount);
+}
+
+render();
+</script>
+
+</body>
+</html>
