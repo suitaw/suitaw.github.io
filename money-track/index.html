@@ -6,6 +6,22 @@
 <title>记账</title>
 <style>
   :root {
+    /* 白天模式（默认） */
+    --bg: #f6f5f2;
+    --bg-elevated: #ffffff;
+    --line: #e5e2db;
+    --ink: #1c1d1b;
+    --ink-dim: #6b6a63;
+    --ink-faint: #a5a29a;
+    --up: #1f8e6e;
+    --up-dim: #d3ede4;
+    --down: #c2483a;
+    --down-dim: #f6ddd8;
+    --accent: #1f8e6e;
+    --shadow: 0 1px 2px rgba(28,29,27,0.04), 0 1px 8px rgba(28,29,27,0.03);
+  }
+
+  [data-theme="dark"] {
     --bg: #0b0d0f;
     --bg-elevated: #131619;
     --line: #202428;
@@ -17,6 +33,7 @@
     --down: #e8756a;
     --down-dim: #5c332e;
     --accent: #4fd1a5;
+    --shadow: none;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -27,6 +44,7 @@
     color: var(--ink);
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
     overflow-x: hidden;
+    transition: background 0.2s ease, color 0.2s ease;
   }
 
   .num {
@@ -52,6 +70,29 @@
     display: flex;
     align-items: baseline;
     justify-content: space-between;
+    gap: 10px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #themeToggle {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 15px;
+    box-shadow: var(--shadow);
+    transition: background 0.2s ease, border-color 0.2s ease;
   }
 
   header .title {
@@ -107,6 +148,8 @@
     border: 1px solid var(--line);
     border-radius: 16px;
     padding: 18px;
+    box-shadow: var(--shadow);
+    transition: background 0.2s ease, border-color 0.2s ease;
   }
 
   .input-card .cap {
@@ -173,6 +216,8 @@
     border: 1px solid var(--line);
     border-radius: 12px;
     padding: 12px 14px;
+    box-shadow: var(--shadow);
+    transition: background 0.2s ease, border-color 0.2s ease;
   }
 
   .stat .k { font-size: 11px; color: var(--ink-faint); margin-bottom: 4px; }
@@ -215,6 +260,7 @@
     padding: 14px 16px;
     display: flex;
     align-items: center;
+    transition: background 0.2s ease;
     justify-content: space-between;
   }
 
@@ -248,7 +294,10 @@
 <div class="wrap">
   <header>
     <div class="title">记账</div>
-    <div class="date num" id="todayLabel">--</div>
+    <div class="header-right">
+      <div class="date num" id="todayLabel">--</div>
+      <button id="themeToggle" aria-label="切换主题">☀️</button>
+    </div>
   </header>
 
   <div class="hero">
@@ -417,13 +466,18 @@ function render() {
   drawWaterline();
 }
 
+function getThemeColor(varName) {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
 function drawWaterline() {
   const w = waterline.clientWidth || 480;
   const h = 88;
   waterline.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const bgColor = getThemeColor('--bg');
 
   if (records.length < 2) {
-    waterline.innerHTML = `<rect width="${w}" height="${h}" fill="#0b0d0f"/>`;
+    waterline.innerHTML = `<rect width="${w}" height="${h}" fill="${bgColor}"/>`;
     return;
   }
 
@@ -443,7 +497,7 @@ function drawWaterline() {
   const areaPath = linePath + ` L${w},${h} L0,${h} Z`;
 
   const lastUp = records[records.length - 1].diff >= 0;
-  const strokeColor = lastUp ? '#4fd1a5' : '#e8756a';
+  const strokeColor = lastUp ? getThemeColor('--up') : getThemeColor('--down');
 
   waterline.innerHTML = `
     <defs>
@@ -452,7 +506,7 @@ function drawWaterline() {
         <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0"/>
       </linearGradient>
     </defs>
-    <rect width="${w}" height="${h}" fill="#0b0d0f"/>
+    <rect width="${w}" height="${h}" fill="${bgColor}"/>
     <path d="${areaPath}" fill="url(#grad)"/>
     <path d="${linePath}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
     <circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="3.5" fill="${strokeColor}"/>
@@ -514,6 +568,31 @@ clearBtn.addEventListener('click', () => {
 });
 
 window.addEventListener('resize', drawWaterline);
+
+// 主题切换：默认白天，记住上次选择
+const THEME_KEY = 'money-track-theme';
+const themeToggle = document.getElementById('themeToggle');
+
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    themeToggle.textContent = '🌙';
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeToggle.textContent = '☀️';
+  }
+  drawWaterline();
+}
+
+const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+applyTheme(savedTheme);
+
+themeToggle.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
 
 // 预填今天已有的值（如果存在）方便修改
 const todayExisting = records.find(r => r.date === todayStr());
