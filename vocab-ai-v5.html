@@ -602,7 +602,9 @@ function startMistakeReview(){
 
 // ===== 渲染 =====
 function go(p){
-  if(p!=="home"){articleListOpen=false;curArticle=null;previewCat=null}  // 离开home清子页态
+  // 切到别的底部 tab 时不清 previewCat/curArticle/articleListOpen：
+  // 保留 home 内的子状态（分类预览/文章详情/文章列表），这样从 AI 助手/复习/统计切回"学习"能停在原处，
+  // 而不是被拽回一级分类列表。真正想回到一级列表用页面里的"← 返回"（closeCatPreview 等）。
   page=p;save("vocab_v5_page",p);["home","assistant","mistake","stats"].forEach(x=>{const el=document.getElementById("nav-"+x);if(el)el.classList.toggle("active",x===p)});render();
 }
 let studyStarted=false;  // 是否已从分类页进入学习
@@ -2930,8 +2932,10 @@ const MODELS={
     ["claude-opus-4-8","Claude Opus 4.8（最强）"],
   ],
   kimi:[
-    ["kimi-k3","Kimi K3（可看图·最新，2.8T 旗舰）"],
-    ["kimi-k2.6","Kimi K2.6（可看图）"],
+    // K3 强制思考、无法关闭（连补音标这种小请求也会先跑一遍推理），明显更慢；
+    // 这个 app 里大量是"秒回"式小请求，K2.6 更合适做默认
+    ["kimi-k2.6","Kimi K2.6（可看图·默认，响应快）"],
+    ["kimi-k3","Kimi K3（可看图·最强但慢，无法关闭思考）"],
     ["kimi-k2.5","Kimi K2.5（可看图）"],
   ],
 };
@@ -3088,7 +3092,9 @@ function renderAssistant(v){
       </select>
       <button onclick="toggleThink()" style="padding:7px 12px;border:1px solid ${on?'var(--accent)':'var(--line)'};background:${on?'var(--accent-soft)':'var(--card)'};color:${on?'var(--accent)':'var(--ink-dim)'};border-radius:14px;font-size:.72rem;font-family:inherit;font-weight:${on?'600':'400'};white-space:nowrap">${on?'🧠 思考开':'思考关'}</button>
     </div>
-    <div style="font-size:.68rem;color:var(--ink-dim);margin-bottom:8px">当前：${currentModelLabel()}</div>
+    ${MODELS[cfg.provider]?`<select onchange="switchModel(this.value)" style="width:100%;margin-bottom:8px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-family:inherit;font-size:.74rem;background:var(--card);color:var(--ink)">
+      ${MODELS[cfg.provider].map(m=>`<option value="${m[0]}" ${currentModel()===m[0]?"selected":""}>${m[1]}</option>`).join("")}
+    </select>`:`<div style="font-size:.68rem;color:var(--ink-dim);margin-bottom:8px">当前：${currentModelLabel()}</div>`}
     <div id="chat-img-preview" style="margin-bottom:6px"></div>
     <div style="display:flex;gap:8px;align-items:flex-end">
       <textarea id="chat-input" placeholder="问任何问题，或传张图片问（截图/拍照）" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;resize:vertical;min-height:48px;background:var(--paper)"></textarea>
@@ -3137,6 +3143,12 @@ function switchProvider(p){
   save(CFG_KEY,cfg);
   if(!cfg.apikey)toast(`${p} 还没填 Key，去设置里填`);
   if(chatImage&&!VISION_PROVIDERS.includes(p)){chatImage=null;toast("该服务商不支持图片，已移除附图")}
+  rerenderAssistant();
+}
+// AI助手页直接切模型版本（同一服务商内，如 Kimi K2.6/K3）
+function switchModel(m){
+  cfg.models[cfg.provider]=m;
+  save(CFG_KEY,cfg);
   rerenderAssistant();
 }
 // 点系统话题：直接以该问题发问
