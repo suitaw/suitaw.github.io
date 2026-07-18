@@ -440,7 +440,13 @@ function setPhraseReview(id,on){
 })();
 
 // ===== 设置面板 =====
-function togglePanel(){document.getElementById("panel").classList.toggle("open")}
+function togglePanel(){
+  const el=document.getElementById("panel");
+  el.classList.toggle("open");
+  // 面板打开时重新同步表单：cfg 可能已经在别处改过（比如 AI 助手页切了服务商/模型），
+  // 之前面板的输入框只在页面刚加载时填过一次值，之后就跟真实状态脱节了
+  if(el.classList.contains("open"))bindCfg();
+}
 function bindCfg(){
   const p=document.getElementById("provider"),k=document.getElementById("apikey");
   const mRow=document.getElementById("model-row"),mSel=document.getElementById("model");
@@ -1312,7 +1318,9 @@ function cancelEnrichPhonetic(){
 // 单个词的音标补全：只请求音标，prompt跟maybeEnrichWord里"只缺音标"分支保持一致
 async function enrichOnePhonetic(w){
   const sys=`只返回 JSON，不要任何其他文字：{"phonetic":"该单词的国际音标(美式优先，带斜杠)"}`;
-  const raw0=await callAI([{role:"user",content:`单词：${w.word}`}],sys,120);
+  // maxTokens 给够余量：部分模型（如 Kimi K3）思考模式无法通过参数关闭，
+  // token 太紧会在推理阶段就把预算耗尽，JSON 答案被截断导致解析失败
+  const raw0=await callAI([{role:"user",content:`单词：${w.word}`}],sys,600);
   let raw=raw0.replace(/```json|```/g,"").trim();
   const a=raw.indexOf("{"),b=raw.lastIndexOf("}");
   if(a>=0&&b>a)raw=raw.slice(a,b+1);
@@ -1728,7 +1736,8 @@ async function maybeEnrichWord(){
     payload=`单词：${w.word}\n例句：${w.exampleEn||""}`;
   }
   try{
-    let raw=await callAI([{role:"user",content:payload}],sys,300);
+    // 同上：给足 token 余量，避免强制思考模型把预算耗在推理上导致 JSON 被截断
+    let raw=await callAI([{role:"user",content:payload}],sys,600);
     raw=raw.replace(/```json|```/g,"").trim();
     const a=raw.indexOf("{"),b=raw.lastIndexOf("}");
     if(a>=0&&b>a)raw=raw.slice(a,b+1);
