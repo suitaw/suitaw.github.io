@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -12,12 +12,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
+  color-scheme:light dark;
   --paper:#f6f2e9; --paper2:#efe9da; --card:#fffdf7; --ink:#2b2620; --ink-dim:#6b6358;
   --line:#ddd4c2; --accent:#b5462f; --accent-soft:#e8d3cb; --green:#5a7a4e; --gold:#c08a2d;
+  --green-soft:#eef3ec; --green-border:#cfe0c4; --green-active:#e6efe0; --card-soft:#f5f1ea;
+  --az-bg:rgba(255,253,247,.55);
   --shadow:0 1px 3px rgba(43,38,32,.08),0 8px 24px rgba(43,38,32,.06);
 }
+@media(prefers-color-scheme:dark){
+  :root{
+    --paper:#201c17; --paper2:#2a251e; --card:#2c2721; --ink:#e9e2d4; --ink-dim:#a39a89;
+    --line:#413a2f; --accent:#d97757; --accent-soft:#4a2f24; --green:#8fb37f; --gold:#d4a04c;
+    --green-soft:#28301f; --green-border:#3d4a33; --green-active:#33402a; --card-soft:#26211b;
+    --az-bg:rgba(44,39,33,.55);
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+  }
+}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.6;padding-bottom:72px}
+body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.6;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
 .wrap{max-width:640px;margin:0 auto;padding:16px}
 h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.01em}
 .sub{color:var(--ink-dim);font-size:.78rem;margin-top:2px}
@@ -62,19 +74,13 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .grade small{display:block;font-size:.6rem;font-weight:400;color:var(--ink-dim);margin-top:2px}
 .grade:active{transform:scale(.96)}
 .g-again{border-color:var(--accent-soft)} .g-again:active{background:var(--accent-soft)}
-.g-good{border-color:#cfe0c4} .g-good:active{background:#e6efe0}
+.g-good{border-color:var(--green-border)} .g-good:active{background:var(--green-active)}
 
 /* AI 造句区 */
 .ai-box{margin-top:16px;text-align:left}
 .ai-box textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;resize:vertical;min-height:64px;background:var(--paper)}
 .ai-btn{margin-top:8px;width:100%;padding:10px;border:none;border-radius:10px;background:var(--ink);color:var(--paper);font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit}
 .ai-btn:disabled{opacity:.5}
-.ai-result{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;display:none}
-.ai-result.show{display:block}
-.ai-result .score{font-family:Fraunces,serif;font-size:1.4rem;font-weight:700;color:var(--green)}
-.ai-result .label{font-size:.7rem;color:var(--ink-dim)}
-.ai-result .row{margin-top:8px}
-.ai-result .rw{font-style:italic;color:var(--accent)}
 .ai-thread{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .ai-msg{font-size:.84rem;line-height:1.65;white-space:pre-wrap;padding:8px 11px;border-radius:12px;border:1px solid var(--line);word-break:break-word}
 .ai-msg.user{background:var(--accent-soft);border-color:var(--accent);align-self:flex-end;max-width:88%}
@@ -95,7 +101,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .mistake-item .c{font-size:.78rem;color:var(--ink-dim)}
 
 /* 字母索引侧边栏 */
-.az-index{position:fixed;right:2px;top:50%;transform:translateY(-50%);z-index:60;display:flex;flex-direction:column;align-items:center;padding:4px 3px;border-radius:10px;background:rgba(255,253,247,.55);touch-action:none}
+.az-index{position:fixed;right:2px;top:50%;transform:translateY(-50%);z-index:60;display:flex;flex-direction:column;align-items:center;padding:4px 3px;border-radius:10px;background:var(--az-bg);touch-action:none}
 .az-index .az-item{font-size:.6rem;line-height:1;color:var(--ink-dim);padding:1.5px 4px;cursor:pointer;font-weight:600;border-radius:3px}
 .az-index .az-item.dim{opacity:.32;cursor:default}
 .az-index .az-item.hit{background:var(--accent);color:#fff}
@@ -106,16 +112,16 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .cat-row.drag-placeholder{opacity:.3;background:var(--paper2);border-style:dashed}
 .cat-row .drag-handle{color:var(--ink-dim);font-size:1rem;padding:0 4px;cursor:grab;touch-action:none;align-self:center}
 .az-bubble.show{display:flex}
-.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:20px;font-size:.78rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
+.toast{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:20px;font-size:.78rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
 .import-overlay{display:none;position:fixed;inset:0;background:rgba(43,38,32,.4);z-index:200;overflow-y:auto;padding:20px 12px}
 .import-overlay.open{display:block}
-#quick-add-fab{position:fixed;right:16px;bottom:72px;z-index:150;width:52px;height:52px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:.92rem;font-weight:700;font-family:inherit;box-shadow:0 4px 14px rgba(43,38,32,.28);cursor:pointer}
+#quick-add-fab{position:fixed;right:16px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:150;width:52px;height:52px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:.92rem;font-weight:700;font-family:inherit;box-shadow:0 4px 14px rgba(43,38,32,.28);cursor:pointer}
 #quick-add-fab:active{transform:scale(.94)}
 .scroll-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:1.1rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18);display:none}
 .scroll-btn:active{transform:scale(.92)}
 .import-box{max-width:560px;margin:20px auto;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 40px rgba(43,38,32,.2)}
 .toast.show{opacity:1}
-.undobar{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:12px;font-size:.8rem;display:none;align-items:center;gap:12px;z-index:100;box-shadow:0 6px 20px rgba(0,0,0,.28);max-width:92vw}
+.undobar{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:12px;font-size:.8rem;display:none;align-items:center;gap:12px;z-index:100;box-shadow:0 6px 20px rgba(0,0,0,.28);max-width:92vw}
 .undobar.show{display:flex}
 .undobar button{background:transparent;border:1px solid rgba(255,255,255,.4);color:var(--paper);border-radius:8px;padding:5px 12px;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -199,7 +205,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 <div class="undobar" id="undobar"><span id="undobar-msg"></span><button onclick="undoLast()">↩ 撤回</button></div>
 <div class="import-overlay" id="import-overlay"></div>
 <button id="quick-add-fab" onclick="openQuickAdd()" title="快速加词">＋词</button>
-<div id="scroll-nav" style="position:fixed;right:16px;bottom:134px;z-index:140;display:none;flex-direction:column;gap:8px">
+<div id="scroll-nav" style="position:fixed;right:16px;bottom:calc(134px + env(safe-area-inset-bottom));z-index:140;display:none;flex-direction:column;gap:8px">
   <button id="scroll-up" class="scroll-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到顶部">↑</button>
   <button id="scroll-down" class="scroll-btn" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})" title="到底部">↓</button>
 </div>
@@ -376,9 +382,12 @@ const PHRASE_KEY="vocab_v5_phrases";
 const GRAMMAR_KEY="vocab_v5_grammar";
 let userPhrases=load(PHRASE_KEY,[]);  // 用户自建短语(存 localStorage)
 let userGrammar=load(GRAMMAR_KEY,[]); // 用户自建语法(存 localStorage)
-// NCE 课程短语/语法补默认复习字段(内置, due 让其立即可复习)
 NCE_PHRASES.forEach(p=>{if(typeof p.inReview==="undefined")p.inReview=false});
-NCE_GRAMMAR.forEach(g=>{if(typeof g.due!=="number")g.due=0});
+// NCE 语法的回顾时间单独持久化：NCE_GRAMMAR 是每次启动重建的内置数据，直接改字段刷新就丢。
+// due=0 表示还没开始回顾（展开一次详解后进入 7 天回顾曲线）
+const NCEGR_KEY="vocab_v5_nce_grammar_due";
+let nceGrammarDue=load(NCEGR_KEY,{});
+NCE_GRAMMAR.forEach(g=>{if(typeof g.due!=="number")g.due=nceGrammarDue[g.id]||0});
 // phrases/grammar = NCE(只读) + 用户自建。用于全局读取/复习
 let phrases=NCE_PHRASES.concat(userPhrases);
 let grammar=NCE_GRAMMAR.concat(userGrammar);
@@ -476,9 +485,11 @@ function saveCfg(){
   toast("已保存");
 }
 function clearKey(){
-  cfg.apikey="";cfg.endpoint="";cfg.keys[cfg.provider]="";save(CFG_KEY,cfg);
+  cfg.apikey="";cfg.keys[cfg.provider]="";
+  // 接入点只属于豆包，清其他服务商的 Key 时不该连带清掉
+  if(cfg.provider==="doubao"){cfg.endpoint="";document.getElementById("endpoint").value=""}
+  save(CFG_KEY,cfg);
   document.getElementById("apikey").value="";
-  document.getElementById("endpoint").value="";
   toast("Key 已清空（仅当前服务商）");
 }
 
@@ -654,7 +665,7 @@ function render(){
         <div style="height:100%;width:${roundTotal?Math.round(roundDone.size/roundTotal*100):0}%;background:var(--accent);border-radius:2px;transition:width .3s"></div>
       </div>
       <div class="card" id="card" onclick="if(!flipped&&!peekSnapshot)flip()">
-        <span class="cat-tag" onclick="event.stopPropagation();gotoSource()" style="cursor:pointer" title="查看来源">${catName(cur.cat)} ↗</span>
+        <span class="cat-tag" onclick="event.stopPropagation();gotoSource()" style="cursor:pointer" title="查看来源">${escapeHtml(catName(cur.cat))} ↗</span>
         <div class="word">${escapeHtml(cur.word)}</div>
         ${cur.phonetic?`<div class="phonetic">${escapeHtml(cur.phonetic)}</div>`:""}
         <button class="speak" onclick="event.stopPropagation();speak(this)">🔊 发音</button>
@@ -710,7 +721,7 @@ function renderCatManager(){
     const canRename=!c.isFixed&&!c.isArt&&c.cat!=="import";
     const canMerge=c.cat!=="import";
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
-      <div style="flex:1"><div style="font-weight:600;font-size:.86rem">${c.name} ${tag}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:.86rem">${escapeHtml(c.name)} ${tag}</div>
         <div style="font-size:.72rem;color:var(--ink-dim)">${c.n} 词</div></div>
       ${canRename?`<button class="gear" style="font-size:.72rem;padding:4px 8px" onclick="renameCat('${c.cat}')">改名</button>`:""}
       ${canMerge?`<button class="gear" style="font-size:.72rem;padding:4px 8px" onclick="mergeCat('${c.cat}')">合并</button>`:""}
@@ -729,7 +740,9 @@ function renameCat(cat){
   const cur=catName(cat);
   const name=prompt(`把分类「${cur}」改成什么名字？`,cur);
   if(!name||!name.trim()||name.trim()===cur)return;
-  const nn=name.trim();
+  // 分类名会被当作 key 拼进各处 onclick="...('key')"，引号/尖括号会把整个首页点坏，直接过滤掉
+  const nn=name.trim().replace(/["'`<>\\]/g,"");
+  if(!nn)return toast("名字不能全是引号等特殊字符");
   // 重命名 = 把该 cat 的词改成新 cat 名（用新名作 key）
   moveCatWords(cat,nn);
   toast(`已改名为「${nn}」`);
@@ -769,11 +782,11 @@ function runSearch(q){
   const hits=allWords().filter(w=>
     (w.word||"").toLowerCase().includes(q)||(w.cn||"").toLowerCase().includes(q)
   ).slice(0,50);
-  if(!hits.length){box.innerHTML=`<div style="font-size:.78rem;color:var(--ink-dim)">没找到「${q}」</div>`;return}
+  if(!hits.length){box.innerHTML=`<div style="font-size:.78rem;color:var(--ink-dim)">没找到「${escapeHtml(q)}」</div>`;return}
   box.innerHTML=hits.map(w=>`<div class="mistake-item" style="cursor:pointer" onclick="reviewWord('${w.id}')">
-    <div style="flex:1"><div class="w" style="font-size:.95rem">${w.word}${w.phonetic?`<span style="font-size:.7rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${w.phonetic}</span>`:""}</div>
-      <div class="c">${w.cn||""}</div></div>
-    <span style="font-size:.64rem;color:var(--ink-dim);white-space:nowrap">${catName(w.cat)}</span>
+    <div style="flex:1"><div class="w" style="font-size:.95rem">${escapeHtml(w.word)}${w.phonetic?`<span style="font-size:.7rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${escapeHtml(w.phonetic)}</span>`:""}</div>
+      <div class="c">${escapeHtml(w.cn||"")}</div></div>
+    <span style="font-size:.64rem;color:var(--ink-dim);white-space:nowrap">${escapeHtml(catName(w.cat))}</span>
   </div>`).join("")+(hits.length>=50?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:8px">只显示前 50 个，再输入细化</div>`:"");
 }
 function catName(c){
@@ -948,40 +961,38 @@ function renderSortedCatRows(rows){
   return sorted.map(r=>`<div class="mistake-item cat-row" data-key="${r.key}" style="cursor:pointer;display:flex;align-items:center;gap:2px" onclick="openCatPreview('${r.key}')">
     <span class="drag-handle" onclick="event.stopPropagation()">⠿</span>
     <div style="flex:1;min-width:0">
-      <div><div class="w">${r.name}</div><div class="c">${r.desc} · 共 ${r.n} 词</div></div>
+      <div><div class="w">${escapeHtml(r.name)}</div><div class="c">${escapeHtml(r.desc)} · 共 ${r.n} 词</div></div>
     </div>
     <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${r.due}</div><div class="c">待学</div></div>
   </div>`).join("");
 }
-// 长按拖拽排序：触摸版实现（不用HTML5 dragndrop，手机浏览器兼容性更好）
+// 长按拖拽排序：触摸 + 鼠标双实现（不用HTML5 dragndrop，手机浏览器兼容性更好；桌面也能拖）
 function initCatDrag(){
   const list=document.getElementById("cat-sort-list");
   if(!list)return;
-  let dragEl=null,startY=0,startIndex=-1,longPressTimer=null,dragging=false;
+  let dragEl=null,startY=0,longPressTimer=null,dragging=false;
   const rowsEls=()=>Array.from(list.querySelectorAll(".cat-row"));
+  const pointY=e=>e.touches?e.touches[0].clientY:e.clientY;
 
-  function onTouchStart(e,row){
-    const touch=e.touches[0];
-    startY=touch.clientY;
+  function onStart(e,row){
+    startY=pointY(e);
     longPressTimer=setTimeout(()=>{
       dragging=true;
       dragEl=row;
-      startIndex=rowsEls().indexOf(row);
       row.classList.add("dragging");
       if(navigator.vibrate)navigator.vibrate(12);   // 轻微震动反馈，有则用，没有静默忽略
-    },350);   // 350ms长按阈值，避免和点击/滚动冲突
+    },e.touches?350:200);   // 长按阈值：触屏 350ms 避免和滚动冲突；鼠标没有滚动误触，200ms 更跟手
   }
-  function onTouchMove(e){
-    const touch=e.touches[0];
+  function onMove(e){
+    const y=pointY(e);
     if(!dragging){
-      // 还没触发长按前，如果手指已经明显移动（说明用户在滚动），取消长按计时
-      if(Math.abs(touch.clientY-startY)>10)clearTimeout(longPressTimer);
+      // 还没触发长按前，如果指针已经明显移动（说明用户在滚动），取消长按计时
+      if(Math.abs(y-startY)>10)clearTimeout(longPressTimer);
       return;
     }
-    e.preventDefault();   // 拖拽中阻止页面滚动
-    const y=touch.clientY;
+    e.preventDefault();   // 拖拽中阻止页面滚动/文字选中
     dragEl.style.transform=`translateY(${y-startY}px)`;
-    // 找到当前手指位置对应要插入的位置，实时重排DOM
+    // 找到当前指针位置对应要插入的位置，实时重排DOM
     const els=rowsEls().filter(el=>el!==dragEl);
     let target=null;
     for(const el of els){
@@ -992,9 +1003,9 @@ function initCatDrag(){
     else list.appendChild(dragEl);
     dragEl.style.transform=`translateY(${y-startY}px)`;   // 重新插入后DOM位置变了，transform要基于新位置重算更精确，这里简化保留原有位移量
   }
-  function onTouchEnd(){
+  function onEnd(){
     clearTimeout(longPressTimer);
-    if(!dragging){return}
+    if(!dragging)return false;
     dragging=false;
     dragEl.classList.remove("dragging");
     dragEl.style.transform="";
@@ -1002,13 +1013,27 @@ function initCatDrag(){
     saveHomeCatOrder(newOrder);
     toast("排序已保存");
     dragEl=null;
+    return true;
   }
   rowsEls().forEach(row=>{
-    row.addEventListener("touchstart",e=>onTouchStart(e,row),{passive:true});
+    row.addEventListener("touchstart",e=>onStart(e,row),{passive:true});
+    // 鼠标版：mousedown 时临时挂 document 级 move/up，结束即卸载（不随重渲染累积）
+    row.addEventListener("mousedown",e=>{
+      onStart(e,row);
+      const mm=ev=>onMove(ev);
+      const mu=()=>{
+        document.removeEventListener("mousemove",mm);
+        document.removeEventListener("mouseup",mu);
+        // 真的拖过，就拦下松手后紧跟的 click，避免误触发打开分类
+        if(onEnd())list.addEventListener("click",ev=>{ev.stopPropagation();ev.preventDefault()},{capture:true,once:true});
+      };
+      document.addEventListener("mousemove",mm);
+      document.addEventListener("mouseup",mu);
+    });
   });
-  list.addEventListener("touchmove",onTouchMove,{passive:false});
-  list.addEventListener("touchend",onTouchEnd);
-  list.addEventListener("touchcancel",onTouchEnd);
+  list.addEventListener("touchmove",onMove,{passive:false});
+  list.addEventListener("touchend",onEnd);
+  list.addEventListener("touchcancel",onEnd);
 }
 // 收藏聚合分类的判断
 function isFavWord(w,looseCats){return w.cat==="import"||w.cat==="other"||(looseCats&&looseCats.includes(w.cat))}
@@ -1193,9 +1218,9 @@ function renderCatSuggest(v){
   const cats=classifyCats();
   const rows=catSuggestItems.map((it,idx)=>`
     <div class="mistake-item">
-      <div style="flex:1"><div class="w" style="font-size:.96rem">${it.word}</div><div class="c">${it.cn}</div></div>
+      <div style="flex:1"><div class="w" style="font-size:.96rem">${escapeHtml(it.word)}</div><div class="c">${escapeHtml(it.cn)}</div></div>
       <select id="cs-${idx}" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:.8rem;background:var(--paper);color:var(--ink)">
-        ${cats.map(c=>`<option value="${c[0]}"${c[0]===it.cat?" selected":""}>${c[1]}</option>`).join("")}
+        ${cats.map(c=>`<option value="${c[0]}"${c[0]===it.cat?" selected":""}>${escapeHtml(c[1])}</option>`).join("")}
       </select>
     </div>`).join("");
   v.innerHTML=`<div style="padding-top:8px">
@@ -1205,7 +1230,7 @@ function renderCatSuggest(v){
     </div>
     <div style="font-size:.76rem;color:var(--ink-dim);margin-bottom:10px">AI 已按词义建议分类，下拉可改，确认后写入。共 ${catSuggestItems.length} 词。</div>
     ${rows}
-    <button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyCatSuggest()">✓ 确认归类这 ${catSuggestItems.length} 个词</button>
+    <button class="ai-btn" style="position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyCatSuggest()">✓ 确认归类这 ${catSuggestItems.length} 个词</button>
   </div>`;
 }
 function cancelCatSuggest(){catSuggestItems=null;catSuggestLoading=false;reclassifyProgress=null;render()}
@@ -1263,7 +1288,7 @@ function renderDedup(v){
   const rows=dedupGroups.map((g,i)=>`
     <div class="mistake-item" style="cursor:pointer" onclick="toggleDedup(${i})">
       <span style="font-size:1.1rem;margin-right:6px">${g.on?"☑":"☐"}</span>
-      <div style="flex:1"><div class="w" style="font-size:.96rem">${g.word}</div><div class="c">共 ${g.total} 个 · 保留 1 · 删 ${g.removeIds.length}</div></div>
+      <div style="flex:1"><div class="w" style="font-size:.96rem">${escapeHtml(g.word)}</div><div class="c">共 ${g.total} 个 · 保留 1 · 删 ${g.removeIds.length}</div></div>
     </div>`).join("");
   v.innerHTML=`<div style="padding-top:8px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
@@ -1272,7 +1297,7 @@ function renderDedup(v){
     </div>
     <div style="font-size:.76rem;color:var(--ink-dim);margin-bottom:10px">全库找到 ${dedupGroups.length} 组拼写重复的词。每组保留 1 个（优先保留有复习进度/内置的），其余进回收站可恢复。点行可排除该组。</div>
     ${rows}
-    ${totalRemove?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyDedup()">🗑 删除选中的 ${totalRemove} 个重复词（可恢复）</button>`:`<div style="font-size:.76rem;color:var(--ink-dim);margin-top:14px">未选中任何组。</div>`}
+    ${totalRemove?`<button class="ai-btn" style="position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyDedup()">🗑 删除选中的 ${totalRemove} 个重复词（可恢复）</button>`:`<div style="font-size:.76rem;color:var(--ink-dim);margin-top:14px">未选中任何组。</div>`}
   </div>`;
 }
 
@@ -1392,7 +1417,7 @@ function renderPreview(v){
   v.innerHTML=`<div style="padding-top:8px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       <button class="gear" onclick="closeCatPreview()">← 返回</button>
-      <div style="font-family:Fraunces,serif;font-size:1.15rem;font-weight:700">${catName(cat)}</div>
+      <div style="font-family:Fraunces,serif;font-size:1.15rem;font-weight:700">${escapeHtml(catName(cat))}</div>
       ${hasSession()?`<button class="gear" style="margin-left:auto;border-color:var(--accent);color:var(--accent);white-space:nowrap" onclick="resumeStudy()">↩ 回到背词</button>`:""}
     </div>
     <div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:10px">共 ${list.length} 词 · 新词 ${newN} · 待复习 ${dueN}</div>
@@ -1403,7 +1428,7 @@ function renderPreview(v){
     ${list.length?`<button class="gear" style="margin-bottom:12px" onclick="openEnrichPhonetic()">🔤 批量补音标（扫全部分类）</button>`:""}
     ${imported.length?`<button class="gear" style="margin-bottom:12px" onclick="aiReclassifyAll()">🗂 AI重新分类我导入的 ${imported.length} 个词</button>`:""}
     ${list.length?rows:`<div class="done"><p>这个分类还没有词。</p></div>`}
-    ${list.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
+    ${list.length?`<button class="ai-btn" style="position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
   </div>
   ${list.length?`<div class="az-index" id="az-index">${azLetters}</div><div class="az-bubble" id="az-bubble"></div>`:""}`;
   scrollToLastWord();
@@ -1462,7 +1487,7 @@ function renderArticleList(v){
     const d=new Date(a.createdAt);
     const date=showDate&&a.createdAt?` · ${d.getMonth()+1}/${d.getDate()}`:"";
     return `<div class="mistake-item" style="cursor:pointer" onclick="openArticleDetail('${a.id}')">
-      <div style="flex:1"><div class="w" style="font-size:.98rem">${a.title}</div>
+      <div style="flex:1"><div class="w" style="font-size:.98rem">${escapeHtml(a.title)}</div>
         <div class="c">${a.mode==="deep"?"精读":"大意"} · ${n} 词${date}</div></div>
       ${showDel?`<button class="gear" onclick="event.stopPropagation();delArticle('${a.id}')">🗑</button>`:""}
     </div>`;
@@ -1502,8 +1527,8 @@ function renderArticleDetail(v){
     const st=!c?"新词":due?"待复习":"复习中";
     const col=!c?"var(--ink-dim)":due?"var(--accent)":"var(--green)";
     return `<div class="mistake-item" id="pv-row-${w.id}" style="cursor:pointer" onclick="startStudyAt('${artCatKey(a.id)}','${w.id}')">
-      <div style="flex:1"><div class="w" style="font-size:1rem">${w.word}${w.pos==="phrase"?'<span style="font-size:.62rem;color:var(--ink-dim);border:1px solid var(--line);border-radius:8px;padding:0 5px;margin-left:6px">短语</span>':""}${w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${w.phonetic}</span>`:""}</div>
-        <div class="c">${w.cn||""}</div></div>
+      <div style="flex:1"><div class="w" style="font-size:1rem">${escapeHtml(w.word)}${w.pos==="phrase"?'<span style="font-size:.62rem;color:var(--ink-dim);border:1px solid var(--line);border-radius:8px;padding:0 5px;margin-left:6px">短语</span>':""}${w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${escapeHtml(w.phonetic)}</span>`:""}</div>
+        <div class="c">${escapeHtml(w.cn||"")}</div></div>
       <span style="font-size:.66rem;color:${col};border:1px solid ${col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st}</span>
       <button class="gear" style="margin-left:6px;padding:2px 8px" onclick="event.stopPropagation();delArticleWord('${w.id}')">🗑</button>
     </div>`;
@@ -1511,26 +1536,26 @@ function renderArticleDetail(v){
   v.innerHTML=`<div style="padding-top:8px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <button class="gear" onclick="openArticleList()">← 文章列表</button>
-      <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:700;flex:1">${a.title}</div>
+      <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:700;flex:1">${escapeHtml(a.title)}</div>
       ${hasSession()?`<button class="gear" style="border-color:var(--accent);color:var(--accent);white-space:nowrap" onclick="resumeStudy()">↩ 回到背词</button>`:""}
     </div>
     <details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-dim)">📖 原文</summary>
       <button class="gear" style="margin-top:8px" onclick="speakSynth(articles.find(a=>a.id==='${a.id}').text,this);this.classList.toggle('playing')">🔊 朗读原文</button>
       <button class="gear" style="margin-top:8px" onclick="stopSpeak()">⏹ 停止</button>
-      <div style="font-size:.84rem;line-height:1.7;white-space:pre-wrap;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px">${(a.text||"").replace(/</g,"&lt;")}</div></details>
+      <div style="font-size:.84rem;line-height:1.7;white-space:pre-wrap;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px">${escapeHtml(a.text||"")}</div></details>
     <details open style="margin-bottom:12px"><summary style="cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-dim)">🤖 AI 精讲（${a.mode==="deep"?"精读":"大意"}）</summary>
-      <div style="font-size:.84rem;line-height:1.7;white-space:pre-wrap;margin-top:8px">${(a.explain||"").replace(/</g,"&lt;")}</div></details>
+      <div style="font-size:.84rem;line-height:1.7;white-space:pre-wrap;margin-top:8px">${escapeHtml(a.explain||"")}</div></details>
     <button class="gear" style="width:100%;margin-bottom:12px" onclick="deepLesson('${a.id}')">${lessonOpen[a.id]?'📚 收起课文精讲':(lessonExplain[a.id]?'📚 展开课文精讲（词汇·句型·语法）':'📚 课文精讲（词汇用法+句型+语法点，AI 按教材风格讲透）')}</button>
     <div id="lesson-exp-${a.id}" style="margin-bottom:12px">${lessonOpen[a.id]&&lessonExplain[a.id]?lessonDetailHtml(lessonExplain[a.id]):""}</div>
     <div style="font-weight:600;font-size:.88rem;margin:14px 0 8px">生词短语（${words.length}）</div>
     ${words.length?wordRows:`<div style="font-size:.78rem;color:var(--ink-dim)">这篇没有入库的生词。</div>`}
-    ${words.length?`<button class="ai-btn" style="position:sticky;bottom:14px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${artCatKey(a.id)}')">▶ 背这篇的 ${words.length} 个词</button>`:""}
+    ${words.length?`<button class="ai-btn" style="position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${artCatKey(a.id)}')">▶ 背这篇的 ${words.length} 个词</button>`:""}
   </div>`;
   scrollToLastWord();
 }
 // 课文精讲详解的 HTML 包装（与语法详解同款卡片样式）
 function lessonDetailHtml(text){
-  return `<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.84rem;line-height:1.7;white-space:pre-wrap">${(text||"").replace(/</g,"&lt;")}</div>`;
+  return `<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.84rem;line-height:1.7;white-space:pre-wrap">${escapeHtml(text||"")}</div>`;
 }
 // 课文精讲：按新概念教材配套精讲风格，AI 现场展开并缓存（可展开可收起）
 async function deepLesson(id){
@@ -1639,7 +1664,7 @@ function backHtml(){
   }
   const fav=mistakes.find(m=>m.id===cur.id)?"★ 已收藏":"☆ 收藏";
   const pos=cur.pos?`<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">${escapeHtml(cur.pos)}</span>`:"";
-  const scene=cur.scene?`<div class="tip" style="background:#eef3ec;border-left:3px solid var(--green)">🎬 ${escapeHtml(cur.scene)}</div>`:"";
+  const scene=cur.scene?`<div class="tip" style="background:var(--green-soft);border-left:3px solid var(--green)">🎬 ${escapeHtml(cur.scene)}</div>`:"";
   return `
   <div class="back">
     <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1651,7 +1676,7 @@ function backHtml(){
     ${cur.exampleEn?`<div class="ex">${escapeHtml(cur.exampleEn)}</div>`:""}
     ${cur.exampleCn?`<div class="ex-cn">${escapeHtml(cur.exampleCn)}</div>`:""}
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="gear" onclick="event.stopPropagation();speakWord('${(cur.exampleEn||'').replace(/'/g,'')}')">🔊 读例句</button>
+      <button class="gear" onclick="event.stopPropagation();if(cur.exampleEn)playAudio(cur.exampleEn,null)">🔊 读例句</button>
       <button class="gear" id="dissect-btn" onclick="event.stopPropagation();dissectExample()">🔍 拆解这句话</button>
     </div>
 
@@ -1685,7 +1710,6 @@ function aiHtml(){
       <button class="ai-btn" id="check-btn" style="flex:1" onclick="askWord()">问 AI</button>
       ${has?`<button class="gear" onclick="clearAsk()">清空</button>`:""}
     </div>
-    <div class="ai-result" id="ai-result"></div>
   </div>`;
 }
 function flip(){flipped=true;saveSession();render();maybeEnrichWord()}
@@ -1746,7 +1770,6 @@ let articleListOpen=false;       // 是否在文章列表页
 const LESSON_KEY="vocab_v5_lesson_explain";
 let lessonExplain=load(LESSON_KEY,{});
 let lessonOpen={};               // {文章id:true} 哪些精讲当前展开
-let lastArtWords=null;           // 最近一次抽出的生词（供预览入库）
 function artCatKey(id){return "art_"+id}
 // 该文章的生词:
 //   NCE 课文 -> 从 NCE_WORDS 按 lid 筛(内置, 带例句)
@@ -1855,7 +1878,7 @@ async function punctuateArticle(){
   if(btn){btn.disabled=false;btn.textContent=oldLabel}
 }
 // 分段精读状态
-let artChunks=[],artChunkIdx=0,artId=null,artAllWords=[];
+let artChunks=[],artChunkIdx=0,artId=null;
 // ===== 精读进度持久化（切后台/刷新可恢复）=====
 const ART_PROG_KEY="vocab_v5_art_progress";
 function saveArtProgress(){
@@ -1889,7 +1912,7 @@ function resumeArtProgress(prog){
     openArticleReader();
     // 用已存的精讲填充显示，跳过输入，直接到"继续"状态
     const box=document.getElementById("art-result");
-    if(box)box.innerHTML=`<div id="art-explain" style="font-size:.84rem;line-height:1.7;white-space:pre-wrap">${(art.explain||"").replace(/</g,"&lt;")}</div><div id="art-step" style="margin-top:12px"></div>`;
+    if(box)box.innerHTML=`<div id="art-explain" style="font-size:.84rem;line-height:1.7;white-space:pre-wrap">${escapeHtml(art.explain||"")}</div><div id="art-step" style="margin-top:12px"></div>`;
     const goBtn=document.getElementById("art-go");if(goBtn)goBtn.style.display="none";
     const total=artChunks.length;
     const stepEl=document.getElementById("art-step");
@@ -1905,7 +1928,7 @@ function startArticleSession(){
   let title=(document.getElementById("art-title")||{}).value||"";
   if(!title.trim())title=text.trim().slice(0,16).replace(/\n/g," ")+"…";
   artChunks=splitArticle(text);
-  artChunkIdx=0;artAllWords=[];artStat={w:0,p:0,g:0};
+  artChunkIdx=0;artStat={w:0,p:0,g:0};
   artId="a"+Date.now();
   // 先建文章（explain 随每段追加）
   const _newArt={id:artId,title,text,mode:artMode,explain:"",createdAt:Date.now()};
@@ -1969,10 +1992,13 @@ async function runArticleChunk(){
 let artStat={w:0,p:0,g:0};
 // 自动把提取结果分类入库（去重）：单词→文章词库进SRS带例句；短语→短语库进复习；语法→语法库进回顾
 function autoFileExtract(ext){
+  // 全库词表先建 Set 查重，避免每个词都 allWords().some 全库扫描
+  const existing=new Set(allWords().map(x=>(x.word||"").toLowerCase()));
   // 单词（当新词：不预建 SRS，背过后再进复习曲线，显示为"新词"）
   (ext.words||[]).forEach(it=>{
     const word=(it.w||"").trim();if(!word)return;
-    if(allWords().some(x=>x.word.toLowerCase()===word.toLowerCase()))return;
+    if(existing.has(word.toLowerCase()))return;
+    existing.add(word.toLowerCase());
     const id="aw"+Date.now()+"_"+artStat.w+"_"+Math.floor(Math.random()*1000);
     imported.push({id,word,phonetic:"",pos:"",cn:it.cn||"",tip:"",exampleEn:it.eg||"",exampleCn:"",scene:"",cat:artCatKey(artId),fromArticle:artId});
     artStat.w++;
@@ -1980,7 +2006,8 @@ function autoFileExtract(ext){
   // 短语（路径A：与单词一起归到本文章名下，进 imported，可与单词一起背）
   (ext.phrases||[]).forEach(it=>{
     const ph=(it.w||"").trim();if(!ph)return;
-    if(allWords().some(x=>x.word.toLowerCase()===ph.toLowerCase()))return;
+    if(existing.has(ph.toLowerCase()))return;
+    existing.add(ph.toLowerCase());
     const id="ap"+Date.now()+"_"+artStat.p+"_"+Math.floor(Math.random()*1000);
     imported.push({id,word:ph,phonetic:"",pos:"phrase",cn:it.cn||"",tip:"",exampleEn:it.eg||"",exampleCn:"",scene:"",cat:artCatKey(artId),fromArticle:artId});
     artStat.p++;
@@ -2026,54 +2053,8 @@ async function extractFromChunk(chunk){
     };
   }catch(e){return null}
 }
-function renderArticleWordPicker(){
-  const stepEl=document.getElementById("art-step");if(!stepEl)return;
-  lastArtWords={articleId:artId,words:artAllWords};
-  const checks=artAllWords.map((w,i)=>{
-    const exists=allWords().some(x=>x.word.toLowerCase()===(w.word||"").toLowerCase());
-    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:.82rem;${exists?'opacity:.5':''}">
-      <input type="checkbox" class="art-wc" data-i="${i}" ${exists?'disabled':'checked'}>
-      <span><b>${w.word}</b> ${w.phonetic||""} — ${w.cn||""}${exists?' (已在库)':''}</span></label>`;
-  }).join("");
-  stepEl.innerHTML=`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:10px">
-    <div style="font-weight:600;font-size:.86rem;margin-bottom:6px">全文讲完 · 挑出 ${artAllWords.length} 个生词/短语</div>
-    ${checks||'<div style="font-size:.78rem;color:var(--ink-dim)">没挑到生词，可点下面按钮重试。</div>'}
-    ${artAllWords.length?`<button class="ai-btn" style="margin-top:10px" onclick="saveArticleWords()">加入词库（进“我的文章”）</button>`
-      :`<button class="gear" style="margin-top:8px" onclick="retryPickAll()">🔄 重新挑词</button>`}
-    <div style="font-size:.74rem;color:var(--ink-dim);margin-top:8px">文章和精讲已保存，可在学习页「我的文章」里重看。</div>
-  </div>`;
-}
-// 全文重新抽词（逐段重抽合并）
-async function retryPickAll(){
-  const stepEl=document.getElementById("art-step");
-  if(stepEl)stepEl.innerHTML=`<div style="font-size:.78rem;color:var(--ink-dim)">重新挑词中…</div>`;
-  artAllWords=[];
-  for(let i=0;i<artChunks.length;i++){
-    const got=await pickWordsFromChunk(artChunks[i]);
-    if(got)got.forEach(w=>{if(!artAllWords.some(x=>(x.word||"").toLowerCase()===(w.word||"").toLowerCase()))artAllWords.push(w)});
-  }
-  renderArticleWordPicker();
-}
 // 兼容旧入口名
 function runArticle(){return startArticleSession()}
-function saveArticleWords(){
-  if(!lastArtWords)return;
-  const {articleId,words}=lastArtWords;
-  const boxes=document.querySelectorAll(".art-wc");
-  let n=0;
-  boxes.forEach(cb=>{
-    if(cb.disabled||!cb.checked)return;
-    const w=words[parseInt(cb.dataset.i,10)];if(!w)return;
-    if(allWords().some(x=>x.word.toLowerCase()===(w.word||"").toLowerCase()))return;
-    const id="aw"+Date.now()+"_"+n;
-    imported.push({id,word:w.word,phonetic:w.phonetic||"",pos:"",cn:w.cn||"",tip:w.tip||"",exampleEn:w.exampleEn||"",exampleCn:w.exampleCn||"",scene:"",cat:artCatKey(articleId),fromArticle:articleId});
-    srs[id]={ef:2.5,interval:0,reps:0,due:Date.now()};  // 进复习曲线
-    n++;
-  });
-  save(IMP_KEY,imported);save(SRS_KEY,srs);
-  toast(n?`已加入 ${n} 个词，进“我的文章”`:"没有勾选新词");
-  closeImport();
-}
 // ===== 回收站 / 撤回 =====
 const TRASH_KEY="vocab_v5_trash";
 let trash=load(TRASH_KEY,[]);          // [{type,data,label,deletedAt,extra}]
@@ -2168,7 +2149,7 @@ function renderTrash(v){
     const d=new Date(t.deletedAt);
     const date=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
     return `<div class="mistake-item">
-      <div style="flex:1"><div class="w" style="font-size:.92rem">${(t.label||"(无标题)").replace(/</g,"&lt;")}</div>
+      <div style="flex:1"><div class="w" style="font-size:.92rem">${escapeHtml(t.label||"(无标题)")}</div>
         <div class="c">${TRASH_TYPE_LABEL[t.type]||t.type} · ${date}</div></div>
       <button class="gear" style="padding:4px 10px" onclick="restoreTrash(${i})">恢复</button>
       <button class="gear" style="padding:4px 8px;margin-left:4px" onclick="purgeTrash(${i})">🗑</button>
@@ -2291,7 +2272,7 @@ function tagBtnsHtml(){
 function tagResultHtml(txt){
   const lines=String(txt).split("\n").filter(l=>l.trim());
   return `<div style="background:var(--card-soft,#f5f1ea);border-radius:10px;padding:10px 12px;font-size:.82rem;line-height:1.7">${
-    lines.map(l=>`<div>${l.replace(/[*#`]/g,"")}</div>`).join("")}
+    lines.map(l=>`<div>${escapeHtml(l.replace(/[*#`]/g,""))}</div>`).join("")}
     <button class="gear" style="margin-top:8px;font-size:.72rem;padding:2px 9px" onclick="event.stopPropagation();regenTag()">🔄 重新生成</button></div>`;
 }
 // 重新生成当前展开标签的内容：清掉缓存，重新调 AI
@@ -2360,8 +2341,8 @@ function renderDissect(box,o){
     const inVocab=allWords().some(x=>x.word.toLowerCase()===(p.phrase||"").toLowerCase());
     return `<div style="background:var(--paper2);border-radius:8px;padding:8px 10px;margin-bottom:6px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div style="flex:1"><b>${p.phrase}</b> <span style="color:var(--ink-dim)">${p.cn||""}</span>
-          ${p.tip?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:2px">${p.tip}</div>`:""}</div>
+        <div style="flex:1"><b>${escapeHtml(p.phrase)}</b> <span style="color:var(--ink-dim)">${escapeHtml(p.cn||"")}</span>
+          ${p.tip?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:2px">${escapeHtml(p.tip)}</div>`:""}</div>
         <div style="display:flex;flex-direction:column;gap:4px">
           <button class="gear" style="white-space:nowrap" onclick="savePhraseFromDissect(${i},this)" ${exists?"disabled":""}>${exists?"已在短语库":"+短语库"}</button>
           <button class="gear" style="white-space:nowrap" onclick="savePhraseToVocab(${i},this)" ${inVocab?"disabled":""}>${inVocab?"已在词库":"+词库"}</button>
@@ -2370,16 +2351,16 @@ function renderDissect(box,o){
   }).join("");
   const grammarRows=(o.grammar||[]).map((g,i)=>{
     return `<div style="background:var(--paper2);border-radius:8px;padding:8px 10px;margin-bottom:6px">
-        <div style="flex:1"><b>${g.point}</b><div style="font-size:.76rem;margin-top:2px">${g.cn||""}</div>
-          ${g.example?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:2px">例：${g.example}</div>`:""}</div>
+        <div style="flex:1"><b>${escapeHtml(g.point)}</b><div style="font-size:.76rem;margin-top:2px">${escapeHtml(g.cn||"")}</div>
+          ${g.example?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:2px">例：${escapeHtml(g.example)}</div>`:""}</div>
       </div>`;
   }).join("");
   box.innerHTML=`
     <div style="font-size:.82rem;line-height:1.6;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px">
-      ${o.structure?`<div style="margin-bottom:8px"><span style="color:var(--ink-dim);font-size:.72rem">句子主干</span><br>${o.structure}</div>`:""}
+      ${o.structure?`<div style="margin-bottom:8px"><span style="color:var(--ink-dim);font-size:.72rem">句子主干</span><br>${escapeHtml(o.structure)}</div>`:""}
       ${phraseRows?`<div style="color:var(--ink-dim);font-size:.72rem;margin:8px 0 4px">短语 / 搭配</div>${phraseRows}`:""}
       ${grammarRows?`<div style="color:var(--ink-dim);font-size:.72rem;margin:8px 0 4px">语法点</div>${grammarRows}<div style="font-size:.72rem;color:var(--ink-dim);margin-top:4px">想系统学这个语法？去「AI 助手」直接问，它给你讲整块 →</div>`:""}
-      ${o.memory?`<div style="margin-top:8px;background:#eef3ec;border-left:3px solid var(--green);border-radius:6px;padding:8px 10px">🧠 ${o.memory}</div>`:""}
+      ${o.memory?`<div style="margin-top:8px;background:var(--green-soft);border-left:3px solid var(--green);border-radius:6px;padding:8px 10px">🧠 ${escapeHtml(o.memory)}</div>`:""}
     </div>`;
 }
 function savePhraseFromDissect(i,btn){
@@ -2435,33 +2416,30 @@ function resumeFromPeek(){
   peekSnapshot=null;openTag=null;
   render();
 }
-// 左右滑（只在正面生效）：右滑下一词，左滑返回上一词
+// 左右滑（只在正面生效）：右滑下一词，左滑返回上一词。触摸 + 鼠标拖拽都支持
 function bindSwipe(){
   const card=document.getElementById("card");
   if(!card)return;
   let x0=null,y0=null,dx=0,dragging=false;
-  card.addEventListener("touchstart",e=>{
-    if(flipped)return;
-    x0=e.touches[0].clientX;y0=e.touches[0].clientY;dx=0;dragging=false;
-    card.classList.remove("snap");
-  },{passive:true});
-  card.addEventListener("touchmove",e=>{
-    if(flipped||x0===null)return;
-    const cx=e.touches[0].clientX,cy=e.touches[0].clientY;
+  const snapBack=()=>{card.classList.add("snap");card.style.transform="";card.style.opacity=""};
+  const start=(cx,cy)=>{x0=cx;y0=cy;dx=0;dragging=false;card.classList.remove("snap")};
+  const move=(cx,cy)=>{
+    if(x0===null)return;
     if(!dragging&&Math.abs(cx-x0)<Math.abs(cy-y0))return;
     dragging=true;dx=cx-x0;
     card.classList.add("swiping");
     card.style.transform="translateX("+dx+"px) rotate("+(dx/40)+"deg)";
     card.style.opacity=Math.max(.4,1-Math.abs(dx)/300);
-  },{passive:true});
-  const snapBack=()=>{card.classList.add("snap");card.style.transform="";card.style.opacity=""};
-  card.addEventListener("touchend",()=>{
-    if(flipped||x0===null)return;
+  };
+  // 结束一次拖拽，返回"是否真的拖动过"（鼠标版用它决定要不要拦下随后的 click）
+  const end=()=>{
+    if(x0===null)return false;
     x0=null;card.classList.remove("swiping");
+    const wasDrag=dragging;dragging=false;
     if(Math.abs(dx)>90){
       const next=dx<0;  // 左滑(dx<0)=下一张，右滑(dx>0)=返回上一张
       const canMove=next?(queue.length>1):(viewed.length>0);
-      if(!canMove){next?toast("就剩这一个啦"):toast("已经是第一个了");snapBack();return}
+      if(!canMove){next?toast("就剩这一个啦"):toast("已经是第一个了");snapBack();return wasDrag}
       card.classList.add("snap");
       card.style.transform="translateX("+(next?-500:500)+"px) rotate("+(next?-20:20)+"deg)";
       card.style.opacity="0";
@@ -2469,6 +2447,23 @@ function bindSwipe(){
     }else{
       snapBack();
     }
+    return wasDrag;
+  };
+  card.addEventListener("touchstart",e=>{if(flipped)return;start(e.touches[0].clientX,e.touches[0].clientY)},{passive:true});
+  card.addEventListener("touchmove",e=>{if(flipped)return;move(e.touches[0].clientX,e.touches[0].clientY)},{passive:true});
+  card.addEventListener("touchend",()=>{if(flipped)return;end()});
+  // 鼠标版：挂 document 级 move/up 以支持拖出卡片外松手；拖过就拦下 click 防误翻面
+  card.addEventListener("mousedown",e=>{
+    if(flipped)return;
+    start(e.clientX,e.clientY);
+    const mm=ev=>{move(ev.clientX,ev.clientY);if(dragging)ev.preventDefault()};
+    const mu=()=>{
+      document.removeEventListener("mousemove",mm);
+      document.removeEventListener("mouseup",mu);
+      if(end())card.addEventListener("click",ev=>{ev.stopPropagation();ev.preventDefault()},{capture:true,once:true});
+    };
+    document.addEventListener("mousemove",mm);
+    document.addEventListener("mouseup",mu);
   });
 }
 const GRADUATE_STREAK=3;  // 复习本的词连续点"记得/秒答"达到此次数自动毕业移出
@@ -2602,9 +2597,9 @@ function renderMistake(v){
       const prog=m.streak?`<span style="opacity:.7"> · 连对 ${m.streak}/${GRADUATE_STREAK}</span>`:"";
       return `
     <div class="mistake-item">
-      <div><div class="w">${m.word}</div><div class="c">${m.cn} · ${tag}${prog}</div></div>
+      <div><div class="w">${escapeHtml(m.word)}</div><div class="c">${escapeHtml(m.cn)} · ${tag}${prog}</div></div>
       <div style="display:flex;gap:6px">
-        <button class="gear" onclick="speakWord('${m.word.replace(/'/g,"")}')">🔊</button>
+        <button class="gear" onclick="speakId('${m.id}')">🔊</button>
         <button class="gear" onclick="delMistake('${m.id}')">🗑</button>
       </div>
     </div>`}).join("")}</div>`;
@@ -2629,11 +2624,11 @@ function renderPhraseTab(v,tabBar){
       const status=!p.inReview?"加复习":due?"待复习":"复习中";
       const stHint=p.inReview?(due?`<span style="color:var(--accent);font-weight:600;font-size:.7rem">· 到期待复习</span>`:`<span style="opacity:.7;font-size:.7rem">· 下次 ${fmtDue(c&&c.due)}</span>`):"";
       return `<div class="mistake-item">
-      <div style="flex:1"><div class="w" style="font-size:1rem">${p.phrase}</div><div class="c">${p.cn}${p.tip?` · ${p.tip}`:""} ${stHint}</div></div>
+      <div style="flex:1"><div class="w" style="font-size:1rem">${escapeHtml(p.phrase)}</div><div class="c">${escapeHtml(p.cn)}${p.tip?` · ${escapeHtml(p.tip)}`:""} ${stHint}</div></div>
       <div style="display:flex;gap:6px">
         <button class="gear" style="${p.inReview?'background:var(--accent-soft);border-color:var(--accent);color:var(--accent)':''}" onclick="togglePhraseReview('${p.id}')">${status}</button>
-        <button class="gear" onclick="speakWord('${p.phrase.replace(/'/g,"")}')">🔊</button>
-        <button class="gear" onclick="delPhrase('${p.id}')">🗑</button>
+        <button class="gear" onclick="speakId('${p.id}')">🔊</button>
+        ${isNcePhrase(p.id)?"":`<button class="gear" onclick="delPhrase('${p.id}')">🗑</button>`}
       </div>
     </div>`}).join("");
   });
@@ -2682,8 +2677,8 @@ function renderGrammarTab(v,tabBar){
 function grammarItem(g,hot){
   return `<div class="mistake-item" id="gitem-${g.id}" style="flex-direction:column;align-items:stretch${hot?';border-color:var(--accent);background:var(--accent-soft)':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="flex:1"><div class="w" style="font-size:1rem">${g.point}</div><div class="c">${g.cn}</div>${g.example?`<div class="c" style="margin-top:3px;font-style:italic">例：${g.example}</div>`:""}</div>
-        <button class="gear" onclick="delGrammar('${g.id}')">🗑</button>
+        <div style="flex:1"><div class="w" style="font-size:1rem">${escapeHtml(g.point)}</div><div class="c">${escapeHtml(g.cn)}</div>${g.example?`<div class="c" style="margin-top:3px;font-style:italic">例：${escapeHtml(g.example)}</div>`:""}</div>
+        ${isNceGrammar(g.id)?"":`<button class="gear" onclick="delGrammar('${g.id}')">🗑</button>`}
       </div>
       <button class="gear" style="margin-top:8px" onclick="explainGrammar('${g.id}')">${grammarOpen[g.id]?'📖 收起详解':'📖 展开详解（AI 讲透+多给例句）'}</button>
       <div id="gexp-${g.id}" style="margin-top:8px">${grammarOpen[g.id]&&g.detail?grammarDetailHtml(g.detail):""}</div>
@@ -2699,7 +2694,8 @@ async function explainGrammar(id){
   grammarOpen[id]=true;
   // 展开即算一次回顾：顺延下次提醒
   g.due=Date.now()+GRAMMAR_REVIEW_DAYS*86400000;g.lastReview=Date.now();
-  if(!isNceGrammar(id))save(GRAMMAR_KEY,userGrammar);
+  if(isNceGrammar(id)){nceGrammarDue[id]=g.due;save(NCEGR_KEY,nceGrammarDue)}
+  else save(GRAMMAR_KEY,userGrammar);
   // 有缓存直接显示（重渲染让按钮文字变“收起”）
   if(g.detail){renderMistake(document.getElementById("view"));scrollToGrammar(id);return}
   // 无缓存：先把按钮态刷新成展开，再异步取内容
@@ -2721,7 +2717,7 @@ function scrollToGrammar(id){
   });
 }
 function grammarDetailHtml(text){
-  return `<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;white-space:pre-wrap">${text}</div>`;
+  return `<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;white-space:pre-wrap">${escapeHtml(text)}</div>`;
 }
 function delPhrase(id){
   if(isNcePhrase(id)){toast("NCE 课程短语为内置内容，不可删除");return}
@@ -2740,6 +2736,16 @@ function delGrammar(id){
     userGrammar.splice(i,1);save(GRAMMAR_KEY,userGrammar);rebuildPhraseGrammar();renderMistake(document.getElementById("view"))}
 }
 function speakWord(w){playAudio(w,null)}
+// 按 id 找词/短语再发音。之前是把词嵌进 onclick 字符串并删掉撇号防止破坏引号，
+// 结果 don't 被读成 dont —— 传 id 就没这个问题
+function speakId(id){
+  const w=allWords().find(x=>x.id===id);
+  if(w)return playAudio(w.word,null);
+  const p=phrases.find(x=>x.id===id);
+  if(p)return playAudio(p.phrase,null);
+  const m=mistakes.find(x=>x.id===id);
+  if(m)playAudio(m.word,null);
+}
 
 // ===== 统计 =====
 function renderStats(v){
@@ -2758,14 +2764,13 @@ function renderStats(v){
     last7.push({day:["日","一","二","三","四","五","六"][d.getDay()],n:daily[s]||0});
   }
   const maxN=Math.max(1,...last7.map(x=>x.n));
-  // 各分类掌握度
-  const catList=[["nce2","新概念二"],["dev","科技开发"],["tv","影视口语"],["life","日常生活"]];
-  const catBars=catList.map(([k,name])=>{
-    const ws=all.filter(w=>w.cat===k);if(!ws.length)return "";
+  // 各分类掌握度：所有有词的分类都显示（文章分类除外），按词数取前 10，不再写死 4 个
+  const catBars=allCatsWithCount().filter(c=>!c.isArt&&c.n>0).slice(0,10).map(c=>{
+    const ws=all.filter(w=>w.cat===c.cat);if(!ws.length)return "";
     const m=ws.filter(w=>srs[w.id]&&srs[w.id].interval>=6).length;
     const pct=Math.round(m/ws.length*100);
     return `<div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:3px"><span>${name}</span><span style="color:var(--ink-dim)">${m}/${ws.length}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:3px"><span>${escapeHtml(c.name)}</span><span style="color:var(--ink-dim)">${m}/${ws.length}</span></div>
       <div style="height:8px;background:var(--paper2);border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--green);border-radius:4px"></div></div>
     </div>`;
   }).join("");
@@ -2831,9 +2836,9 @@ function renderLearnedList(box){
     const dueTxt=dueIn<=0?`<span style="color:var(--accent)">待复习</span>`:`${dueIn} 天后`;
     const solid=c.interval>=6?` · <span style="color:var(--green)">稳固</span>`:"";
     return `<div class="mistake-item" style="cursor:pointer" onclick="reviewWord('${w.id}')">
-      <div><div class="w">${w.word} <span style="font-size:.78rem;color:var(--accent);font-weight:400">${w.phonetic||""}</span></div>
-        <div class="c">${w.cn} · ${dueTxt}${solid}</div></div>
-      <button class="gear" onclick="event.stopPropagation();speakWord('${w.word.replace(/'/g,"")}')">🔊</button>
+      <div><div class="w">${escapeHtml(w.word)} <span style="font-size:.78rem;color:var(--accent);font-weight:400">${escapeHtml(w.phonetic||"")}</span></div>
+        <div class="c">${escapeHtml(w.cn)} · ${dueTxt}${solid}</div></div>
+      <button class="gear" onclick="event.stopPropagation();speakId('${w.id}')">🔊</button>
     </div>`;
   }).join("");
 }
@@ -2843,18 +2848,18 @@ function reviewWord(id){
   const ov=document.getElementById("import-overlay");
   ov.classList.add("open");
   const fav=mistakes.find(m=>m.id===id);
-  const scene=w.scene?`<div class="tip" style="background:#eef3ec;border-left:3px solid var(--green)">🎬 ${w.scene}</div>`:"";
+  const scene=w.scene?`<div class="tip" style="background:var(--green-soft);border-left:3px solid var(--green)">🎬 ${escapeHtml(w.scene)}</div>`:"";
   ov.innerHTML=`<div class="import-box">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <h2 style="font-family:Fraunces,serif;font-size:1.4rem">${w.word}</h2>
+      <h2 style="font-family:Fraunces,serif;font-size:1.4rem">${escapeHtml(w.word)}</h2>
       <button class="gear" onclick="closeImport()">✕ 关闭</button>
     </div>
-    <div style="color:var(--accent);font-family:Fraunces,serif;margin-bottom:4px">${w.phonetic||""}</div>
-    <button class="speak" style="margin:6px 0" onclick="speakWord('${w.word.replace(/'/g,"")}')">🔊 发音</button>
-    <div class="cn" style="margin-top:8px">${w.cn}${w.pos?` <span style="font-size:.8rem;color:var(--ink-dim);font-style:italic">${w.pos}</span>`:""}</div>
-    ${w.tip?`<div class="tip">💡 ${w.tip}</div>`:""}
+    <div style="color:var(--accent);font-family:Fraunces,serif;margin-bottom:4px">${escapeHtml(w.phonetic||"")}</div>
+    <button class="speak" style="margin:6px 0" onclick="speakId('${w.id}')">🔊 发音</button>
+    <div class="cn" style="margin-top:8px">${escapeHtml(w.cn)}${w.pos?` <span style="font-size:.8rem;color:var(--ink-dim);font-style:italic">${escapeHtml(w.pos)}</span>`:""}</div>
+    ${w.tip?`<div class="tip">💡 ${escapeHtml(w.tip)}</div>`:""}
     ${scene}
-    ${w.exampleEn?`<div class="ex" style="margin-top:8px">${w.exampleEn}</div><div class="ex-cn">${w.exampleCn||""}</div>`:""}
+    ${w.exampleEn?`<div class="ex" style="margin-top:8px">${escapeHtml(w.exampleEn)}</div><div class="ex-cn">${escapeHtml(w.exampleCn||"")}</div>`:""}
     <button class="ai-btn" style="margin-top:14px;background:${fav?'var(--gold)':'var(--ink)'}" onclick="favFromReview('${id}')">${fav?'★ 已收藏（点击移出）':'☆ 加入复习本'}</button>
   </div>`;
 }
@@ -2907,7 +2912,11 @@ async function callAI(messages, sys, maxTokens=600, images=null){
     readText=d=>d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
   }
   const r=await fetchWithTimeout(url,{method:"POST",headers,body:JSON.stringify(body)},(images&&images.length)?AI_IMAGE_TIMEOUT:AI_CONNECT_TIMEOUT);
-  const d=await r.json();
+  // 读响应体同样要有超时兜底，否则网络断在半路时按钮会永远卡在"处理中"
+  let d;
+  try{d=await withIdleTimeout(r.json(),AI_STREAM_IDLE_TIMEOUT,"响应读取超时，请重试")}
+  catch(e){if(!r.ok)throw new Error("接口报错 HTTP "+r.status);throw e}
+  if(!r.ok)throw new Error((d&&d.error&&d.error.message)||("接口报错 HTTP "+r.status));
   if(d.error)throw new Error(d.error.message||"接口报错");
   const text=readText(d);
   if(!text)throw new Error("空响应");
@@ -2929,8 +2938,9 @@ const MODELS={
   ],
   anthropic:[
     ["claude-haiku-4-5-20251001","Claude Haiku 4.5（快）"],
-    ["claude-sonnet-4-20250514","Claude Sonnet 4（强）"],
-    ["claude-opus-4-20250514","Claude Opus 4（最强）"],
+    ["claude-sonnet-5","Claude Sonnet 5（强·最新）"],
+    ["claude-opus-4-8","Claude Opus 4.8（最强）"],
+    ["claude-sonnet-4-20250514","Claude Sonnet 4"],
   ],
   kimi:[
     ["kimi-k2.6","Kimi K2.6（可看图·最新）"],
@@ -2977,7 +2987,12 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
     }
     body={model:mdl,max_tokens:maxTokens,messages:msgs,stream:true};
     if(sys)body.system=sys;
-    if(isThink)body.thinking={type:"enabled",budget_tokens:2000};
+    if(isThink){
+      // Anthropic 要求 budget_tokens 必须小于 max_tokens，不留余量整个请求会被直接拒绝
+      const budget=Math.max(1024,Math.min(2000,maxTokens-1000));
+      if(body.max_tokens<=budget)body.max_tokens=budget+1000;
+      body.thinking={type:"enabled",budget_tokens:budget};
+    }
     parseLine=obj=>(obj.type==="content_block_delta"&&obj.delta&&obj.delta.text)?obj.delta.text:"";
   }else{
     if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
@@ -3051,42 +3066,6 @@ async function askWord(){
 // 清空当前词的问 AI 对话
 function clearAsk(){askHistory=[];askWordId=cur?cur.id:null;render()}
 
-// ===== AI 造句批改 + 追问（旧功能，保留备用）=====
-async function checkSentence(){
-  const txt=document.getElementById("sentence").value.trim();
-  if(!txt)return toast("先写句话");
-  const btn=document.getElementById("check-btn");btn.disabled=true;btn.textContent="批改中…";
-  const sys=`你是温和的英语老师，学生是中文母语的初级学习者。请批改下面这句话，要求：用简单中文解释（不用语法术语），先肯定再纠错。只返回JSON，不要任何其他文字：{"score":0-100整数,"praise":"先夸一句中文","fix":"中文指出问题或说没问题","rewrite":"改好的英文句子"}`;
-  try{
-    let text=await callAI([{role:"user",content:`目标单词：${cur.word}（${cur.cn}）\n学生造句：${txt}`}],sys,400);
-    text=text.replace(/```json|```/g,"").trim();
-    const o=JSON.parse(text);
-    const box=document.getElementById("ai-result");
-    box.innerHTML=`<div class="score">${o.score}</div><div class="label">分</div>
-      <div class="row">✅ ${o.praise}</div>
-      <div class="row">📝 ${o.fix}</div>
-      <div class="row rw">↳ ${o.rewrite}</div>
-      <div class="row" style="margin-top:12px;border-top:1px dashed var(--line);padding-top:10px">
-        <input id="followup" placeholder="就这个词/这句话继续问…" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:.82rem;background:var(--paper)">
-        <button class="ai-btn" style="margin-top:6px" onclick="askFollowup('${cur.word}')">追问</button>
-        <div id="followup-ans" style="margin-top:8px;font-size:.82rem"></div>
-      </div>`;
-    box.classList.add("show");
-  }catch(e){
-    toast("批改失败："+(e.message||"检查 Key 或网络"));
-  }finally{btn.disabled=false;btn.textContent="AI 批改造句"}
-}
-async function askFollowup(word){
-  const q=document.getElementById("followup").value.trim();
-  if(!q)return toast("写下你的问题");
-  const ans=document.getElementById("followup-ans");ans.textContent="思考中…";
-  try{
-    const sys="你是耐心的英语老师，面对中文母语初学者。用简单中文回答，简明扼要，避免术语。纯文本，不要 Markdown 符号。";
-    const text=await callAI([{role:"user",content:`关于单词「${word}」：${q}`}],sys,500);
-    ans.textContent=stripMd(text);
-  }catch(e){ans.textContent="";toast("追问失败："+(e.message||"检查 Key"))}
-}
-
 // ===== AI 助手页 =====
 const CHAT_KEY="vocab_v5_chat";
 let chatHistory=load(CHAT_KEY,[]);  // 持久化：刷新页面不丢失
@@ -3145,9 +3124,27 @@ function onPickChatImage(input){
   }).catch(e=>toast(e.message));
 }
 function clearChatImage(){chatImage=null;const p=document.getElementById("chat-img-preview");if(p)p.innerHTML=""}
+// 重渲染助手页但保留输入框内容和已附图片提示（切服务商/思考开关不再清空正打到一半的问题）
+function rerenderAssistant(){
+  const inp=document.getElementById("chat-input");
+  const val=inp?inp.value:"";
+  renderAssistant(document.getElementById("view"));
+  const ni=document.getElementById("chat-input");
+  if(ni&&val)ni.value=val;
+  if(chatImage){
+    const p=document.getElementById("chat-img-preview");
+    if(p)p.innerHTML=`<div style="font-size:.76rem;color:var(--green)">✓ 已附图片，发送时一起问 <button class="gear" onclick="clearChatImage()">移除</button></div>`;
+  }
+}
+// 聊天视图跟随到底部。chat-log 本身不是滚动容器，滚的是整个页面；
+// force=false 时只有本来就在底部附近才跟随，避免用户往上翻旧消息时被拽回去
+function chatScrollBottom(force){
+  const nearBottom=window.innerHeight+window.scrollY>=document.body.scrollHeight-160;
+  if(force||nearBottom)window.scrollTo(0,document.body.scrollHeight);
+}
 function toggleThink(){
   cfg.thinkOn=!cfg.thinkOn;save(CFG_KEY,cfg);
-  renderAssistant(document.getElementById("view"));
+  rerenderAssistant();
 }
 // AI助手页直接切服务商（带出对应 Key）
 function switchProvider(p){
@@ -3155,7 +3152,8 @@ function switchProvider(p){
   cfg.apikey=(cfg.keys&&cfg.keys[p])||"";
   save(CFG_KEY,cfg);
   if(!cfg.apikey)toast(`${p} 还没填 Key，去设置里填`);
-  renderAssistant(document.getElementById("view"));
+  if(chatImage&&!VISION_PROVIDERS.includes(p)){chatImage=null;toast("该服务商不支持图片，已移除附图")}
+  rerenderAssistant();
 }
 // 点系统话题：直接以该问题发问
 function askTopic(q){
@@ -3168,7 +3166,7 @@ function chatBubble(m){
   const text=me?m.content:stripMd(m.content);  // AI 回复去 Markdown，用户消息原样
   const inner=m.content==="__TYPING__"
     ? `<div class="typing"><span></span><span></span><span></span></div>`
-    : text.replace(/</g,"&lt;");
+    : escapeHtml(text);
   return `<div style="margin-bottom:10px;text-align:${me?"right":"left"}">
     <div style="display:inline-block;max-width:88%;text-align:left;background:${me?"var(--accent-soft)":"var(--card)"};border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:.8rem;line-height:1.5;white-space:pre-wrap">${inner}</div>
   </div>`;
@@ -3185,52 +3183,26 @@ async function sendChat(){
   input.value="";chatImage=null;
   const btn=document.getElementById("chat-send");btn.disabled=true;btn.textContent="生成中…";
   renderAssistant(document.getElementById("view"));
-  const log=document.getElementById("chat-log");if(log)log.scrollTop=log.scrollHeight;
+  chatScrollBottom(true);
   const sys="你是耐心友好的英语老师，面对中文母语的英语初学者。用简单中文讲解，给例句，避免生硬术语。回答简明，不要长篇大论。重要：纯文本输出，不要用任何 Markdown 符号（不要 **、#、`、- 列表符号等）。";
   try{
     // 带图时只发当前这条（图片消息不进历史，避免 localStorage 膨胀）；纯文本则带最近8条上下文
     const ctx=img?[{role:"user",content:userText}]:chatHistory.slice(0,-1).slice(-8);
-    const mt=cfg.thinkOn?2000:900;
+    const mt=cfg.thinkOn?3000:900;   // 思考模式要给 budget(2000) 之外留答案空间
     await callAIStream(ctx,sys,(full)=>{
       chatHistory[chatHistory.length-1].content=full;
       const logEl=document.getElementById("chat-log");
-      if(logEl){logEl.innerHTML=chatHistory.map(m=>chatBubble(m)).join("");logEl.scrollTop=logEl.scrollHeight}
+      if(logEl){logEl.innerHTML=chatHistory.map(m=>chatBubble(m)).join("");chatScrollBottom(false)}
     },mt,cfg.thinkOn,img?[img]:null);
   }catch(e){
     chatHistory[chatHistory.length-1].content="出错了："+(e.message||"检查设置里的 Key");
   }
   saveChat();
   renderAssistant(document.getElementById("view"));
-  const logEl=document.getElementById("chat-log");if(logEl)logEl.scrollTop=logEl.scrollHeight;
+  chatScrollBottom(false);
 }
 
-// ===== 从文章导入生词 =====
-let importCandidates=[];  // AI 提取的候选词 [{word,phonetic,cn,tip,exampleEn,exampleCn,pick}]
-function openImport(){
-  const ov=document.getElementById("import-overlay");
-  ov.classList.add("open");
-  ov.innerHTML=`
-    <div class="import-box">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h2 style="font-family:Fraunces,serif;font-size:1.2rem">导入生词</h2>
-        <button class="gear" onclick="closeImport()">✕ 关闭</button>
-      </div>
-      <p style="color:var(--ink-dim);font-size:.78rem;margin-bottom:8px">贴英文/上传图片，或直接贴一串已知单词，让 AI 生成词条。</p>
-      <textarea id="import-text" placeholder="① 提取模式：贴一段英文/截图，AI 挑生词&#10;② 录入模式：贴一串单词（逗号或换行分隔），AI 全部补全不挑" style="width:100%;min-height:110px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;background:var(--paper);resize:vertical"></textarea>
-      <label style="display:block;margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:12px;text-align:center;font-size:.8rem;color:var(--ink-dim);cursor:pointer">
-        📷 选图片（需用豆包 Key）
-        <input type="file" id="import-img" accept="image/*" style="display:none" onchange="onPickImage(this)">
-      </label>
-      <div id="img-preview" style="margin-top:8px"></div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="ai-btn" id="extract-btn" style="flex:1" onclick="extractWords()">从文章提取生词</button>
-        <button class="ai-btn" id="batch-btn" style="flex:1;background:var(--green)" onclick="batchImport()">批量录入单词</button>
-      </div>
-      <div id="import-progress" style="margin-top:8px;font-size:.78rem;color:var(--ink-dim)"></div>
-      <div id="import-result" style="margin-top:14px"></div>
-    </div>`;
-}
-let importImage=null;  // {b64, mime}
+// ===== 图片压缩 / 文件读取（快速加词、AI 助手共用）=====
 // 图片压缩：canvas 缩放+重新编码，控制体积（AI 读文字/内容够用，不需要原图分辨率）
 const IMG_MAX_EDGE=1600;   // 最长边像素上限
 const IMG_QUALITY=0.8;     // JPEG 压缩质量
@@ -3283,134 +3255,7 @@ function readTextFile(f){
     reader.readAsText(f);
   });
 }
-function onPickImage(input){
-  const f=input.files&&input.files[0];if(!f)return;
-  readImageFile(f).then(img=>{
-    importImage=img;
-    document.getElementById("img-preview").innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--green)">✓ 已选图片<button class="gear" onclick="clearImage()">移除</button></div>`;
-  }).catch(e=>toast(e.message));
-}
-function clearImage(){importImage=null;document.getElementById("img-preview").innerHTML="";const i=document.getElementById("import-img");if(i)i.value=""}
-function closeImport(){const ov=document.getElementById("import-overlay");ov.classList.remove("open");ov.innerHTML="";importImage=null}
-async function extractWords(){
-  const txt=document.getElementById("import-text").value.trim();
-  if(!txt&&!importImage)return toast("贴段英文，或选张图片");
-  if(txt.length>8000)return toast("文章太长，截短到 8000 字以内");
-  if(importImage&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需要切到豆包 Key");
-  const btn=document.getElementById("extract-btn");btn.disabled=true;btn.textContent="提取中…";
-  const sys=`你是英语老师，学生是中文母语的中级偏初学习者（认识基础词如 the/is/have，目标是读技术文档和看美剧）。从用户给的英文内容（文字或图片里的英文）中挑出对这类学习者算"生词"的词或短语（跳过过于简单的词），每个生成词条，并归类。
-
-【分类】每个词必须归到且只能归到以下7个大类之一（cat字段填对应英文key）：
-- dev（科技开发：编程、报错、IT、AI、互联网）
-- tv（影视口语：看剧高频、俚语、短语动词）
-- life（日常生活：衣食住行、社交对话）
-- biz（职场商务：邮件、会议、办公、商业）
-- academic（学术阅读：论文、正式书面、逻辑连接词）
-- news（新闻时事：报道、政经、社会话题）
-- other（其他：不属于以上的）
-不要发明新分类，必须从这7个里选。
-
-【词性】pos字段填 n./v./adj./adv./phr./prep. 等。
-【场景】scene字段：如果这个词在某专业场景有特殊含义（如 print 在编程里指"打印输出"），简短写明；普通词留空字符串。
-
-只返回JSON数组，不要任何其他文字：[{"word":"原形","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","tip":"简短用法/记忆提示","exampleEn":"贴近原文语境的英文例句","exampleCn":"例句中文翻译","scene":"场景用法或空","cat":"7个key之一"}]。最多挑12个最值得学的。`;
-  const prompt=importImage?(txt||"提取图片里的英文生词"):txt;
-  try{
-    let text=await callAI([{role:"user",content:prompt}],sys,2000,importImage?[importImage]:null);
-    const arr=parseJsonArrayLoose(text);
-    if(!Array.isArray(arr)||!arr.length)throw new Error("没提取到词");
-    const valid=["dev","tv","life","biz","academic","news","other"];
-    importCandidates=arr.map(w=>({...w,pos:w.pos||"",scene:w.scene||"",cat:valid.includes(w.cat)?w.cat:"other",pick:true}));
-    renderCandidates();
-  }catch(e){
-    toast("提取失败："+(e.message||"检查 Key 或换个输入"));
-  }finally{btn.disabled=false;btn.textContent="从文章提取生词"}
-}
-
-// ===== 批量录入：给词表，AI 全部补全不挑，分批处理 =====
-async function batchImport(){
-  const raw=document.getElementById("import-text").value.trim();
-  if(!raw)return toast("先贴一串单词");
-  // 解析：先按行丢掉 ### 标题行，再按逗号/分号拆词
-  let words=raw.split(/\n/)
-    .filter(line=>!/^\s*#/.test(line))        // 丢掉 # 开头的标题行
-    .join(",")
-    .split(/[,;]+/)
-    .map(s=>s.trim())
-    .filter(s=>s&&/[a-zA-Z]/.test(s));
-  words=[...new Set(words.map(w=>w.toLowerCase()))];  // 去重
-  if(!words.length)return toast("没解析出单词");
-  if(words.length>200)return toast("一次最多 200 个，太多了分几次");
-  const btn=document.getElementById("batch-btn");btn.disabled=true;
-  const prog=document.getElementById("import-progress");
-  const BATCH=10;  // 缩小批次：20 个词条常超 token 被截断导致整批 JSON.parse 失败
-  const sys=`你是英语老师。用户会给你一批英文单词/短语，请为【每一个】生成词条，一个都不能漏、不要挑选。
-
-【分类】每个词归到且只能归到这7个key之一：dev(科技开发)、tv(影视口语)、life(日常生活)、biz(职场商务)、academic(学术阅读)、news(新闻时事)、other(其他)。
-【词性】pos填 n./v./adj./adv./phr. 等。
-【场景】scene：词在专业场景有特殊含义就简短写明（如 print 在编程里指打印输出），否则留空。
-
-只返回JSON数组，不要任何其他文字，数组长度必须等于输入单词数：[{"word":"原词","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","tip":"简短提示","exampleEn":"英文例句","exampleCn":"中文翻译","scene":"场景或空","cat":"7个key之一"}]`;
-  const valid=["dev","tv","life","biz","academic","news","other"];
-  let all=[];let failedBatches=0;
-  for(let i=0;i<words.length;i+=BATCH){
-    const chunk=words.slice(i,i+BATCH);
-    prog.textContent=`处理中… ${Math.min(i+BATCH,words.length)}/${words.length}`;
-    try{
-      const text=await callAI([{role:"user",content:chunk.join(", ")}],sys,4000);  // 提高 token，10 词留足空间
-      const arr=parseJsonArrayLoose(text);  // 容错解析：单批截断也能捞回大部分
-      if(arr.length)all=all.concat(arr);
-      else failedBatches++;
-    }catch(e){
-      failedBatches++;  // 单批失败（网络/接口）不连累其它批，继续下一批
-    }
-  }
-  btn.disabled=false;
-  if(!all.length){
-    toast("录入失败：一个都没生成，检查 Key 或网络");
-    prog.textContent="";
-    return;
-  }
-  // 按 word 去重（容错解析可能重复捞到）
-  const seen=new Set();
-  all=all.filter(w=>{const k=(w.word||"").toLowerCase();if(!k||seen.has(k))return false;seen.add(k);return true});
-  importCandidates=all.map(w=>({...w,pos:w.pos||"",scene:w.scene||"",cat:valid.includes(w.cat)?w.cat:"other",pick:true}));
-  prog.textContent=`完成 ${importCandidates.length} 个词条`+(failedBatches?`（有 ${failedBatches} 批没成功，可对剩下的词再录一次）`:"");
-  renderCandidates();
-}
-function renderCandidates(){
-  const box=document.getElementById("import-result");
-  const dup=importCandidates.filter(c=>allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase())).length;
-  box.innerHTML=`
-    <p style="font-size:.78rem;color:var(--ink-dim);margin-bottom:8px">挑出 ${importCandidates.length} 个词，已自动分类${dup?`（其中 ${dup} 个已有，默认不勾）`:""}。取消勾选不想要的：</p>
-    ${importCandidates.map((c,i)=>{
-      const exists=allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase());
-      if(exists)c.pick=false;
-      return `<label style="display:flex;gap:8px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-bottom:6px;cursor:pointer">
-        <input type="checkbox" ${c.pick?"checked":""} onchange="importCandidates[${i}].pick=this.checked" style="margin-top:3px">
-        <div style="flex:1">
-          <div style="font-family:Fraunces,serif;font-weight:600">${c.word} <span style="color:var(--accent);font-size:.8rem">${c.phonetic||""}</span>${exists?' <span style="font-size:.65rem;color:var(--gold)">已有</span>':""}</div>
-          <div style="font-size:.78rem">${c.cn}</div>
-          <div style="font-size:.72rem;color:var(--ink-dim);margin-top:2px">${c.exampleEn||""}</div>
-          <div style="margin-top:4px"><span style="font-size:.65rem;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:2px 8px">📁 ${catName(c.cat)}</span></div>
-        </div>
-      </label>`;
-    }).join("")}
-    <button class="ai-btn" style="margin-top:8px" onclick="saveImported()">保存勾选的词（按分类归入）</button>`;
-}
-function saveImported(){
-  const picks=importCandidates.filter(c=>c.pick);
-  if(!picks.length)return toast("一个都没勾");
-  let n=0;
-  picks.forEach(c=>{
-    if(allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase()))return;
-    imported.push({id:"imp"+Date.now()+"_"+(n++),word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn,tip:c.tip||"",exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",cat:c.cat||"import"});
-  });
-  save(IMP_KEY,imported);
-  toast("已存 "+n+" 个词");
-  closeImport();
-  if(page==="home"&&!studyStarted)render();  // 刷新分类页词数
-}
+function closeImport(){const ov=document.getElementById("import-overlay");ov.classList.remove("open");ov.innerHTML=""}
 function exportImported(){
   if(!imported.length)return toast("还没有导入的词");
   const blob=new Blob([JSON.stringify(imported,null,2)],{type:"application/json"});
@@ -3449,10 +3294,15 @@ function cleanupLegacyData(){
   setTimeout(()=>location.reload(),900);
 }
 // 完整备份：导出全部 localStorage 数据（含复习进度/文章/语法/错题/统计等）
-const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride","vocab_v5_lesson_explain","vocab_v5_trash","vocab_v5_hidden"];
+const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride","vocab_v5_lesson_explain","vocab_v5_trash","vocab_v5_hidden","vocab_v5_nce_grammar_due"];
 function exportAll(){
   const dump={__vocab_backup__:true,version:5,date:new Date().toISOString(),data:{}};
-  ALL_BACKUP_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)dump.data[k]=v});
+  ALL_BACKUP_KEYS.forEach(k=>{
+    let v=localStorage.getItem(k);if(v===null)return;
+    // 备份不带 API Key：备份文件常被传网盘/发给别人，明文 Key 跟着走就泄露了
+    if(k===CFG_KEY){try{const c=JSON.parse(v);delete c.apikey;delete c.keys;v=JSON.stringify(c)}catch(e){}}
+    dump.data[k]=v;
+  });
   const blob=new Blob([JSON.stringify(dump)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const d=new Date();const stamp=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
@@ -3472,6 +3322,13 @@ function importAll(input){
     ALL_BACKUP_KEYS.forEach(k=>{
       if(obj.data[k]!==undefined)localStorage.setItem(k,obj.data[k]);
     });
+    // 备份不含 API Key：恢复后把本机已填的 Key 合回去，免得恢复完全部要重填
+    try{
+      const c=JSON.parse(localStorage.getItem(CFG_KEY))||{};
+      if(!c.keys||!Object.keys(c.keys).length)c.keys=cfg.keys||{};
+      if(!c.apikey)c.apikey=(c.keys&&c.keys[c.provider])||"";
+      localStorage.setItem(CFG_KEY,JSON.stringify(c));
+    }catch(e){}
     toast("已恢复，正在重新加载…",2000);
     setTimeout(()=>location.reload(),800);  // 重载以让所有内存变量重新从 localStorage 读取
   };
@@ -3522,7 +3379,7 @@ function openQuickAdd(){
       <label style="font-size:.76rem;color:var(--ink-dim);display:block;margin-bottom:4px">归入分类</label>
       <select id="qa-target" onchange="onQaTargetChange()" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px;font-family:inherit;font-size:.86rem;background:var(--paper);color:var(--ink)">
         <option value="__auto__">自动（AI 按主题归类）</option>
-        ${articles.map(a=>`<option value="${artCatKey(a.id)}">📄 ${a.title}</option>`).join("")}
+        ${articles.map(a=>`<option value="${artCatKey(a.id)}">📄 ${escapeHtml(a.title)}</option>`).join("")}
         <option value="__new__">➕ 新建一课…</option>
       </select>
     </div>
@@ -3586,7 +3443,7 @@ function onQaTargetChange(){
     saveArticles();
     // 重建下拉，选中刚建的这一课
     const opts=[`<option value="__auto__">自动（AI 按主题归类）</option>`]
-      .concat(articles.map(a=>`<option value="${artCatKey(a.id)}"${a.id===id?" selected":""}>📄 ${a.title}</option>`))
+      .concat(articles.map(a=>`<option value="${artCatKey(a.id)}"${a.id===id?" selected":""}>📄 ${escapeHtml(a.title)}</option>`))
       .concat([`<option value="__new__">➕ 新建一课…</option>`]);
     sel.innerHTML=opts.join("");
   }
@@ -3651,14 +3508,17 @@ async function quickAddGo(mode){
 let qaCandidates=[];
 // AI 补全后：渲染勾选列表让用户确认
 function showQuickAddPreview(arr,valid){
-  // 过滤无 word 的、标记已存在的
-  qaCandidates=arr.filter(c=>c.word).map(c=>({
-    word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn||"",tip:c.tip||"",
-    exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",
-    cat:valid.includes(c.cat)?c.cat:"other",
-    dup:allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase()),
-    checked:!allWords().some(w=>w.word.toLowerCase()===c.word.toLowerCase())  // 已存在的默认不勾
-  }));
+  // 过滤无 word 的、标记已存在的。全库词表先建 Set，避免每个候选词都全库扫一遍
+  const existing=new Set(allWords().map(w=>(w.word||"").toLowerCase()));
+  qaCandidates=arr.filter(c=>c.word).map(c=>{
+    const dup=existing.has((c.word||"").toLowerCase());
+    return {
+      word:c.word,phonetic:c.phonetic||"",pos:c.pos||"",cn:c.cn||"",tip:c.tip||"",
+      exampleEn:c.exampleEn||"",exampleCn:c.exampleCn||"",scene:c.scene||"",
+      cat:valid.includes(c.cat)?c.cat:"other",
+      dup,checked:!dup  // 已存在的默认不勾
+    };
+  });
   if(!qaCandidates.length){toast("没挑出可加入的词");return}
   const ov=document.getElementById("quickadd-overlay");
   ov.innerHTML=`<div class="import-box">
@@ -3671,9 +3531,9 @@ function showQuickAddPreview(arr,valid){
       ${qaCandidates.map((c,i)=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:8px;background:${c.dup?'var(--paper2)':'var(--card)'};border:1px solid var(--line);margin-bottom:6px;${c.dup?'opacity:.6':''}">
         <input type="checkbox" ${c.checked?"checked":""} onchange="qaCandidates[${i}].checked=this.checked" style="margin-top:3px">
         <div style="flex:1">
-          <div><b>${c.word}</b> <span style="font-size:.72rem;color:var(--ink-dim)">${c.phonetic} ${c.pos}</span>${c.dup?' <span style="font-size:.7rem;color:var(--accent)">已在库</span>':''}</div>
-          <div style="font-size:.8rem">${c.cn}</div>
-          <div style="font-size:.7rem;color:var(--ink-dim)">→ ${catName(c.cat)}</div>
+          <div><b>${escapeHtml(c.word)}</b> <span style="font-size:.72rem;color:var(--ink-dim)">${escapeHtml(c.phonetic)} ${escapeHtml(c.pos)}</span>${c.dup?' <span style="font-size:.7rem;color:var(--accent)">已在库</span>':''}</div>
+          <div style="font-size:.8rem">${escapeHtml(c.cn)}</div>
+          <div style="font-size:.7rem;color:var(--ink-dim)">→ ${escapeHtml(catName(c.cat))}</div>
         </div>
       </label>`).join("")}
     </div>
@@ -3704,16 +3564,16 @@ function confirmQuickAdd(){
 function showJustAddedConfirm(list,byCat){
   const ov=document.getElementById("quickadd-overlay");
   if(!ov){return}
-  const detail=Object.keys(byCat).map(c=>`${catName(c)} ${byCat[c]}`).join("、");
+  const detail=Object.keys(byCat).map(c=>`${escapeHtml(catName(c))} ${byCat[c]}`).join("、");
   const rows=list.map(w=>`
     <div style="padding:10px 0;border-bottom:1px solid var(--line)">
       <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
-        <span style="font-family:Fraunces,serif;font-size:1.05rem;font-weight:600">${w.word}</span>
-        ${w.phonetic?`<span style="color:var(--accent);font-size:.8rem">${w.phonetic}</span>`:""}
-        ${w.pos?`<span style="font-size:.72rem;color:var(--ink-dim)">${w.pos}</span>`:""}
+        <span style="font-family:Fraunces,serif;font-size:1.05rem;font-weight:600">${escapeHtml(w.word)}</span>
+        ${w.phonetic?`<span style="color:var(--accent);font-size:.8rem">${escapeHtml(w.phonetic)}</span>`:""}
+        ${w.pos?`<span style="font-size:.72rem;color:var(--ink-dim)">${escapeHtml(w.pos)}</span>`:""}
       </div>
-      <div style="font-size:.82rem;color:var(--ink-dim);margin-top:2px">${w.cn||""}</div>
-      <div style="font-size:.7rem;color:var(--ink-dim);margin-top:2px">→ ${catName(w.cat)}</div>
+      <div style="font-size:.82rem;color:var(--ink-dim);margin-top:2px">${escapeHtml(w.cn||"")}</div>
+      <div style="font-size:.7rem;color:var(--ink-dim);margin-top:2px">→ ${escapeHtml(catName(w.cat))}</div>
     </div>`).join("");
   ov.innerHTML=`<div class="import-box">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
