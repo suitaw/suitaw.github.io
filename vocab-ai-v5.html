@@ -146,22 +146,17 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
     <label>AI 服务商</label>
     <select id="provider">
       <option value="deepseek">DeepSeek（纯文本·性价比）</option>
-      <option value="doubao">豆包 / 火山方舟（可看图）</option>
       <option value="kimi">Kimi 月之暗面（可看图）</option>
       <option value="openrouter">OpenRouter（一把 Key 多模型）</option>
       <option value="anthropic">Anthropic 直连（可看图）</option>
     </select>
     <label>API Key</label>
     <input type="password" id="apikey" placeholder="sk-..." autocomplete="off">
-    <div id="ep-row" style="display:none">
-      <label>火山方舟接入点 ID</label>
-      <input type="text" id="endpoint" placeholder="ep-xxxx（在火山控制台创建推理接入点后获得）" autocomplete="off">
-    </div>
     <div id="model-row" style="display:none">
       <label>模型</label>
       <select id="model"></select>
     </div>
-    <div class="hint">Key 只存在你本机浏览器里，不上传。每个服务商的 Key 分开保存，切换服务商会自动带出对应的 Key。<br>豆包用的是火山方舟接入点，需要填 ep-xxxx；DeepSeek 直接填 sk- 开头的 Key。深度思考开关在「AI 助手」页。</div>
+    <div class="hint">Key 只存在你本机浏览器里，不上传。每个服务商的 Key 分开保存，切换服务商会自动带出对应的 Key。深度思考开关在「AI 助手」页。</div>
     <label>每次学习上限（张卡）</label>
     <input type="number" id="daily-limit" min="5" max="200" step="5" placeholder="20">
     <div class="hint">每次进入背卡，最多出现多少张（新词+到期复习合计）。默认 20，词多想多背可调大。</div>
@@ -218,7 +213,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 const SRS_KEY="gh_vocab_srs_v1";
 const CFG_KEY="vocab_v5_cfg";
 let srs=load(SRS_KEY,{});          // {id:{ef,interval,reps,due}}
-let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",endpoint:"",scope:"all",models:{},thinkOn:false,dailyLimit:20});
+let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",scope:"all",models:{},thinkOn:false,dailyLimit:20});
 if(!cfg.dailyLimit)cfg.dailyLimit=20;  // 老用户补默认
 if(!cfg.models)cfg.models={};
 if(typeof cfg.thinkOn!=="boolean")cfg.thinkOn=false;
@@ -273,7 +268,7 @@ function withIdleTimeout(promise,ms,msg){
     promise.then(v=>{clearTimeout(timer);resolve(v)},e=>{clearTimeout(timer);reject(e)});
   });
 }
-// 去 Markdown 符号兜底（豆包爱用 #、DeepSeek 爱用 **）
+// 去 Markdown 符号兜底（DeepSeek 爱用 **，其他模型也常混入 # 等符号）
 function stripMd(s){
   if(!s)return s;
   return s
@@ -447,36 +442,32 @@ function setPhraseReview(id,on){
 // ===== 设置面板 =====
 function togglePanel(){document.getElementById("panel").classList.toggle("open")}
 function bindCfg(){
-  const p=document.getElementById("provider"),k=document.getElementById("apikey"),ep=document.getElementById("endpoint"),epRow=document.getElementById("ep-row");
+  const p=document.getElementById("provider"),k=document.getElementById("apikey");
   const mRow=document.getElementById("model-row"),mSel=document.getElementById("model");
-  p.value=cfg.provider;k.value=cfg.apikey;ep.value=cfg.endpoint||"";
+  p.value=cfg.provider;k.value=cfg.apikey;
   const dl=document.getElementById("daily-limit");if(dl)dl.value=cfg.dailyLimit||20;
-  // 渲染模型下拉（豆包用ep不显示模型下拉）
   const syncModelRow=()=>{
     const prov=cfg.provider;
-    if(prov==="doubao"||!MODELS[prov]){mRow.style.display="none";return}
+    if(!MODELS[prov]){mRow.style.display="none";return}
     mRow.style.display="block";
     const list=MODELS[prov];
     mSel.innerHTML=list.map(m=>`<option value="${m[0]}">${m[1]}</option>`).join("");
     mSel.value=currentModel();
   };
-  const syncEpRow=()=>{epRow.style.display=cfg.provider==="doubao"?"block":"none"};
-  syncEpRow();syncModelRow();
+  syncModelRow();
   p.onchange=()=>{
     cfg.provider=p.value;
     cfg.apikey=cfg.keys[cfg.provider]||"";  // 切 provider 带出它自己的 key
     k.value=cfg.apikey;                       // 同步输入框
-    save(CFG_KEY,cfg);syncEpRow();syncModelRow();
+    save(CFG_KEY,cfg);syncModelRow();
   };
   k.onchange=()=>{cfg.apikey=k.value.trim();cfg.keys[cfg.provider]=cfg.apikey;save(CFG_KEY,cfg)};
-  ep.onchange=()=>{cfg.endpoint=ep.value.trim();save(CFG_KEY,cfg)};
   mSel.onchange=()=>{cfg.models[cfg.provider]=mSel.value;save(CFG_KEY,cfg)};
 }
 // 显式保存：读当前控件值存盘，折叠面板
 function saveCfg(){
   cfg.provider=document.getElementById("provider").value;
   cfg.apikey=document.getElementById("apikey").value.trim();
-  cfg.endpoint=document.getElementById("endpoint").value.trim();
   cfg.keys[cfg.provider]=cfg.apikey;  // 存进当前 provider 的槽
   const dl=parseInt((document.getElementById("daily-limit")||{}).value,10);
   if(!isNaN(dl)&&dl>=5)cfg.dailyLimit=Math.min(200,dl);
@@ -486,8 +477,6 @@ function saveCfg(){
 }
 function clearKey(){
   cfg.apikey="";cfg.keys[cfg.provider]="";
-  // 接入点只属于豆包，清其他服务商的 Key 时不该连带清掉
-  if(cfg.provider==="doubao"){cfg.endpoint="";document.getElementById("endpoint").value=""}
   save(CFG_KEY,cfg);
   document.getElementById("apikey").value="";
   toast("Key 已清空（仅当前服务商）");
@@ -2870,12 +2859,11 @@ function favFromReview(id){
   reviewWord(id);  // 重渲染按钮态
 }
 
-// ===== 通用 AI 调用（四 provider，支持图片）=====
-const VISION_PROVIDERS=["anthropic","doubao","kimi"];
+// ===== 通用 AI 调用（三 provider，支持图片）=====
+const VISION_PROVIDERS=["anthropic","kimi"];
 async function callAI(messages, sys, maxTokens=600, images=null){
   if(!cfg.apikey)throw new Error("先在设置里填 API Key");
-  if(cfg.provider==="doubao"&&!cfg.endpoint)throw new Error("豆包需要先填接入点 ID（ep-xxxx）");
-  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到豆包");
+  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到 Kimi/Claude");
   const p=cfg.provider;
   let url,headers,body,readText;
   if(p==="anthropic"){
@@ -2893,11 +2881,10 @@ async function callAI(messages, sys, maxTokens=600, images=null){
     if(sys)body.system=sys;
     readText=d=>(d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
   }else{
-    if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
-    else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
+    if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
     else if(p==="kimi")url="https://api.moonshot.cn/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
-    const model=p==="doubao"?cfg.endpoint:currentModel();
+    const model=currentModel();
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
     let msgs=sys?[{role:"system",content:sys},...messages]:messages.slice();
     if(images&&images.length){          // OpenAI 兼容: image_url data URL
@@ -2924,7 +2911,7 @@ async function callAI(messages, sys, maxTokens=600, images=null){
 }
 
 // ===== 流式调用：逐字回调 onChunk(已累积的全文) =====
-// 各 provider 可选模型列表（2026-06 最新）。[模型ID, 显示名]
+// 各 provider 可选模型列表。[模型ID, 显示名]
 const MODELS={
   deepseek:[
     ["deepseek-v4-flash","V4 Flash（快·性价比）"],
@@ -2932,7 +2919,8 @@ const MODELS={
   ],
   openrouter:[
     ["anthropic/claude-haiku-4.5","Claude Haiku 4.5（快）"],
-    ["anthropic/claude-sonnet-4","Claude Sonnet 4（强）"],
+    ["anthropic/claude-sonnet-5","Claude Sonnet 5（强·最新）"],
+    ["anthropic/claude-opus-4.8","Claude Opus 4.8（最强）"],
     ["deepseek/deepseek-chat","DeepSeek V4（性价比）"],
     ["google/gemini-2.5-flash","Gemini 2.5 Flash（快）"],
   ],
@@ -2940,7 +2928,6 @@ const MODELS={
     ["claude-haiku-4-5-20251001","Claude Haiku 4.5（快）"],
     ["claude-sonnet-5","Claude Sonnet 5（强·最新）"],
     ["claude-opus-4-8","Claude Opus 4.8（最强）"],
-    ["claude-sonnet-4-20250514","Claude Sonnet 4"],
   ],
   kimi:[
     ["kimi-k2.6","Kimi K2.6（可看图·最新）"],
@@ -2950,7 +2937,6 @@ const MODELS={
 // 取当前 provider 实际要用的模型 ID
 function currentModel(){
   const p=cfg.provider;
-  if(p==="doubao")return cfg.endpoint;  // 豆包用接入点
   const list=MODELS[p]||MODELS.deepseek;
   const saved=cfg.models[p];
   if(saved&&list.some(m=>m[0]===saved))return saved;
@@ -2959,7 +2945,6 @@ function currentModel(){
 // 当前模型显示名（给界面）
 function currentModelLabel(){
   const p=cfg.provider;
-  if(p==="doubao")return "豆包·"+(cfg.endpoint||"未填接入点");
   const list=MODELS[p]||MODELS.deepseek;
   const id=currentModel();
   const m=list.find(x=>x[0]===id);
@@ -2968,8 +2953,7 @@ function currentModelLabel(){
 
 async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, images=null){
   if(!cfg.apikey)throw new Error("先在设置里填 API Key");
-  if(cfg.provider==="doubao"&&!cfg.endpoint)throw new Error("豆包需要先填接入点 ID（ep-xxxx）");
-  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到豆包/Kimi/Claude");
+  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到 Kimi/Claude");
   const p=cfg.provider;
   const isThink=think;
   const mdl=currentModel();
@@ -2995,8 +2979,7 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
     }
     parseLine=obj=>(obj.type==="content_block_delta"&&obj.delta&&obj.delta.text)?obj.delta.text:"";
   }else{
-    if(p==="doubao")url="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
-    else if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
+    if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
     else if(p==="kimi")url="https://api.moonshot.cn/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
@@ -3009,7 +2992,7 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
       last.content=parts;
     }
     body={model:mdl,max_tokens:maxTokens,messages:msgs,stream:true};
-    if(isThink&&(p==="doubao"||p==="deepseek"))body.thinking={type:"enabled"};
+    if(isThink&&p==="deepseek")body.thinking={type:"enabled"};
     if(p==="kimi")body.thinking={type:isThink?"enabled":"disabled"};  // Kimi 跟随思考开关，默认关=快
     parseLine=obj=>(obj.choices&&obj.choices[0]&&obj.choices[0].delta&&obj.choices[0].delta.content)||"";
   }
@@ -3097,7 +3080,7 @@ function renderAssistant(v){
     </div>`}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px">
       <select onchange="switchProvider(this.value)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-family:inherit;font-size:.74rem;background:var(--card);color:var(--ink)">
-        ${[["deepseek","DeepSeek"],["doubao","豆包"],["kimi","Kimi"],["anthropic","Claude"],["openrouter","OpenRouter"]].map(([k,name])=>{
+        ${[["deepseek","DeepSeek"],["kimi","Kimi"],["anthropic","Claude"],["openrouter","OpenRouter"]].map(([k,name])=>{
           const hasKey=cfg.keys&&cfg.keys[k];
           return `<option value="${k}" ${cfg.provider===k?"selected":""}>${name}${hasKey?"":"（未填Key）"}${VISION_PROVIDERS.includes(k)?" · 可看图":""}</option>`;
         }).join("")}
@@ -3116,7 +3099,7 @@ function renderAssistant(v){
 let chatImage=null;  // AI助手当前要发的图 {b64,mime}
 function onPickChatImage(input){
   const f=input.files&&input.files[0];if(!f)return;
-  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("传图需切到豆包/Kimi/Claude");return}
+  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("传图需切到 Kimi/Claude");return}
   readImageFile(f).then(img=>{
     chatImage=img;
     const p=document.getElementById("chat-img-preview");
@@ -3404,7 +3387,7 @@ const QA_MAX_IMAGES=6; // 一次最多附几张图，避免请求体过大/AI处
 function onPickQaImage(input){
   const files=input.files?Array.from(input.files):[];
   if(!files.length)return;
-  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("读图需切到豆包/Kimi/Claude");input.value="";return}
+  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("读图需切到 Kimi/Claude");input.value="";return}
   const room=QA_MAX_IMAGES-qaImages.length;
   if(room<=0){toast(`最多 ${QA_MAX_IMAGES} 张，先移除几张再选`);input.value="";return}
   const picked=files.slice(0,room);
@@ -3490,7 +3473,7 @@ async function quickAddGo(mode){
 
   // extract：贴文章 或 图片
   if(!raw.trim()&&!qaImages.length)return toast("贴段英文，或选图片");
-  if(qaImages.length&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到豆包/Kimi/Claude");
+  if(qaImages.length&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到 Kimi/Claude");
   eBtn.disabled=true;eBtn.textContent="提取中…";res.textContent="AI 正在挑生词…";
   const sys=`你是英语老师，面向中文母语的英语学习者。从用户给的英文文章或图片里尽量全面地挑出值得学的生词/短语（只跳过 the/is/have 这类最基础的词，中等难度及以上的都挑出来，宁可挑多不要漏），为每个生成词条。如果给了多张图片，请综合所有图片里的内容一起挑词，覆盖每张图里出现的生词，不要重复。
 分类 cat 只能填：dev、tv、life、biz、academic、news、other。
