@@ -74,18 +74,33 @@
 
   .hint { font-size: 11px; color: #475569; text-align: center; }
 
-  /* 一行横排：八档大牌一字排开，整列可点 */
-  .strip { flex: 1; display: flex; gap: 5px; min-height: 66px; max-height: 300px; }
+  /* 顶部摘要行：八档余量一眼扫 */
+  .summary {
+    display: flex; gap: 5px; justify-content: space-between;
+    background: #1e293b; border-radius: 12px; padding: 6px 8px;
+  }
+  .chip { flex: 1; text-align: center; border-radius: 8px; padding: 2px 0; }
+  .chip .cr { font-size: 12px; color: #94a3b8; }
+  .chip .cn { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .chip.dead { opacity: .35; }
+  .chip.dead .cn { text-decoration: line-through; }
+  .chip.hot .cn { color: #fbbf24; }
+
+  /* 3×3 大格：八档大牌 + 撤销 */
+  .grid { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 7px; min-height: 0; }
   .cell {
-    flex: 1; background: #1e293b; border-radius: 12px; position: relative;
+    background: #1e293b; border-radius: 14px; position: relative;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
     cursor: pointer; border: 1px solid #263244;
-    transition: transform .05s; min-width: 0;
+    transition: transform .05s; min-width: 0; min-height: 0;
   }
-  .cell:active { transform: scale(.94); background: #263650; }
-  .cell .rank { font-size: clamp(11px, 3vmin, 16px); font-weight: 700; color: #94a3b8; line-height: 1.1; white-space: nowrap; }
+  .cell:active { transform: scale(.96); background: #263650; }
+  .cell .rank { font-size: clamp(12px, 3.2vmin, 17px); font-weight: 700; color: #94a3b8; line-height: 1.1; white-space: nowrap; }
   .cell .rank.red { color: #f87171; }
-  .cell .rem { font-size: clamp(20px, 6.5vmin, 40px); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .cell .rem { font-size: clamp(22px, 7vmin, 42px); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .cell .played { font-size: clamp(10px, 2.6vmin, 12px); color: #64748b; font-variant-numeric: tabular-nums; }
+  .cell.undo-cell { background: #92400e; border-color: #b45309; font-size: clamp(17px, 4.5vmin, 22px); font-weight: 700; color: #fff; }
+  .cell.undo-cell.off { background: #1e293b; border-color: #263244; color: #475569; }
   .cell.zero { opacity: .35; }
   .cell.zero .rem { color: #475569; }
   .cell .badge {
@@ -109,11 +124,10 @@
   .cell .seats { font-size: clamp(9px, 2.5vmin, 12px); color: #64748b; min-height: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .cell .seats .op { color: #fbbf24; font-weight: 700; }
 
-  /* 超扁窗口：隐藏提示和模式标签，尽量压低高度 */
-  @media (max-height: 340px) {
-    .hint, .topbar .mode-tag { display: none; }
+  /* 矮窗口：隐藏提示和模式标签，压低高度 */
+  @media (max-height: 480px) {
+    .hint, .topbar .mode-tag, .cell .played { display: none; }
     #play { padding: 6px 8px; gap: 6px; }
-    .cell .badge { display: none; }
   }
 
   /* 弹层 */
@@ -179,6 +193,7 @@
     <button id="undoBtn" disabled>撤销</button>
     <button id="resetBtn">重开</button>
   </div>
+  <div class="summary" id="summary"></div>
   <div class="ctrl-row">
     <span class="lbl">张数</span>
     <div class="chips" id="countChips"></div>
@@ -187,7 +202,7 @@
     <span class="lbl">谁出</span>
     <div class="chips" id="seatChips"></div>
   </div>
-  <div class="strip" id="grid"></div>
+  <div class="grid" id="grid"></div>
   <div class="hint">点点数 = 按所选张数记一手 · 长按 = 减1张修正</div>
 </div>
 
@@ -359,10 +374,17 @@ function buildGrid() {
     cell.dataset.r = r;
     cell.innerHTML = `<div class="rank ${RED.has(r) ? 'red' : ''}">${label(r)}</div>
       <div class="rem" id="rem-${r}"></div>
-      <div class="seats" id="st-${r}"></div>`;
+      <div class="seats" id="st-${r}"></div>
+      <div class="played" id="pl-${r}"></div>`;
     grid.appendChild(cell);
     attachCellEvents(cell, r);
   });
+  const undoCell = document.createElement('div');
+  undoCell.className = 'cell undo-cell off';
+  undoCell.id = 'undoCell';
+  undoCell.textContent = '撤销';
+  undoCell.addEventListener('click', doUndo);
+  grid.appendChild(undoCell);
 }
 
 // 点按 = 按所选张数记一手；长按 = 修正减回1张
@@ -412,19 +434,22 @@ function commit(entry) {
   if (state.history.length > 500) state.history.shift();
   save();
   renderRank(entry.r, true);
+  renderSummary();
   renderUndo();
 }
 
-$('undoBtn').addEventListener('click', () => {
+function doUndo() {
   const last = state.history.pop();
   if (!last) return;
   state.played[last.r] -= last.d;
   if (last.seat) state.seatPlayed[last.seat][last.r] -= last.d;
   save();
   renderRank(last.r, true);
+  renderSummary();
   renderUndo();
   vibrate(15);
-});
+}
+$('undoBtn').addEventListener('click', doUndo);
 
 // ===== 渲染 =====
 function renderRank(r, flash) {
@@ -432,6 +457,7 @@ function renderRank(r, flash) {
   const cell = $('cell-' + r);
   const remEl = $('rem-' + r);
   remEl.textContent = rem;
+  $('pl-' + r).textContent = `已出 ${state.played[r]}`;
   cell.classList.toggle('zero', rem <= 0);
   $('st-' + r).innerHTML = SEATS
     .filter(([key]) => state.seatPlayed[key][r] > 0)
@@ -459,9 +485,25 @@ function renderRank(r, flash) {
   }
 }
 
-function renderUndo() { $('undoBtn').disabled = state.history.length === 0; }
+function renderSummary() {
+  $('summary').innerHTML = DISPLAY_RANKS.map(r => {
+    const rem = remaining(r);
+    const min = GOUJI_MIN[r];
+    const dead = rem < min;
+    const hot = !dead && rem <= min + 1;
+    return `<div class="chip ${dead ? 'dead' : ''} ${hot ? 'hot' : ''}">
+      <div class="cr">${label(r)}</div><div class="cn">${rem}</div></div>`;
+  }).join('');
+}
 
-function renderAll() { DISPLAY_RANKS.forEach(r => renderRank(r, false)); renderUndo(); }
+function renderUndo() {
+  const off = state.history.length === 0;
+  $('undoBtn').disabled = off;
+  const uc = $('undoCell');
+  if (uc) uc.classList.toggle('off', off);
+}
+
+function renderAll() { DISPLAY_RANKS.forEach(r => renderRank(r, false)); renderSummary(); renderUndo(); }
 
 // ===== 重开 =====
 function dialog(text, btns) {
