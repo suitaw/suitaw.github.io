@@ -2540,11 +2540,16 @@ function playAudio(text,btn){
   if(btn)btn.classList.add("playing");
   const done=()=>{if(btn)btn.classList.remove("playing")};
   if(isSentence(w))return speakSynth(w,btn);  // 句子走合成，自然
-  // 单词：有道美音，失败再退回合成
+  // 单词：有道美音，失败再退回合成。
+  // 找不到发音（如 __repr__ 这类带符号的非常规"单词"）时，媒体的 error 事件和
+  // play() 的 rejected promise 会同时触发，两条路径都调 speakSynth 就会读两遍——
+  // 用一个标记确保退回合成只真正执行一次
   const a=new Audio("https://dict.youdao.com/dictvoice?type=0&audio="+encodeURIComponent(w));
+  let fellBack=false;
+  const fallback=()=>{if(fellBack)return;fellBack=true;speakSynth(w,btn)};
   a.onended=done;
-  a.onerror=()=>speakSynth(w,btn);
-  a.play().catch(()=>speakSynth(w,btn));
+  a.onerror=fallback;
+  a.play().catch(fallback);
 }
 function speak(btn){playAudio(cur.word,btn)}
 
