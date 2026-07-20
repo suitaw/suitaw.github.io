@@ -107,17 +107,21 @@
   .cell .flash { animation: pop .18s; }
   @keyframes pop { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
 
-  /* ===== 紧凑模式（安卓小窗/分屏） ===== */
-  #minorStrip { display: none; gap: 4px; }
-  body.compact #minorStrip { display: flex; }
-  body.compact .summary, body.compact .hint, body.compact .cell.minor { display: none; }
-  #minorStrip button {
+  /* ===== 张数 / 谁出 控制行 ===== */
+  .ctrl-row { display: flex; gap: 5px; align-items: center; }
+  .ctrl-row .lbl { font-size: 12px; color: #64748b; width: 28px; text-align: center; flex-shrink: 0; }
+  .ctrl-row .chips { flex: 1; display: flex; gap: 5px; }
+  .chip-btn {
     flex: 1; border: none; border-radius: 8px; background: #1e293b; color: #94a3b8;
-    padding: 5px 0 4px; font-size: 11px; line-height: 1.2; cursor: pointer;
-    touch-action: manipulation;
+    padding: 8px 0; font-size: 15px; font-weight: 600; cursor: pointer; touch-action: manipulation;
   }
-  #minorStrip button b { display: block; font-size: 14px; color: #e2e8f0; font-variant-numeric: tabular-nums; }
-  #minorStrip button.zero { opacity: .35; }
+  .chip-btn.sel { background: #0284c7; color: #fff; }
+  .chip-btn.armed { background: #b45309; color: #fff; }
+  .cell .seats { font-size: 11px; color: #64748b; min-height: 13px; font-variant-numeric: tabular-nums; }
+  .cell .seats .op { color: #fbbf24; font-weight: 700; }
+
+  /* ===== 紧凑模式（安卓小窗/分屏） ===== */
+  body.compact .summary, body.compact .hint, body.compact .cell.minor { display: none; }
   body.compact #play { padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); gap: 6px; }
   body.compact .grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); }
   body.compact .cell { border-radius: 10px; }
@@ -193,9 +197,16 @@
     <button id="resetBtn">重开</button>
   </div>
   <div class="summary" id="summary"></div>
+  <div class="ctrl-row">
+    <span class="lbl">张数</span>
+    <div class="chips" id="countChips"></div>
+  </div>
+  <div class="ctrl-row">
+    <span class="lbl">谁出</span>
+    <div class="chips" id="seatChips"></div>
+  </div>
   <div class="grid" id="grid"></div>
-  <div id="minorStrip"></div>
-  <div class="hint">点一下 = 出了一张 · 长按 = 减回一张（点错修正）</div>
+  <div class="hint">点点数 = 按所选张数记一手 · 长按 = 减1张修正</div>
 </div>
 
 <!-- 确认弹层 -->
@@ -216,7 +227,8 @@ const RED = new Set(['BJ']);
 // 够级门槛：场上剩余低于此数，该点数不可能再有人凑出够级牌
 const GOUJI_MIN = { BJ:1, SJ:1, '2':1, 'A':2, 'K':2, 'Q':3, 'J':4, '10':5 };
 const SUMMARY_RANKS = ['BJ','SJ','2','A','K','Q','J','10'];
-const MINOR = new Set(['9','8','7','6','5','4','3']); // 紧凑模式下收进底部小条
+const MINOR = new Set(['9','8','7','6','5','4','3']); // 紧凑模式下隐藏，只记大牌
+const SEATS = [ ['up','上家','上'], ['op','对头','对'], ['down','下家','下'] ];
 
 const MODES = {
   fa4:     { name:'开点发4 198张', perPlayer:33, totals: r => r==='BJ'||r==='SJ' ? 4 : r==='3' ? 6 : r==='4' ? 8 : 16 },
@@ -239,9 +251,13 @@ function newState(mode, precise) {
     totals: Object.fromEntries(RANKS.map(r => [r, m.totals(r)])),
     myHand: emptyCounts(),
     played: emptyCounts(),
+    seatPlayed: { up: emptyCounts(), op: emptyCounts(), down: emptyCounts() },
     history: [],
   };
 }
+
+// 本轮每手张数 & 待标记座位（一次性，记完自动清除）——运行时状态，不持久化
+let trickSize = 1, armedSeat = null;
 
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch(e){} }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch(e){} }
@@ -317,9 +333,38 @@ $('handBackBtn').addEventListener('click', () => show('setup'));
 // ===== 记牌主界面 =====
 function enterPlay() {
   $('modeTag').textContent = MODES[state.mode].name + (state.precise ? ' · 精确' : ' · 快速');
+  trickSize = 1; armedSeat = null;
   buildGrid();
+  buildCtrlRows();
   renderAll();
   show('play');
+}
+
+function buildCtrlRows() {
+  const cc = $('countChips');
+  cc.innerHTML = '';
+  for (let n = 1; n <= 8; n++) {
+    const b = document.createElement('button');
+    b.className = 'chip-btn' + (n === trickSize ? ' sel' : '');
+    b.textContent = n;
+    b.onclick = () => { trickSize = n; renderCtrlRows(); vibrate(10); };
+    cc.appendChild(b);
+  }
+  const sc = $('seatChips');
+  sc.innerHTML = '';
+  SEATS.forEach(([key, name]) => {
+    const b = document.createElement('button');
+    b.className = 'chip-btn';
+    b.dataset.seat = key;
+    b.textContent = name;
+    b.onclick = () => { armedSeat = armedSeat === key ? null : key; renderCtrlRows(); vibrate(10); };
+    sc.appendChild(b);
+  });
+}
+
+function renderCtrlRows() {
+  [...$('countChips').children].forEach((b, i) => b.classList.toggle('sel', i + 1 === trickSize));
+  [...$('seatChips').children].forEach(b => b.classList.toggle('armed', b.dataset.seat === armedSeat));
 }
 
 function buildGrid() {
@@ -332,26 +377,14 @@ function buildGrid() {
     cell.dataset.r = r;
     cell.innerHTML = `<div class="rank ${RED.has(r) ? 'red' : ''}">${label(r)}</div>
       <div class="rem" id="rem-${r}"></div>
+      <div class="seats" id="st-${r}"></div>
       <div class="played" id="pl-${r}"></div>`;
     grid.appendChild(cell);
     attachCellEvents(cell, r);
   });
-  buildMinorStrip();
 }
 
-function buildMinorStrip() {
-  const strip = $('minorStrip');
-  strip.innerHTML = '';
-  RANKS.filter(r => MINOR.has(r)).forEach(r => {
-    const b = document.createElement('button');
-    b.id = 'mini-' + r;
-    b.innerHTML = `${r}<b id="mrem-${r}"></b>`;
-    strip.appendChild(b);
-    attachCellEvents(b, r);
-  });
-}
-
-// 点按 = 出1张；长按 = 修正减回1张
+// 点按 = 按所选张数记一手；长按 = 修正减回1张
 function attachCellEvents(cell, r) {
   let timer = null, longFired = false;
   const LONG_MS = 450;
@@ -359,7 +392,7 @@ function attachCellEvents(cell, r) {
     longFired = false;
     timer = setTimeout(() => {
       longFired = true;
-      applyDelta(r, -1);
+      applyCorrect(r);
       vibrate([20, 40, 20]);
     }, LONG_MS);
   });
@@ -368,19 +401,36 @@ function attachCellEvents(cell, r) {
   cell.addEventListener('pointercancel', cancel);
   cell.addEventListener('pointerup', () => {
     clearTimeout(timer);
-    if (!longFired) { applyDelta(r, 1); vibrate(15); }
+    if (!longFired) { applyTap(r); }
   });
   cell.addEventListener('contextmenu', e => e.preventDefault());
 }
 
-function applyDelta(r, d) {
-  if (d > 0 && remaining(r) <= 0) return;
-  if (d < 0 && state.played[r] <= 0) return;
-  state.played[r] += d;
-  state.history.push({ r, d });
+function applyTap(r) {
+  const n = Math.min(trickSize, remaining(r));
+  if (n <= 0) return;
+  state.played[r] += n;
+  const seat = armedSeat;
+  if (seat) {
+    state.seatPlayed[seat][r] += n;
+    armedSeat = null; // 一次性：记完这手自动清除
+    renderCtrlRows();
+  }
+  commit({ r, d: n, seat });
+  vibrate(15);
+}
+
+function applyCorrect(r) {
+  if (state.played[r] <= 0) return;
+  state.played[r] -= 1;
+  commit({ r, d: -1, seat: null });
+}
+
+function commit(entry) {
+  state.history.push(entry);
   if (state.history.length > 500) state.history.shift();
   save();
-  renderRank(r, true);
+  renderRank(entry.r, true);
   renderSummary();
   renderUndo();
 }
@@ -389,6 +439,7 @@ $('undoBtn').addEventListener('click', () => {
   const last = state.history.pop();
   if (!last) return;
   state.played[last.r] -= last.d;
+  if (last.seat) state.seatPlayed[last.seat][last.r] -= last.d;
   save();
   renderRank(last.r, true);
   renderSummary();
@@ -404,11 +455,12 @@ function renderRank(r, flash) {
   remEl.textContent = rem;
   $('pl-' + r).textContent = `已出 ${state.played[r]}`;
   cell.classList.toggle('zero', rem <= 0);
-  const mini = $('mrem-' + r);
-  if (mini) {
-    mini.textContent = rem;
-    $('mini-' + r).classList.toggle('zero', rem <= 0);
-  }
+  $('st-' + r).innerHTML = SEATS
+    .filter(([key]) => state.seatPlayed[key][r] > 0)
+    .map(([key, , abbr]) => {
+      const n = state.seatPlayed[key][r];
+      return key === 'op' ? `<span class="op">${abbr}${n}</span>` : `${abbr}${n}`;
+    }).join(' ');
 
   const min = GOUJI_MIN[r];
   let badge = cell.querySelector('.badge');
@@ -498,6 +550,7 @@ $('resetBtn').addEventListener('click', () => {
   try { saved = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch(e){}
   if (saved && saved.totals && MODES[saved.mode]) {
     state = saved;
+    if (!state.seatPlayed) state.seatPlayed = { up: emptyCounts(), op: emptyCounts(), down: emptyCounts() };
     dialog('发现上次未结束的一局，继续吗？', [
       ['重新开始', 'cancel', () => { clearSave(); state = null; show('setup'); }],
       ['继续', 'primary', () => enterPlay()],
