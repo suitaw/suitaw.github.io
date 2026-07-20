@@ -190,7 +190,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 </div>
 
 <div class="nav">
-  <button id="nav-home" class="active" onclick="go('home')">学习</button>
+  <button id="nav-home" class="active" onclick="tapNavHome()">学习</button>
   <button id="nav-assistant" onclick="go('assistant')">AI 助手</button>
   <button id="nav-mistake" onclick="go('mistake')">复习 / 库</button>
   <button id="nav-stats" onclick="go('stats')">统计</button>
@@ -488,18 +488,30 @@ function clearKey(){
   toast("Key 已清空（仅当前服务商）");
 }
 
-// ===== SM-2 =====
+// ===== SM-2（带提前复习保护 / 遗忘惩罚 / 到期抖动）=====
 function grade(id,q){ // q: 0=again,3=hard,4=good,5=easy
+  const now=Date.now();
   let c=srs[id]||{ef:2.5,interval:0,reps:0};
-  if(q<3){c.reps=0;c.interval=1}
-  else{
+  // 提前复习保护：远没到期就又背到（复习本反复刷、从词表点进来重背）时，
+  // 间隔和熟练度原地不动，只把到期时间从今天重新起算。
+  // 否则一天把复习本刷三遍，间隔会 1→6→15 天地虚增——词还没经过时间检验就被排到半个月后。
+  // 到期前 12 小时以内照常按正常复习计。
+  const early=q>=3&&c.due&&(c.due-now)>12*3600000;
+  if(q<3){
+    c.reps=0;c.interval=1;
+    c.ef=Math.max(1.3,c.ef-0.2);            // 忘一次降一点系数：反复忘的词以后间隔涨得慢
+    c.lapses=(c.lapses||0)+1;               // 累计遗忘次数，复习本里标出"惯犯"
+  }else if(!early){
     c.reps++;
-    if(c.reps===1)c.interval=1;
+    if(c.reps===1)c.interval=(q===5?3:1);   // 新词直接秒答：从 3 天起步，省掉一次无谓的次日复习
     else if(c.reps===2)c.interval=6;
     else c.interval=Math.round(c.interval*c.ef);
     c.ef=Math.max(1.3,c.ef+(0.1-(5-q)*(0.08+(5-q)*0.02)));
   }
-  c.due=Date.now()+c.interval*86400000;
+  // 到期日加 ±10% 抖动：同一天学的一批词错开到期，避免复习量在某几天扎堆
+  let iv=c.interval;
+  if(iv>=3)iv=Math.max(1,Math.round(iv*(0.9+Math.random()*0.2)));
+  c.due=now+iv*86400000;
   srs[id]=c;save(SRS_KEY,srs);
   logStudy(id,q);  // 记录今日学习
 }
@@ -612,6 +624,14 @@ function go(p){
   // 保留 home 内的子状态（分类预览/文章详情/文章列表），这样从 AI 助手/复习/统计切回"学习"能停在原处，
   // 而不是被拽回一级分类列表。真正想回到一级列表用页面里的"← 返回"（closeCatPreview 等）。
   page=p;save("vocab_v5_page",p);["home","assistant","mistake","stats"].forEach(x=>{const el=document.getElementById("nav-"+x);if(el)el.classList.toggle("active",x===p)});render();
+}
+// 底部"学习"tab：已在学习页的子页面（分类预览/文章/词表）时再点一次 = 回到分类首页；
+// 背词进行中不打断（用卡片上方的"← 返回"退出）。只有用户点 tab 才走这里，程序内跳转仍用 go()
+function tapNavHome(){
+  if(page==="home"&&!studyStarted&&(previewCat!==null||curArticle!==null||articleListOpen)){
+    previewCat=null;curArticle=null;articleListOpen=false;render();return;
+  }
+  go("home");
 }
 let studyStarted=false;  // 是否已从分类页进入学习
 let roundTotal=0;        // 本轮词数（建队列时定）
@@ -745,18 +765,40 @@ function renameCat(cat){
   toast(`已改名为「${nn}」`);
   renderCatManager();
 }
+// 通用单选列表弹层：替代"prompt 里输序号"，手机上直接点选
+let __pickCb=null,__pickOptions=null;
+function pickFromList(title,options,cb){ // options: [{key,label,sub}]
+  const ov=document.getElementById("import-overlay");if(!ov)return;
+  __pickCb=cb;__pickOptions=options;
+  ov.classList.add("open");
+  ov.innerHTML=`<div class="import-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="font-family:Fraunces,serif;font-size:1.15rem">${escapeHtml(title)}</h2>
+      <button class="gear" onclick="closeImport()">✕ 取消</button>
+    </div>
+    ${options.map((o,i)=>`<div class="mistake-item" style="cursor:pointer" onclick="pickChoose(${i})">
+      <div style="flex:1"><div class="w" style="font-size:.95rem">${escapeHtml(o.label)}</div>${o.sub?`<div class="c">${escapeHtml(o.sub)}</div>`:""}</div>
+      <span style="color:var(--ink-dim)">›</span>
+    </div>`).join("")}
+  </div>`;
+}
+function pickChoose(i){
+  const o=__pickOptions&&__pickOptions[i];
+  const cb=__pickCb;
+  __pickCb=null;__pickOptions=null;
+  closeImport();
+  if(o&&cb)cb(o.key);
+}
 function mergeCat(cat){
   const cats=allCatsWithCount().filter(c=>c.cat!==cat&&!c.isArt);
   if(!cats.length)return toast("没有可合并到的分类");
-  const list=cats.map((c,i)=>`${i+1}. ${c.name}（${c.n}词）`).join("\n");
-  const pick=prompt(`把「${catName(cat)}」的词合并到哪个分类？输入序号：\n\n${list}`,"1");
-  if(!pick)return;
-  const idx=parseInt(pick,10)-1;
-  if(isNaN(idx)||idx<0||idx>=cats.length)return toast("序号无效");
-  const to=cats[idx];
-  const n=moveCatWords(cat,to.cat);
-  toast(`已把 ${n} 个词合并到「${to.name}」`);
-  renderCatManager();
+  pickFromList(`「${catName(cat)}」的词并入哪个分类？`,
+    cats.map(c=>({key:c.cat,label:c.name,sub:c.n+" 词"})),
+    to=>{
+      const n=moveCatWords(cat,to);
+      toast(`已把 ${n} 个词合并到「${catName(to)}」`);
+      openCatManager();   // 回到分类管理，继续整理
+    });
 }
 // ===== 搜词：全库搜 word/释义，点结果看详情 =====
 function openSearch(){
@@ -1426,7 +1468,7 @@ function renderPreview(v){
     ${list.length?`<button class="gear" style="margin-bottom:12px" onclick="openDedup()">🧹 查重清理（扫全部分类）</button>`:""}
     ${list.length?`<button class="gear" style="margin-bottom:12px" onclick="openEnrichPhonetic()">🔤 批量补音标（扫全部分类）</button>`:""}
     ${imported.length?`<button class="gear" style="margin-bottom:12px" onclick="aiReclassifyAll()">🗂 AI重新分类我导入的 ${imported.length} 个词</button>`:""}
-    ${list.length?rows:`<div class="done"><p>这个分类还没有词。</p></div>`}
+    ${list.length?`<div style="padding-right:16px">${rows}</div>`:`<div class="done"><p>这个分类还没有词。</p></div>`}
     ${list.length?`<button class="ai-btn" style="position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
   </div>
   ${list.length?`<div class="az-index" id="az-index">${azLetters}</div><div class="az-bubble" id="az-bubble"></div>`:""}`;
@@ -2222,30 +2264,26 @@ function delArticleWord(wid){removeWordById(wid);render()}
 function moveWordTo(wid){
   const w=allWords().find(x=>x.id===wid);
   if(!w)return;
-  // 列出可选目标：文章分类 + 新建一课
-  const artOpts=articles.map((a,i)=>`${i+1}. 📄 ${a.title}`);
-  const list=artOpts.length?artOpts.join("\n"):"（暂无课文，可输入 0 新建一课）";
-  const pick=prompt(`把「${w.word}」移到哪一课？输入序号：\n\n${list}\n\n0. ➕ 新建一课`,artOpts.length?"1":"0");
-  if(pick===null)return;
-  let targetCat;
-  const idx=parseInt(pick,10);
-  if(idx===0){
-    const title=(prompt("新课/文章名称（如：NCE2 L5 No Wrong Numbers）")||"").trim();
-    if(!title)return;
-    const id="art"+Date.now();
-    userArticles.unshift({id,title,text:"",mode:"manual",explain:"",createdAt:Date.now()});
-    articles=NCE_ARTICLES.concat(userArticles);
-    saveArticles();
-    targetCat=artCatKey(id);
-  }else if(idx>=1&&idx<=articles.length){
-    targetCat=artCatKey(articles[idx-1].id);
-  }else{return toast("序号无效")}
-  // 执行移动
-  const imp=imported.find(x=>x.id===wid);
-  if(imp){imp.cat=targetCat;imp.fromArticle=targetCat.slice(4);save(IMP_KEY,imported)}
-  else{catOverride[wid]=targetCat;save(CATOVR_KEY,catOverride)}  // 内置词
-  toast(`已移到「${catName(targetCat)}」`);
-  render();
+  // 可选目标：文章分类 + 新建一课，弹层点选
+  const opts=articles.map(a=>({key:artCatKey(a.id),label:"📄 "+a.title,sub:wordsOfArticle(a.id).length+" 词"}));
+  opts.push({key:"__newlesson__",label:"➕ 新建一课…",sub:""});
+  pickFromList(`把「${w.word}」移到哪一课？`,opts,key=>{
+    let targetCat=key;
+    if(key==="__newlesson__"){
+      const title=(prompt("新课/文章名称（如：NCE2 L5 No Wrong Numbers）")||"").trim();
+      if(!title)return;
+      const id="art"+Date.now();
+      userArticles.unshift({id,title,text:"",mode:"manual",explain:"",createdAt:Date.now()});
+      articles=NCE_ARTICLES.concat(userArticles);
+      saveArticles();
+      targetCat=artCatKey(id);
+    }
+    const imp=imported.find(x=>x.id===wid);
+    if(imp){imp.cat=targetCat;imp.fromArticle=targetCat.slice(4);save(IMP_KEY,imported)}
+    else{catOverride[wid]=targetCat;save(CATOVR_KEY,catOverride)}  // 内置词
+    toast(`已移到「${catName(targetCat)}」`);
+    render();
+  });
 }
 const TAGS=[
   {k:"collo",label:"词组搭配",ask:"列出这个词最常用的 3-5 个词组/固定搭配，每行：英文搭配 + 空格 + 中文意思。只列搭配本身，不要例句、不要解释、不要编号。"},
@@ -2600,9 +2638,11 @@ function renderMistake(v){
         :m.from==="难"?`<span style="color:var(--gold);font-weight:600">难</span>`
         :`<span style="opacity:.7">${m.from||"收藏"}</span>`;
       const prog=m.streak?`<span style="opacity:.7"> · 连对 ${m.streak}/${GRADUATE_STREAK}</span>`:"";
+      const lp=(srs[m.id]&&srs[m.id].lapses)||0;
+      const lapTag=lp>=2?`<span style="color:var(--accent);opacity:.85"> · 忘过 ${lp} 次</span>`:"";
       return `
     <div class="mistake-item">
-      <div><div class="w">${escapeHtml(m.word)}</div><div class="c">${escapeHtml(m.cn)} · ${tag}${prog}</div></div>
+      <div><div class="w">${escapeHtml(m.word)}</div><div class="c">${escapeHtml(m.cn)} · ${tag}${prog}${lapTag}</div></div>
       <div style="display:flex;gap:6px">
         <button class="gear" onclick="speakId('${m.id}')">🔊</button>
         <button class="gear" onclick="delMistake('${m.id}')">🗑</button>
