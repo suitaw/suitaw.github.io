@@ -72,31 +72,19 @@
   .topbar #undoBtn { background: #92400e; }
   .topbar #undoBtn:disabled { background: #1e293b; color: #475569; }
 
-  .summary {
-    display: flex; gap: 5px; justify-content: space-between;
-    background: #1e293b; border-radius: 12px; padding: 7px 8px;
-  }
-  .chip { flex: 1; text-align: center; border-radius: 8px; padding: 3px 0; }
-  .chip .cr { font-size: 12px; color: #94a3b8; }
-  .chip .cn { font-size: 17px; font-weight: 700; }
-  .chip.dead { opacity: .35; }
-  .chip.dead .cn { text-decoration: line-through; }
-  .chip.hot .cn { color: #fbbf24; }
-
   .hint { font-size: 11px; color: #475569; text-align: center; }
 
-  .grid { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, 1fr); gap: 7px; min-height: 0; }
+  .grid { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); gap: 7px; min-height: 0; }
   .cell {
     background: #1e293b; border-radius: 14px; position: relative;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     cursor: pointer; border: 1px solid #263244;
-    transition: transform .05s;
+    transition: transform .05s; min-height: 0;
   }
   .cell:active { transform: scale(.96); background: #263650; }
-  .cell .rank { font-size: 17px; font-weight: 700; color: #94a3b8; line-height: 1.1; }
+  .cell .rank { font-size: clamp(13px, 3.5vmin, 18px); font-weight: 700; color: #94a3b8; line-height: 1.1; }
   .cell .rank.red { color: #f87171; }
-  .cell .rem { font-size: 34px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
-  .cell .played { font-size: 11px; color: #64748b; font-variant-numeric: tabular-nums; }
+  .cell .rem { font-size: clamp(26px, 9vmin, 46px); font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
   .cell.zero { opacity: .35; }
   .cell.zero .rem { color: #475569; }
   .cell .badge {
@@ -117,20 +105,8 @@
   }
   .chip-btn.sel { background: #0284c7; color: #fff; }
   .chip-btn.armed { background: #b45309; color: #fff; }
-  .cell .seats { font-size: 11px; color: #64748b; min-height: 13px; font-variant-numeric: tabular-nums; }
+  .cell .seats { font-size: clamp(11px, 3vmin, 14px); color: #64748b; min-height: 13px; font-variant-numeric: tabular-nums; }
   .cell .seats .op { color: #fbbf24; font-weight: 700; }
-
-  /* ===== 紧凑模式（安卓小窗/分屏） ===== */
-  body.compact .summary, body.compact .hint, body.compact .cell.minor { display: none; }
-  body.compact #play { padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); gap: 6px; }
-  body.compact .grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); }
-  body.compact .cell { border-radius: 10px; }
-  body.compact .cell .rank { font-size: 13px; }
-  body.compact .cell .rem { font-size: 26px; }
-  body.compact .cell .played { display: none; }
-  body.compact .cell .badge { font-size: 9px; top: 3px; right: 4px; }
-  body.compact .topbar button { padding: 7px 11px; font-size: 13px; }
-  body.compact .topbar .mode-tag { display: none; }
 
   /* 弹层 */
   #overlay {
@@ -192,11 +168,9 @@
   <div class="topbar">
     <span class="mode-tag" id="modeTag"></span>
     <span class="spacer"></span>
-    <button id="compactBtn">紧凑</button>
     <button id="undoBtn" disabled>撤销</button>
     <button id="resetBtn">重开</button>
   </div>
-  <div class="summary" id="summary"></div>
   <div class="ctrl-row">
     <span class="lbl">张数</span>
     <div class="chips" id="countChips"></div>
@@ -226,8 +200,8 @@ const LABELS = { BJ:'大王', SJ:'小王' };
 const RED = new Set(['BJ']);
 // 够级门槛：场上剩余低于此数，该点数不可能再有人凑出够级牌
 const GOUJI_MIN = { BJ:1, SJ:1, '2':1, 'A':2, 'K':2, 'Q':3, 'J':4, '10':5 };
-const SUMMARY_RANKS = ['BJ','SJ','2','A','K','Q','J','10'];
-const MINOR = new Set(['9','8','7','6','5','4','3']); // 紧凑模式下隐藏，只记大牌
+// 只记 10 及以上的大牌；小牌不显示（精确模式录手牌时仍按全部点数录）
+const DISPLAY_RANKS = ['BJ','SJ','2','A','K','Q','J','10'];
 const SEATS = [ ['up','上家','上'], ['op','对头','对'], ['down','下家','下'] ];
 
 const MODES = {
@@ -370,15 +344,14 @@ function renderCtrlRows() {
 function buildGrid() {
   const grid = $('grid');
   grid.innerHTML = '';
-  RANKS.forEach(r => {
+  DISPLAY_RANKS.forEach(r => {
     const cell = document.createElement('div');
-    cell.className = 'cell' + (MINOR.has(r) ? ' minor' : '');
+    cell.className = 'cell';
     cell.id = 'cell-' + r;
     cell.dataset.r = r;
     cell.innerHTML = `<div class="rank ${RED.has(r) ? 'red' : ''}">${label(r)}</div>
       <div class="rem" id="rem-${r}"></div>
-      <div class="seats" id="st-${r}"></div>
-      <div class="played" id="pl-${r}"></div>`;
+      <div class="seats" id="st-${r}"></div>`;
     grid.appendChild(cell);
     attachCellEvents(cell, r);
   });
@@ -431,7 +404,6 @@ function commit(entry) {
   if (state.history.length > 500) state.history.shift();
   save();
   renderRank(entry.r, true);
-  renderSummary();
   renderUndo();
 }
 
@@ -442,7 +414,6 @@ $('undoBtn').addEventListener('click', () => {
   if (last.seat) state.seatPlayed[last.seat][last.r] -= last.d;
   save();
   renderRank(last.r, true);
-  renderSummary();
   renderUndo();
   vibrate(15);
 });
@@ -453,7 +424,6 @@ function renderRank(r, flash) {
   const cell = $('cell-' + r);
   const remEl = $('rem-' + r);
   remEl.textContent = rem;
-  $('pl-' + r).textContent = `已出 ${state.played[r]}`;
   cell.classList.toggle('zero', rem <= 0);
   $('st-' + r).innerHTML = SEATS
     .filter(([key]) => state.seatPlayed[key][r] > 0)
@@ -481,41 +451,9 @@ function renderRank(r, flash) {
   }
 }
 
-function renderSummary() {
-  const el = $('summary');
-  el.innerHTML = SUMMARY_RANKS.map(r => {
-    const rem = remaining(r);
-    const min = GOUJI_MIN[r];
-    const dead = rem < min;
-    const hot = !dead && rem <= min + 1;
-    return `<div class="chip ${dead ? 'dead' : ''} ${hot ? 'hot' : ''}">
-      <div class="cr">${label(r)}</div><div class="cn">${rem}</div></div>`;
-  }).join('');
-}
-
 function renderUndo() { $('undoBtn').disabled = state.history.length === 0; }
 
-// ===== 紧凑模式：手动切换优先，否则按窗口尺寸自动判断（小窗/分屏） =====
-const COMPACT_KEY = 'gouji-compact';
-function compactPref() { try { return localStorage.getItem(COMPACT_KEY); } catch(e){ return null; } }
-function setCompact(on) {
-  document.body.classList.toggle('compact', on);
-  $('compactBtn').textContent = on ? '全屏' : '紧凑';
-}
-$('compactBtn').addEventListener('click', () => {
-  const on = !document.body.classList.contains('compact');
-  setCompact(on);
-  try { localStorage.setItem(COMPACT_KEY, on ? '1' : '0'); } catch(e){}
-});
-function autoCompact() {
-  const pref = compactPref();
-  if (pref !== null) setCompact(pref === '1');
-  else setCompact(window.innerHeight < 560 || window.innerWidth < 320);
-}
-autoCompact();
-window.addEventListener('resize', () => { if (compactPref() === null) autoCompact(); });
-
-function renderAll() { RANKS.forEach(r => renderRank(r, false)); renderSummary(); renderUndo(); }
+function renderAll() { DISPLAY_RANKS.forEach(r => renderRank(r, false)); renderUndo(); }
 
 // ===== 重开 =====
 function dialog(text, btns) {
