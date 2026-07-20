@@ -107,6 +107,27 @@
   .cell .flash { animation: pop .18s; }
   @keyframes pop { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
 
+  /* ===== 紧凑模式（安卓小窗/分屏） ===== */
+  #minorStrip { display: none; gap: 4px; }
+  body.compact #minorStrip { display: flex; }
+  body.compact .summary, body.compact .hint, body.compact .cell.minor { display: none; }
+  #minorStrip button {
+    flex: 1; border: none; border-radius: 8px; background: #1e293b; color: #94a3b8;
+    padding: 5px 0 4px; font-size: 11px; line-height: 1.2; cursor: pointer;
+    touch-action: manipulation;
+  }
+  #minorStrip button b { display: block; font-size: 14px; color: #e2e8f0; font-variant-numeric: tabular-nums; }
+  #minorStrip button.zero { opacity: .35; }
+  body.compact #play { padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); gap: 6px; }
+  body.compact .grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); }
+  body.compact .cell { border-radius: 10px; }
+  body.compact .cell .rank { font-size: 13px; }
+  body.compact .cell .rem { font-size: 26px; }
+  body.compact .cell .played { display: none; }
+  body.compact .cell .badge { font-size: 9px; top: 3px; right: 4px; }
+  body.compact .topbar button { padding: 7px 11px; font-size: 13px; }
+  body.compact .topbar .mode-tag { display: none; }
+
   /* 弹层 */
   #overlay {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
@@ -167,11 +188,13 @@
   <div class="topbar">
     <span class="mode-tag" id="modeTag"></span>
     <span class="spacer"></span>
+    <button id="compactBtn">紧凑</button>
     <button id="undoBtn" disabled>撤销</button>
     <button id="resetBtn">重开</button>
   </div>
   <div class="summary" id="summary"></div>
   <div class="grid" id="grid"></div>
+  <div id="minorStrip"></div>
   <div class="hint">点一下 = 出了一张 · 长按 = 减回一张（点错修正）</div>
 </div>
 
@@ -193,6 +216,7 @@ const RED = new Set(['BJ']);
 // 够级门槛：场上剩余低于此数，该点数不可能再有人凑出够级牌
 const GOUJI_MIN = { BJ:1, SJ:1, '2':1, 'A':2, 'K':2, 'Q':3, 'J':4, '10':5 };
 const SUMMARY_RANKS = ['BJ','SJ','2','A','K','Q','J','10'];
+const MINOR = new Set(['9','8','7','6','5','4','3']); // 紧凑模式下收进底部小条
 
 const MODES = {
   fa4:     { name:'开点发4 198张', perPlayer:33, totals: r => r==='BJ'||r==='SJ' ? 4 : r==='3' ? 6 : r==='4' ? 8 : 16 },
@@ -303,7 +327,7 @@ function buildGrid() {
   grid.innerHTML = '';
   RANKS.forEach(r => {
     const cell = document.createElement('div');
-    cell.className = 'cell';
+    cell.className = 'cell' + (MINOR.has(r) ? ' minor' : '');
     cell.id = 'cell-' + r;
     cell.dataset.r = r;
     cell.innerHTML = `<div class="rank ${RED.has(r) ? 'red' : ''}">${label(r)}</div>
@@ -311,6 +335,19 @@ function buildGrid() {
       <div class="played" id="pl-${r}"></div>`;
     grid.appendChild(cell);
     attachCellEvents(cell, r);
+  });
+  buildMinorStrip();
+}
+
+function buildMinorStrip() {
+  const strip = $('minorStrip');
+  strip.innerHTML = '';
+  RANKS.filter(r => MINOR.has(r)).forEach(r => {
+    const b = document.createElement('button');
+    b.id = 'mini-' + r;
+    b.innerHTML = `${r}<b id="mrem-${r}"></b>`;
+    strip.appendChild(b);
+    attachCellEvents(b, r);
   });
 }
 
@@ -367,6 +404,11 @@ function renderRank(r, flash) {
   remEl.textContent = rem;
   $('pl-' + r).textContent = `已出 ${state.played[r]}`;
   cell.classList.toggle('zero', rem <= 0);
+  const mini = $('mrem-' + r);
+  if (mini) {
+    mini.textContent = rem;
+    $('mini-' + r).classList.toggle('zero', rem <= 0);
+  }
 
   const min = GOUJI_MIN[r];
   let badge = cell.querySelector('.badge');
@@ -400,6 +442,26 @@ function renderSummary() {
 }
 
 function renderUndo() { $('undoBtn').disabled = state.history.length === 0; }
+
+// ===== 紧凑模式：手动切换优先，否则按窗口尺寸自动判断（小窗/分屏） =====
+const COMPACT_KEY = 'gouji-compact';
+function compactPref() { try { return localStorage.getItem(COMPACT_KEY); } catch(e){ return null; } }
+function setCompact(on) {
+  document.body.classList.toggle('compact', on);
+  $('compactBtn').textContent = on ? '全屏' : '紧凑';
+}
+$('compactBtn').addEventListener('click', () => {
+  const on = !document.body.classList.contains('compact');
+  setCompact(on);
+  try { localStorage.setItem(COMPACT_KEY, on ? '1' : '0'); } catch(e){}
+});
+function autoCompact() {
+  const pref = compactPref();
+  if (pref !== null) setCompact(pref === '1');
+  else setCompact(window.innerHeight < 560 || window.innerWidth < 320);
+}
+autoCompact();
+window.addEventListener('resize', () => { if (compactPref() === null) autoCompact(); });
 
 function renderAll() { RANKS.forEach(r => renderRank(r, false)); renderSummary(); renderUndo(); }
 
