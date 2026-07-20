@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>够级记牌器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #0f172a; color: #e2e8f0;
+    user-select: none; -webkit-user-select: none;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+  .screen { display: none; height: 100dvh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ===== 设置页 ===== */
+  #setup { padding: 24px 20px; gap: 16px; overflow-y: auto; }
+  #setup h1 { font-size: 26px; text-align: center; margin: 12px 0 4px; letter-spacing: 2px; }
+  #setup .sub { text-align: center; color: #64748b; font-size: 13px; margin-bottom: 12px; }
+  .opt-group-title { color: #94a3b8; font-size: 14px; margin: 8px 0 -6px 4px; }
+  .opt-card {
+    background: #1e293b; border: 2px solid #334155; border-radius: 14px;
+    padding: 14px 16px; cursor: pointer;
+  }
+  .opt-card.sel { border-color: #38bdf8; background: #16283d; }
+  .opt-card .t { font-size: 17px; font-weight: 600; }
+  .opt-card .d { font-size: 13px; color: #94a3b8; margin-top: 4px; line-height: 1.5; }
+  .opt-card.sel .t { color: #38bdf8; }
+  .big-btn {
+    margin-top: 12px; padding: 15px; border: none; border-radius: 14px;
+    background: #0284c7; color: #fff; font-size: 18px; font-weight: 600;
+    cursor: pointer; width: 100%;
+  }
+  .big-btn:disabled { background: #334155; color: #64748b; }
+  .big-btn.ghost { background: transparent; border: 1px solid #334155; color: #94a3b8; font-size: 15px; padding: 12px; }
+
+  /* ===== 手牌录入页 ===== */
+  #hand { padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); gap: 10px; overflow-y: auto; }
+  #hand h2 { font-size: 19px; text-align: center; margin-top: 6px; }
+  #hand .sub { text-align: center; font-size: 13px; color: #64748b; }
+  #handCount { text-align: center; font-size: 15px; color: #94a3b8; }
+  #handCount b { font-size: 22px; color: #38bdf8; }
+  #handCount.full b { color: #4ade80; }
+  #handCount.over b { color: #f87171; }
+  .hand-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .hand-cell {
+    background: #1e293b; border-radius: 12px; padding: 8px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .hand-cell .r { font-size: 15px; font-weight: 700; }
+  .hand-cell .row { display: flex; align-items: center; gap: 8px; }
+  .hand-cell button {
+    width: 34px; height: 34px; border-radius: 9px; border: none;
+    background: #334155; color: #e2e8f0; font-size: 19px; cursor: pointer;
+  }
+  .hand-cell .n { font-size: 19px; font-weight: 700; min-width: 24px; text-align: center; }
+
+  /* ===== 记牌主界面 ===== */
+  #play { padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); gap: 8px; }
+  .topbar { display: flex; align-items: center; gap: 8px; }
+  .topbar .mode-tag { font-size: 12px; color: #64748b; background: #1e293b; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+  .topbar .spacer { flex: 1; }
+  .topbar button {
+    border: none; border-radius: 10px; padding: 9px 14px; font-size: 14px; font-weight: 600;
+    cursor: pointer; background: #1e293b; color: #e2e8f0;
+  }
+  .topbar #undoBtn { background: #92400e; }
+  .topbar #undoBtn:disabled { background: #1e293b; color: #475569; }
+
+  .summary {
+    display: flex; gap: 5px; justify-content: space-between;
+    background: #1e293b; border-radius: 12px; padding: 7px 8px;
+  }
+  .chip { flex: 1; text-align: center; border-radius: 8px; padding: 3px 0; }
+  .chip .cr { font-size: 12px; color: #94a3b8; }
+  .chip .cn { font-size: 17px; font-weight: 700; }
+  .chip.dead { opacity: .35; }
+  .chip.dead .cn { text-decoration: line-through; }
+  .chip.hot .cn { color: #fbbf24; }
+
+  .hint { font-size: 11px; color: #475569; text-align: center; }
+
+  .grid { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, 1fr); gap: 7px; min-height: 0; }
+  .cell {
+    background: #1e293b; border-radius: 14px; position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; border: 1px solid #263244;
+    transition: transform .05s;
+  }
+  .cell:active { transform: scale(.96); background: #263650; }
+  .cell .rank { font-size: 17px; font-weight: 700; color: #94a3b8; line-height: 1.1; }
+  .cell .rank.red { color: #f87171; }
+  .cell .rem { font-size: 34px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .cell .played { font-size: 11px; color: #64748b; font-variant-numeric: tabular-nums; }
+  .cell.zero { opacity: .35; }
+  .cell.zero .rem { color: #475569; }
+  .cell .badge {
+    position: absolute; top: 5px; right: 6px; font-size: 10px;
+    background: #7f1d1d; color: #fca5a5; border-radius: 6px; padding: 1px 5px;
+  }
+  .cell.low .rem { color: #fbbf24; }
+  .cell .flash { animation: pop .18s; }
+  @keyframes pop { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+  /* 弹层 */
+  #overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    align-items: center; justify-content: center; z-index: 10; padding: 24px;
+  }
+  #overlay.active { display: flex; }
+  .dialog { background: #1e293b; border-radius: 16px; padding: 20px; width: 100%; max-width: 320px; text-align: center; }
+  .dialog p { font-size: 16px; margin-bottom: 16px; line-height: 1.6; }
+  .dialog .btns { display: flex; gap: 10px; }
+  .dialog button { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .dialog .cancel { background: #334155; color: #e2e8f0; }
+  .dialog .danger { background: #b91c1c; color: #fff; }
+  .dialog .primary { background: #0284c7; color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- 设置页 -->
+<div class="screen active" id="setup">
+  <h1>够级记牌器</h1>
+  <div class="sub">手动记牌辅助 · 一局一清</div>
+
+  <div class="opt-group-title">牌局</div>
+  <div class="opt-card sel" data-group="mode" data-val="fa4">
+    <div class="t">开点发4（多乐默认）</div>
+    <div class="d">4副牌去掉10张3、8张4，共198张，每人33张</div>
+  </div>
+  <div class="opt-card" data-group="mode" data-val="classic">
+    <div class="t">经典打法</div>
+    <div class="d">4副整牌共216张，每人36张</div>
+  </div>
+
+  <div class="opt-group-title">记法</div>
+  <div class="opt-card sel" data-group="precise" data-val="0">
+    <div class="t">快速记牌</div>
+    <div class="d">不录手牌，谁出牌都点一下，显示「场上未出」张数</div>
+  </div>
+  <div class="opt-card" data-group="precise" data-val="1">
+    <div class="t">精确记牌</div>
+    <div class="d">先录入自己的33/36张手牌，之后<b>只点别人出的牌</b>，显示「别人手里还有」张数</div>
+  </div>
+
+  <button class="big-btn" id="startBtn">开始记牌</button>
+</div>
+
+<!-- 手牌录入页 -->
+<div class="screen" id="hand">
+  <h2>录入我的手牌</h2>
+  <div class="sub">对局开始后只点别人出的牌，自己出的不用记</div>
+  <div id="handCount">已录 <b>0</b> / 33 张</div>
+  <div class="hand-grid" id="handGrid"></div>
+  <button class="big-btn" id="handDoneBtn" disabled>录完，开始记牌</button>
+  <button class="big-btn ghost" id="handBackBtn">返回设置</button>
+</div>
+
+<!-- 记牌主界面 -->
+<div class="screen" id="play">
+  <div class="topbar">
+    <span class="mode-tag" id="modeTag"></span>
+    <span class="spacer"></span>
+    <button id="undoBtn" disabled>撤销</button>
+    <button id="resetBtn">重开</button>
+  </div>
+  <div class="summary" id="summary"></div>
+  <div class="grid" id="grid"></div>
+  <div class="hint">点一下 = 出了一张 · 长按 = 减回一张（点错修正）</div>
+</div>
+
+<!-- 确认弹层 -->
+<div id="overlay">
+  <div class="dialog">
+    <p id="dlgText"></p>
+    <div class="btns" id="dlgBtns"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ===== 常量 =====
+const RANKS = ['BJ','SJ','2','A','K','Q','J','10','9','8','7','6','5','4','3'];
+const LABELS = { BJ:'大王', SJ:'小王' };
+const RED = new Set(['BJ']);
+// 够级门槛：场上剩余低于此数，该点数不可能再有人凑出够级牌
+const GOUJI_MIN = { BJ:1, SJ:1, '2':1, 'A':2, 'K':2, 'Q':3, 'J':4, '10':5 };
+const SUMMARY_RANKS = ['BJ','SJ','2','A','K','Q','J','10'];
+
+const MODES = {
+  fa4:     { name:'开点发4 198张', perPlayer:33, totals: r => r==='BJ'||r==='SJ' ? 4 : r==='3' ? 6 : r==='4' ? 8 : 16 },
+  classic: { name:'经典 216张',    perPlayer:36, totals: r => r==='BJ'||r==='SJ' ? 4 : 16 },
+};
+
+const SAVE_KEY = 'gouji-tracker-v1';
+
+// ===== 状态 =====
+let state = null; // { mode, precise, totals:{}, myHand:{}, played:{}, history:[] }
+
+const emptyCounts = () => Object.fromEntries(RANKS.map(r => [r, 0]));
+const label = r => LABELS[r] || r;
+const remaining = r => state.totals[r] - (state.precise ? state.myHand[r] : 0) - state.played[r];
+
+function newState(mode, precise) {
+  const m = MODES[mode];
+  return {
+    mode, precise,
+    totals: Object.fromEntries(RANKS.map(r => [r, m.totals(r)])),
+    myHand: emptyCounts(),
+    played: emptyCounts(),
+    history: [],
+  };
+}
+
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch(e){} }
+function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch(e){} }
+
+function vibrate(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
+
+// ===== 页面切换 =====
+const $ = id => document.getElementById(id);
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+}
+
+// ===== 设置页 =====
+let selMode = 'fa4', selPrecise = false;
+document.querySelectorAll('#setup .opt-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const g = card.dataset.group;
+    document.querySelectorAll(`#setup .opt-card[data-group="${g}"]`).forEach(c => c.classList.remove('sel'));
+    card.classList.add('sel');
+    if (g === 'mode') selMode = card.dataset.val;
+    else selPrecise = card.dataset.val === '1';
+  });
+});
+
+$('startBtn').addEventListener('click', () => {
+  state = newState(selMode, selPrecise);
+  if (selPrecise) { buildHandGrid(); show('hand'); }
+  else { save(); enterPlay(); }
+});
+
+// ===== 手牌录入 =====
+function handTotal() { return RANKS.reduce((s, r) => s + state.myHand[r], 0); }
+
+function buildHandGrid() {
+  const grid = $('handGrid');
+  grid.innerHTML = '';
+  RANKS.forEach(r => {
+    const cell = document.createElement('div');
+    cell.className = 'hand-cell';
+    cell.innerHTML = `<div class="r">${label(r)}</div>
+      <div class="row">
+        <button data-r="${r}" data-d="-1">−</button>
+        <div class="n" id="hn-${r}">0</div>
+        <button data-r="${r}" data-d="1">＋</button>
+      </div>`;
+    grid.appendChild(cell);
+  });
+  grid.onclick = e => {
+    const btn = e.target.closest('button'); if (!btn) return;
+    const r = btn.dataset.r, d = +btn.dataset.d;
+    const v = state.myHand[r] + d;
+    if (v < 0 || v > state.totals[r]) return;
+    state.myHand[r] = v;
+    $('hn-' + r).textContent = v;
+    updateHandCount();
+    vibrate(10);
+  };
+  updateHandCount();
+}
+
+function updateHandCount() {
+  const need = MODES[state.mode].perPlayer;
+  const t = handTotal();
+  const el = $('handCount');
+  el.innerHTML = `已录 <b>${t}</b> / ${need} 张`;
+  el.className = t === need ? 'full' : t > need ? 'over' : '';
+  $('handDoneBtn').disabled = t !== need;
+}
+
+$('handDoneBtn').addEventListener('click', () => { save(); enterPlay(); });
+$('handBackBtn').addEventListener('click', () => show('setup'));
+
+// ===== 记牌主界面 =====
+function enterPlay() {
+  $('modeTag').textContent = MODES[state.mode].name + (state.precise ? ' · 精确' : ' · 快速');
+  buildGrid();
+  renderAll();
+  show('play');
+}
+
+function buildGrid() {
+  const grid = $('grid');
+  grid.innerHTML = '';
+  RANKS.forEach(r => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.id = 'cell-' + r;
+    cell.dataset.r = r;
+    cell.innerHTML = `<div class="rank ${RED.has(r) ? 'red' : ''}">${label(r)}</div>
+      <div class="rem" id="rem-${r}"></div>
+      <div class="played" id="pl-${r}"></div>`;
+    grid.appendChild(cell);
+    attachCellEvents(cell, r);
+  });
+}
+
+// 点按 = 出1张；长按 = 修正减回1张
+function attachCellEvents(cell, r) {
+  let timer = null, longFired = false;
+  const LONG_MS = 450;
+  cell.addEventListener('pointerdown', () => {
+    longFired = false;
+    timer = setTimeout(() => {
+      longFired = true;
+      applyDelta(r, -1);
+      vibrate([20, 40, 20]);
+    }, LONG_MS);
+  });
+  const cancel = () => { clearTimeout(timer); };
+  cell.addEventListener('pointerleave', cancel);
+  cell.addEventListener('pointercancel', cancel);
+  cell.addEventListener('pointerup', () => {
+    clearTimeout(timer);
+    if (!longFired) { applyDelta(r, 1); vibrate(15); }
+  });
+  cell.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+function applyDelta(r, d) {
+  if (d > 0 && remaining(r) <= 0) return;
+  if (d < 0 && state.played[r] <= 0) return;
+  state.played[r] += d;
+  state.history.push({ r, d });
+  if (state.history.length > 500) state.history.shift();
+  save();
+  renderRank(r, true);
+  renderSummary();
+  renderUndo();
+}
+
+$('undoBtn').addEventListener('click', () => {
+  const last = state.history.pop();
+  if (!last) return;
+  state.played[last.r] -= last.d;
+  save();
+  renderRank(last.r, true);
+  renderSummary();
+  renderUndo();
+  vibrate(15);
+});
+
+// ===== 渲染 =====
+function renderRank(r, flash) {
+  const rem = remaining(r);
+  const cell = $('cell-' + r);
+  const remEl = $('rem-' + r);
+  remEl.textContent = rem;
+  $('pl-' + r).textContent = `已出 ${state.played[r]}`;
+  cell.classList.toggle('zero', rem <= 0);
+
+  const min = GOUJI_MIN[r];
+  let badge = cell.querySelector('.badge');
+  if (min !== undefined && rem < min) {
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.className = 'badge';
+      badge.textContent = '无够级';
+      cell.appendChild(badge);
+    }
+  } else if (badge) badge.remove();
+  cell.classList.toggle('low', min !== undefined && rem >= min && rem <= min + 1);
+
+  if (flash) {
+    remEl.classList.remove('flash');
+    void remEl.offsetWidth;
+    remEl.classList.add('flash');
+  }
+}
+
+function renderSummary() {
+  const el = $('summary');
+  el.innerHTML = SUMMARY_RANKS.map(r => {
+    const rem = remaining(r);
+    const min = GOUJI_MIN[r];
+    const dead = rem < min;
+    const hot = !dead && rem <= min + 1;
+    return `<div class="chip ${dead ? 'dead' : ''} ${hot ? 'hot' : ''}">
+      <div class="cr">${label(r)}</div><div class="cn">${rem}</div></div>`;
+  }).join('');
+}
+
+function renderUndo() { $('undoBtn').disabled = state.history.length === 0; }
+
+function renderAll() { RANKS.forEach(r => renderRank(r, false)); renderSummary(); renderUndo(); }
+
+// ===== 重开 =====
+function dialog(text, btns) {
+  $('dlgText').textContent = text;
+  const wrap = $('dlgBtns');
+  wrap.innerHTML = '';
+  btns.forEach(([label, cls, fn]) => {
+    const b = document.createElement('button');
+    b.className = cls; b.textContent = label;
+    b.onclick = () => { $('overlay').classList.remove('active'); fn && fn(); };
+    wrap.appendChild(b);
+  });
+  $('overlay').classList.add('active');
+}
+
+$('resetBtn').addEventListener('click', () => {
+  dialog('这一局结束了？', [
+    ['取消', 'cancel', null],
+    ['再来一局', 'primary', () => {
+      const { mode, precise } = state;
+      state = newState(mode, precise);
+      if (precise) { buildHandGrid(); show('hand'); }
+      else { save(); enterPlay(); }
+    }],
+    ['回到设置', 'danger', () => { clearSave(); show('setup'); }],
+  ]);
+});
+
+// ===== 启动：恢复未完成的一局 =====
+(function init() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch(e){}
+  if (saved && saved.totals && MODES[saved.mode]) {
+    state = saved;
+    dialog('发现上次未结束的一局，继续吗？', [
+      ['重新开始', 'cancel', () => { clearSave(); state = null; show('setup'); }],
+      ['继续', 'primary', () => enterPlay()],
+    ]);
+  }
+})();
+</script>
+</body>
+</html>
