@@ -74,17 +74,18 @@
 
   .hint { font-size: 11px; color: #475569; text-align: center; }
 
-  .grid { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); gap: 7px; min-height: 0; }
+  /* 一行横排：八档大牌一字排开，整列可点 */
+  .strip { flex: 1; display: flex; gap: 5px; min-height: 66px; max-height: 300px; }
   .cell {
-    background: #1e293b; border-radius: 14px; position: relative;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; background: #1e293b; border-radius: 12px; position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
     cursor: pointer; border: 1px solid #263244;
-    transition: transform .05s; min-height: 0;
+    transition: transform .05s; min-width: 0;
   }
-  .cell:active { transform: scale(.96); background: #263650; }
-  .cell .rank { font-size: clamp(13px, 3.5vmin, 18px); font-weight: 700; color: #94a3b8; line-height: 1.1; }
+  .cell:active { transform: scale(.94); background: #263650; }
+  .cell .rank { font-size: clamp(11px, 3vmin, 16px); font-weight: 700; color: #94a3b8; line-height: 1.1; white-space: nowrap; }
   .cell .rank.red { color: #f87171; }
-  .cell .rem { font-size: clamp(26px, 9vmin, 46px); font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .cell .rem { font-size: clamp(20px, 6.5vmin, 40px); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .cell.zero { opacity: .35; }
   .cell.zero .rem { color: #475569; }
   .cell .badge {
@@ -105,8 +106,15 @@
   }
   .chip-btn.sel { background: #0284c7; color: #fff; }
   .chip-btn.armed { background: #b45309; color: #fff; }
-  .cell .seats { font-size: clamp(11px, 3vmin, 14px); color: #64748b; min-height: 13px; font-variant-numeric: tabular-nums; }
+  .cell .seats { font-size: clamp(9px, 2.5vmin, 12px); color: #64748b; min-height: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .cell .seats .op { color: #fbbf24; font-weight: 700; }
+
+  /* 超扁窗口：隐藏提示和模式标签，尽量压低高度 */
+  @media (max-height: 340px) {
+    .hint, .topbar .mode-tag { display: none; }
+    #play { padding: 6px 8px; gap: 6px; }
+    .cell .badge { display: none; }
+  }
 
   /* 弹层 */
   #overlay {
@@ -179,7 +187,7 @@
     <span class="lbl">谁出</span>
     <div class="chips" id="seatChips"></div>
   </div>
-  <div class="grid" id="grid"></div>
+  <div class="strip" id="grid"></div>
   <div class="hint">点点数 = 按所选张数记一手 · 长按 = 减1张修正</div>
 </div>
 
