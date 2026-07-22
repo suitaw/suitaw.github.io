@@ -9,6 +9,7 @@
     --bg:#f4f5f7; --card:#fff; --border:#e2e4e9; --text:#1c1e21; --sub:#6b7280;
     --accent:#2563eb; --accent-fg:#fff; --bubble-user:#2563eb; --bubble-user-fg:#fff;
     --bubble-ai:#eef0f4; --bubble-ai-fg:#1c1e21; --err:#dc2626; --err-bg:#fef2f2;
+    --code-bg:rgba(0,0,0,.06);
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);
@@ -31,32 +32,64 @@
   #settings .hint{font-size:11.5px;color:var(--sub);line-height:1.5}
   #relayRow{display:none}
   #relayRow.show{display:flex}
+  #modelCustomRow{display:none}
+  #modelCustomRow.show{display:flex}
 
   #messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
   .msg{max-width:82%;padding:9px 12px;border-radius:14px;font-size:15px;line-height:1.5;
-    white-space:pre-wrap;word-break:break-word}
+    word-break:break-word}
   .msg.user{align-self:flex-end;background:var(--bubble-user);color:var(--bubble-user-fg);
-    border-bottom-right-radius:4px}
+    border-bottom-right-radius:4px;white-space:pre-wrap}
   .msg.ai{align-self:flex-start;background:var(--bubble-ai);color:var(--bubble-ai-fg);
     border-bottom-left-radius:4px}
   .msg.err{align-self:flex-start;background:var(--err-bg);color:var(--err);border:1px solid #fecaca;
-    border-bottom-left-radius:4px}
+    border-bottom-left-radius:4px;white-space:pre-wrap}
   .msg.sys{align-self:center;background:none;color:var(--sub);font-size:12.5px;padding:2px}
+
+  .msg.ai pre{background:var(--code-bg);padding:8px 10px;border-radius:8px;overflow-x:auto;
+    margin:6px 0;font-size:13px;white-space:pre;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .msg.ai code{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--code-bg);
+    padding:1px 5px;border-radius:4px;font-size:.9em}
+  .msg.ai pre code{background:none;padding:0}
+
   .cursor{display:inline-block;width:7px;height:1em;background:currentColor;vertical-align:text-bottom;
     animation:blink 1s step-start infinite;margin-left:1px}
   @keyframes blink{50%{opacity:0}}
+  .typing{display:inline-flex;gap:4px;align-items:center;padding:4px 0}
+  .typing i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.35;
+    animation:typingBounce 1s infinite}
+  .typing i:nth-child(2){animation-delay:.15s}
+  .typing i:nth-child(3){animation-delay:.3s}
+  @keyframes typingBounce{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 
-  #inputBar{display:flex;gap:8px;padding:10px;background:var(--card);border-top:1px solid var(--border)}
+  .bubble-attachments{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .bubble-attachments .thumb{width:64px;height:64px;object-fit:cover;border-radius:8px;display:block}
+  .bubble-attachments .file-chip{background:rgba(255,255,255,.25);padding:3px 8px;border-radius:6px;
+    font-size:12px}
+  .msg.ai .bubble-attachments .file-chip{background:rgba(0,0,0,.06)}
+
+  #composer{background:var(--card);border-top:1px solid var(--border)}
+  #attachPreview{display:none;flex-wrap:wrap;gap:6px;padding:8px 10px 0 10px}
+  .attach-chip{display:flex;align-items:center;gap:5px;background:var(--bubble-ai);border-radius:8px;
+    padding:4px 8px;font-size:12px;max-width:160px}
+  .attach-chip img{width:22px;height:22px;object-fit:cover;border-radius:4px;flex-shrink:0}
+  .attach-chip span:not(.rm){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .attach-chip .rm{cursor:pointer;color:var(--sub);font-weight:700;padding:0 2px;flex-shrink:0}
+
+  #inputBar{display:flex;gap:8px;padding:10px;align-items:flex-end}
+  #attachBtn{background:none;border:1px solid var(--border);border-radius:50%;width:38px;height:38px;
+    font-size:17px;flex-shrink:0}
   #userInput{flex:1;border:1px solid var(--border);border-radius:20px;padding:10px 14px;font-size:15px;
     resize:none;max-height:110px;font-family:inherit}
   #sendBtn{background:var(--accent);color:var(--accent-fg);border:none;border-radius:20px;
-    padding:0 18px;font-size:15px;font-weight:600}
+    padding:0 18px;height:38px;font-size:15px;font-weight:600;flex-shrink:0}
   #sendBtn:disabled{opacity:.5}
 
   @media (prefers-color-scheme:dark){
     :root{--bg:#15161a;--card:#1e2025;--border:#2c2f36;--text:#e7e9ee;--sub:#9aa1ac;
-      --bubble-ai:#2a2d34;--bubble-ai-fg:#e7e9ee;--err-bg:#3a1c1c}
+      --bubble-ai:#2a2d34;--bubble-ai-fg:#e7e9ee;--err-bg:#3a1c1c;--code-bg:rgba(255,255,255,.08)}
     #settings select,#settings input{background:#15161a;color:var(--text);border-color:var(--border)}
+    .msg.ai .bubble-attachments .file-chip{background:rgba(255,255,255,.08)}
   }
 </style>
 </head>
@@ -98,12 +131,19 @@
     </div>
     <div>
       <label>模型</label>
-      <input id="model">
+      <select id="model"></select>
+    </div>
+  </div>
+  <div class="row" id="modelCustomRow">
+    <div>
+      <label>自定义模型 ID</label>
+      <input id="modelCustom" placeholder="输入具体模型名称">
     </div>
   </div>
   <div class="hint">
     设置会自动保存在本机浏览器（localStorage），仅你自己可见，不会上传到任何地方。<br>
-    “直连”模式下部分服务商会因浏览器 CORS 限制而请求失败，这是正常现象，切到“走中转站”即可。
+    “直连”模式下部分服务商会因浏览器 CORS 限制而请求失败，这是正常现象，切到“走中转站”即可。<br>
+    点输入框左边的 📎 可上传图片或文本类文件作为附件；PDF 目前仅 Anthropic 支持，其它服务商会自动忽略。
   </div>
 </div>
 
@@ -111,19 +151,60 @@
   <div class="msg sys">选好服务商、填上 API Key，就能开始聊天了 👇</div>
 </div>
 
-<div id="inputBar">
-  <textarea id="userInput" rows="1" placeholder="输入消息…"></textarea>
-  <button id="sendBtn">发送</button>
+<div id="composer">
+  <div id="attachPreview"></div>
+  <div id="inputBar">
+    <button id="attachBtn" type="button" title="上传图片/文件">📎</button>
+    <input id="fileInput" type="file" multiple hidden
+      accept="image/*,.txt,.md,.markdown,.json,.csv,.js,.jsx,.ts,.tsx,.py,.html,.css,.log,.yml,.yaml,.pdf">
+    <textarea id="userInput" rows="1" placeholder="输入消息…"></textarea>
+    <button id="sendBtn">发送</button>
+  </div>
 </div>
 
 <script>
 const PROVIDERS = {
-  kimi:       {label:"Kimi（Moonshot）", base:"https://api.moonshot.cn",  path:"/v1/chat/completions",        format:"openai",    model:"moonshot-v1-8k"},
-  deepseek:   {label:"DeepSeek",         base:"https://api.deepseek.com", path:"/v1/chat/completions",        format:"openai",    model:"deepseek-chat"},
-  openrouter: {label:"OpenRouter",       base:"https://openrouter.ai",    path:"/api/v1/chat/completions",    format:"openai",    model:"deepseek/deepseek-chat"},
-  groq:       {label:"Groq",             base:"https://api.groq.com",     path:"/openai/v1/chat/completions", format:"openai",    model:"llama-3.3-70b-versatile"},
-  openai:     {label:"OpenAI",           base:"https://api.openai.com",   path:"/v1/chat/completions",        format:"openai",    model:"gpt-4o-mini"},
-  anthropic:  {label:"Anthropic",        base:"https://api.anthropic.com",path:"/v1/messages",                format:"anthropic", model:"claude-haiku-4-5-20251001"},
+  kimi:       {label:"Kimi（Moonshot）", base:"https://api.moonshot.cn",  path:"/v1/chat/completions",        format:"openai"},
+  deepseek:   {label:"DeepSeek",         base:"https://api.deepseek.com", path:"/v1/chat/completions",        format:"openai"},
+  openrouter: {label:"OpenRouter",       base:"https://openrouter.ai",    path:"/api/v1/chat/completions",    format:"openai"},
+  groq:       {label:"Groq",             base:"https://api.groq.com",     path:"/openai/v1/chat/completions", format:"openai"},
+  openai:     {label:"OpenAI",           base:"https://api.openai.com",   path:"/v1/chat/completions",        format:"openai"},
+  anthropic:  {label:"Anthropic",        base:"https://api.anthropic.com",path:"/v1/messages",                format:"anthropic"},
+};
+
+const MODEL_OPTIONS = {
+  kimi: [
+    ["moonshot-v1-8k","Moonshot V1 8K"],
+    ["moonshot-v1-32k","Moonshot V1 32K"],
+    ["moonshot-v1-128k","Moonshot V1 128K"],
+    ["moonshot-v1-auto","Moonshot V1 Auto（自动选长度）"],
+  ],
+  deepseek: [
+    ["deepseek-chat","DeepSeek Chat（V3）"],
+    ["deepseek-reasoner","DeepSeek Reasoner（R1，深度思考）"],
+  ],
+  openrouter: [
+    ["anthropic/claude-haiku-4.5","Claude Haiku 4.5（快）"],
+    ["anthropic/claude-sonnet-4","Claude Sonnet 4（强）"],
+    ["deepseek/deepseek-chat","DeepSeek V4（性价比）"],
+    ["google/gemini-2.5-flash","Gemini 2.5 Flash（快）"],
+  ],
+  groq: [
+    ["llama-3.3-70b-versatile","Llama 3.3 70B"],
+    ["llama-3.1-8b-instant","Llama 3.1 8B（快）"],
+    ["gemma2-9b-it","Gemma2 9B"],
+  ],
+  openai: [
+    ["gpt-4o","GPT-4o"],
+    ["gpt-4o-mini","GPT-4o mini（快）"],
+    ["gpt-4.1","GPT-4.1"],
+    ["gpt-4.1-mini","GPT-4.1 mini（快）"],
+  ],
+  anthropic: [
+    ["claude-haiku-4-5-20251001","Claude Haiku 4.5（快）"],
+    ["claude-sonnet-5","Claude Sonnet 5（强）"],
+    ["claude-opus-4-8","Claude Opus 4.8（最强）"],
+  ],
 };
 
 const $ = id => document.getElementById(id);
@@ -132,10 +213,15 @@ const els = {
   provider: $("provider"), mode: $("mode"), relayRow: $("relayRow"),
   relayBase: $("relayBase"), relayKey: $("relayKey"),
   apiKey: $("apiKey"), model: $("model"),
+  modelCustomRow: $("modelCustomRow"), modelCustom: $("modelCustom"),
   messages: $("messages"), userInput: $("userInput"), sendBtn: $("sendBtn"),
+  attachBtn: $("attachBtn"), fileInput: $("fileInput"), attachPreview: $("attachPreview"),
 };
 
 const CFG_KEY = "chatTestCfg";
+let apiKeyStore = {};   // 每个服务商各自记住自己的 API Key
+let modelStore = {};    // 每个服务商各自记住上次选的模型
+
 function loadCfg(){
   try{ return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; }catch(e){ return {}; }
 }
@@ -143,12 +229,9 @@ function saveCfg(){
   localStorage.setItem(CFG_KEY, JSON.stringify({
     provider: els.provider.value, mode: els.mode.value,
     relayBase: els.relayBase.value.trim(), relayKey: els.relayKey.value.trim(),
-    apiKeys: apiKeyStore, model: els.model.value.trim(),
+    apiKeys: apiKeyStore, modelStore,
   }));
 }
-
-// API Key 按服务商分开存，切换服务商时各自记得各自的 key
-let apiKeyStore = {};
 
 function initProviderSelect(){
   for(const [key, p] of Object.entries(PROVIDERS)){
@@ -158,21 +241,50 @@ function initProviderSelect(){
   }
 }
 
+function populateModelSelect(key){
+  els.model.innerHTML = "";
+  MODEL_OPTIONS[key].forEach(([val, label]) => {
+    const opt = document.createElement("option");
+    opt.value = val; opt.textContent = label;
+    els.model.appendChild(opt);
+  });
+  const custom = document.createElement("option");
+  custom.value = "__custom__"; custom.textContent = "自定义…";
+  els.model.appendChild(custom);
+}
+
+function toggleCustomModelInput(){
+  els.modelCustomRow.classList.toggle("show", els.model.value === "__custom__");
+}
+
+function currentModel(){
+  if(els.model.value === "__custom__"){
+    return els.modelCustom.value.trim() || MODEL_OPTIONS[els.provider.value][0][0];
+  }
+  return els.model.value;
+}
+
 function applyCfg(){
   const cfg = loadCfg();
   apiKeyStore = cfg.apiKeys || {};
+  modelStore = cfg.modelStore || {};
   els.provider.value = cfg.provider && PROVIDERS[cfg.provider] ? cfg.provider : "kimi";
   els.mode.value = cfg.mode || "relay";
   els.relayBase.value = cfg.relayBase || "https://api-relay.wmj1071074667-c7d.workers.dev";
   els.relayKey.value = cfg.relayKey || "";
-  onProviderChange(cfg.model);
+  onProviderChange();
   onModeChange();
 }
 
-function onProviderChange(forceModel){
-  const p = PROVIDERS[els.provider.value];
-  els.apiKey.value = apiKeyStore[els.provider.value] || "";
-  els.model.value = forceModel || p.model;
+function onProviderChange(){
+  const key = els.provider.value;
+  populateModelSelect(key);
+  const saved = modelStore[key] || {};
+  const validValues = MODEL_OPTIONS[key].map(x => x[0]).concat("__custom__");
+  els.model.value = validValues.includes(saved.select) ? saved.select : MODEL_OPTIONS[key][0][0];
+  els.modelCustom.value = saved.custom || "";
+  toggleCustomModelInput();
+  els.apiKey.value = apiKeyStore[key] || "";
 }
 
 function onModeChange(){
@@ -182,7 +294,17 @@ function onModeChange(){
 els.toggleSettings.onclick = () => els.settings.classList.toggle("open");
 els.provider.onchange = () => { onProviderChange(); saveCfg(); };
 els.mode.onchange = () => { onModeChange(); saveCfg(); };
-[els.relayBase, els.relayKey, els.model].forEach(el => el.onchange = saveCfg);
+els.model.onchange = () => {
+  modelStore[els.provider.value] = modelStore[els.provider.value] || {};
+  modelStore[els.provider.value].select = els.model.value;
+  toggleCustomModelInput(); saveCfg();
+};
+els.modelCustom.onchange = () => {
+  modelStore[els.provider.value] = modelStore[els.provider.value] || {};
+  modelStore[els.provider.value].custom = els.modelCustom.value.trim();
+  saveCfg();
+};
+[els.relayBase, els.relayKey].forEach(el => el.onchange = saveCfg);
 els.apiKey.onchange = () => { apiKeyStore[els.provider.value] = els.apiKey.value.trim(); saveCfg(); };
 
 els.userInput.addEventListener("input", () => {
@@ -194,6 +316,107 @@ els.userInput.addEventListener("keydown", e => {
 });
 els.sendBtn.onclick = sendMessage;
 
+// ---------- 附件（图片 / 文件）----------
+let pendingAttachments = [];
+const TEXT_MAX = 40000;
+
+function readFileAsync(file, asText){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error || new Error("读取文件失败"));
+    if(asText) r.readAsText(file); else r.readAsDataURL(file);
+  });
+}
+
+function makeId(){ return Math.random().toString(36).slice(2); }
+
+async function handleFiles(fileList){
+  for(const file of Array.from(fileList)){
+    try{
+      if(file.type.startsWith("image/")){
+        const dataUrl = await readFileAsync(file, false);
+        pendingAttachments.push({ id: makeId(), name: file.name, kind: "image", mime: file.type, dataUrl });
+      } else if(file.type === "application/pdf"){
+        const dataUrl = await readFileAsync(file, false);
+        pendingAttachments.push({ id: makeId(), name: file.name, kind: "pdf", mime: file.type, dataUrl });
+      } else {
+        let text = await readFileAsync(file, true);
+        let truncated = false;
+        if(text.length > TEXT_MAX){ text = text.slice(0, TEXT_MAX); truncated = true; }
+        pendingAttachments.push({ id: makeId(), name: file.name, kind: "text", text, truncated });
+      }
+    } catch(e){
+      addMsg("sys", "⚠️ 读取文件失败：" + file.name);
+    }
+  }
+  renderAttachPreview();
+}
+
+function removeAttachment(id){
+  pendingAttachments = pendingAttachments.filter(a => a.id !== id);
+  renderAttachPreview();
+}
+
+function renderAttachPreview(){
+  els.attachPreview.innerHTML = "";
+  els.attachPreview.style.display = pendingAttachments.length ? "flex" : "none";
+  pendingAttachments.forEach(a => {
+    const chip = document.createElement("div");
+    chip.className = "attach-chip";
+    if(a.kind === "image"){
+      const img = document.createElement("img");
+      img.src = a.dataUrl;
+      chip.appendChild(img);
+    }
+    const label = document.createElement("span");
+    label.textContent = (a.kind === "image" ? "" : a.kind === "pdf" ? "📄 " : "📝 ") + a.name;
+    chip.appendChild(label);
+    const rm = document.createElement("span");
+    rm.className = "rm"; rm.textContent = "×";
+    rm.onclick = () => removeAttachment(a.id);
+    chip.appendChild(rm);
+    els.attachPreview.appendChild(chip);
+  });
+}
+
+function clearPendingAttachments(){ pendingAttachments = []; renderAttachPreview(); }
+
+els.attachBtn.onclick = () => els.fileInput.click();
+els.fileInput.onchange = e => {
+  if(e.target.files.length) handleFiles(e.target.files);
+  e.target.value = "";
+};
+
+function buildApiText(typed, attachments){
+  const parts = [];
+  if(typed) parts.push(typed);
+  attachments.filter(a => a.kind === "text").forEach(a => {
+    parts.push(`[文件: ${a.name}]${a.truncated ? "（内容过长，已截断）" : ""}\n\`\`\`\n${a.text}\n\`\`\``);
+  });
+  return parts.join("\n\n");
+}
+
+function renderAttachmentsInBubble(container, attachments){
+  if(!attachments || !attachments.length) return;
+  const row = document.createElement("div");
+  row.className = "bubble-attachments";
+  attachments.forEach(a => {
+    if(a.kind === "image"){
+      const img = document.createElement("img");
+      img.src = a.dataUrl; img.className = "thumb";
+      row.appendChild(img);
+    } else {
+      const chip = document.createElement("span");
+      chip.className = "file-chip";
+      chip.textContent = (a.kind === "pdf" ? "📄 " : "📝 ") + a.name;
+      row.appendChild(chip);
+    }
+  });
+  container.appendChild(row);
+}
+
+// ---------- 消息渲染 ----------
 function addMsg(role, text){
   const div = document.createElement("div");
   div.className = "msg " + role;
@@ -203,38 +426,94 @@ function addMsg(role, text){
   return div;
 }
 
+function addUserMsg(text, attachments){
+  const div = document.createElement("div");
+  div.className = "msg user";
+  if(text){
+    const t = document.createElement("div");
+    t.textContent = text;
+    div.appendChild(t);
+  }
+  renderAttachmentsInBubble(div, attachments);
+  els.messages.appendChild(div);
+  els.messages.scrollTop = els.messages.scrollHeight;
+  return div;
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+function renderMarkdown(raw){
+  const codeBlocks = [];
+  let s = raw.replace(/```(\w*)\n?([\s\S]*?)```/g, (m, lang, code) => {
+    codeBlocks.push(code);
+    return " CODE" + (codeBlocks.length - 1) + " ";
+  });
+  s = escapeHtml(s);
+  s = s.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+  s = s.replace(/\n/g, "<br>");
+  s = s.replace(/ CODE(\d+) /g, (m, i) => `<pre><code>${escapeHtml(codeBlocks[i])}</code></pre>`);
+  return s;
+}
+
+// ---------- 历史记录 & 请求构建 ----------
 const history = [];
 
-function buildRequest(){
+function toApiMessages(format){
+  return history.map(h => {
+    if(format === "anthropic"){
+      const content = [];
+      if(h.apiText) content.push({ type: "text", text: h.apiText });
+      (h.images || []).forEach(img => content.push({
+        type: "image", source: { type: "base64", media_type: img.mime, data: img.dataUrl.split(",")[1] }
+      }));
+      (h.pdfs || []).forEach(pdf => content.push({
+        type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf.dataUrl.split(",")[1] }
+      }));
+      return { role: h.role, content: content.length ? content : "" };
+    }
+    const hasImg = h.images && h.images.length;
+    if(!hasImg) return { role: h.role, content: h.apiText || "" };
+    const content = [];
+    if(h.apiText) content.push({ type: "text", text: h.apiText });
+    h.images.forEach(img => content.push({ type: "image_url", image_url: { url: img.dataUrl } }));
+    return { role: h.role, content };
+  });
+}
+
+function buildRequest(format){
   const key = els.provider.value;
   const p = PROVIDERS[key];
   const mode = els.mode.value;
   const apiKey = els.apiKey.value.trim();
-  const model = els.model.value.trim() || p.model;
+  const model = currentModel();
 
   const url = mode === "relay"
     ? els.relayBase.value.trim().replace(/\/$/, "") + "/" + key + p.path
     : p.base + p.path;
 
-  let headers, body;
-  if(p.format === "anthropic"){
+  let headers;
+  if(format === "anthropic"){
     headers = {
       "Content-Type": "application/json",
       "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true",
     };
-    body = { model, max_tokens: 1024, stream: true,
-      messages: history.map(m => ({ role: m.role, content: m.content })) };
   } else {
     headers = { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey };
-    body = { model, stream: true,
-      messages: history.map(m => ({ role: m.role, content: m.content })) };
   }
-  if(mode === "relay" && els.relayKey.value.trim()){
-    headers["x-relay-key"] = els.relayKey.value.trim();
-  }
-  return { url, headers, body, format: p.format };
+  if(mode === "relay" && els.relayKey.value.trim()) headers["x-relay-key"] = els.relayKey.value.trim();
+
+  const messages = toApiMessages(format);
+  const body = format === "anthropic"
+    ? { model, max_tokens: 1024, stream: true, messages }
+    : { model, stream: true, messages };
+
+  return { url, headers, body };
 }
 
 async function streamSSE(response, onEvent){
@@ -258,27 +537,45 @@ async function streamSSE(response, onEvent){
 }
 
 async function sendMessage(){
-  const text = els.userInput.value.trim();
-  if(!text) return;
+  const typed = els.userInput.value.trim();
+  const attachments = pendingAttachments.slice();
+  if(!typed && !attachments.length) return;
   if(!els.apiKey.value.trim()){
     addMsg("err", "先在 ⚙ 设置里填上 API Key");
     return;
   }
 
-  history.push({ role: "user", content: text });
-  addMsg("user", text);
+  const format = PROVIDERS[els.provider.value].format;
+  let usable = attachments;
+  const droppedPdf = attachments.filter(a => a.kind === "pdf" && format !== "anthropic");
+  if(droppedPdf.length){
+    usable = attachments.filter(a => !droppedPdf.includes(a));
+    addMsg("sys", "⚠️ 当前服务商不支持 PDF 附件，已忽略：" + droppedPdf.map(a => a.name).join("、"));
+  }
+
+  const apiText = buildApiText(typed, usable);
+  const images = usable.filter(a => a.kind === "image");
+  const pdfs = usable.filter(a => a.kind === "pdf");
+
+  history.push({ role: "user", apiText, images, pdfs });
+  addUserMsg(typed, usable);
+  clearPendingAttachments();
+
   els.userInput.value = "";
   els.userInput.style.height = "auto";
   els.sendBtn.disabled = true;
 
-  const aiDiv = addMsg("ai", "");
-  const cursor = document.createElement("span");
-  cursor.className = "cursor";
-  aiDiv.appendChild(cursor);
+  const aiDiv = document.createElement("div");
+  aiDiv.className = "msg ai";
+  aiDiv.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
+  els.messages.appendChild(aiDiv);
+  els.messages.scrollTop = els.messages.scrollHeight;
+
   let full = "";
+  let firstToken = true;
 
   try{
-    const { url, headers, body, format } = buildRequest();
+    const { url, headers, body } = buildRequest(format);
     const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
 
     if(!resp.ok){
@@ -294,25 +591,25 @@ async function sendMessage(){
         delta = obj.choices?.[0]?.delta?.content || "";
       }
       if(delta){
+        if(firstToken){ aiDiv.innerHTML = ""; firstToken = false; }
         full += delta;
-        aiDiv.textContent = full;
-        aiDiv.appendChild(cursor);
+        aiDiv.innerHTML = renderMarkdown(full) + '<span class="cursor"></span>';
         els.messages.scrollTop = els.messages.scrollHeight;
       }
     });
 
-    cursor.remove();
-    if(!full){ aiDiv.textContent = "（没有收到内容，可能该服务商不支持流式，或返回为空）"; }
-    history.push({ role: "assistant", content: full });
+    aiDiv.innerHTML = full
+      ? renderMarkdown(full)
+      : "（没有收到内容，可能该服务商/模型不支持流式或返回为空）";
+    history.push({ role: "assistant", apiText: full, images: [], pdfs: [] });
   } catch(err){
-    cursor.remove();
     aiDiv.remove();
     let hint = err.message || String(err);
     if(els.mode.value === "direct" && /fetch|network|failed/i.test(hint)){
       hint += "\n\n这很可能是浏览器 CORS 拦截（该服务商不允许网页直连）。切换到「走中转站」模式再试。";
     }
     addMsg("err", "请求失败：" + hint);
-    history.pop(); // 回滚这条失败的用户消息，避免污染上下文
+    history.pop();
   } finally {
     els.sendBtn.disabled = false;
   }
