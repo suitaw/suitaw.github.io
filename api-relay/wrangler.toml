@@ -1,0 +1,6 @@
+name = "api-relay"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# 可选：启用访问口令后，请求需带 x-relay-key 头
+# 用 `wrangler secret put RELAY_KEY` 设置，不要明文写在这里
