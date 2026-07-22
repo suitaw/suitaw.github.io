@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>AI 对话测试站</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --border:#e2e4e9; --text:#1c1e21; --sub:#6b7280;
+    --accent:#2563eb; --accent-fg:#fff; --bubble-user:#2563eb; --bubble-user-fg:#fff;
+    --bubble-ai:#eef0f4; --bubble-ai-fg:#1c1e21; --err:#dc2626; --err-bg:#fef2f2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    display:flex;flex-direction:column;height:100vh;height:100dvh}
+  header{padding:12px 14px;background:var(--card);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;gap:8px}
+  header h1{font-size:16px;margin:0;font-weight:600}
+  header button{border:1px solid var(--border);background:var(--card);border-radius:8px;
+    padding:6px 10px;font-size:13px;color:var(--text)}
+
+  #settings{background:var(--card);border-bottom:1px solid var(--border);padding:10px 14px;
+    display:none;flex-direction:column;gap:8px}
+  #settings.open{display:flex}
+  #settings label{font-size:12px;color:var(--sub);display:block;margin-bottom:3px}
+  #settings .row{display:flex;gap:8px}
+  #settings .row>div{flex:1;min-width:0}
+  #settings select,#settings input{width:100%;padding:8px 9px;border:1px solid var(--border);
+    border-radius:8px;font-size:14px;background:#fff;color:var(--text)}
+  #settings .hint{font-size:11.5px;color:var(--sub);line-height:1.5}
+  #relayRow{display:none}
+  #relayRow.show{display:flex}
+
+  #messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:82%;padding:9px 12px;border-radius:14px;font-size:15px;line-height:1.5;
+    white-space:pre-wrap;word-break:break-word}
+  .msg.user{align-self:flex-end;background:var(--bubble-user);color:var(--bubble-user-fg);
+    border-bottom-right-radius:4px}
+  .msg.ai{align-self:flex-start;background:var(--bubble-ai);color:var(--bubble-ai-fg);
+    border-bottom-left-radius:4px}
+  .msg.err{align-self:flex-start;background:var(--err-bg);color:var(--err);border:1px solid #fecaca;
+    border-bottom-left-radius:4px}
+  .msg.sys{align-self:center;background:none;color:var(--sub);font-size:12.5px;padding:2px}
+  .cursor{display:inline-block;width:7px;height:1em;background:currentColor;vertical-align:text-bottom;
+    animation:blink 1s step-start infinite;margin-left:1px}
+  @keyframes blink{50%{opacity:0}}
+
+  #inputBar{display:flex;gap:8px;padding:10px;background:var(--card);border-top:1px solid var(--border)}
+  #userInput{flex:1;border:1px solid var(--border);border-radius:20px;padding:10px 14px;font-size:15px;
+    resize:none;max-height:110px;font-family:inherit}
+  #sendBtn{background:var(--accent);color:var(--accent-fg);border:none;border-radius:20px;
+    padding:0 18px;font-size:15px;font-weight:600}
+  #sendBtn:disabled{opacity:.5}
+
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#15161a;--card:#1e2025;--border:#2c2f36;--text:#e7e9ee;--sub:#9aa1ac;
+      --bubble-ai:#2a2d34;--bubble-ai-fg:#e7e9ee;--err-bg:#3a1c1c}
+    #settings select,#settings input{background:#15161a;color:var(--text);border-color:var(--border)}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💬 AI 对话测试站</h1>
+  <button id="toggleSettings">⚙ 设置</button>
+</header>
+
+<div id="settings">
+  <div class="row">
+    <div>
+      <label>服务商</label>
+      <select id="provider"></select>
+    </div>
+    <div>
+      <label>连接方式</label>
+      <select id="mode">
+        <option value="relay">走中转站</option>
+        <option value="direct">直连（不经过中转站）</option>
+      </select>
+    </div>
+  </div>
+  <div class="row" id="relayRow">
+    <div>
+      <label>中转站地址</label>
+      <input id="relayBase" placeholder="https://your-worker.workers.dev">
+    </div>
+    <div>
+      <label>口令（可选）</label>
+      <input id="relayKey" placeholder="没设置就留空">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>API Key</label>
+      <input id="apiKey" type="password" placeholder="sk-...">
+    </div>
+    <div>
+      <label>模型</label>
+      <input id="model">
+    </div>
+  </div>
+  <div class="hint">
+    设置会自动保存在本机浏览器（localStorage），仅你自己可见，不会上传到任何地方。<br>
+    “直连”模式下部分服务商会因浏览器 CORS 限制而请求失败，这是正常现象，切到“走中转站”即可。
+  </div>
+</div>
+
+<div id="messages">
+  <div class="msg sys">选好服务商、填上 API Key，就能开始聊天了 👇</div>
+</div>
+
+<div id="inputBar">
+  <textarea id="userInput" rows="1" placeholder="输入消息…"></textarea>
+  <button id="sendBtn">发送</button>
+</div>
+
+<script>
+const PROVIDERS = {
+  kimi:       {label:"Kimi（Moonshot）", base:"https://api.moonshot.cn",  path:"/v1/chat/completions",        format:"openai",    model:"moonshot-v1-8k"},
+  deepseek:   {label:"DeepSeek",         base:"https://api.deepseek.com", path:"/v1/chat/completions",        format:"openai",    model:"deepseek-chat"},
+  openrouter: {label:"OpenRouter",       base:"https://openrouter.ai",    path:"/api/v1/chat/completions",    format:"openai",    model:"deepseek/deepseek-chat"},
+  groq:       {label:"Groq",             base:"https://api.groq.com",     path:"/openai/v1/chat/completions", format:"openai",    model:"llama-3.3-70b-versatile"},
+  openai:     {label:"OpenAI",           base:"https://api.openai.com",   path:"/v1/chat/completions",        format:"openai",    model:"gpt-4o-mini"},
+  anthropic:  {label:"Anthropic",        base:"https://api.anthropic.com",path:"/v1/messages",                format:"anthropic", model:"claude-haiku-4-5-20251001"},
+};
+
+const $ = id => document.getElementById(id);
+const els = {
+  toggleSettings: $("toggleSettings"), settings: $("settings"),
+  provider: $("provider"), mode: $("mode"), relayRow: $("relayRow"),
+  relayBase: $("relayBase"), relayKey: $("relayKey"),
+  apiKey: $("apiKey"), model: $("model"),
+  messages: $("messages"), userInput: $("userInput"), sendBtn: $("sendBtn"),
+};
+
+const CFG_KEY = "chatTestCfg";
+function loadCfg(){
+  try{ return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; }catch(e){ return {}; }
+}
+function saveCfg(){
+  localStorage.setItem(CFG_KEY, JSON.stringify({
+    provider: els.provider.value, mode: els.mode.value,
+    relayBase: els.relayBase.value.trim(), relayKey: els.relayKey.value.trim(),
+    apiKeys: apiKeyStore, model: els.model.value.trim(),
+  }));
+}
+
+// API Key 按服务商分开存，切换服务商时各自记得各自的 key
+let apiKeyStore = {};
+
+function initProviderSelect(){
+  for(const [key, p] of Object.entries(PROVIDERS)){
+    const opt = document.createElement("option");
+    opt.value = key; opt.textContent = p.label;
+    els.provider.appendChild(opt);
+  }
+}
+
+function applyCfg(){
+  const cfg = loadCfg();
+  apiKeyStore = cfg.apiKeys || {};
+  els.provider.value = cfg.provider && PROVIDERS[cfg.provider] ? cfg.provider : "kimi";
+  els.mode.value = cfg.mode || "relay";
+  els.relayBase.value = cfg.relayBase || "https://api-relay.wmj1071074667-c7d.workers.dev";
+  els.relayKey.value = cfg.relayKey || "";
+  onProviderChange(cfg.model);
+  onModeChange();
+}
+
+function onProviderChange(forceModel){
+  const p = PROVIDERS[els.provider.value];
+  els.apiKey.value = apiKeyStore[els.provider.value] || "";
+  els.model.value = forceModel || p.model;
+}
+
+function onModeChange(){
+  els.relayRow.classList.toggle("show", els.mode.value === "relay");
+}
+
+els.toggleSettings.onclick = () => els.settings.classList.toggle("open");
+els.provider.onchange = () => { onProviderChange(); saveCfg(); };
+els.mode.onchange = () => { onModeChange(); saveCfg(); };
+[els.relayBase, els.relayKey, els.model].forEach(el => el.onchange = saveCfg);
+els.apiKey.onchange = () => { apiKeyStore[els.provider.value] = els.apiKey.value.trim(); saveCfg(); };
+
+els.userInput.addEventListener("input", () => {
+  els.userInput.style.height = "auto";
+  els.userInput.style.height = Math.min(els.userInput.scrollHeight, 110) + "px";
+});
+els.userInput.addEventListener("keydown", e => {
+  if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+});
+els.sendBtn.onclick = sendMessage;
+
+function addMsg(role, text){
+  const div = document.createElement("div");
+  div.className = "msg " + role;
+  div.textContent = text;
+  els.messages.appendChild(div);
+  els.messages.scrollTop = els.messages.scrollHeight;
+  return div;
+}
+
+const history = [];
+
+function buildRequest(){
+  const key = els.provider.value;
+  const p = PROVIDERS[key];
+  const mode = els.mode.value;
+  const apiKey = els.apiKey.value.trim();
+  const model = els.model.value.trim() || p.model;
+
+  const url = mode === "relay"
+    ? els.relayBase.value.trim().replace(/\/$/, "") + "/" + key + p.path
+    : p.base + p.path;
+
+  let headers, body;
+  if(p.format === "anthropic"){
+    headers = {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    };
+    body = { model, max_tokens: 1024, stream: true,
+      messages: history.map(m => ({ role: m.role, content: m.content })) };
+  } else {
+    headers = { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey };
+    body = { model, stream: true,
+      messages: history.map(m => ({ role: m.role, content: m.content })) };
+  }
+  if(mode === "relay" && els.relayKey.value.trim()){
+    headers["x-relay-key"] = els.relayKey.value.trim();
+  }
+  return { url, headers, body, format: p.format };
+}
+
+async function streamSSE(response, onEvent){
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+  while(true){
+    const { value, done } = await reader.read();
+    if(done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+    for(const line of lines){
+      const t = line.trim();
+      if(!t.startsWith("data:")) continue;
+      const data = t.slice(5).trim();
+      if(data === "[DONE]") return;
+      try{ onEvent(JSON.parse(data)); }catch(e){}
+    }
+  }
+}
+
+async function sendMessage(){
+  const text = els.userInput.value.trim();
+  if(!text) return;
+  if(!els.apiKey.value.trim()){
+    addMsg("err", "先在 ⚙ 设置里填上 API Key");
+    return;
+  }
+
+  history.push({ role: "user", content: text });
+  addMsg("user", text);
+  els.userInput.value = "";
+  els.userInput.style.height = "auto";
+  els.sendBtn.disabled = true;
+
+  const aiDiv = addMsg("ai", "");
+  const cursor = document.createElement("span");
+  cursor.className = "cursor";
+  aiDiv.appendChild(cursor);
+  let full = "";
+
+  try{
+    const { url, headers, body, format } = buildRequest();
+    const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+
+    if(!resp.ok){
+      const errText = await resp.text();
+      throw new Error("HTTP " + resp.status + "：" + errText.slice(0, 400));
+    }
+
+    await streamSSE(resp, obj => {
+      let delta = "";
+      if(format === "anthropic"){
+        if(obj.type === "content_block_delta" && obj.delta?.type === "text_delta") delta = obj.delta.text;
+      } else {
+        delta = obj.choices?.[0]?.delta?.content || "";
+      }
+      if(delta){
+        full += delta;
+        aiDiv.textContent = full;
+        aiDiv.appendChild(cursor);
+        els.messages.scrollTop = els.messages.scrollHeight;
+      }
+    });
+
+    cursor.remove();
+    if(!full){ aiDiv.textContent = "（没有收到内容，可能该服务商不支持流式，或返回为空）"; }
+    history.push({ role: "assistant", content: full });
+  } catch(err){
+    cursor.remove();
+    aiDiv.remove();
+    let hint = err.message || String(err);
+    if(els.mode.value === "direct" && /fetch|network|failed/i.test(hint)){
+      hint += "\n\n这很可能是浏览器 CORS 拦截（该服务商不允许网页直连）。切换到「走中转站」模式再试。";
+    }
+    addMsg("err", "请求失败：" + hint);
+    history.pop(); // 回滚这条失败的用户消息，避免污染上下文
+  } finally {
+    els.sendBtn.disabled = false;
+  }
+}
+
+initProviderSelect();
+applyCfg();
+</script>
+</body>
+</html>
