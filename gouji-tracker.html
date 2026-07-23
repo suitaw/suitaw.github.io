@@ -100,6 +100,7 @@
   .cell .rem { font-size: clamp(22px, 7vmin, 42px); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .cell .played { font-size: clamp(10px, 2.6vmin, 12px); color: #64748b; font-variant-numeric: tabular-nums; }
   .cell .played .g { color: #4ade80; font-weight: 700; }
+  .cell .played .p { color: #7dd3fc; font-weight: 600; }
   .cell .played .op { color: #fbbf24; }
   body.infer .cell.is-top { border-color: #22c55e; box-shadow: inset 0 0 0 1px #22c55e; }
   .cell.undo-cell { background: #92400e; border-color: #b45309; font-size: clamp(17px, 4.5vmin, 22px); font-weight: 700; color: #fff; }
@@ -471,49 +472,29 @@ function higherOut(r) {
   return s;
 }
 
-// 对头手里至少有 1 张 r 的概率（超几何分布）。精确模式下 remaining 之和恰为对手暗牌总数
-function oppHasProb(r) {
-  const U = remaining(r);
-  if (U <= 0) return 0;
-  let H = 0;
-  for (const rr of RANKS) H += remaining(rr);   // 5 家对手暗牌总数
-  if (H <= 0) return 0;
-  const hop = H / 5;                            // 对头手里的平均暗牌数
-  let pNone = 1;
-  for (let i = 0; i < U; i++) {
-    const num = H - hop - i, den = H - i;
-    if (num <= 0 || den <= 0) { pNone = 0; break; }
-    pNone *= num / den;
-  }
-  return 1 - pNone;
-}
+// 压制牌超过此数就不显示——数太大对决策没意义，只会刷屏
+const PRESS_CAP = 8;
 
-function fmtPct(p) {
-  if (p >= 0.995) return '>99%';
-  if (p < 0.005) return '<1%';
-  return Math.round(p * 100) + '%';
-}
-
-// 底部小字：推断关时显示「已出 n」，开时显示推断结论
+// 底部小字：推断关时显示「已出 n」；开时——最大 / 压 N / 或退回已出
 function setPlayedLine(r) {
   const el = $('pl-' + r);
   const cell = $('cell-' + r);
   const rem = remaining(r);
-  if (!inferOn) {
-    el.textContent = `已出 ${state.played[r]}`;
+  if (!inferOn || rem <= 0) {
+    el.textContent = inferOn ? '' : `已出 ${state.played[r]}`;
     cell.classList.remove('is-top');
     return;
   }
-  if (rem <= 0) { el.textContent = ''; cell.classList.remove('is-top'); return; }
-  if (higherOut(r) === 0) {
+  const hi = higherOut(r);
+  if (hi === 0) {
     el.innerHTML = '<span class="g">最大</span>';
     cell.classList.add('is-top');
     return;
   }
   cell.classList.remove('is-top');
-  el.innerHTML = state.precise
-    ? `对头 ~${fmtPct(oppHasProb(r))}`
-    : `上有 ${higherOut(r)} 张`;
+  el.innerHTML = hi <= PRESS_CAP
+    ? `<span class="p">压 ${hi}</span>`
+    : `已出 ${state.played[r]}`;
 }
 
 function renderInferAll() { DISPLAY_RANKS.forEach(setPlayedLine); }
