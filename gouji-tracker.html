@@ -99,8 +99,12 @@
   .cell .rank.red { color: #f87171; }
   .cell .rem { font-size: clamp(22px, 7vmin, 42px); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .cell .played { font-size: clamp(10px, 2.6vmin, 12px); color: #64748b; font-variant-numeric: tabular-nums; }
+  .cell .played .g { color: #4ade80; font-weight: 700; }
+  .cell .played .op { color: #fbbf24; }
+  body.infer .cell.is-top { border-color: #22c55e; box-shadow: inset 0 0 0 1px #22c55e; }
   .cell.undo-cell { background: #92400e; border-color: #b45309; font-size: clamp(17px, 4.5vmin, 22px); font-weight: 700; color: #fff; }
   .cell.undo-cell.off { background: #1e293b; border-color: #263244; color: #475569; }
+  .topbar #inferBtn.on { background: #065f46; color: #fff; }
   .cell.zero { opacity: .35; }
   .cell.zero .rem { color: #475569; }
   .cell .badge {
@@ -190,6 +194,7 @@
   <div class="topbar">
     <span class="mode-tag" id="modeTag"></span>
     <span class="spacer"></span>
+    <button id="inferBtn">推断</button>
     <button id="undoBtn" disabled>撤销</button>
     <button id="resetBtn">重开</button>
   </div>
@@ -331,6 +336,7 @@ $('handBackBtn').addEventListener('click', () => show('setup'));
 function enterPlay() {
   $('modeTag').textContent = MODES[state.mode].name + (state.precise ? ' · 精确' : ' · 快速');
   trickSize = 1; armedSeat = null;
+  restoreInfer();
   buildGrid();
   buildCtrlRows();
   renderAll();
@@ -434,6 +440,7 @@ function commit(entry) {
   if (state.history.length > 500) state.history.shift();
   save();
   renderRank(entry.r, true);
+  if (inferOn) renderInferAll();
   renderSummary();
   renderUndo();
 }
@@ -445,11 +452,80 @@ function doUndo() {
   if (last.seat) state.seatPlayed[last.seat][last.r] -= last.d;
   save();
   renderRank(last.r, true);
+  if (inferOn) renderInferAll();
   renderSummary();
   renderUndo();
   vibrate(15);
 }
 $('undoBtn').addEventListener('click', doUndo);
+
+// ===== 概率推断 =====
+let inferOn = false;
+const INFER_KEY = 'gouji-infer';
+
+// 比 r 更大、且仍在对手手里的牌数（10 以上更大的牌都在显示档内，可精确求和）
+function higherOut(r) {
+  const i = RANKS.indexOf(r);
+  let s = 0;
+  for (const rr of DISPLAY_RANKS) if (RANKS.indexOf(rr) < i) s += remaining(rr);
+  return s;
+}
+
+// 对头手里至少有 1 张 r 的概率（超几何分布）。精确模式下 remaining 之和恰为对手暗牌总数
+function oppHasProb(r) {
+  const U = remaining(r);
+  if (U <= 0) return 0;
+  let H = 0;
+  for (const rr of RANKS) H += remaining(rr);   // 5 家对手暗牌总数
+  if (H <= 0) return 0;
+  const hop = H / 5;                            // 对头手里的平均暗牌数
+  let pNone = 1;
+  for (let i = 0; i < U; i++) {
+    const num = H - hop - i, den = H - i;
+    if (num <= 0 || den <= 0) { pNone = 0; break; }
+    pNone *= num / den;
+  }
+  return 1 - pNone;
+}
+
+function fmtPct(p) {
+  if (p >= 0.995) return '>99%';
+  if (p < 0.005) return '<1%';
+  return Math.round(p * 100) + '%';
+}
+
+// 底部小字：推断关时显示「已出 n」，开时显示推断结论
+function setPlayedLine(r) {
+  const el = $('pl-' + r);
+  const cell = $('cell-' + r);
+  const rem = remaining(r);
+  if (!inferOn) {
+    el.textContent = `已出 ${state.played[r]}`;
+    cell.classList.remove('is-top');
+    return;
+  }
+  if (rem <= 0) { el.textContent = ''; cell.classList.remove('is-top'); return; }
+  if (higherOut(r) === 0) {
+    el.innerHTML = '<span class="g">最大</span>';
+    cell.classList.add('is-top');
+    return;
+  }
+  cell.classList.remove('is-top');
+  el.innerHTML = state.precise
+    ? `对头 ~${fmtPct(oppHasProb(r))}`
+    : `上有 ${higherOut(r)} 张`;
+}
+
+function renderInferAll() { DISPLAY_RANKS.forEach(setPlayedLine); }
+
+$('inferBtn').addEventListener('click', () => {
+  inferOn = !inferOn;
+  document.body.classList.toggle('infer', inferOn);
+  $('inferBtn').classList.toggle('on', inferOn);
+  try { localStorage.setItem(INFER_KEY, inferOn ? '1' : '0'); } catch(e){}
+  renderInferAll();
+  vibrate(10);
+});
 
 // ===== 渲染 =====
 function renderRank(r, flash) {
@@ -457,7 +533,7 @@ function renderRank(r, flash) {
   const cell = $('cell-' + r);
   const remEl = $('rem-' + r);
   remEl.textContent = rem;
-  $('pl-' + r).textContent = `已出 ${state.played[r]}`;
+  setPlayedLine(r);
   cell.classList.toggle('zero', rem <= 0);
   $('st-' + r).innerHTML = SEATS
     .filter(([key]) => state.seatPlayed[key][r] > 0)
@@ -504,6 +580,12 @@ function renderUndo() {
 }
 
 function renderAll() { DISPLAY_RANKS.forEach(r => renderRank(r, false)); renderSummary(); renderUndo(); }
+
+function restoreInfer() {
+  try { inferOn = localStorage.getItem(INFER_KEY) === '1'; } catch(e){ inferOn = false; }
+  document.body.classList.toggle('infer', inferOn);
+  $('inferBtn').classList.toggle('on', inferOn);
+}
 
 // ===== 重开 =====
 function dialog(text, btns) {
