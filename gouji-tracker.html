@@ -126,6 +126,7 @@
   }
   .chip-btn.sel { background: #0284c7; color: #fff; }
   .chip-btn.armed { background: #b45309; color: #fff; }
+  .opp-btn { font-size: 14px; }
   .cell .seats { font-size: clamp(9px, 2.5vmin, 12px); color: #64748b; min-height: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .cell .seats .op { color: #fbbf24; font-weight: 700; }
 
@@ -167,26 +168,16 @@
     <div class="d">4副整牌共216张，每人36张</div>
   </div>
 
-  <div class="opt-group-title">记法</div>
-  <div class="opt-card sel" data-group="precise" data-val="0">
-    <div class="t">快速记牌</div>
-    <div class="d">不录手牌，谁出牌都点一下，显示「场上未出」张数</div>
-  </div>
-  <div class="opt-card" data-group="precise" data-val="1">
-    <div class="t">精确记牌</div>
-    <div class="d">先录入自己的33/36张手牌，之后<b>只点别人出的牌</b>，显示「别人手里还有」张数</div>
-  </div>
-
-  <button class="big-btn" id="startBtn">开始记牌</button>
+  <button class="big-btn" id="startBtn">下一步</button>
 </div>
 
-<!-- 手牌录入页 -->
+<!-- 手牌录入页：只录 10 以上的大牌 -->
 <div class="screen" id="hand">
-  <h2>录入我的手牌</h2>
-  <div class="sub">对局开始后只点别人出的牌，自己出的不用记</div>
-  <div id="handCount">已录 <b>0</b> / 33 张</div>
+  <h2>录入你手里 10 以上的牌</h2>
+  <div class="sub">只需大牌，小牌不用记；没有可直接跳过</div>
+  <div id="handCount">已录 <b>0</b> 张大牌</div>
   <div class="hand-grid" id="handGrid"></div>
-  <button class="big-btn" id="handDoneBtn" disabled>录完，开始记牌</button>
+  <button class="big-btn" id="handDoneBtn">开始记牌</button>
   <button class="big-btn ghost" id="handBackBtn">返回设置</button>
 </div>
 
@@ -205,11 +196,11 @@
     <div class="chips" id="countChips"></div>
   </div>
   <div class="ctrl-row">
-    <span class="lbl">谁出</span>
+    <span class="lbl">对头</span>
     <div class="chips" id="seatChips"></div>
   </div>
   <div class="grid" id="grid"></div>
-  <div class="hint">点点数 = 按所选张数记一手 · 长按 = 减1张修正</div>
+  <div class="hint">点点数 = 按所选张数记一手 · 长按 = 减1张修正 · 「记对头」开着时记的牌算对头</div>
 </div>
 
 <!-- 确认弹层 -->
@@ -229,9 +220,8 @@ const LABELS = { BJ:'大王', SJ:'小王' };
 const RED = new Set(['BJ']);
 // 够级门槛：场上剩余低于此数，该点数不可能再有人凑出够级牌
 const GOUJI_MIN = { BJ:1, SJ:1, '2':1, 'A':2, 'K':2, 'Q':3, 'J':4, '10':5 };
-// 只记 10 及以上的大牌；小牌不显示（精确模式录手牌时仍按全部点数录）
+// 只记 10 及以上的大牌；小牌不显示、不参与计算
 const DISPLAY_RANKS = ['BJ','SJ','2','A','K','Q','J','10'];
-const SEATS = [ ['up','上家','上'], ['op','对头','对'], ['down','下家','下'] ];
 
 const MODES = {
   fa4:     { name:'开点发4 198张', perPlayer:33, totals: r => r==='BJ'||r==='SJ' ? 4 : r==='3' ? 6 : r==='4' ? 8 : 16 },
@@ -241,26 +231,27 @@ const MODES = {
 const SAVE_KEY = 'gouji-tracker-v1';
 
 // ===== 状态 =====
-let state = null; // { mode, precise, totals:{}, myHand:{}, played:{}, history:[] }
+let state = null; // { mode, totals:{}, myHand:{}, played:{}, oppPlayed:{}, history:[] }
 
 const emptyCounts = () => Object.fromEntries(RANKS.map(r => [r, 0]));
 const label = r => LABELS[r] || r;
-const remaining = r => state.totals[r] - (state.precise ? state.myHand[r] : 0) - state.played[r];
+// 场上剩余 = 全部 - 我手里的(仅大牌) - 已出的，即对手手里还有多少
+const remaining = r => state.totals[r] - state.myHand[r] - state.played[r];
 
-function newState(mode, precise) {
+function newState(mode) {
   const m = MODES[mode];
   return {
-    mode, precise,
+    mode,
     totals: Object.fromEntries(RANKS.map(r => [r, m.totals(r)])),
     myHand: emptyCounts(),
     played: emptyCounts(),
-    seatPlayed: { up: emptyCounts(), op: emptyCounts(), down: emptyCounts() },
+    oppPlayed: emptyCounts(),   // 对头出过的牌（其他人不区分，只并入 played）
     history: [],
   };
 }
 
-// 本轮每手张数 & 待标记座位（一次性，记完自动清除）——运行时状态，不持久化
-let trickSize = 1, armedSeat = null;
+// 本轮每手张数 & 是否正在记「对头出的牌」（固定开关，不自动清除）——运行时状态
+let trickSize = 1, oppOn = false;
 
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch(e){} }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch(e){} }
@@ -274,30 +265,29 @@ function show(id) {
 }
 
 // ===== 设置页 =====
-let selMode = 'fa4', selPrecise = false;
+let selMode = 'fa4';
 document.querySelectorAll('#setup .opt-card').forEach(card => {
   card.addEventListener('click', () => {
     const g = card.dataset.group;
     document.querySelectorAll(`#setup .opt-card[data-group="${g}"]`).forEach(c => c.classList.remove('sel'));
     card.classList.add('sel');
     if (g === 'mode') selMode = card.dataset.val;
-    else selPrecise = card.dataset.val === '1';
   });
 });
 
 $('startBtn').addEventListener('click', () => {
-  state = newState(selMode, selPrecise);
-  if (selPrecise) { buildHandGrid(); show('hand'); }
-  else { save(); enterPlay(); }
+  state = newState(selMode);
+  buildHandGrid();
+  show('hand');
 });
 
-// ===== 手牌录入 =====
-function handTotal() { return RANKS.reduce((s, r) => s + state.myHand[r], 0); }
+// ===== 手牌录入（只录 10 以上大牌）=====
+function handTotal() { return DISPLAY_RANKS.reduce((s, r) => s + state.myHand[r], 0); }
 
 function buildHandGrid() {
   const grid = $('handGrid');
   grid.innerHTML = '';
-  RANKS.forEach(r => {
+  DISPLAY_RANKS.forEach(r => {
     const cell = document.createElement('div');
     cell.className = 'hand-cell';
     cell.innerHTML = `<div class="r">${label(r)}</div>
@@ -322,12 +312,7 @@ function buildHandGrid() {
 }
 
 function updateHandCount() {
-  const need = MODES[state.mode].perPlayer;
-  const t = handTotal();
-  const el = $('handCount');
-  el.innerHTML = `已录 <b>${t}</b> / ${need} 张`;
-  el.className = t === need ? 'full' : t > need ? 'over' : '';
-  $('handDoneBtn').disabled = t !== need;
+  $('handCount').innerHTML = `已录 <b>${handTotal()}</b> 张大牌`;
 }
 
 $('handDoneBtn').addEventListener('click', () => { save(); enterPlay(); });
@@ -335,8 +320,8 @@ $('handBackBtn').addEventListener('click', () => show('setup'));
 
 // ===== 记牌主界面 =====
 function enterPlay() {
-  $('modeTag').textContent = MODES[state.mode].name + (state.precise ? ' · 精确' : ' · 快速');
-  trickSize = 1; armedSeat = null;
+  $('modeTag').textContent = MODES[state.mode].name;
+  trickSize = 1; oppOn = false;
   restoreInfer();
   buildGrid();
   buildCtrlRows();
@@ -356,19 +341,21 @@ function buildCtrlRows() {
   }
   const sc = $('seatChips');
   sc.innerHTML = '';
-  SEATS.forEach(([key, name]) => {
-    const b = document.createElement('button');
-    b.className = 'chip-btn';
-    b.dataset.seat = key;
-    b.textContent = name;
-    b.onclick = () => { armedSeat = armedSeat === key ? null : key; renderCtrlRows(); vibrate(10); };
-    sc.appendChild(b);
-  });
+  const b = document.createElement('button');
+  b.id = 'oppBtn';
+  b.className = 'chip-btn opp-btn';
+  b.textContent = '记对头出牌';
+  b.onclick = () => { oppOn = !oppOn; renderCtrlRows(); vibrate(10); };
+  sc.appendChild(b);
 }
 
 function renderCtrlRows() {
   [...$('countChips').children].forEach((b, i) => b.classList.toggle('sel', i + 1 === trickSize));
-  [...$('seatChips').children].forEach(b => b.classList.toggle('armed', b.dataset.seat === armedSeat));
+  const ob = $('oppBtn');
+  if (ob) {
+    ob.classList.toggle('armed', oppOn);
+    ob.textContent = oppOn ? '✓ 正在记对头' : '记对头出牌';
+  }
 }
 
 function buildGrid() {
@@ -420,20 +407,19 @@ function applyTap(r) {
   const n = Math.min(trickSize, remaining(r));
   if (n <= 0) return;
   state.played[r] += n;
-  const seat = armedSeat;
-  if (seat) {
-    state.seatPlayed[seat][r] += n;
-    armedSeat = null; // 一次性：记完这手自动清除
-    renderCtrlRows();
-  }
-  commit({ r, d: n, seat });
+  const opp = oppOn;              // 固定开关：开着就算对头的，其他人不区分
+  if (opp) state.oppPlayed[r] += n;
+  commit({ r, d: n, opp });
   vibrate(15);
 }
 
 function applyCorrect(r) {
   if (state.played[r] <= 0) return;
   state.played[r] -= 1;
-  commit({ r, d: -1, seat: null });
+  // 修正也同步扣对头计数（若这一档记过对头且还有余量）
+  const opp = oppOn && state.oppPlayed[r] > 0;
+  if (opp) state.oppPlayed[r] -= 1;
+  commit({ r, d: -1, opp });
 }
 
 function commit(entry) {
@@ -450,7 +436,7 @@ function doUndo() {
   const last = state.history.pop();
   if (!last) return;
   state.played[last.r] -= last.d;
-  if (last.seat) state.seatPlayed[last.seat][last.r] -= last.d;
+  if (last.opp) state.oppPlayed[last.r] -= last.d;
   save();
   renderRank(last.r, true);
   if (inferOn) renderInferAll();
@@ -516,12 +502,9 @@ function renderRank(r, flash) {
   remEl.textContent = rem;
   setPlayedLine(r);
   cell.classList.toggle('zero', rem <= 0);
-  $('st-' + r).innerHTML = SEATS
-    .filter(([key]) => state.seatPlayed[key][r] > 0)
-    .map(([key, , abbr]) => {
-      const n = state.seatPlayed[key][r];
-      return key === 'op' ? `<span class="op">${abbr}${n}</span>` : `${abbr}${n}`;
-    }).join(' ');
+  // 对头出过的这一档牌数
+  const op = state.oppPlayed[r];
+  $('st-' + r).innerHTML = op > 0 ? `<span class="op">对头 ${op}</span>` : '';
 
   const min = GOUJI_MIN[r];
   let badge = cell.querySelector('.badge');
@@ -586,10 +569,10 @@ $('resetBtn').addEventListener('click', () => {
   dialog('这一局结束了？', [
     ['取消', 'cancel', null],
     ['再来一局', 'primary', () => {
-      const { mode, precise } = state;
-      state = newState(mode, precise);
-      if (precise) { buildHandGrid(); show('hand'); }
-      else { save(); enterPlay(); }
+      const mode = state.mode;
+      state = newState(mode);
+      buildHandGrid();
+      show('hand');
     }],
     ['回到设置', 'danger', () => { clearSave(); show('setup'); }],
   ]);
@@ -601,7 +584,11 @@ $('resetBtn').addEventListener('click', () => {
   try { saved = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch(e){}
   if (saved && saved.totals && MODES[saved.mode]) {
     state = saved;
-    if (!state.seatPlayed) state.seatPlayed = { up: emptyCounts(), op: emptyCounts(), down: emptyCounts() };
+    // 兼容旧存档：老版有 seatPlayed{op}/precise，迁移到 oppPlayed
+    if (!state.oppPlayed) {
+      state.oppPlayed = state.seatPlayed ? state.seatPlayed.op : emptyCounts();
+    }
+    if (!state.myHand) state.myHand = emptyCounts();
     dialog('发现上次未结束的一局，继续吗？', [
       ['重新开始', 'cancel', () => { clearSave(); state = null; show('setup'); }],
       ['继续', 'primary', () => enterPlay()],
