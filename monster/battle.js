@@ -234,6 +234,12 @@ const Battle = (function () {
     if (r.eff > 1) await say('效果拔群！', 480);
     else if (r.eff < 1) await say('效果不太理想…', 480);
 
+    // 挣扎的反作用力
+    if (moveSlot.key === 'struggle' && att.hp > 0) {
+      const recoil = Math.max(1, Math.floor((before - after) / 3));
+      await animHP(isMe ? 'me' : 'foe', att.hp, Math.max(0, att.hp - recoil));
+      await say(monName(att) + ' 受到了反作用力伤害！', 480);
+    }
     // 吸血
     if (move.eff && move.eff.drain && att.hp > 0) {
       const heal = Math.max(1, Math.floor((before - after) * move.eff.drain));
@@ -458,6 +464,11 @@ const Battle = (function () {
         { label: B.isWild ? '逃跑' : '认输', cls: 'main c4', value: 'run' },
       ]);
       if (top === 'fight') {
+        // 所有技能 PP 耗尽时只能挣扎，避免陷入僵局
+        if (!B.myMon.moves.some((m) => m.pp > 0)) {
+          await say(monName(B.myMon) + ' 的技能全部用完了！');
+          return { type: 'move', slot: { key: 'struggle', pp: 1, max: 1 } };
+        }
         const items = B.myMon.moves.map((m, i) => {
           const mv = MOVES[m.key];
           return {
