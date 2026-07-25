@@ -247,6 +247,22 @@ const SPR = (function () {
     } else {
       rect(g, hx - 1, hy + 4, 3, 1, '#20161f');
     }
+    return art.size && art.size !== 1 ? resize(g, art.size) : g;
+  }
+
+  // 以底部中线为锚点缩放整张图（进化后体型更大，一眼可辨）
+  function resize(src, k) {
+    const g = mk(src.n);
+    const n = src.n;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        // 目标像素 -> 源像素
+        const sx = (x - n / 2) / k + n / 2;
+        const sy = (y - (n - 1)) / k + (n - 1);
+        const c = get(src, Math.round(sx), Math.round(sy));
+        if (c) px(g, x, y, c);
+      }
+    }
     return g;
   }
 

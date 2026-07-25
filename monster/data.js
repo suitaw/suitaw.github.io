@@ -94,13 +94,13 @@ const SPECIES = {
   1: {
     name: '叶灵', types: ['grass'], stats: [45, 49, 49, 45], catchRate: 45, exp: 64,
     evo: { to: 2, lv: 16 }, dex: '背上的叶片能吸收阳光。心情好的时候会散发青草香。',
-    art: { body: 'round', colors: ['#6ec26e', '#d5eaa8', '#3f8f4a'], ears: 'long', extra: 'leaf', tail: 'leaf', mouth: 'smile' },
+    art: { body: 'round', colors: ['#6ec26e', '#d5eaa8', '#3f8f4a'], ears: 'long', extra: 'leaf', tail: 'leaf', mouth: 'smile' , size: 0.72 },
     learn: [[1, 'tackle'], [1, 'growl'], [6, 'vine'], [10, 'absorb'], [15, 'tailwhip'], [20, 'razor'], [26, 'synth'], [33, 'solar']],
   },
   2: {
     name: '藤兽', types: ['grass'], stats: [60, 62, 63, 60], catchRate: 45, exp: 142,
     evo: { to: 3, lv: 32 }, dex: '藤蔓能像鞭子一样甩动，在森林中穿行如飞。',
-    art: { body: 'quad', colors: ['#4fae5e', '#c6e08e', '#2d7a3c'], ears: 'pointy', extra: 'leaf', tail: 'leaf', pattern: 'spot' },
+    art: { body: 'quad', colors: ['#4fae5e', '#c6e08e', '#2d7a3c'], ears: 'pointy', extra: 'leaf', tail: 'leaf', pattern: 'spot' , size: 0.86 },
     learn: [[1, 'tackle'], [1, 'vine'], [10, 'absorb'], [16, 'razor'], [22, 'toxic'], [28, 'synth'], [36, 'solar']],
   },
   3: {
@@ -112,13 +112,13 @@ const SPECIES = {
   4: {
     name: '焰狐', types: ['fire'], stats: [39, 52, 43, 65], catchRate: 45, exp: 65,
     evo: { to: 5, lv: 16 }, dex: '尾巴的火焰会随情绪变化。生气时火苗蹿得老高。',
-    art: { body: 'quad', colors: ['#f08a4a', '#ffd9a8', '#c2471f'], ears: 'pointy', tail: 'flame' },
+    art: { body: 'quad', colors: ['#f08a4a', '#ffd9a8', '#c2471f'], ears: 'pointy', tail: 'flame' , size: 0.72 },
     learn: [[1, 'scratch'], [1, 'growl'], [6, 'ember'], [12, 'quick'], [18, 'fwheel'], [26, 'agility'], [34, 'flame']],
   },
   5: {
     name: '炎狼', types: ['fire'], stats: [58, 64, 58, 80], catchRate: 45, exp: 142,
     evo: { to: 6, lv: 32 }, dex: '奔跑时留下的脚印会冒烟，速度快得难以捕捉。',
-    art: { body: 'quad', colors: ['#e8703a', '#ffc78a', '#a83a18'], ears: 'pointy', tail: 'flame', extra: 'flame', eyes: 'angry', pattern: 'stripe' },
+    art: { body: 'quad', colors: ['#e8703a', '#ffc78a', '#a83a18'], ears: 'pointy', tail: 'flame', extra: 'flame', eyes: 'angry', pattern: 'stripe' , size: 0.86 },
     learn: [[1, 'scratch'], [1, 'ember'], [12, 'quick'], [18, 'fwheel'], [28, 'agility'], [36, 'flame'], [42, 'fblast']],
   },
   6: {
@@ -130,13 +130,13 @@ const SPECIES = {
   7: {
     name: '水泡', types: ['water'], stats: [44, 48, 65, 43], catchRate: 45, exp: 66,
     evo: { to: 8, lv: 16 }, dex: '喜欢在浅滩打盹，遇到危险会吐出成串的泡泡逃走。',
-    art: { body: 'round', colors: ['#5ab6f0', '#cbeaff', '#2f7fc0'], ears: 'fin', tail: 'short', mouth: 'smile' },
+    art: { body: 'round', colors: ['#5ab6f0', '#cbeaff', '#2f7fc0'], ears: 'fin', tail: 'short', mouth: 'smile' , size: 0.72 },
     learn: [[1, 'tackle'], [1, 'tailwhip'], [6, 'bubble'], [12, 'wgun'], [18, 'harden'], [26, 'recover'], [34, 'surf']],
   },
   8: {
     name: '涌龟', types: ['water'], stats: [59, 63, 82, 58], catchRate: 45, exp: 143,
     evo: { to: 9, lv: 32 }, dex: '壳非常坚硬，能承受落石。缩进壳里时几乎无懈可击。',
-    art: { body: 'shell', colors: ['#4aa0e8', '#cdeaff', '#8a6a3a'], ears: 'fin', mouth: 'smile' },
+    art: { body: 'shell', colors: ['#4aa0e8', '#cdeaff', '#8a6a3a'], ears: 'fin', mouth: 'smile' , size: 0.86 },
     learn: [[1, 'tackle'], [1, 'bubble'], [12, 'wgun'], [18, 'harden'], [26, 'recover'], [34, 'surf'], [40, 'hydro']],
   },
   9: {
@@ -148,19 +148,19 @@ const SPECIES = {
   10: {
     name: '电鼠', types: ['electric'], stats: [35, 55, 40, 90], catchRate: 190, exp: 82,
     evo: { to: 11, lv: 22 }, dex: '脸颊的电囊储存着静电，紧张时会噼啪作响。',
-    art: { body: 'round', colors: ['#f5d24a', '#fff0b0', '#e8853a'], ears: 'pointy', tail: 'bolt', extra: 'cheek', eyes: 'happy' },
+    art: { body: 'round', colors: ['#f5d24a', '#fff0b0', '#e8853a'], ears: 'pointy', tail: 'bolt', extra: 'cheek', eyes: 'happy' , size: 0.7 },
     learn: [[1, 'tackle'], [1, 'growl'], [5, 'spark'], [10, 'quick'], [16, 'twave'], [22, 'zap'], [30, 'agility'], [36, 'tbolt']],
   },
   11: {
     name: '雷兽', types: ['electric'], stats: [60, 90, 55, 110], catchRate: 75, exp: 175,
     dex: '毛发全部竖起时，方圆十米内都能闻到臭氧的味道。',
-    art: { body: 'quad', colors: ['#efc832', '#fff0b0', '#e07020'], ears: 'pointy', tail: 'bolt', extra: 'spike', eyes: 'angry', mouth: 'fang' },
+    art: { body: 'quad', colors: ['#efc832', '#fff0b0', '#e07020'], ears: 'pointy', tail: 'bolt', extra: 'spike', eyes: 'angry', mouth: 'fang' , size: 0.94 },
     learn: [[1, 'spark'], [1, 'quick'], [24, 'zap'], [30, 'agility'], [38, 'tbolt'], [46, 'thunder']],
   },
   12: {
     name: '岩甲', types: ['rock'], stats: [50, 60, 92, 25], catchRate: 190, exp: 86,
     evo: { to: 13, lv: 24 }, dex: '把自己伪装成路边的石头，一动不动能待上一整天。',
-    art: { body: 'bug', colors: ['#a89060', '#d8c898', '#6e5a34'], ears: 'horn', extra: 'spike', pattern: 'plate', eyes: 'angry' },
+    art: { body: 'bug', colors: ['#a89060', '#d8c898', '#6e5a34'], ears: 'horn', extra: 'spike', pattern: 'plate', eyes: 'angry' , size: 0.75 },
     learn: [[1, 'tackle'], [1, 'harden'], [6, 'rthrow'], [12, 'bite'], [18, 'rtomb'], [26, 'slam'], [34, 'rslide']],
   },
   13: {
@@ -172,37 +172,37 @@ const SPECIES = {
   14: {
     name: '幽魂', types: ['ghost'], stats: [45, 50, 45, 72], catchRate: 190, exp: 95,
     evo: { to: 15, lv: 26 }, dex: '喜欢躲在森林深处，突然出现在旅人身后偷笑。',
-    art: { body: 'ghost', colors: ['#8a6ad0', '#c8b4f0', '#5a3fa0'], eyes: 'glow', mouth: 'fang' },
+    art: { body: 'ghost', colors: ['#8a6ad0', '#c8b4f0', '#5a3fa0'], eyes: 'glow', mouth: 'fang' , size: 0.74 },
     learn: [[1, 'lick'], [1, 'growl'], [8, 'spunch'], [14, 'sing'], [22, 'absorb'], [30, 'sball'], [38, 'recover']],
   },
   15: {
     name: '夜魔', types: ['ghost'], stats: [70, 82, 70, 98], catchRate: 45, exp: 204,
     dex: '深夜出没的高等幽灵，据说能潜入人的梦境。',
-    art: { body: 'ghost', colors: ['#6f52b8', '#b49ce8', '#40287f'], eyes: 'glow', mouth: 'fang', extra: 'crown' },
+    art: { body: 'ghost', colors: ['#6f52b8', '#b49ce8', '#40287f'], eyes: 'glow', mouth: 'fang', extra: 'crown' , size: 0.96 },
     learn: [[1, 'spunch'], [1, 'sing'], [28, 'sball'], [34, 'agility'], [40, 'recover'], [46, 'hyper']],
   },
   16: {
     name: '绒蛾', types: ['bug'], stats: [40, 45, 40, 56], catchRate: 255, exp: 53,
     evo: { to: 17, lv: 20 }, dex: '翅膀上的鳞粉会随风飘散，让追赶的敌人打喷嚏。',
-    art: { body: 'bug', colors: ['#b8d05a', '#e8f0b8', '#7a8f30'], ears: 'antenna', wings: 'bug', pattern: 'stripe' },
+    art: { body: 'bug', colors: ['#b8d05a', '#e8f0b8', '#7a8f30'], ears: 'antenna', wings: 'bug', pattern: 'stripe' , size: 0.7 },
     learn: [[1, 'tackle'], [1, 'toxic'], [7, 'bite'], [13, 'quick'], [20, 'swind'], [28, 'xsci']],
   },
   17: {
     name: '剑蛾', types: ['bug'], stats: [65, 85, 60, 78], catchRate: 90, exp: 168,
     dex: '双臂的刃能一击斩断树干，是森林里的剑客。',
-    art: { body: 'bug', colors: ['#9ec03a', '#dfeaa0', '#5f7a20'], ears: 'antenna', wings: 'bug', eyes: 'angry', extra: 'spike', pattern: 'stripe' },
+    art: { body: 'bug', colors: ['#9ec03a', '#dfeaa0', '#5f7a20'], ears: 'antenna', wings: 'bug', eyes: 'angry', extra: 'spike', pattern: 'stripe' , size: 0.92 },
     learn: [[1, 'bite'], [1, 'quick'], [22, 'swind'], [28, 'xsci'], [34, 'swords'], [42, 'hyper']],
   },
   18: {
     name: '布布', types: ['normal'], stats: [55, 45, 45, 50], catchRate: 255, exp: 56,
     evo: { to: 19, lv: 20 }, dex: '毛茸茸的圆球，性格温顺，常常跟在旅人后面。',
-    art: { body: 'round', colors: ['#e8d8c0', '#fff6e8', '#c0a888'], ears: 'round', tail: 'short', eyes: 'happy', mouth: 'smile' },
+    art: { body: 'round', colors: ['#e8d8c0', '#fff6e8', '#c0a888'], ears: 'round', tail: 'short', eyes: 'happy', mouth: 'smile' , size: 0.72 },
     learn: [[1, 'tackle'], [1, 'tailwhip'], [6, 'quick'], [12, 'growl'], [18, 'slam'], [26, 'recover']],
   },
   19: {
     name: '大布布', types: ['normal'], stats: [90, 72, 72, 55], catchRate: 120, exp: 165,
     dex: '吃饱后会睡上三天。抱起来像一床温暖的被子。',
-    art: { body: 'wide', colors: ['#dccbb0', '#fff2e0', '#b09878'], ears: 'round', tail: 'short', mouth: 'smile', pattern: 'spot' },
+    art: { body: 'wide', colors: ['#dccbb0', '#fff2e0', '#b09878'], ears: 'round', tail: 'short', mouth: 'smile', pattern: 'spot' , size: 0.96 },
     learn: [[1, 'slam'], [1, 'tackle'], [24, 'harden'], [30, 'recover'], [38, 'hyper']],
   },
   20: {
