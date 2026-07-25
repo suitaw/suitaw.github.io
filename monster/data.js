@@ -83,6 +83,7 @@ const MOVES = {
   spunch: { name: '暗影拳', type: 'ghost', power: 60, acc: 999, pp: 20, sure: true },
   sball: { name: '暗影球', type: 'ghost', power: 90, acc: 100, pp: 15, eff: { stat: 'def', stage: -1, target: 'foe', chance: 20 } },
 
+  struggle: { name: '挣扎', type: 'normal', power: 50, acc: 100, pp: 1, noPP: true },
   dbolt: { name: '龙雷冲', type: 'electric', power: 120, acc: 90, pp: 5, eff: { status: 'par', chance: 20 } },
 };
 
