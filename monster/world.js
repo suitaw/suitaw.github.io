@@ -285,6 +285,9 @@ function walkable(key, x, y) {
 function npcAt(x, y) { return W.npcs.find((n) => !n.gone && n.x === x && n.y === y); }
 
 function enterMap(key, x, y, dir) {
+  W.input.up = W.input.down = W.input.left = W.input.right = 0;
+  const pad = document.getElementById('dpad');
+  if (pad) pad.dataset.dir = '';
   if (W.mapKey !== key) buildMapCanvas(key);
   G.map = key; G.x = x; G.y = y;
   if (dir !== undefined) G.dir = dir;
@@ -475,11 +478,17 @@ async function onStepComplete() {
     await doWarp(warp);
     return;
   }
+  // 脚下的道具球：走上去直接捡起（有的道具球位于单格通道，不能挡路）
+  const ground = npcAt(W.player.x, W.player.y);
+  if (ground && ground.item && !ground.gone) {
+    await pickItem(ground);
+    return;
+  }
   // 训练家视线
   if (await checkTrainerSight()) return;
   // 野生遭遇
   if (tileAt(map, W.player.x, W.player.y) === ',' && map.encounters) {
-    if (Math.random() < map.encounters.rate) {
+    if (Math.random() < map.encounters.rate && partyAlive()) {
       const foe = rollEncounter(G.map);
       if (foe) await startWildBattle(foe);
       return;
@@ -559,6 +568,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * ============================================================ */
 function dialog(lines, opts) {
   opts = opts || {};
+  if (!lines || !lines.length) return Promise.resolve();   // 空对话直接返回，避免卡住
   const prevBusy = W.busy;
   W.busy = true;
   return new Promise((res) => {
@@ -620,7 +630,7 @@ function choiceBox(title, options) {
  * 交互
  * ============================================================ */
 async function interact() {
-  if (W.busy || W.player.moving) return;
+  if (!gameActive() || W.busy || W.player.moving) return;
   const [dx, dy] = DIRS[W.player.dir];
   let tx = W.player.x + dx, ty = W.player.y + dy;
   let n = npcAt(tx, ty);
@@ -659,6 +669,7 @@ async function talkTo(n, forced) {
         if (n.leader) await awardBadge(n);
         if (n.rival) G.flags['rival_beaten'] = 1;
         saveGame();
+        if (!partyAlive()) { await blackout(); return; }
       } else {
         await blackout();
         return;
@@ -756,6 +767,7 @@ async function legendEncounter(n) {
     n.gone = true;
     G.flags['legend_done'] = 1;
     saveGame();
+    if (!partyAlive()) { await blackout(); return; }
     if (res === 'caught') await dialog(['传说中的天雷龙成为了你的伙伴！']);
     else await dialog(['天雷龙化作雷光消失在湖面上…', '（也许某天还会再见）']);
     await endingSequence();
@@ -767,6 +779,7 @@ async function legendEncounter(n) {
 }
 
 async function endingSequence() {
+  saveGame();               // 先结算游戏时间，避免显示上一次保存时的旧值
   const d = dexCount();
   await dialog([
     '—— 你的冒险告一段落 ——',
@@ -812,7 +825,7 @@ async function startWildBattle(foe) {
   Sound.playMusic('battle');
   const res = await Battle.start({ wild: foe, bg: battleBg() });
   Sound.playMusic(mapTrack(G.map));
-  if (res === 'lose') await blackout();
+  if (res === 'lose' || !partyAlive()) await blackout();
   W.busy = false;
   updateHUD();
   saveGame();
@@ -828,7 +841,8 @@ function fmtTime(ms) {
 function updateHUD() {
   const lead = G.party[0];
   document.getElementById('hudMoney').textContent = '¥' + G.money;
-  document.getElementById('hudBadge').textContent = '◆'.repeat(G.badges) + '◇'.repeat(1 - G.badges);
+  document.getElementById('hudBadge').textContent =
+    '◆'.repeat(clamp(G.badges, 0, 1)) + '◇'.repeat(clamp(1 - G.badges, 0, 1));
   const hb = document.getElementById('hudTeam');
   hb.innerHTML = '';
   G.party.forEach((m) => {
@@ -901,7 +915,7 @@ const Menu = {
       const d = document.createElement('button');
       const paint = () => { d.innerHTML = '<b>' + label + '：' + (getter() ? '开' : '关') + '</b><small>' + desc + '</small>'; };
       d.className = 'mrow';
-      d.onclick = () => { Sound.resume(); setter(!getter()); paint(); Sound.play('select'); if (getter && label === '音乐' && getter()) Sound.playMusic(mapTrack(G.map)); };
+      d.onclick = () => { Sound.resume(); setter(!getter()); paint(); Sound.play('select'); };
       paint();
       b.appendChild(d);
     };
@@ -912,9 +926,11 @@ const Menu = {
     save.className = 'mrow save';
     save.innerHTML = '<b>保存游戏</b><small>把进度记录到本机</small>';
     save.onclick = () => {
-      Sound.play('heal');
-      saveGame();
-      save.innerHTML = '<b>已保存 ✓</b><small>' + new Date().toLocaleTimeString() + '</small>';
+      const ok = saveGame();
+      Sound.play(ok ? 'heal' : 'cancel');
+      save.innerHTML = ok
+        ? '<b>已保存 ✓</b><small>' + new Date().toLocaleTimeString() + '</small>'
+        : '<b>保存失败</b><small>浏览器可能禁用了本地存储（无痕模式？）</small>';
     };
     b.appendChild(save);
   },
@@ -1120,12 +1136,19 @@ const Menu = {
 /* ============================================================
  * 输入
  * ============================================================ */
+// 游戏世界是否处于可操作状态（标题/起名/选伙伴画面时为 false）
+function gameActive() {
+  const g = document.getElementById('game');
+  return !!G && g && !g.classList.contains('hidden');
+}
+
 function bindInput() {
   const keyMap = {
     ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
     w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right',
   };
   document.addEventListener('keydown', (e) => {
+    if (!gameActive()) return;   // 标题画面按键不应触发游戏操作
     if (keyMap[e.key]) { W.input[keyMap[e.key]] = 1; e.preventDefault(); }
     if (['z', 'Z', 'Enter', ' '].includes(e.key)) { e.preventDefault(); if (!document.getElementById('dialog').classList.contains('hidden')) return; interact(); }
     if (['x', 'X', 'Escape'].includes(e.key)) { e.preventDefault(); toggleMenu(); }
@@ -1161,7 +1184,12 @@ function bindInput() {
   window.addEventListener('mouseup', end);
 
   const btnA = document.getElementById('btnA');
-  const tapA = (e) => { e.preventDefault(); const dlg = document.getElementById('dialog'); if (!dlg.classList.contains('hidden')) dlg.click(); else interact(); };
+  const tapA = (e) => {
+    e.preventDefault();
+    if (!gameActive()) return;
+    const dlg = document.getElementById('dialog');
+    if (!dlg.classList.contains('hidden')) dlg.click(); else interact();
+  };
   btnA.addEventListener('touchstart', tapA, { passive: false });
   btnA.addEventListener('mousedown', tapA);
   const btnB = document.getElementById('btnB');
@@ -1172,6 +1200,7 @@ function bindInput() {
 }
 
 function toggleMenu() {
+  if (!gameActive()) return;
   const m = document.getElementById('menu');
   if (!document.getElementById('battle').classList.contains('hidden')) return;
   if (!document.getElementById('dialog').classList.contains('hidden')) return;
@@ -1205,7 +1234,8 @@ function updateNPCs(dt) {
     const [dx, dy] = DIRS[dir];
     n.dir = dir;
     const nx = n.x + dx, ny = n.y + dy;
-    if (WALKABLE.includes(tileAt(MAPS[G.map], nx, ny)) && !npcAt(nx, ny) && !(W.player.x === nx && W.player.y === ny)) {
+    const onWarp = (MAPS[G.map].warps || []).some((w) => w.x === nx && w.y === ny);
+    if (!onWarp && WALKABLE.includes(tileAt(MAPS[G.map], nx, ny)) && !npcAt(nx, ny) && !(W.player.x === nx && W.player.y === ny)) {
       n.x = nx; n.y = ny; n.frame = (n.frame + 1) % 3;
     }
   });
@@ -1287,6 +1317,8 @@ async function boot() {
     document.getElementById('titleMenu').classList.add('hidden');
     const nameInput = document.getElementById('nameBox');
     nameInput.classList.remove('hidden');
+    const nameEl = document.getElementById('nameInput');
+    nameEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('nameGo').click(); } };
     document.getElementById('nameGo').onclick = async () => {
       const nm = (document.getElementById('nameInput').value || '').trim().slice(0, 6) || '小智';
       nameInput.classList.add('hidden');

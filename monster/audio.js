@@ -114,14 +114,15 @@ const Sound = (function () {
     },
   };
 
-  function stopMusic() { if (timer) { clearInterval(timer); timer = null; } curTrack = null; }
+  function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+  function stopMusic() { stopTimer(); curTrack = null; }
 
+  // curTrack = 期望播放的曲子（即使此刻静音也记住），timer 存在才是真正在响
   function playMusic(name) {
-    if (!ctx) return;
-    if (curTrack === name) return;
-    stopMusic();
+    if (curTrack === name && timer) return;
     curTrack = name;
-    if (!S.music) return;
+    stopTimer();
+    if (!ctx || !S.music) return;
     const t = TRACKS[name];
     if (!t) return;
     const beat = 60 / t.bpm / 2; // 八分音符
@@ -150,9 +151,16 @@ const Sound = (function () {
   function setMusic(v) {
     S.music = v; localStorage.setItem('mq_bgm', v ? '1' : '0');
     if (musicGain) musicGain.gain.value = v ? 0.16 : 0;
-    if (!v) stopMusic();
-    else if (curTrack) { const t = curTrack; curTrack = null; playMusic(t); }
+    if (!v) { stopTimer(); return; }          // 保留 curTrack，重新打开时能接着放
+    if (curTrack) { const t = curTrack; curTrack = null; playMusic(t); }
   }
+
+  // 切到后台时暂停音乐：浏览器会把定时器限流，回来后节奏会乱掉
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { stopTimer(); return; }
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    if (curTrack) { const t = curTrack; curTrack = null; playMusic(t); }
+  });
 
   return {
     init, resume, play, playMusic, stopMusic, setSfx, setMusic,

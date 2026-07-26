@@ -107,7 +107,17 @@ function loadGame() {
     const s = localStorage.getItem(SAVE_KEY);
     if (!s) return null;
     const d = JSON.parse(s);
-    if (!d || !d.party) return null;
+    if (!d || !Array.isArray(d.party)) return null;
+    // 存档健全性检查：地图或怪兽数据对不上时回退，避免直接崩在开局
+    if (!MAPS[d.map]) { d.map = 'town'; d.x = 9; d.y = 12; d.dir = 0; }
+    d.party = d.party.filter((m) => m && SPECIES[m.sid] && Array.isArray(m.moves) && m.moves.length);
+    d.box = (d.box || []).filter((m) => m && SPECIES[m.sid]);
+    if (!d.party.length) d.party = [makeMon(d.starter && SPECIES[d.starter] ? d.starter : 1, 5)];
+    d.bag = d.bag || {};
+    d.flags = d.flags || {};
+    d.dex = d.dex && d.dex.seen ? d.dex : { seen: {}, caught: {} };
+    d.money = typeof d.money === 'number' ? d.money : 0;
+    d.badges = typeof d.badges === 'number' ? d.badges : 0;
     d._t = Date.now();
     G = d;
     return G;

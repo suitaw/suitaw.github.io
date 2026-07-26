@@ -374,6 +374,7 @@ const Battle = (function () {
       mon.lv++;
       mon.hp += maxHP(mon) - oldMax;
       if (mon === B.myMon) refreshInfo('me');
+      mon.lvUp = true;
       Sound.play('levelup');
       await say(monName(mon) + ' 升到了 Lv' + mon.lv + '！', 700);
       const news = newMovesOnLevel(mon, mon.lv);
@@ -606,6 +607,8 @@ const Battle = (function () {
   async function start(opts) {
     if (!root) build();
     const myIdx = firstAbleIndex();
+    if (myIdx < 0) return 'lose';   // 没有可战斗的怪兽（惨胜后全队倒下等极端情况）
+    if (!opts.wild && !(opts.trainer && opts.trainer.team && opts.trainer.team.length)) return 'win';
     B = {
       isWild: !!opts.wild,
       trainer: opts.trainer || null,
@@ -653,9 +656,13 @@ const Battle = (function () {
         const fslot = foeChoose();
         if (fslot) await useMove('foe', fslot);
         else await say(monName(B.foeMon) + ' 没有可用的技能，陷入了苦战…');
-        if (B.myMon.hp <= 0) { await onMyFaint(); if (B.over) break; }
-        await endTurnStatus('me'); await endTurnStatus('foe');
-        if (B.myMon.hp <= 0) { await onMyFaint(); if (B.over) break; }
+        let switched2 = false;
+        if (B.myMon.hp <= 0) { await onMyFaint(); switched2 = true; if (B.over) break; }
+        if (!switched2) {
+          await endTurnStatus('me');
+          if (B.myMon.hp <= 0) { await onMyFaint(); if (B.over) break; }
+        }
+        await endTurnStatus('foe');
         if (B.foeMon.hp <= 0) { await onFoeFaint(); if (B.over) break; }
         continue;
       }
@@ -672,23 +679,31 @@ const Battle = (function () {
       }
 
       const order = meFirst ? ['me', 'foe'] : ['foe', 'me'];
+      // 本回合中途被换上场的一方，不再行动、也不承受回合末伤害
+      let meSwitched = false, foeSwitched = false;
       for (const side of order) {
         if (B.over) break;
         if (side === 'me') {
-          if (B.myMon.hp <= 0) continue;
+          // meSwitched：原本要出招的怪兽已倒下，替补不能沿用它的技能
+          if (meSwitched || B.myMon.hp <= 0 || B.foeMon.hp <= 0) continue;
           await useMove('me', act.slot);
-          if (B.foeMon.hp <= 0) { await onFoeFaint(); break; }
         } else {
-          if (B.foeMon.hp <= 0) continue;
+          if (foeSwitched || B.foeMon.hp <= 0 || B.myMon.hp <= 0) continue;
           if (fslot) await useMove('foe', fslot);
-          if (B.myMon.hp <= 0) { await onMyFaint(); break; }
         }
+        // 出招后双方都要判定：反作用力可能让出招方自己倒下
+        if (B.foeMon.hp <= 0) { await onFoeFaint(); foeSwitched = true; if (B.over) break; }
+        if (B.myMon.hp <= 0) { await onMyFaint(); meSwitched = true; if (B.over) break; }
       }
       if (B.over) break;
-      await endTurnStatus('me');
-      if (B.myMon.hp <= 0) { await onMyFaint(); if (B.over) break; }
-      await endTurnStatus('foe');
-      if (B.foeMon.hp <= 0) { await onFoeFaint(); if (B.over) break; }
+      if (!meSwitched) {
+        await endTurnStatus('me');
+        if (B.myMon.hp <= 0) { await onMyFaint(); if (B.over) break; }
+      }
+      if (!foeSwitched) {
+        await endTurnStatus('foe');
+        if (B.foeMon.hp <= 0) { await onFoeFaint(); if (B.over) break; }
+      }
     }
 
     /* 结算 */
@@ -703,11 +718,12 @@ const Battle = (function () {
       if (B.trainer && B.trainer.loseText) await say(B.trainer.loseText);
     }
 
-    // 进化检查
+    // 进化检查：只有本场战斗升过级的怪兽才会进化
     const evolved = [];
     for (const m of G.party) {
       const s = SPECIES[m.sid];
-      if (s.evo && m.lv >= s.evo.lv && !isFainted(m)) evolved.push(m);
+      if (m.lvUp && s.evo && m.lv >= s.evo.lv && !isFainted(m)) evolved.push(m);
+      delete m.lvUp;
     }
     for (const m of evolved) await doEvolve(m);
 
