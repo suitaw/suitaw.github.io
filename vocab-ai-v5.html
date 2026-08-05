@@ -130,6 +130,22 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .typing span:nth-child(2){animation-delay:.2s}
 .typing span:nth-child(3){animation-delay:.4s}
 @keyframes typing-bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+/* ===== AI 任务进度（挑生词/补音标/重新分类共用）===== */
+.aip{margin:10px 0}
+.aip-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.aip-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--accent));background-size:200% 100%;animation:aip-flow 2.4s linear infinite;transition:width .35s cubic-bezier(.4,0,.2,1)}
+/* 不知道总量时：一小段来回滑，表示在动但不假装知道进度 */
+.aip-bar.indet .aip-fill{width:40%;transition:none;animation:aip-flow 2.4s linear infinite,aip-slide 1.4s ease-in-out infinite}
+@keyframes aip-flow{to{background-position:200% 0}}
+@keyframes aip-slide{from{transform:translateX(-105%)}to{transform:translateX(255%)}}
+.aip-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.72rem;color:var(--ink-dim);margin-top:7px}
+.aip-count{font-family:Fraunces,serif;font-weight:700;color:var(--accent);font-size:.95rem}
+.aip-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);animation:aip-pulse 1s ease-in-out infinite;vertical-align:middle}
+@keyframes aip-pulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+.aip-chips{margin-top:8px;max-height:104px;overflow-y:auto}
+.aip-chip{display:inline-block;padding:3px 9px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font-size:.72rem;margin:0 4px 4px 0;animation:aip-pop .34s cubic-bezier(.34,1.56,.64,1)}
+@keyframes aip-pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+@media(prefers-reduced-motion:reduce){.aip-fill,.aip-dot,.aip-chip{animation:none!important}.aip-bar.indet .aip-fill{width:100%}}
 </style>
 </head>
 <body>
@@ -1402,13 +1418,17 @@ function renderEnrichPhonetic(v){
       <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:700">🔤 批量补音标</div>
     </div>
     <div style="font-size:.76rem;color:var(--ink-dim);margin-bottom:12px">全库找到 ${total} 个缺音标的词，逐个用 AI 生成中，别切走页面。</div>
-    <div style="height:6px;background:var(--line);border-radius:3px;margin-bottom:10px;overflow:hidden">
-      <div style="height:100%;width:${Math.round(st.idx/total*100)}%;background:var(--accent);border-radius:3px;transition:width .3s"></div>
+    <div class="aip">
+      ${aiBarHtml(st.idx/total*100)}
+      <div class="aip-meta">
+        <span>${finished?"已完成":`正在补全「${cur?escapeHtml(cur.word):""}」`}</span>
+        <span><span class="aip-count">${st.idx}</span> / ${total}</span>
+      </div>
     </div>
     <div style="text-align:center;margin-bottom:14px">
       ${finished
         ?`<div class="done" style="padding:24px 0"><h2>补全完成 🎉</h2><p>成功 ${st.done} 个${st.failed?`，失败 ${st.failed} 个（可能是生僻词，重开一次本功能会再试一遍）`:""}</p></div>`
-        :`<div class="typing"><span></span><span></span><span></span></div><p style="margin-top:8px;font-size:.84rem;color:var(--ink-dim)">正在补全「${cur?escapeHtml(cur.word):""}」 · ${st.idx}/${total}</p>`
+        :`<div class="typing"><span></span><span></span><span></span></div>`
       }
     </div>
   </div>`;
@@ -1417,7 +1437,18 @@ function renderEnrichPhonetic(v){
 function renderPreview(v){
   if(dedupGroups)return renderDedup(v);
   if(enrichPhoneticState)return renderEnrichPhonetic(v);
-  if(catSuggestLoading){v.innerHTML=`<div class="done" style="padding-top:48px"><div class="typing"><span></span><span></span><span></span></div><p>AI 正在按词义归类…${reclassifyProgress?`（${reclassifyProgress.done}/${reclassifyProgress.total}）`:""}</p></div>`;return}
+  if(catSuggestLoading){
+    const rp=reclassifyProgress;
+    v.innerHTML=`<div class="done" style="padding-top:48px">
+      <div class="typing"><span></span><span></span><span></span></div>
+      <p>AI 正在按词义归类…</p>
+      <div class="aip" style="max-width:320px;margin:12px auto 0;text-align:left">
+        ${aiBarHtml(rp?rp.done/rp.total*100:null)}
+        ${rp?`<div class="aip-meta"><span>已归类</span><span><span class="aip-count">${rp.done}</span> / ${rp.total}</span></div>`:""}
+      </div>
+    </div>`;
+    return;
+  }
   if(catSuggestItems)return renderCatSuggest(v);
   const cat=previewCat;
   const list=sortWords(wordsOfCat(cat));
@@ -3544,7 +3575,62 @@ function onPickQaText(input){
     toast("已读入文本，点「AI 挑生词」");
   }).catch(e=>toast(e.message));
 }
-function closeQuickAdd(){const ov=document.getElementById("quickadd-overlay");ov.classList.remove("open");ov.innerHTML="";qaImages=[]}
+function closeQuickAdd(){const ov=document.getElementById("quickadd-overlay");ov.classList.remove("open");ov.innerHTML="";qaImages=[];qaProgStop()}
+
+// ===== AI 任务进度（共用）=====
+// pct 传 null → 总量未知，走滑动条；否则 0-100 实心条
+function aiBarHtml(pct,id){
+  const indet=pct==null;
+  const w=indet?"":` style="width:${Math.max(0,Math.min(100,Math.round(pct)))}%"`;
+  return `<div class="aip-bar${indet?" indet":""}"><div class="aip-fill"${id?` id="${id}"`:""}${w}></div></div>`;
+}
+function fmtElapsed(ms){
+  const s=ms/1000;
+  return s<60?s.toFixed(1)+"s":Math.floor(s/60)+"m"+String(Math.floor(s%60)).padStart(2,"0")+"s";
+}
+// 从流式 JSON 里捞出已经完整吐出来的 "word":"xxx"，用来做实时计数
+function streamedWords(t){
+  const out=[],re=/"word"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  let m;while((m=re.exec(t)))out.push(m[1]);
+  return out;
+}
+// 加词弹窗的实时进度。词是流式吐出来的，边吐边显示，这是真进度不是假动画
+let qaProg=null;
+function qaProgStart(label,total){
+  qaProgStop();
+  qaProg={t0:Date.now(),label,total:total||0,words:[],streaming:false,built:false,shown:0};
+  qaProg.timer=setInterval(qaProgPaint,200);   // 让计时器走起来，推理阶段没有 token 也看得出在动
+  qaProgPaint();
+}
+function qaProgStop(){if(qaProg&&qaProg.timer)clearInterval(qaProg.timer);qaProg=null}
+function qaProgPaint(){
+  const res=document.getElementById("qa-result");
+  if(!res||!qaProg)return;
+  const det=qaProg.total>0;
+  if(!qaProg.built){
+    res.innerHTML=`<div class="aip">
+      ${aiBarHtml(det?0:null,"qa-prog-fill")}
+      <div class="aip-meta"><span id="qa-prog-txt"></span><span id="qa-prog-time"></span></div>
+      <div class="aip-chips" id="qa-prog-chips"></div>
+    </div>`;
+    qaProg.built=true;qaProg.shown=0;
+  }
+  const txt=document.getElementById("qa-prog-txt"),tm=document.getElementById("qa-prog-time"),ch=document.getElementById("qa-prog-chips");
+  if(!txt||!tm||!ch){qaProg.built=false;return}   // DOM 被别的渲染覆盖了，下次重建
+  const n=qaProg.words.length;
+  txt.innerHTML=(qaProg.streaming&&n)
+    ?`已挑出 <span class="aip-count">${n}</span> 个词${det?` / ${qaProg.total}`:""}`
+    :`${escapeHtml(qaProg.label)} <span class="aip-dot"></span>`;
+  tm.textContent=fmtElapsed(Date.now()-qaProg.t0);
+  if(det){const f=document.getElementById("qa-prog-fill");if(f)f.style.width=Math.min(100,Math.round(n/qaProg.total*100))+"%"}
+  // 只追加新词，避免整块重绘导致每个 chip 反复重放动画
+  for(;qaProg.shown<n;qaProg.shown++){
+    const s=document.createElement("span");
+    s.className="aip-chip";s.textContent=qaProg.words[qaProg.shown];
+    ch.appendChild(s);
+  }
+  if(qaProg.shown)ch.scrollTop=ch.scrollHeight;
+}
 // mode: 'all'=贴词全部补全录入；'extract'=贴文章/图片让AI挑生词
 async function quickAddGo(mode){
   const raw=(document.getElementById("qa-input")||{}).value||"";
@@ -3557,35 +3643,42 @@ async function quickAddGo(mode){
     const words=raw.split(/[\n,，]+/).map(s=>s.trim()).filter(Boolean);
     if(!words.length)return toast("先贴要加的词");
     if(words.length>50)return toast("一次最多 50 个，多了分几次");
-    aBtn.disabled=true;aBtn.textContent="补全中…";res.textContent="处理中…";
+    aBtn.disabled=true;aBtn.textContent="补全中…";
+    qaProgStart("AI 正在补全词条",words.length);   // 贴了几个词是已知的，能显示真百分比
     const sys=`你是英语老师。为用户给的每个英文单词/短语生成简洁词条，一个都不能漏，不要例句（例句以后再补）。
 分类 cat 只能填这7个之一：dev(科技开发)、tv(影视口语)、life(日常生活)、biz(职场商务)、academic(学术阅读)、news(新闻时事)、other(其他)。
 只返回JSON数组，字段精简：[{"word":"原词","phonetic":"美式音标带斜杠","pos":"词性","cn":"中文释义","cat":"7个key之一"}]`;
     try{
-      const text=await callAI([{role:"user",content:words.join(", ")}],sys,3000);
+      const text=await callAIStream([{role:"user",content:words.join(", ")}],sys,
+        full=>{if(qaProg){qaProg.streaming=true;qaProg.words=streamedWords(full)}},3000,false);
       const arr=parseJsonArrayLoose(text);
       if(!arr.length)throw new Error("没生成出来，重试一次");
+      qaProgStop();
       showQuickAddPreview(arr,valid);
-    }catch(e){res.textContent="失败："+(e.message||"检查 Key")}
-    finally{aBtn.disabled=false;aBtn.textContent="全部补全录入"}
+    }catch(e){qaProgStop();res.textContent="失败："+(e.message||"检查 Key")}
+    finally{qaProgStop();aBtn.disabled=false;aBtn.textContent="全部补全录入"}
     return;
   }
 
   // extract：贴文章 或 图片
   if(!raw.trim()&&!qaImages.length)return toast("贴段英文，或选图片");
   if(qaImages.length&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到 Kimi/Claude/ChatGPT");
-  eBtn.disabled=true;eBtn.textContent="提取中…";res.textContent="AI 正在挑生词…";
+  eBtn.disabled=true;eBtn.textContent="提取中…";
+  qaProgStart(qaImages.length?"AI 正在读图挑词":"AI 正在通读挑词",0);   // 能挑出几个词事先不知道，用滑动条
   const sys=`你是英语老师，面向中文母语的英语学习者。从用户给的英文文章或图片里尽量全面地挑出值得学的生词/短语（只跳过 the/is/have 这类最基础的词，中等难度及以上的都挑出来，宁可挑多不要漏），为每个生成词条。如果给了多张图片，请综合所有图片里的内容一起挑词，覆盖每张图里出现的生词，不要重复。
 分类 cat 只能填：dev、tv、life、biz、academic、news、other。
 只返回JSON数组：[{"word":"原词","phonetic":"音标","pos":"词性","cn":"中文释义","tip":"提示","exampleEn":"例句","exampleCn":"翻译","scene":"或空","cat":"key"}]`;
   const prompt=qaImages.length?(raw.trim()||"提取图片里值得学的英文生词"):raw.trim();
   try{
-    const text=await callAI([{role:"user",content:prompt}],sys,3000,qaImages.length?qaImages:null);
+    const text=await callAIStream([{role:"user",content:prompt}],sys,
+      full=>{if(qaProg){qaProg.streaming=true;qaProg.words=streamedWords(full)}},
+      3000,false,qaImages.length?qaImages:null);
     const arr=parseJsonArrayLoose(text);
     if(!arr.length)throw new Error("没挑出生词，换段文字或图片");
+    qaProgStop();
     showQuickAddPreview(arr,valid);
-  }catch(e){res.textContent="失败："+(e.message||"检查 Key")}
-  finally{eBtn.disabled=false;eBtn.textContent="AI 挑生词"}
+  }catch(e){qaProgStop();res.textContent="失败："+(e.message||"检查 Key")}
+  finally{qaProgStop();eBtn.disabled=false;eBtn.textContent="AI 挑生词"}
 }
 // 候选词暂存（预览用）
 let qaCandidates=[];
