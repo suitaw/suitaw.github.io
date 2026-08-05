@@ -2918,6 +2918,26 @@ function favFromReview(id){
 
 // ===== 通用 AI 调用（三 provider，支持图片）=====
 const VISION_PROVIDERS=["anthropic","kimi","openai"];
+// OpenAI 的 GPT-5.x 是推理模型：内部推理 token 也从 max_completion_tokens 里扣。
+// 预算不够时额度会被推理吃光、content 返回空串（finish_reason:"length"）——传图挑生词最容易踩。
+// 所以推理模型额外留一大块余量（上限只是封顶，没用到不计费），并默认压低推理档位保证快。
+const OPENAI_REASONING_HEADROOM=6000;
+function isOpenAIReasoningModel(m){return /^gpt-5/.test(m||"")}
+function applyOpenAIBudget(body,model,maxTokens,effort){
+  if(isOpenAIReasoningModel(model)){
+    body.max_completion_tokens=maxTokens+OPENAI_REASONING_HEADROOM;
+    body.reasoning_effort=effort;   // 合法值 none/low/medium/high/xhigh/max，默认 medium 太重
+  }else{
+    body.max_completion_tokens=maxTokens;  // gpt-4o 等非推理模型带 reasoning_effort 会被直接拒绝
+  }
+}
+// 空响应时把真实原因讲清楚，别只甩一句"空响应"
+function emptyReplyMsg(d){
+  const fr=d&&d.choices&&d.choices[0]&&d.choices[0].finish_reason;
+  if(fr==="length")return "模型把额度全用在推理上了，没留下答案。换更轻的模型（如 GPT-5.6 Luna）或少传几张图再试";
+  if(fr==="content_filter")return "内容被模型安全策略拦截了，换张图或换个说法再试";
+  return "空响应"+(fr?"（finish_reason: "+fr+"）":"");
+}
 async function callAI(messages, sys, maxTokens=600, images=null){
   if(!cfg.apikey)throw new Error("先在设置里填 API Key");
   if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到 Kimi/Claude/ChatGPT");
@@ -2953,7 +2973,7 @@ async function callAI(messages, sys, maxTokens=600, images=null){
       last.content=parts;
     }
     body={model,messages:msgs};
-    if(p==="openai")body.max_completion_tokens=maxTokens;  // 新版 OpenAI 模型不再接受 max_tokens
+    if(p==="openai")applyOpenAIBudget(body,model,maxTokens,"low");  // 非流式全是小请求，推理压到低档
     else body.max_tokens=maxTokens;
     if(p==="kimi")body.thinking={type:"disabled"};  // Kimi 默认快速模式，不思考
     readText=d=>d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
@@ -2966,7 +2986,7 @@ async function callAI(messages, sys, maxTokens=600, images=null){
   if(!r.ok)throw new Error((d&&d.error&&d.error.message)||("接口报错 HTTP "+r.status));
   if(d.error)throw new Error(d.error.message||"接口报错");
   const text=readText(d);
-  if(!text)throw new Error("空响应");
+  if(!text)throw new Error(emptyReplyMsg(d));
   return text;
 }
 
@@ -3062,7 +3082,7 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
       last.content=parts;
     }
     body={model:mdl,messages:msgs,stream:true};
-    if(p==="openai")body.max_completion_tokens=maxTokens;  // 新版 OpenAI 模型不再接受 max_tokens
+    if(p==="openai")applyOpenAIBudget(body,mdl,maxTokens,isThink?"medium":"low");  // 跟随「思考」开关
     else body.max_tokens=maxTokens;
     if(isThink&&p==="deepseek")body.thinking={type:"enabled"};
     if(p==="kimi")body.thinking={type:isThink?"enabled":"disabled"};  // Kimi 跟随思考开关，默认关=快
