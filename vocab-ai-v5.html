@@ -2952,7 +2952,9 @@ async function callAI(messages, sys, maxTokens=600, images=null){
       images.forEach(d=>parts.push({type:"image_url",image_url:{url:"data:"+d.mime+";base64,"+d.b64}}));
       last.content=parts;
     }
-    body={model,max_tokens:maxTokens,messages:msgs};
+    body={model,messages:msgs};
+    if(p==="openai")body.max_completion_tokens=maxTokens;  // 新版 OpenAI 模型不再接受 max_tokens
+    else body.max_tokens=maxTokens;
     if(p==="kimi")body.thinking={type:"disabled"};  // Kimi 默认快速模式，不思考
     readText=d=>d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
   }
@@ -3059,7 +3061,9 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
       images.forEach(d=>parts.push({type:"image_url",image_url:{url:"data:"+d.mime+";base64,"+d.b64}}));
       last.content=parts;
     }
-    body={model:mdl,max_tokens:maxTokens,messages:msgs,stream:true};
+    body={model:mdl,messages:msgs,stream:true};
+    if(p==="openai")body.max_completion_tokens=maxTokens;  // 新版 OpenAI 模型不再接受 max_tokens
+    else body.max_tokens=maxTokens;
     if(isThink&&p==="deepseek")body.thinking={type:"enabled"};
     if(p==="kimi")body.thinking={type:isThink?"enabled":"disabled"};  // Kimi 跟随思考开关，默认关=快
     parseLine=obj=>(obj.choices&&obj.choices[0]&&obj.choices[0].delta&&obj.choices[0].delta.content)||"";
