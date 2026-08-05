@@ -149,6 +149,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <option value="kimi">Kimi 月之暗面（可看图）</option>
       <option value="openrouter">OpenRouter（一把 Key 多模型）</option>
       <option value="anthropic">Anthropic 直连（可看图）</option>
+      <option value="openai">ChatGPT / OpenAI（可看图）</option>
     </select>
     <label>API Key</label>
     <input type="password" id="apikey" placeholder="sk-..." autocomplete="off">
@@ -2916,10 +2917,10 @@ function favFromReview(id){
 }
 
 // ===== 通用 AI 调用（三 provider，支持图片）=====
-const VISION_PROVIDERS=["anthropic","kimi"];
+const VISION_PROVIDERS=["anthropic","kimi","openai"];
 async function callAI(messages, sys, maxTokens=600, images=null){
   if(!cfg.apikey)throw new Error("先在设置里填 API Key");
-  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到 Kimi/Claude");
+  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到 Kimi/Claude/ChatGPT");
   const p=cfg.provider;
   let url,headers,body,readText;
   if(p==="anthropic"){
@@ -2939,6 +2940,7 @@ async function callAI(messages, sys, maxTokens=600, images=null){
   }else{
     if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
     else if(p==="kimi")url="https://api.moonshot.cn/v1/chat/completions";
+    else if(p==="openai")url="https://api.openai.com/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
     const model=currentModel();
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
@@ -2992,6 +2994,12 @@ const MODELS={
     ["kimi-k3","Kimi K3（可看图·最强但慢，无法关闭思考）"],
     ["kimi-k2.5","Kimi K2.5（可看图）"],
   ],
+  openai:[
+    ["gpt-5.5","GPT-5.5（可看图·最强旗舰）"],
+    ["gpt-5.4","GPT-5.4（可看图·强）"],
+    ["gpt-5.4-mini","GPT-5.4 Mini（可看图·快，性价比）"],
+    ["gpt-4o","GPT-4o（可看图·稳定老将）"],
+  ],
 };
 // 取当前 provider 实际要用的模型 ID
 function currentModel(){
@@ -3012,7 +3020,7 @@ function currentModelLabel(){
 
 async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, images=null){
   if(!cfg.apikey)throw new Error("先在设置里填 API Key");
-  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到 Kimi/Claude");
+  if(images&&images.length&&!VISION_PROVIDERS.includes(cfg.provider))throw new Error("当前服务商不支持图片，请切到 Kimi/Claude/ChatGPT");
   const p=cfg.provider;
   const isThink=think;
   const mdl=currentModel();
@@ -3040,6 +3048,7 @@ async function callAIStream(messages, sys, onChunk, maxTokens=900, think=false, 
   }else{
     if(p==="deepseek")url="https://api.deepseek.com/v1/chat/completions";
     else if(p==="kimi")url="https://api.moonshot.cn/v1/chat/completions";
+    else if(p==="openai")url="https://api.openai.com/v1/chat/completions";
     else url="https://openrouter.ai/api/v1/chat/completions";
     headers={"Content-Type":"application/json","Authorization":"Bearer "+cfg.apikey};
     let msgs=sys?[{role:"system",content:sys},...messages]:messages.slice();
@@ -3139,7 +3148,7 @@ function renderAssistant(v){
     </div>`}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px">
       <select onchange="switchProvider(this.value)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-family:inherit;font-size:.74rem;background:var(--card);color:var(--ink)">
-        ${[["deepseek","DeepSeek"],["kimi","Kimi"],["anthropic","Claude"],["openrouter","OpenRouter"]].map(([k,name])=>{
+        ${[["deepseek","DeepSeek"],["kimi","Kimi"],["anthropic","Claude"],["openrouter","OpenRouter"],["openai","ChatGPT"]].map(([k,name])=>{
           const hasKey=cfg.keys&&cfg.keys[k];
           return `<option value="${k}" ${cfg.provider===k?"selected":""}>${name}${hasKey?"":"（未填Key）"}${VISION_PROVIDERS.includes(k)?" · 可看图":""}</option>`;
         }).join("")}
@@ -3160,7 +3169,7 @@ function renderAssistant(v){
 let chatImage=null;  // AI助手当前要发的图 {b64,mime}
 function onPickChatImage(input){
   const f=input.files&&input.files[0];if(!f)return;
-  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("传图需切到 Kimi/Claude");return}
+  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("传图需切到 Kimi/Claude/ChatGPT");return}
   readImageFile(f).then(img=>{
     chatImage=img;
     const p=document.getElementById("chat-img-preview");
@@ -3454,7 +3463,7 @@ const QA_MAX_IMAGES=6; // 一次最多附几张图，避免请求体过大/AI处
 function onPickQaImage(input){
   const files=input.files?Array.from(input.files):[];
   if(!files.length)return;
-  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("读图需切到 Kimi/Claude");input.value="";return}
+  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("读图需切到 Kimi/Claude/ChatGPT");input.value="";return}
   const room=QA_MAX_IMAGES-qaImages.length;
   if(room<=0){toast(`最多 ${QA_MAX_IMAGES} 张，先移除几张再选`);input.value="";return}
   const picked=files.slice(0,room);
@@ -3540,7 +3549,7 @@ async function quickAddGo(mode){
 
   // extract：贴文章 或 图片
   if(!raw.trim()&&!qaImages.length)return toast("贴段英文，或选图片");
-  if(qaImages.length&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到 Kimi/Claude");
+  if(qaImages.length&&!VISION_PROVIDERS.includes(cfg.provider))return toast("读图需切到 Kimi/Claude/ChatGPT");
   eBtn.disabled=true;eBtn.textContent="提取中…";res.textContent="AI 正在挑生词…";
   const sys=`你是英语老师，面向中文母语的英语学习者。从用户给的英文文章或图片里尽量全面地挑出值得学的生词/短语（只跳过 the/is/have 这类最基础的词，中等难度及以上的都挑出来，宁可挑多不要漏），为每个生成词条。如果给了多张图片，请综合所有图片里的内容一起挑词，覆盖每张图里出现的生词，不要重复。
 分类 cat 只能填：dev、tv、life、biz、academic、news、other。
