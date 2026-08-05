@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>My AI Chat</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overscroll-behavior: none; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #1a1a1a;
+    background: #ffffff;
+  }
+  #app { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
+
+  /* ---------- 侧边栏 ---------- */
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: #f4f2ee;
+    border-right: 1px solid #e5e2db;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    transition: margin-left 0.2s ease;
+  }
+  .sidebar.collapsed { margin-left: -260px; }
+
+  .new-chat-btn {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #c96442;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 10px;
+  }
+  .new-chat-btn:active { background: #b5563a; }
+
+  .settings-btn {
+    padding: 8px 14px;
+    border: 1px solid #ddd8cc;
+    border-radius: 8px;
+    background: transparent;
+    color: #4a4740;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    text-align: left;
+  }
+
+  .conversation-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .empty-hint { color: #9a958a; font-size: 13px; padding: 12px; text-align: center; }
+
+  .conversation-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 10px; border-radius: 6px; cursor: pointer;
+    font-size: 14px; color: #4a4740; gap: 6px;
+  }
+  .conversation-item:hover, .conversation-item.active { background: #e9e5db; }
+  .conversation-item.active { font-weight: 500; }
+  .conversation-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .conversation-actions { display: none; gap: 4px; flex-shrink: 0; }
+  .conversation-item:hover .conversation-actions { display: flex; }
+  .conversation-actions button {
+    border: none; background: none; cursor: pointer; color: #9a958a; font-size: 12px; padding: 2px 4px;
+  }
+  .conversation-actions button:hover { color: #1a1a1a; }
+  .rename-input {
+    flex: 1; border: 1px solid #c96442; border-radius: 4px; padding: 2px 6px; font-size: 14px;
+  }
+
+  /* ---------- 聊天区 ---------- */
+  .chat-window { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .chat-header {
+    padding: 10px 16px; border-bottom: 1px solid #eee;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .menu-toggle {
+    border: none; background: none; cursor: pointer; font-size: 18px;
+    padding: 4px 8px; color: #4a4740; flex-shrink: 0;
+  }
+  .chat-header select {
+    padding: 6px 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px; flex-shrink: 0;
+  }
+  .key-warning {
+    font-size: 12px; color: #c92a2a; margin-left: auto; cursor: pointer;
+  }
+
+  .message-list { flex: 1; overflow-y: auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 22px; }
+  .welcome { flex: 1; display: flex; align-items: center; justify-content: center; color: #9a958a; text-align: center; padding: 20px; }
+
+  .message { max-width: 720px; width: 100%; margin: 0 auto; }
+  .message-role { font-size: 12px; font-weight: 600; color: #9a958a; margin-bottom: 6px; }
+  .message-content { font-size: 15px; line-height: 1.65; word-break: break-word; }
+  .message-content > *:not(:first-child) { margin-top: 0.8em; }
+  .message-content p { white-space: pre-wrap; }
+  .message-content ul, .message-content ol { padding-left: 1.4em; }
+  .message-content li { margin: 0.25em 0; }
+  .message-content h1, .message-content h2, .message-content h3 { margin-top: 0.6em; font-weight: 600; }
+  .message-content h1 { font-size: 1.3em; }
+  .message-content h2 { font-size: 1.15em; }
+  .message-content h3 { font-size: 1.05em; }
+  .message-content code {
+    background: #f0ede6; padding: 2px 5px; border-radius: 4px;
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.88em;
+  }
+  .message-content pre {
+    background: #2b2926; color: #f2f0ea; padding: 12px 14px; border-radius: 10px;
+    overflow-x: auto; font-size: 0.85em; line-height: 1.5; position: relative;
+  }
+  .message-content pre code { background: none; padding: 0; color: inherit; }
+  .message-content blockquote {
+    border-left: 3px solid #ddd; padding-left: 12px; color: #6a655c;
+  }
+  .message-content table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+  .message-content th, .message-content td { border: 1px solid #e0ddd3; padding: 6px 10px; text-align: left; }
+  .message-content a { color: #c96442; }
+
+  .message-user .message-content {
+    background: #f4f2ee; padding: 10px 14px; border-radius: 14px; display: inline-block;
+  }
+  .message-error { color: #c92a2a; }
+
+  .cursor-blink::after {
+    content: "▍"; animation: blink 1s step-start infinite; color: #9a958a;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ---------- 输入框 ---------- */
+  .input-area {
+    display: flex; gap: 8px; padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+    max-width: 768px; width: 100%; margin: 0 auto;
+  }
+  .input-area textarea {
+    flex: 1; resize: none; border: 1px solid #ddd; border-radius: 12px;
+    padding: 11px 14px; font-size: 16px; font-family: inherit; max-height: 160px; line-height: 1.5;
+  }
+  .input-area textarea:focus { outline: none; border-color: #c96442; }
+  .input-area button {
+    padding: 0 18px; border: none; border-radius: 10px; background: #c96442;
+    color: white; font-size: 14px; cursor: pointer; align-self: flex-end; height: 44px; flex-shrink: 0;
+  }
+  .input-area button:disabled { background: #ddd; cursor: not-allowed; }
+  .input-area .stop-btn { background: #4a4740; }
+
+  /* ---------- 设置弹层 ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px;
+  }
+  .settings-panel {
+    background: white; border-radius: 14px; padding: 22px; width: 100%; max-width: 440px;
+    max-height: 85vh; overflow-y: auto;
+  }
+  .settings-panel h3 { margin-bottom: 4px; }
+  .settings-panel .subtitle { font-size: 13px; color: #9a958a; margin-bottom: 18px; }
+  .key-field { margin-bottom: 14px; }
+  .key-field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; }
+  .key-field input {
+    width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+  }
+  .key-field .hint { font-size: 11px; color: #9a958a; margin-top: 4px; }
+  .settings-actions { display: flex; gap: 8px; margin-top: 18px; }
+  .settings-actions button {
+    flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px;
+  }
+  .settings-actions .save-btn { background: #c96442; color: white; }
+  .settings-actions .cancel-btn { background: #f0ede6; color: #4a4740; }
+
+  @media (max-width: 640px) {
+    .sidebar {
+      position: fixed; z-index: 40; height: 100%;
+    }
+    .sidebar.collapsed { margin-left: -280px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ============ 常量与工具 ============ */
+
+const PROVIDERS = {
+  anthropic: { label: "Claude (Anthropic)", defaultModel: "claude-sonnet-4-6" },
+  deepseek:  { label: "DeepSeek",           defaultModel: "deepseek-chat" },
+  kimi:      { label: "Kimi (Moonshot)",    defaultModel: "moonshot-v1-8k" },
+  openai:    { label: "GPT (OpenAI)",       defaultModel: "gpt-4o" },
+};
+
+const STORAGE_CONV_KEY = "ai-chat:conversations";
+const STORAGE_KEYS_KEY = "ai-chat:api-keys";
+
+function loadConversations() {
+  try {
+    const raw = localStorage.getItem(STORAGE_CONV_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+function saveConversations(list) {
+  try { localStorage.setItem(STORAGE_CONV_KEY, JSON.stringify(list)); } catch {}
+}
+function loadApiKeys() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+function saveApiKeys(keys) {
+  try { localStorage.setItem(STORAGE_KEYS_KEY, JSON.stringify(keys)); } catch {}
+}
+function createConversation() {
+  return { id: crypto.randomUUID(), title: "新对话", messages: [], createdAt: Date.now() };
+}
+
+/* 极简 Markdown 渲染：代码块 / 行内代码 / 粗体斜体 / 标题 / 列表 / 引用 / 链接 / 表格 */
+function renderMarkdown(src) {
+  if (!src) return "";
+  // 先摘出代码块，避免内部内容被其他规则误处理
+  const codeBlocks = [];
+  let text = src.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(escapeHtml(code.replace(/\n$/, "")));
+    return `\u0000CODEBLOCK${idx}\u0000`;
+  });
+
+  text = escapeHtml(text);
+
+  // 行内代码
+  text = text.replace(/`([^`]+)`/g, (_, c) => `<code>${c}</code>`);
+  // 粗体 / 斜体
+  text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>");
+  // 链接
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  // 标题
+  text = text.replace(/^### (.*)$/gm, "<h3>$1</h3>");
+  text = text.replace(/^## (.*)$/gm, "<h2>$1</h2>");
+  text = text.replace(/^# (.*)$/gm, "<h1>$1</h1>");
+  // 引用
+  text = text.replace(/^&gt; (.*)$/gm, "<blockquote>$1</blockquote>");
+
+  // 按行处理列表和段落
+  const lines = text.split("\n");
+  const out = [];
+  let listType = null; // 'ul' | 'ol'
+  let para = [];
+
+  const flushPara = () => {
+    if (para.length) { out.push(`<p>${para.join(" ")}</p>`); para = []; }
+  };
+  const closeList = () => {
+    if (listType) { out.push(`</${listType}>`); listType = null; }
+  };
+
+  for (const line of lines) {
+    const ulMatch = line.match(/^[-*] (.*)$/);
+    const olMatch = line.match(/^\d+\. (.*)$/);
+    const isHtmlBlock = /^<(h1|h2|h3|blockquote)/.test(line.trim());
+
+    if (ulMatch) {
+      flushPara();
+      if (listType !== "ul") { closeList(); out.push("<ul>"); listType = "ul"; }
+      out.push(`<li>${ulMatch[1]}</li>`);
+    } else if (olMatch) {
+      flushPara();
+      if (listType !== "ol") { closeList(); out.push("<ol>"); listType = "ol"; }
+      out.push(`<li>${olMatch[1]}</li>`);
+    } else if (isHtmlBlock) {
+      flushPara(); closeList();
+      out.push(line);
+    } else if (line.trim() === "") {
+      flushPara(); closeList();
+    } else if (line.includes("\u0000CODEBLOCK")) {
+      flushPara(); closeList();
+      out.push(line);
+    } else {
+      para.push(line);
+    }
+  }
+  flushPara(); closeList();
+
+  let html = out.join("\n");
+
+  // 还原代码块
+  html = html.replace(/\u0000CODEBLOCK(\d+)\u0000/g, (_, i) => {
+    return `<pre><code>${codeBlocks[Number(i)]}</code></pre>`;
+  });
+
+  return html;
+}
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/* ============ API 调用（浏览器直连各家） ============ */
+
+async function streamChat({ providerId, apiKey, model, messages, system, signal, onDelta }) {
+  if (providerId === "anthropic") {
+    return streamAnthropic({ apiKey, model, messages, system, signal, onDelta });
+  }
+  return streamOpenAICompatible({ providerId, apiKey, model, messages, system, signal, onDelta });
+}
+
+async function streamAnthropic({ apiKey, model, messages, system, signal, onDelta }) {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: model || PROVIDERS.anthropic.defaultModel,
+      max_tokens: 4096,
+      system: system || undefined,
+      stream: true,
+      messages: messages.map(m => ({ role: m.role, content: m.content })),
+    }),
+    signal,
+  });
+  if (!resp.ok || !resp.body) {
+    const errText = await resp.text().catch(() => "");
+    throw new Error(`Anthropic 请求失败 (${resp.status})：${extractErrMsg(errText)}`);
+  }
+  await readSSE(resp.body, (event, data) => {
+    if (event === "content_block_delta" && data?.delta?.text) {
+      onDelta(data.delta.text);
+    }
+  });
+}
+
+async function streamOpenAICompatible({ providerId, apiKey, model, messages, system, signal, onDelta }) {
+  const baseURLs = {
+    deepseek: "https://api.deepseek.com",
+    kimi: "https://api.moonshot.cn/v1",
+    openai: "https://api.openai.com/v1",
+  };
+  const resp = await fetch(`${baseURLs[providerId]}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model || PROVIDERS[providerId].defaultModel,
+      stream: true,
+      messages: [
+        ...(system ? [{ role: "system", content: system }] : []),
+        ...messages.map(m => ({ role: m.role, content: m.content })),
+      ],
+    }),
+    signal,
+  });
+  if (!resp.ok || !resp.body) {
+    const errText = await resp.text().catch(() => "");
+    throw new Error(`${PROVIDERS[providerId].label} 请求失败 (${resp.status})：${extractErrMsg(errText)}`);
+  }
+  await readSSE(resp.body, (_event, data) => {
+    const delta = data?.choices?.[0]?.delta?.content;
+    if (delta) onDelta(delta);
+  });
+}
+
+function extractErrMsg(text) {
+  try {
+    const j = JSON.parse(text);
+    return j.error?.message || j.message || text.slice(0, 200);
+  } catch { return text.slice(0, 200); }
+}
+
+/* 通用 SSE 逐行解析：兼容 Anthropic（event: xxx\ndata: {...}）
+   和 OpenAI 兼容协议（只有 data: {...}，用 [DONE] 结尾） */
+async function readSSE(body, onEvent) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const chunks = buffer.split("\n\n");
+    buffer = chunks.pop();
+    for (const chunk of chunks) {
+      let event = "message";
+      let dataStr = "";
+      for (const line of chunk.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        if (line.startsWith("data:")) dataStr = line.slice(5).trim();
+      }
+      if (!dataStr || dataStr === "[DONE]") continue;
+      try { onEvent(event, JSON.parse(dataStr)); } catch {}
+    }
+  }
+}
+
+/* ============ 组件 ============ */
+
+function Message({ role, content, error, streaming }) {
+  const isUser = role === "user";
+  return (
+    <div className={`message ${isUser ? "message-user" : "message-assistant"}`}>
+      <div className="message-role">{isUser ? "你" : "AI"}</div>
+      {isUser ? (
+        <div className="message-content">{content}</div>
+      ) : (
+        <div
+          className={`message-content ${error ? "message-error" : ""} ${streaming ? "cursor-blink" : ""}`}
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+        />
+      )}
+    </div>
+  );
+}
+
+function Sidebar({ conversations, activeId, onSelect, onNew, onDelete, onRename, collapsed, onOpenSettings }) {
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState("");
+
+  const startRename = (conv) => { setEditingId(conv.id); setEditValue(conv.title); };
+  const commitRename = () => {
+    if (editingId && editValue.trim()) onRename(editingId, editValue.trim());
+    setEditingId(null);
+  };
+
+  return (
+    <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
+      <button className="new-chat-btn" onClick={onNew}>+ 新对话</button>
+      <button className="settings-btn" onClick={onOpenSettings}>⚙ API Key 设置</button>
+      <div className="conversation-list">
+        {conversations.length === 0 && <div className="empty-hint">还没有对话，开始一个吧</div>}
+        {conversations.map(conv => (
+          <div
+            key={conv.id}
+            className={`conversation-item ${conv.id === activeId ? "active" : ""}`}
+            onClick={() => onSelect(conv.id)}
+          >
+            {editingId === conv.id ? (
+              <input
+                autoFocus className="rename-input" value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onBlur={commitRename}
+                onKeyDown={e => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") setEditingId(null); }}
+                onClick={e => e.stopPropagation()}
+              />
+            ) : (
+              <span className="conversation-title">{conv.title}</span>
+            )}
+            <div className="conversation-actions">
+              <button title="重命名" onClick={e => { e.stopPropagation(); startRename(conv); }}>✎</button>
+              <button title="删除" onClick={e => {
+                e.stopPropagation();
+                if (confirm(`删除对话「${conv.title}」？`)) onDelete(conv.id);
+              }}>✕</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function SettingsPanel({ apiKeys, onSave, onClose }) {
+  const [values, setValues] = useState(apiKeys);
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="settings-panel" onClick={e => e.stopPropagation()}>
+        <h3>API Key 设置</h3>
+        <div className="subtitle">Key 只存在你浏览器本地（localStorage），不会上传到任何服务器，只在你选中对应模型时使用。</div>
+        {Object.entries(PROVIDERS).map(([id, p]) => (
+          <div className="key-field" key={id}>
+            <label>{p.label}</label>
+            <input
+              type="password"
+              placeholder="sk-..."
+              value={values[id] || ""}
+              onChange={e => setValues(v => ({ ...v, [id]: e.target.value }))}
+            />
+          </div>
+        ))}
+        <div className="key-field">
+          <label>System Prompt（可选，对所有对话生效）</label>
+          <input
+            type="text"
+            placeholder="例如：你是一个简洁直接的助手"
+            value={values._system || ""}
+            onChange={e => setValues(v => ({ ...v, _system: e.target.value }))}
+          />
+        </div>
+        <div className="settings-actions">
+          <button className="cancel-btn" onClick={onClose}>取消</button>
+          <button className="save-btn" onClick={() => onSave(values)}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChatWindow({ conversation, providerId, onProviderChange, onSend, onStop, isStreaming, onToggleSidebar, hasKey }) {
+  const [input, setInput] = useState("");
+  const scrollRef = useRef(null);
+  const textareaRef = useRef(null);
+  const messages = conversation?.messages ?? [];
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!input.trim() || isStreaming) return;
+    onSend(input);
+    setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+  };
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(e); }
+  };
+  const handleInput = (e) => {
+    setInput(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+  };
+
+  return (
+    <main className="chat-window">
+      <header className="chat-header">
+        <button className="menu-toggle" onClick={onToggleSidebar}>☰</button>
+        <select value={providerId} onChange={e => onProviderChange(e.target.value)}>
+          {Object.entries(PROVIDERS).map(([id, p]) => <option key={id} value={id}>{p.label}</option>)}
+        </select>
+        {!hasKey && <span className="key-warning" onClick={onToggleSidebar}>⚠ 未配置 Key，点击设置</span>}
+      </header>
+
+      <div className="message-list" ref={scrollRef}>
+        {messages.length === 0 && <div className="welcome"><h2>有什么可以帮你的？</h2></div>}
+        {messages.map((msg, i) => (
+          <Message
+            key={i} role={msg.role} content={msg.content} error={msg.error}
+            streaming={isStreaming && i === messages.length - 1 && msg.role === "assistant"}
+          />
+        ))}
+      </div>
+
+      <form className="input-area" onSubmit={handleSubmit}>
+        <textarea
+          ref={textareaRef} value={input} onChange={handleInput} onKeyDown={handleKeyDown}
+          placeholder="输入消息，Enter 发送，Shift+Enter 换行" rows={1}
+        />
+        {isStreaming ? (
+          <button type="button" className="stop-btn" onClick={onStop}>停止</button>
+        ) : (
+          <button type="submit" disabled={!input.trim()}>发送</button>
+        )}
+      </form>
+    </main>
+  );
+}
+
+function App() {
+  const [conversations, setConversations] = useState(() => loadConversations());
+  const [activeId, setActiveId] = useState(() => conversations[0]?.id ?? null);
+  const [providerId, setProviderId] = useState("anthropic");
+  const [apiKeys, setApiKeys] = useState(() => loadApiKeys());
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth < 640);
+  const abortRef = useRef(null);
+
+  useEffect(() => { saveConversations(conversations); }, [conversations]);
+
+  const activeConversation = conversations.find(c => c.id === activeId);
+  const hasKey = Boolean(apiKeys[providerId]);
+
+  const handleNewConversation = useCallback(() => {
+    const conv = createConversation();
+    setConversations(prev => [conv, ...prev]);
+    setActiveId(conv.id);
+    if (window.innerWidth < 640) setSidebarCollapsed(true);
+  }, []);
+
+  const handleDeleteConversation = useCallback((id) => {
+    setConversations(prev => prev.filter(c => c.id !== id));
+    setActiveId(prev => (activeId === id ? null : activeId));
+  }, [activeId]);
+
+  const handleRenameConversation = useCallback((id, title) => {
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, title } : c));
+  }, []);
+
+  const handleSend = useCallback(async (text) => {
+    if (!text.trim() || isStreaming) return;
+    const apiKey = apiKeys[providerId];
+    if (!apiKey) { setShowSettings(true); return; }
+
+    let convId = activeId;
+    let priorMessages = activeConversation?.messages ?? [];
+    if (!convId) {
+      const conv = createConversation();
+      convId = conv.id;
+      priorMessages = [];
+      setConversations(prev => [conv, ...prev]);
+      setActiveId(convId);
+    }
+
+    const userMsg = { role: "user", content: text };
+    setConversations(prev => prev.map(c => {
+      if (c.id !== convId) return c;
+      const isFirst = c.messages.length === 0;
+      return {
+        ...c,
+        title: isFirst ? text.slice(0, 30) : c.title,
+        messages: [...c.messages, userMsg, { role: "assistant", content: "" }],
+      };
+    }));
+
+    setIsStreaming(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const fullHistory = [...priorMessages, userMsg];
+    let assembled = "";
+
+    try {
+      await streamChat({
+        providerId, apiKey, model: PROVIDERS[providerId].defaultModel,
+        messages: fullHistory, system: apiKeys._system, signal: controller.signal,
+        onDelta: (t) => {
+          assembled += t;
+          setConversations(prev => prev.map(c => {
+            if (c.id !== convId) return c;
+            const msgs = [...c.messages];
+            msgs[msgs.length - 1] = { role: "assistant", content: assembled };
+            return { ...c, messages: msgs };
+          }));
+        },
+      });
+    } catch (err) {
+      const isAbort = err.name === "AbortError";
+      setConversations(prev => prev.map(c => {
+        if (c.id !== convId) return c;
+        const msgs = [...c.messages];
+        msgs[msgs.length - 1] = {
+          role: "assistant",
+          content: assembled || (isAbort ? "（已停止）" : `⚠️ 出错了：${err.message}`),
+          error: !isAbort && !assembled,
+        };
+        return { ...c, messages: msgs };
+      }));
+    } finally {
+      setIsStreaming(false);
+      abortRef.current = null;
+    }
+  }, [activeId, providerId, isStreaming, conversations, apiKeys, activeConversation]);
+
+  const handleStop = useCallback(() => { abortRef.current?.abort(); }, []);
+
+  const handleSaveSettings = (values) => {
+    setApiKeys(values);
+    saveApiKeys(values);
+    setShowSettings(false);
+  };
+
+  return (
+    <div id="app">
+      <Sidebar
+        conversations={conversations} activeId={activeId}
+        onSelect={(id) => { setActiveId(id); if (window.innerWidth < 640) setSidebarCollapsed(true); }}
+        onNew={handleNewConversation} onDelete={handleDeleteConversation} onRename={handleRenameConversation}
+        collapsed={sidebarCollapsed} onOpenSettings={() => setShowSettings(true)}
+      />
+      <ChatWindow
+        conversation={activeConversation} providerId={providerId} onProviderChange={setProviderId}
+        onSend={handleSend} onStop={handleStop} isStreaming={isStreaming}
+        onToggleSidebar={() => setSidebarCollapsed(v => !v)} hasKey={hasKey}
+      />
+      {showSettings && (
+        <SettingsPanel apiKeys={apiKeys} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("app")).render(<App />);
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</body>
+</html>
