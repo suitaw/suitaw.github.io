@@ -209,6 +209,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
     <label>每次学习上限（张卡）</label>
     <input type="number" id="daily-limit" min="5" max="200" step="5" placeholder="20">
     <div class="hint">每次进入背卡，最多出现多少张（新词+到期复习合计）。默认 20，词多想多背可调大。</div>
+    <div class="hint" style="margin-top:10px">当前版本 <b id="build-stamp"></b> · 想确认线上有没有更新到最新，看这个日期就行</div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="ai-btn" style="flex:1" onclick="saveCfg()">保存设置</button>
       <button class="gear" onclick="clearKey()">清空 Key</button>
@@ -4075,6 +4076,10 @@ async function agentSend(){
     btn.disabled=false;btn.textContent="发送";
   }
 }
+
+// 构建标记：线上到底更新到哪一版，看设置页这一行即可，不用靠"某个按钮在不在"去猜
+const BUILD_STAMP="2026-08-06 · 智能体";
+(function(){const el=document.getElementById("build-stamp");if(el)el.textContent=BUILD_STAMP})();
 
 // 启动：若有未完成的背词会话则自动恢复（中途切走/刷新回到原处）
 restoreSession();
