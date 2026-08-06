@@ -264,8 +264,11 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
   </div>
   <div class="agent-log" id="agent-log"></div>
   <div class="agent-foot">
+    <div id="agent-img-preview" style="margin-bottom:6px"></div>
     <div class="row">
-      <textarea id="agent-input" placeholder="说人话，它直接动手改…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();agentSend()}"></textarea>
+      <textarea id="agent-input" placeholder="说人话，它直接动手改…也可以传图/文件" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();agentSend()}"></textarea>
+      <label class="gear" style="cursor:pointer;padding:10px 12px;white-space:nowrap;margin:0">📷<input type="file" accept="image/*" multiple style="display:none" onchange="onPickAgentImage(this)"></label>
+      <label class="gear" style="cursor:pointer;padding:10px 12px;white-space:nowrap;margin:0">📄<input type="file" accept=".txt,.md,text/*" style="display:none" onchange="onPickAgentText(this)"></label>
       <button class="ai-btn" style="width:auto;margin:0;padding:10px 16px" id="agent-send" onclick="agentSend()">发送</button>
     </div>
   </div>
@@ -3987,6 +3990,46 @@ ${lines}
 let agentLog=[];       // [{role:'me'|'ai'|'act', text, cls}]
 let agentHistory=[];   // 给模型的对话历史
 let agentPending=null; // 待确认的动作队列
+let agentImages=[];    // 本次要发的图 [{b64,mime}]，不进 agentHistory（避免膨胀，且只对当前这轮有效）
+const AGENT_MAX_IMAGES=6;
+function onPickAgentImage(input){
+  const files=input.files?Array.from(input.files):[];
+  if(!files.length)return;
+  if(!VISION_PROVIDERS.includes(cfg.provider)){toast("传图需切到 Kimi/Claude/ChatGPT");input.value="";return}
+  const room=AGENT_MAX_IMAGES-agentImages.length;
+  if(room<=0){toast(`最多 ${AGENT_MAX_IMAGES} 张，先移除几张再选`);input.value="";return}
+  const picked=files.slice(0,room);
+  if(files.length>room)toast(`最多 ${AGENT_MAX_IMAGES} 张，只取前 ${room} 张`);
+  Promise.all(picked.map(f=>readImageFile(f).catch(e=>{toast(f.name+"："+e.message);return null})))
+    .then(results=>{
+      results.filter(Boolean).forEach(img=>agentImages.push(img));
+      renderAgentImagePreview();
+    });
+  input.value="";
+}
+function renderAgentImagePreview(){
+  const p=document.getElementById("agent-img-preview");
+  if(!p)return;
+  if(!agentImages.length){p.innerHTML="";return}
+  const thumbs=agentImages.map((img,i)=>
+    `<span style="position:relative;display:inline-block">
+      <img src="data:${img.mime};base64,${img.b64}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">
+      <button onclick="removeAgentImage(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--paper);border:none;font-size:.6rem;line-height:1;cursor:pointer">✕</button>
+    </span>`
+  ).join("");
+  p.innerHTML=`<div style="font-size:.72rem;color:var(--green);margin-bottom:5px">✓ 已附 ${agentImages.length} 张图 <button class="gear" onclick="clearAgentImages()">全部移除</button></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${thumbs}</div>`;
+}
+function removeAgentImage(i){agentImages.splice(i,1);renderAgentImagePreview()}
+function clearAgentImages(){agentImages=[];const p=document.getElementById("agent-img-preview");if(p)p.innerHTML=""}
+function onPickAgentText(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  readTextFile(f).then(txt=>{
+    const ta=document.getElementById("agent-input");if(ta)ta.value=(ta.value?ta.value+"\n":"")+txt;
+    toast("已读入文件内容");
+  }).catch(e=>toast(e.message));
+  input.value="";
+}
 function openAgent(){
   document.getElementById("agent-mask").classList.add("open");
   document.getElementById("agent-panel").classList.add("open");
@@ -4049,14 +4092,18 @@ function agentExec(a){
 async function agentSend(){
   const inp=document.getElementById("agent-input"),btn=document.getElementById("agent-send");
   const q=(inp.value||"").trim();
-  if(!q)return;
+  const imgs=agentImages;   // 本次要发的图，发完即清
+  if(!q&&!imgs.length)return;
   if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider])){toast("先在设置里填 API Key");return}
-  inp.value="";agentPending=null;
-  agentPush("me",q);
+  if(imgs.length&&!VISION_PROVIDERS.includes(cfg.provider)){toast("传图需切到 Kimi/Claude/ChatGPT");return}
+  inp.value="";agentPending=null;clearAgentImages();
+  const shown=(imgs.length?`🖼️×${imgs.length} `:"")+q;
+  agentPush("me",shown);
   btn.disabled=true;btn.textContent="…";
-  agentHistory.push({role:"user",content:q});
+  // 带图这轮不进历史（避免 base64 把 agentHistory 撑大），只用当前这条问
+  agentHistory.push({role:"user",content:q||"看这些图片，按内容执行合适的动作或回答"});
   try{
-    const raw=await callAI(agentHistory.slice(-8),agentSysPrompt(),1200);
+    const raw=await callAI(agentHistory.slice(-8),agentSysPrompt(),1200,imgs.length?imgs:null);
     let obj=null;
     try{
       const m=raw.match(/\{[\s\S]*\}/);      // 模型偶尔会包一层代码块或加句客套话
@@ -4078,7 +4125,7 @@ async function agentSend(){
 }
 
 // 构建标记：线上到底更新到哪一版，看设置页这一行即可，不用靠"某个按钮在不在"去猜
-const BUILD_STAMP="2026-08-06 · 智能体";
+const BUILD_STAMP="2026-08-06 · 智能体传图传文件";
 (function(){const el=document.getElementById("build-stamp");if(el)el.textContent=BUILD_STAMP})();
 
 // 启动：若有未完成的背词会话则自动恢复（中途切走/刷新回到原处）
