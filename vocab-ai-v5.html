@@ -3345,20 +3345,51 @@ function compressImage(f){
     img.src=url;
   });
 }
-// 通用：读图片文件为 {b64,mime}（自动压缩，控制体积，避免多图/大图请求超时）
-function readImageFile(f){
-  return new Promise((resolve,reject)=>{
-    if(!f)return reject(new Error("没有文件"));
-    if(f.size>15*1024*1024)return reject(new Error("图片太大，请换一张（原图上限15MB，会自动压缩后再发送）"));
-    compressImage(f).then(resolve).catch(()=>{
-      // canvas压缩失败（极少数格式不支持）时兜底：退回原图直读，仍保留5MB硬限制
-      if(f.size>5*1024*1024)return reject(new Error("图片太大，请压到 5MB 内"));
-      const reader=new FileReader();
-      reader.onload=()=>resolve({b64:reader.result.split(",")[1],mime:f.type});
-      reader.onerror=()=>reject(new Error("读取失败"));
-      reader.readAsDataURL(f);
+// ArrayBuffer → base64。分块转，避免大图 apply 参数过多爆栈
+function bufToB64(buf){
+  const bytes=new Uint8Array(buf);
+  let s="";const CH=0x8000;
+  for(let i=0;i<bytes.length;i+=CH)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));
+  return btoa(s);
+}
+// 安卓相册（尤其 vivo/OPPO 选截图）给的是一次性授权的 content:// 引用，
+// 常常拿不到真实字节——文件名会退化成一串数字、没有扩展名。走「文件」入口选同一张图则正常。
+function fileReadErrMsg(e){
+  const n=(e&&e.name)||"";
+  if(n==="NotReadableError"||n==="NotFoundError")
+    return "系统没让浏览器读到这张图（"+n+"）。改用「文件」入口重选同一张图通常就好";
+  if(n==="SecurityError")return "读取被系统拦下（SecurityError），改用「文件」入口重选";
+  return "读取失败"+(n?"（"+n+"）":"");
+}
+// 只读一次字节。相册给的引用可能随时失效，读到内存后续处理全部离线做，
+// 不要像以前那样 createObjectURL 一次、FileReader 再一次，两次都撞同一个坏引用。
+async function readFileBytes(f){
+  try{return await f.arrayBuffer()}
+  catch(e1){
+    // arrayBuffer 和 FileReader 在 Blink 里是两条实现，偶有一条能读通
+    return await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result);
+      r.onerror=()=>rej(r.error||e1);
+      r.readAsArrayBuffer(f);
     });
-  });
+  }
+}
+// 通用：读图片文件为 {b64,mime}（自动压缩，控制体积，避免多图/大图请求超时）
+async function readImageFile(f){
+  if(!f)throw new Error("没有文件");
+  if(f.size>15*1024*1024)throw new Error("图片太大，请换一张（原图上限15MB，会自动压缩后再发送）");
+  let buf;
+  try{buf=await readFileBytes(f)}
+  catch(e){throw new Error(fileReadErrMsg(e))}
+  if(!buf||!buf.byteLength)throw new Error(fileReadErrMsg({name:"NotReadableError"}));
+  const blob=new Blob([buf],{type:f.type||"image/jpeg"});
+  try{return await compressImage(blob)}
+  catch(e){
+    // canvas 压缩失败（极少数格式不支持）时兜底：用已经读到手的字节，仍保留5MB硬限制
+    if(buf.byteLength>5*1024*1024)throw new Error("图片太大，请压到 5MB 内");
+    return {b64:bufToB64(buf),mime:f.type||"image/jpeg"};
+  }
 }
 // 通用：读文本文件
 function readTextFile(f){
