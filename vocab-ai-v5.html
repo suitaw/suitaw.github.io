@@ -146,6 +146,35 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .aip-chip{display:inline-block;padding:3px 9px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font-size:.72rem;margin:0 4px 4px 0;animation:aip-pop .34s cubic-bezier(.34,1.56,.64,1)}
 @keyframes aip-pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 @media(prefers-reduced-motion:reduce){.aip-fill,.aip-dot,.aip-chip{animation:none!important}.aip-bar.indet .aip-fill{width:100%}}
+/* ===== AI 智能体（能直接动手改东西，不只是聊天）===== */
+.agent-mask{display:none;position:fixed;inset:0;background:rgba(43,38,32,.45);z-index:210}
+.agent-mask.open{display:block}
+.agent-panel{display:none;position:fixed;left:8px;right:8px;top:calc(8px + env(safe-area-inset-top));bottom:calc(8px + env(safe-area-inset-bottom));z-index:211;background:var(--paper);border:1px solid var(--line);border-radius:16px;box-shadow:0 16px 48px rgba(43,38,32,.34);flex-direction:column;overflow:hidden}
+.agent-panel.open{display:flex;animation:agent-in .22s cubic-bezier(.34,1.2,.64,1)}
+@keyframes agent-in{from{transform:translateY(14px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+.agent-head{display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--line);background:var(--card)}
+.agent-head h2{font-family:Fraunces,serif;font-size:1.02rem;font-weight:700;flex:1}
+.agent-log{flex:1;overflow-y:auto;padding:12px 13px;-webkit-overflow-scrolling:touch}
+.agent-foot{padding:9px 11px;border-top:1px solid var(--line);background:var(--card)}
+.agent-foot .row{display:flex;gap:8px;align-items:flex-end}
+.agent-foot textarea{flex:1;border:1px solid var(--line);border-radius:10px;padding:9px;font-family:inherit;font-size:.85rem;background:var(--paper);color:var(--ink);resize:none;min-height:40px;max-height:96px}
+.agent-msg{margin-bottom:9px;font-size:.85rem;line-height:1.6}
+.agent-msg.me{text-align:right}
+.agent-msg.me>span{display:inline-block;background:var(--accent-soft);color:var(--accent);padding:7px 11px;border-radius:12px;max-width:88%;text-align:left}
+.agent-msg.ai>span{display:inline-block;background:var(--card);border:1px solid var(--line);padding:7px 11px;border-radius:12px;max-width:92%;white-space:pre-wrap}
+.agent-act{margin:6px 0 6px 2px;padding:7px 10px;border-radius:10px;background:var(--card-soft);border:1px solid var(--line);font-size:.75rem;color:var(--ink-dim);animation:aip-pop .3s cubic-bezier(.34,1.56,.64,1)}
+.agent-act b{color:var(--ink);font-weight:600}
+.agent-act.ok{border-color:var(--green-border);background:var(--green-soft);color:var(--green)}
+.agent-act.ok b{color:var(--green)}
+.agent-act.bad{border-color:var(--accent);color:var(--accent)}
+.agent-act.bad b{color:var(--accent)}
+.agent-confirm{margin:8px 0;padding:10px;border-radius:12px;border:1px solid var(--gold);background:var(--card)}
+.agent-confirm .t{font-size:.78rem;color:var(--gold);font-weight:600;margin-bottom:6px}
+.agent-confirm .btns{display:flex;gap:8px;margin-top:9px}
+.agent-confirm .btns button{flex:1;padding:8px;border-radius:9px;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--paper);color:var(--ink-dim)}
+.agent-confirm .btns button.go{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.agent-chip{display:inline-block;padding:4px 10px;margin:0 5px 5px 0;border-radius:13px;border:1px solid var(--line);background:var(--card);color:var(--ink-dim);font-size:.74rem;cursor:pointer}
+@media(prefers-reduced-motion:reduce){.agent-panel.open,.agent-act{animation:none!important}}
 </style>
 </head>
 <body>
@@ -155,7 +184,10 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <h1>Vocab AI</h1>
       <div class="sub" id="sub">每天背几个，慢慢攒</div>
     </div>
-    <button class="gear" onclick="togglePanel()">⚙ 设置</button>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="gear" onclick="openAgent()" title="AI 智能体">⚡ 智能体</button>
+      <button class="gear" onclick="togglePanel()">⚙ 设置</button>
+    </div>
   </div>
 
   <div class="panel" id="panel">
@@ -222,6 +254,21 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
   <button id="scroll-down" class="scroll-btn" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})" title="到底部">↓</button>
 </div>
 <div class="import-overlay" id="quickadd-overlay"></div>
+<div class="agent-mask" id="agent-mask" onclick="closeAgent()"></div>
+<div class="agent-panel" id="agent-panel">
+  <div class="agent-head">
+    <h2>⚡ AI 智能体</h2>
+    <button class="gear" onclick="clearAgent()" title="清空对话">↺</button>
+    <button class="gear" onclick="closeAgent()">✕</button>
+  </div>
+  <div class="agent-log" id="agent-log"></div>
+  <div class="agent-foot">
+    <div class="row">
+      <textarea id="agent-input" placeholder="说人话，它直接动手改…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();agentSend()}"></textarea>
+      <button class="ai-btn" style="width:auto;margin:0;padding:10px 16px" id="agent-send" onclick="agentSend()">发送</button>
+    </div>
+  </div>
+</div>
 
 <script src="words.js?v=20260805"></script>
 <script src="nce.js?v=20260628"></script>
@@ -3829,6 +3876,206 @@ bindCfg();
   }
   window.addEventListener("scroll",onScroll,{passive:true});
 })();
+// ===== AI 智能体：自然语言 → 真的去改东西 =====
+// 走"让模型吐 JSON 动作"而不是各家的 tool calling：这个 app 有 5 个服务商，
+// 各家函数调用格式都不一样，JSON 是唯一都能干的最大公约数（挑生词那套已经验证过了）。
+// safe:1 = 只读/可随手改回来的，直接执行；其余一律先弹确认再动手。
+const AGENT_ACTIONS={
+  stats:{safe:1,desc:"看学习情况：总词数、今日已学、连续天数、待复习数",args:"",
+    run:()=>{
+      const all=allWords(),now=Date.now();
+      const due=all.filter(w=>srs[w.id]&&srs[w.id].due&&srs[w.id].due<=now).length;
+      const nw=all.filter(w=>!srs[w.id]).length;
+      return `共 ${all.length} 词｜今日已学 ${todayLearnedCount()}｜连续 ${streakDays()} 天｜待复习 ${due}｜没背过 ${nw}`;
+    }},
+  cats:{safe:1,desc:"列出所有分类和各自词数",args:"",
+    run:()=>allCatsWithCount().map(c=>`${catName(c.cat)} ${c.n}`).join("｜")||"还没有分类"},
+  find:{safe:1,desc:"查某个词在不在库里",args:'q=要查的词',
+    run:a=>{
+      const q=String(a.q||"").trim().toLowerCase();
+      if(!q)return "没给要查的词";
+      const hit=allWords().filter(w=>(w.word||"").toLowerCase().includes(q)).slice(0,8);
+      if(!hit.length)return `库里没有「${a.q}」`;
+      return hit.map(w=>`${w.word}${w.phonetic||""} ${w.cn||""}（${catName(w.cat)}）`).join("\n");
+    }},
+  goTab:{safe:1,desc:"切底部标签",args:'tab=home(学习)|assistant(AI助手)|mistake(复习/库)|stats(统计)',
+    run:a=>{
+      const t={home:"学习",assistant:"AI 助手",mistake:"复习/库",stats:"统计"};
+      if(!t[a.tab])return "没有这个标签";
+      go(a.tab);return "已切到"+t[a.tab];
+    }},
+  openCat:{safe:1,desc:"打开某分类的词表",args:'cat=分类key（用 cats 查）',
+    run:a=>{openCatPreview(a.cat);return "已打开"+catName(a.cat)}},
+  study:{safe:1,desc:"开始背某个分类",args:'cat=分类key，全部用 all',
+    run:a=>{startStudy(a.cat||"all");return "开始背"+catName(a.cat||"all")}},
+  setDaily:{safe:1,desc:"改每次进入背卡的数量上限",args:'n=数字',
+    run:a=>{
+      const n=parseInt(a.n,10);
+      if(!(n>0&&n<=200))return "数字要在 1-200 之间";
+      cfg.dailyLimit=n;save(CFG_KEY,cfg);render();return "每次上限改成 "+n;
+    }},
+  setThink:{safe:1,desc:"开关 AI 思考模式",args:'on=true|false',
+    run:a=>{cfg.thinkOn=!!a.on;save(CFG_KEY,cfg);render();return "思考模式已"+(a.on?"打开":"关闭")}},
+  setProvider:{safe:1,desc:"换 AI 服务商",args:'p=deepseek|kimi|openrouter|anthropic|openai',
+    run:a=>{
+      if(!["deepseek","kimi","openrouter","anthropic","openai"].includes(a.p))return "没有这个服务商";
+      switchProvider(a.p);return "已切到 "+a.p;
+    }},
+  setModel:{safe:1,desc:"在当前服务商内换模型",args:'m=模型ID',
+    run:a=>{
+      const list=MODELS[cfg.provider]||[];
+      if(!list.some(x=>x[0]===a.m))return `当前服务商没有这个模型，可选：${list.map(x=>x[0]).join("、")}`;
+      switchModel(a.m);return "已换成 "+a.m;
+    }},
+  backup:{safe:1,desc:"导出全部数据备份文件（清浏览器数据前务必做一次）",args:"",
+    run:()=>{exportAll();return "备份文件已导出"}},
+  // --- 下面这些会写数据或花钱，一律要确认 ---
+  addWords:{desc:"加词进库（会先让你勾选确认）",args:'words=["词1","词2"]',
+    run:a=>{
+      const ws=(Array.isArray(a.words)?a.words:String(a.words||"").split(/[,，\n]+/)).map(s=>String(s).trim()).filter(Boolean);
+      if(!ws.length)return "没给要加的词";
+      openQuickAdd();
+      const ta=document.getElementById("qa-input");
+      if(ta)ta.value=ws.join(", ");
+      closeAgent();
+      quickAddGo("all");
+      return `已把 ${ws.length} 个词送去补全，确认页会让你勾选`;
+    }},
+  setCat:{desc:"把某个词换到别的分类",args:'word=词, cat=目标分类key',
+    run:a=>{
+      const w=imported.find(x=>(x.word||"").toLowerCase()===String(a.word||"").toLowerCase());
+      if(!w)return `「${a.word}」不在你自己加的词里（内置词改不了分类）`;
+      w.cat=a.cat;save(IMP_KEY,imported);render();
+      return `「${w.word}」已归到${catName(a.cat)}`;
+    }},
+  delWord:{desc:"删掉一个词（进回收站，可恢复）",args:'word=词',
+    run:a=>{
+      const w=imported.find(x=>(x.word||"").toLowerCase()===String(a.word||"").toLowerCase());
+      if(!w)return `「${a.word}」不在你自己加的词里`;
+      removeWordById(w.id);render();
+      return `「${w.word}」已删除，在回收站里可以找回`;
+    }},
+  enrichPhonetics:{desc:"批量给缺音标的词补音标（逐个调 AI，费时费钱）",args:"",
+    run:()=>{closeAgent();openEnrichPhonetic();return "已开始批量补音标"}},
+  reclassify:{desc:"让 AI 把你加的词全部重新分类（调 AI，费时费钱）",args:"",
+    run:()=>{closeAgent();aiReclassifyAll();return "已开始全库重新分类"}},
+  dedupe:{desc:"全库查重复词",args:"",
+    run:()=>{closeAgent();openDedup();return "已打开查重"}},
+};
+function agentSysPrompt(){
+  const lines=Object.entries(AGENT_ACTIONS).map(([k,v])=>
+    `- ${k}${v.args?`（${v.args}）`:""}：${v.desc}${v.safe?"":" [需用户确认]"}`).join("\n");
+  const cats=allCatsWithCount().map(c=>`${c.cat}=${catName(c.cat)}`).join("、");
+  return `你是背单词 App「Vocab AI」里的操作助手。用户说要干什么，你把它翻译成动作让 App 执行。
+
+可用动作：
+${lines}
+
+当前分类 key：${cats}
+当前设置：服务商 ${cfg.provider}、模型 ${currentModel()}、每次上限 ${cfg.dailyLimit}、思考模式${cfg.thinkOn?"开":"关"}
+
+只返回一个 JSON 对象，不要代码块标记，不要多余的话：
+{"reply":"用中文一句话说你要做什么","actions":[{"do":"动作名","参数名":"值"}]}
+
+规则：
+- 能用动作解决的就给 actions；纯粹问知识、问单词意思的，actions 给空数组，把答案写在 reply 里
+- 用户一句话要做多件事，就按顺序放多个 action
+- 拿不准用户指的哪个分类/词，别猜，actions 给空数组，在 reply 里问清楚
+- 删除、批量补音标、全库重分类这类，照常给出 action，App 会自己弹确认，你不用再问一遍`;
+}
+let agentLog=[];       // [{role:'me'|'ai'|'act', text, cls}]
+let agentHistory=[];   // 给模型的对话历史
+let agentPending=null; // 待确认的动作队列
+function openAgent(){
+  document.getElementById("agent-mask").classList.add("open");
+  document.getElementById("agent-panel").classList.add("open");
+  renderAgent();
+  const i=document.getElementById("agent-input");if(i)setTimeout(()=>i.focus(),80);
+}
+function closeAgent(){
+  document.getElementById("agent-mask").classList.remove("open");
+  document.getElementById("agent-panel").classList.remove("open");
+}
+function clearAgent(){agentLog=[];agentHistory=[];agentPending=null;renderAgent()}
+function agentPush(role,text,cls){agentLog.push({role,text,cls});renderAgent()}
+function renderAgent(){
+  const box=document.getElementById("agent-log");if(!box)return;
+  if(!agentLog.length){
+    const eg=["我还有多少词没背","把每次上限改成 30","去背职场商务","导出一份备份","加两个词：resilient, ubiquitous","把 curb 归到新闻时事"];
+    box.innerHTML=`<div style="font-size:.82rem;color:var(--ink-dim);line-height:1.7">
+      <p style="margin-bottom:6px">跟它说人话，它直接动手改这个 App——不像「AI 助手」只会聊天。</p>
+      <p style="margin-bottom:8px;font-size:.76rem">删词、批量补音标这类动作会先问你一遍再执行。</p>
+      <div>${eg.map(t=>`<span class="agent-chip" onclick="agentQuick(${JSON.stringify(t).replace(/"/g,"&quot;")})">${escapeHtml(t)}</span>`).join("")}</div>
+    </div>`;
+    return;
+  }
+  box.innerHTML=agentLog.map(m=>{
+    if(m.role==="act")return `<div class="agent-act ${m.cls||""}">${m.text}</div>`;
+    return `<div class="agent-msg ${m.role}"><span>${escapeHtml(m.text)}</span></div>`;
+  }).join("")+(agentPending?agentConfirmHtml():"");
+  box.scrollTop=box.scrollHeight;
+}
+function agentConfirmHtml(){
+  const items=agentPending.map(a=>{
+    const d=AGENT_ACTIONS[a.do];
+    return `<div style="font-size:.78rem;margin-bottom:3px">· <b>${escapeHtml(d?d.desc.split("（")[0]:a.do)}</b>${
+      Object.keys(a).filter(k=>k!=="do").map(k=>` ${k}=${escapeHtml(JSON.stringify(a[k]))}`).join("")}</div>`;
+  }).join("");
+  return `<div class="agent-confirm">
+    <div class="t">⚠ 这些动作会改数据或调用 AI，确认执行？</div>
+    ${items}
+    <div class="btns"><button onclick="agentCancel()">取消</button><button class="go" onclick="agentRunPending()">执行</button></div>
+  </div>`;
+}
+function agentQuick(t){const i=document.getElementById("agent-input");if(i){i.value=t;agentSend()}}
+function agentCancel(){agentPending=null;agentPush("act","已取消，什么都没动","");}
+function agentRunPending(){
+  const list=agentPending||[];agentPending=null;
+  list.forEach(a=>agentExec(a));
+  renderAgent();
+}
+// 执行单个动作。动作自己返回一句结果文字；抛错就标红，不让它把整串带崩
+function agentExec(a){
+  const def=AGENT_ACTIONS[a.do];
+  if(!def){agentLog.push({role:"act",text:`没有「${escapeHtml(a.do)}」这个动作`,cls:"bad"});return}
+  try{
+    const r=def.run(a);
+    agentLog.push({role:"act",text:`<b>${escapeHtml(a.do)}</b> · ${escapeHtml(String(r))}`,cls:"ok"});
+  }catch(e){
+    agentLog.push({role:"act",text:`<b>${escapeHtml(a.do)}</b> 失败：${escapeHtml(e.message||"未知错误")}`,cls:"bad"});
+  }
+}
+async function agentSend(){
+  const inp=document.getElementById("agent-input"),btn=document.getElementById("agent-send");
+  const q=(inp.value||"").trim();
+  if(!q)return;
+  if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider])){toast("先在设置里填 API Key");return}
+  inp.value="";agentPending=null;
+  agentPush("me",q);
+  btn.disabled=true;btn.textContent="…";
+  agentHistory.push({role:"user",content:q});
+  try{
+    const raw=await callAI(agentHistory.slice(-8),agentSysPrompt(),1200);
+    let obj=null;
+    try{
+      const m=raw.match(/\{[\s\S]*\}/);      // 模型偶尔会包一层代码块或加句客套话
+      obj=JSON.parse(m?m[0]:raw);
+    }catch(e){}
+    if(!obj){agentPush("ai",stripMd(raw));agentHistory.push({role:"assistant",content:raw});return}
+    agentHistory.push({role:"assistant",content:JSON.stringify(obj)});
+    if(obj.reply)agentPush("ai",obj.reply);
+    const acts=Array.isArray(obj.actions)?obj.actions:[];
+    const risky=acts.filter(a=>AGENT_ACTIONS[a.do]&&!AGENT_ACTIONS[a.do].safe);
+    acts.filter(a=>!AGENT_ACTIONS[a.do]||AGENT_ACTIONS[a.do].safe).forEach(a=>agentExec(a));
+    agentPending=risky.length?risky:null;   // 危险动作攒起来一起确认
+    renderAgent();
+  }catch(e){
+    agentPush("act","调用失败："+(e.message||"检查 Key"),"bad");
+  }finally{
+    btn.disabled=false;btn.textContent="发送";
+  }
+}
+
 // 启动：若有未完成的背词会话则自动恢复（中途切走/刷新回到原处）
 restoreSession();
 render();
