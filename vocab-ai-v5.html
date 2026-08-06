@@ -209,6 +209,9 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
     <label>每次学习上限（张卡）</label>
     <input type="number" id="daily-limit" min="5" max="200" step="5" placeholder="20">
     <div class="hint">每次进入背卡，最多出现多少张（新词+到期复习合计）。默认 20，词多想多背可调大。</div>
+    <label>目标保留率 <b id="ret-val" style="color:var(--accent)">90%</b></label>
+    <input type="range" id="retention" min="0.8" max="0.95" step="0.01" value="0.9" style="padding:0;border:none;background:none">
+    <div class="hint">希望复习时还记得住的比例，FSRS 按它反推间隔。调高 → 间隔变短、复习更勤、记得更牢但更费时；调低 → 间隔拉长、省时间但忘得多。默认 90%，拿不准别动。</div>
     <div class="hint" style="margin-top:10px">当前版本 <b id="build-stamp"></b> · 想确认线上有没有更新到最新，看这个日期就行</div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="ai-btn" style="flex:1" onclick="saveCfg()">保存设置</button>
@@ -520,6 +523,12 @@ function bindCfg(){
   const mRow=document.getElementById("model-row"),mSel=document.getElementById("model");
   p.value=cfg.provider;k.value=cfg.apikey;
   const dl=document.getElementById("daily-limit");if(dl)dl.value=cfg.dailyLimit||20;
+  const rt=document.getElementById("retention"),rv=document.getElementById("ret-val");
+  if(rt){
+    rt.value=desiredRetention();
+    const showRet=()=>{if(rv)rv.textContent=Math.round(rt.value*100)+"%"};
+    showRet();rt.oninput=showRet;   // 拖动时实时回显，存盘交给"保存设置"
+  }
   const syncModelRow=()=>{
     const prov=cfg.provider;
     if(!MODELS[prov]){mRow.style.display="none";return}
@@ -545,6 +554,8 @@ function saveCfg(){
   cfg.keys[cfg.provider]=cfg.apikey;  // 存进当前 provider 的槽
   const dl=parseInt((document.getElementById("daily-limit")||{}).value,10);
   if(!isNaN(dl)&&dl>=5)cfg.dailyLimit=Math.min(200,dl);
+  const rt=parseFloat((document.getElementById("retention")||{}).value);
+  if(!isNaN(rt)&&rt>=0.8&&rt<=0.95)cfg.retention=rt;
   save(CFG_KEY,cfg);
   document.getElementById("panel").classList.remove("open");
   toast("已保存");
@@ -556,29 +567,91 @@ function clearKey(){
   toast("Key 已清空（仅当前服务商）");
 }
 
-// ===== SM-2（带提前复习保护 / 遗忘惩罚 / 到期抖动）=====
+// ===== FSRS-6 调度内核 =====
+// 参数与公式照抄 open-spaced-repetition/py-fsrs 的 fsrs/scheduler.py，数值未自行改动。
+// 记忆模型三要素：D 难度(1~10)、S 稳定性(记忆强度，单位"天")、R 可提取性(此刻还记得的概率)。
+// S 的定义：距上次复习 S 天后，R 恰好衰减到 90%。
+// 只用长期公式，不实现 Anki 那套 learning/relearning 分步队列——本应用的队列是"忘了就塞回队尾"，没有分步概念。
+const FSRS_W=[0.212,1.2931,2.3065,8.2956,6.4133,0.8334,3.0194,0.001,1.8722,0.1666,
+              0.796,1.4835,0.0614,0.2629,1.6483,0.6014,1.8729,0.5425,0.0912,0.0658,0.1542];
+const FSRS_DECAY=-FSRS_W[20];
+const FSRS_FACTOR=Math.pow(0.9,1/FSRS_DECAY)-1;
+const FSRS_MAX_IV=365;                      // 背单词场景压到 1 年，原始上限 100 年没意义
+const fsrsClampD=d=>Math.min(Math.max(d,1),10);
+const fsrsClampS=s=>Math.max(s,0.001);
+// 评分档位映射：本应用 0/3/4/5（忘了/难/记得/秒答）→ FSRS 1/2/3/4
+function fsrsG(q){return q===0?1:q===3?2:q===4?3:4}
+// 可提取性：距上次复习 elapsed 天后还记得的概率
+function fsrsR(elapsed,S){return Math.pow(1+FSRS_FACTOR*elapsed/S,FSRS_DECAY)}
+function fsrsS0(g){return fsrsClampS(FSRS_W[g-1])}
+function fsrsD0(g,clamp){const d=FSRS_W[4]-Math.exp(FSRS_W[5]*(g-1))+1;return clamp===false?d:fsrsClampD(d)}
+function fsrsNextD(D,g){
+  const damped=D+(10-D)*(-(FSRS_W[6]*(g-3)))/9;                    // 线性阻尼：越接近满难度 10，每次涨得越少
+  return fsrsClampD(FSRS_W[7]*fsrsD0(4,false)+(1-FSRS_W[7])*damped); // 向"秒答难度"缓慢均值回归
+}
+// 答对后的新稳定性。R 越高（复习得越早）增益越小——同一天重刷 R=1，增益恰好为 0，
+// 这正好天然替代了原来手写的"提前复习保护"补丁，不用再特判。
+function fsrsRecallS(D,S,R,g){
+  const hard=g===2?FSRS_W[15]:1,easy=g===4?FSRS_W[16]:1;
+  return fsrsClampS(S*(1+Math.exp(FSRS_W[8])*(11-D)*Math.pow(S,-FSRS_W[9])
+    *(Math.exp((1-R)*FSRS_W[10])-1)*hard*easy));
+}
+// 忘记后的新稳定性：取长期/短期两式的较小值，保证不会比忘之前还高
+function fsrsForgetS(D,S,R){
+  const lt=FSRS_W[11]*Math.pow(D,-FSRS_W[12])*(Math.pow(S+1,FSRS_W[13])-1)*Math.exp((1-R)*FSRS_W[14]);
+  const st=S/Math.exp(FSRS_W[17]*FSRS_W[18]);
+  return fsrsClampS(Math.min(lt,st));
+}
+// 由稳定性反推间隔。恒等式：目标保留率取 0.9 时，间隔恰好等于 S
+function fsrsInterval(S,dr){
+  const iv=(S/FSRS_FACTOR)*(Math.pow(dr||0.9,1/FSRS_DECAY)-1);
+  return Math.min(FSRS_MAX_IV,Math.max(1,Math.round(iv)));
+}
+// 目标保留率：希望复习时还能记住的比例。调高→间隔短复习勤，调低→间隔长省时间
+function desiredRetention(){
+  const r=cfg.retention;
+  return (typeof r==="number"&&r>=0.8&&r<=0.95)?r:0.9;
+}
+// 某张卡此刻的保留率；没学过或数据不全返回 null
+function cardRetention(id,now){
+  const c=srs[id];
+  if(!c||typeof c.s!=="number"||!c.lr)return null;
+  const elapsed=Math.max(0,Math.floor(((now||Date.now())-c.lr)/86400000));
+  return fsrsR(elapsed,c.s);
+}
+// SM-2 → FSRS 一次性切换：两套算法的进度字段互不通用，按用户选择整体重置。
+// 旧进度不直接删，转存到备份键留底，真后悔了还能捞回来。
+const FSRS_FLAG="vocab_v5_fsrs_reset";
+(function migrateToFsrs(){
+  if(localStorage.getItem(FSRS_FLAG))return;
+  try{
+    const had=Object.keys(srs).length;
+    if(had)localStorage.setItem("vocab_v5_srs_sm2backup",JSON.stringify(srs));
+    srs={};save(SRS_KEY,srs);
+    localStorage.setItem(FSRS_FLAG,String(Date.now()));
+    if(had)setTimeout(()=>{if(typeof toast==="function")toast("已升级为 FSRS 算法，复习进度重新开始",3600)},900);
+  }catch(e){}
+})();
 function grade(id,q){ // q: 0=again,3=hard,4=good,5=easy
   const now=Date.now();
-  let c=srs[id]||{ef:2.5,interval:0,reps:0};
-  // 提前复习保护：远没到期就又背到（复习本反复刷、从词表点进来重背）时，
-  // 间隔和熟练度原地不动，只把到期时间从今天重新起算。
-  // 否则一天把复习本刷三遍，间隔会 1→6→15 天地虚增——词还没经过时间检验就被排到半个月后。
-  // 到期前 12 小时以内照常按正常复习计。
-  const early=q>=3&&c.due&&(c.due-now)>12*3600000;
-  if(q<3){
-    c.reps=0;c.interval=1;
-    c.ef=Math.max(1.3,c.ef-0.2);            // 忘一次降一点系数：反复忘的词以后间隔涨得慢
-    c.lapses=(c.lapses||0)+1;               // 累计遗忘次数，复习本里标出"惯犯"
-  }else if(!early){
-    c.reps++;
-    if(c.reps===1)c.interval=(q===5?3:1);   // 新词直接秒答：从 3 天起步，省掉一次无谓的次日复习
-    else if(c.reps===2)c.interval=6;
-    else c.interval=Math.round(c.interval*c.ef);
-    c.ef=Math.max(1.3,c.ef+(0.1-(5-q)*(0.08+(5-q)*0.02)));
+  const g=fsrsG(q);
+  let c=srs[id]||{};
+  if(typeof c.s==="number"&&typeof c.d==="number"&&c.lr){
+    const elapsed=Math.max(0,Math.floor((now-c.lr)/86400000));
+    const R=fsrsR(elapsed,c.s);
+    c.s=(g===1)?fsrsForgetS(c.d,c.s,R):fsrsRecallS(c.d,c.s,R,g);
+    c.d=fsrsNextD(c.d,g);
+  }else{                                    // 新卡：首次评分决定起始 S/D
+    c.s=fsrsS0(g);c.d=fsrsD0(g);
   }
-  // 到期日加 ±10% 抖动：同一天学的一批词错开到期，避免复习量在某几天扎堆
+  if(g===1){c.reps=0;c.lapses=(c.lapses||0)+1}  // lapses 累计遗忘次数，复习本里标"惯犯"
+  else c.reps=(c.reps||0)+1;
+  c.interval=fsrsInterval(c.s,desiredRetention());
+  // 到期日加 ±5% 抖动：同一天学的一批词错开到期，避免复习量在某几天扎堆。
+  // interval 存不抖的原值，只有 due 抖，这样"稳固"判定不受抖动影响。
   let iv=c.interval;
-  if(iv>=3)iv=Math.max(1,Math.round(iv*(0.9+Math.random()*0.2)));
+  if(iv>=3)iv=Math.min(FSRS_MAX_IV,Math.max(1,Math.round(iv*(0.95+Math.random()*0.1))));
+  c.lr=now;
   c.due=now+iv*86400000;
   srs[id]=c;save(SRS_KEY,srs);
   logStudy(id,q);  // 记录今日学习
@@ -589,10 +662,17 @@ let daily=load(DAILY_KEY,{});
 // 每日"记住"的去重词 {YYYY-MM-DD:{wordId:1}}（仅记得/秒答计入，用于"今日已背"）
 const LEARNED_KEY="vocab_v5_daily_learned";
 let dailyLearned=load(LEARNED_KEY,{});
-function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+// 每日答题对错 {YYYY-MM-DD:{ok:n,total:n}}。"对"= 难/记得/秒答，"错"= 忘了，跟 FSRS 的成败判定一致。
+// 用来验证"目标保留率"设得准不准：设 90%，实测正确率就该在 90% 上下。
+const ACC_KEY="vocab_v5_daily_acc";
+let dailyAcc=load(ACC_KEY,{});
+function dayKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function todayStr(){return dayKey(new Date())}
 function logStudy(id,q){
   const t=todayStr();
   daily[t]=(daily[t]||0)+1;save(DAILY_KEY,daily);          // 练习量（保持原样：打卡/图表用）
+  const a=dailyAcc[t]||(dailyAcc[t]={ok:0,total:0});
+  a.total++;if(q>=3)a.ok++;save(ACC_KEY,dailyAcc);
   if(q>=4&&id){                                            // 记得/秒答=今天记住了这个词（去重）
     if(!dailyLearned[t])dailyLearned[t]={};
     dailyLearned[t][id]=1;save(LEARNED_KEY,dailyLearned);
@@ -2876,6 +2956,71 @@ function speakId(id){
 }
 
 // ===== 统计 =====
+// ===== 统计页数据 =====
+// 活跃卡片 id 集合：srs 里可能残留已删除的词，统计时要滤掉
+function liveCardIds(){
+  const s=new Set(allWords().map(w=>w.id));
+  phrases.forEach(p=>{if(p.inReview)s.add(p.id)});
+  return s;
+}
+// 未来 N 天每天到期多少张。逾期没复习的并进"今天"这一格
+function dueForecast(days){
+  const live=liveCardIds();
+  const t0=new Date();t0.setHours(0,0,0,0);
+  const base=t0.getTime();
+  const buckets=new Array(days).fill(0);
+  Object.keys(srs).forEach(id=>{
+    const c=srs[id];
+    if(!c||!c.due||!live.has(id))return;
+    let i=Math.floor((c.due-base)/86400000);
+    if(i<0)i=0;
+    if(i<days)buckets[i]++;
+  });
+  return buckets;
+}
+// 全库当前平均保留率（FSRS 的 R）：此刻随机抽一张学过的卡，能想起来的概率
+function avgRetention(){
+  const live=liveCardIds(),now=Date.now();
+  let sum=0,n=0;
+  Object.keys(srs).forEach(id=>{
+    if(!live.has(id))return;
+    const r=cardRetention(id,now);
+    if(r===null)return;
+    sum+=r;n++;
+  });
+  return n?{avg:sum/n,n:n}:null;
+}
+// 近 N 天正确率。"对"= 难/记得/秒答，跟 FSRS 的成败判定一致
+function accuracyRecent(days){
+  let ok=0,total=0;const base=new Date();
+  for(let i=0;i<days;i++){
+    const d=new Date();d.setDate(base.getDate()-i);
+    const a=dailyAcc[dayKey(d)];
+    if(a){ok+=a.ok||0;total+=a.total||0}
+  }
+  return {ok:ok,total:total,rate:total?ok/total:null};
+}
+// KPI 数字块。数字用 Fraunces：这是全应用的品牌字面，统计页单独换字体反而割裂
+function statTile(value,label,color){
+  return `<div style="flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 6px;text-align:center">
+    <div style="font-family:Fraunces,serif;font-size:1.55rem;font-weight:700;line-height:1.15;color:${color||"var(--accent)"}">${value}</div>
+    <div style="font-size:.67rem;color:var(--ink-dim);margin-top:3px">${label}</div>
+  </div>`;
+}
+// 单序列柱状图。手机没有 hover，tooltip 不可靠，所以数值直接标在柱顶——
+// 这是唯一的取值通道，因此柱子控制在 7 根以内，标签不会挤成一团
+function barChart(items,color){
+  const max=Math.max(1,...items.map(x=>x.n));
+  return `<div style="display:flex;align-items:flex-end;justify-content:space-between;height:88px;gap:6px">
+    ${items.map(x=>`<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+      <div style="font-size:.62rem;color:var(--ink-dim);line-height:1;margin-bottom:3px">${x.n||""}</div>
+      <div style="width:100%;height:${Math.round(x.n/max*54)}px;min-height:${x.n?"4px":"2px"};background:${color};border-radius:4px 4px 0 0;opacity:${x.n?"1":".18"}"></div>
+      <div style="font-size:.62rem;color:var(--ink-dim);line-height:1;margin-top:5px;white-space:nowrap">${escapeHtml(x.label)}</div>
+    </div>`).join("")}
+  </div>`;
+}
+const CARD_BOX="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px";
+const CARD_TITLE="font-size:.8rem;font-weight:600;margin-bottom:12px";
 function renderStats(v){
   const all=allWords();
   const total=all.length;
@@ -2883,15 +3028,24 @@ function renderStats(v){
   const mastered=all.filter(w=>srs[w.id]&&srs[w.id].interval>=6).length;
   const streak=streakDays();
   const todayCount=todayLearnedCount();
-  // 最近7天数据
+  const ret=avgRetention();
+  const acc=accuracyRecent(7);
+  const target=Math.round(desiredRetention()*100);
+  // 最近7天练习量
   const last7=[];
   const dd=new Date();
   for(let i=6;i>=0;i--){
     const d=new Date();d.setDate(dd.getDate()-i);
-    const s=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-    last7.push({day:["日","一","二","三","四","五","六"][d.getDay()],n:daily[s]||0});
+    last7.push({label:["日","一","二","三","四","五","六"][d.getDay()],n:daily[dayKey(d)]||0});
   }
-  const maxN=Math.max(1,...last7.map(x=>x.n));
+  // 未来到期量：图只画 7 天（标签不挤），另给 30 天合计
+  const fc=dueForecast(30);
+  const next7=fc.slice(0,7).map((n,i)=>{
+    const d=new Date();d.setDate(dd.getDate()+i);
+    return {label:i===0?"今天":["日","一","二","三","四","五","六"][d.getDay()],n:n};
+  });
+  const fc30=fc.reduce((a,b)=>a+b,0);
+  const peak=Math.max(...next7.map(x=>x.n));
   // 各分类掌握度：所有有词的分类都显示（文章分类除外），按词数取前 10，不再写死 4 个
   const catBars=allCatsWithCount().filter(c=>!c.isArt&&c.n>0).slice(0,10).map(c=>{
     const ws=all.filter(w=>w.cat===c.cat);if(!ws.length)return "";
@@ -2903,35 +3057,42 @@ function renderStats(v){
     </div>`;
   }).join("");
 
+  const limit=cfg.dailyLimit||20;
+  const pctText=r=>r===null?"—":Math.round(r*100)+"%";
   v.innerHTML=`<div style="padding-top:8px">
-    <div style="display:flex;gap:10px;margin-bottom:16px">
-      <div style="flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center">
-        <div style="font-family:Fraunces,serif;font-size:1.8rem;font-weight:700;color:var(--accent)">${streak}</div>
-        <div style="font-size:.72rem;color:var(--ink-dim)">连续打卡(天)</div>
-      </div>
-      <div style="flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center">
-        <div style="font-family:Fraunces,serif;font-size:1.8rem;font-weight:700;color:var(--accent)">${todayCount}</div>
-        <div style="font-size:.72rem;color:var(--ink-dim)">今日记住</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      ${statTile(streak,"连续打卡(天)")}
+      ${statTile(todayCount,"今日记住")}
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      ${statTile(ret?pctText(ret.avg):"—","此刻平均记得","var(--green)")}
+      ${statTile(pctText(acc.rate),"近 7 天正确率","var(--green)")}
+    </div>
+    <div style="font-size:.68rem;color:var(--ink-dim);margin:-8px 2px 14px;line-height:1.55">
+      ${ret?`按 FSRS 估算，此刻从 ${ret.n} 张学过的卡里随便抽一张，你能想起来的概率是 ${pctText(ret.avg)}。`:"还没有学过的卡，背几个词就有数据了。"}
+      ${acc.total?`目标保留率设的是 ${target}%，实测正确率 ${pctText(acc.rate)}（${acc.ok}/${acc.total}）——两者该在同一水平，差太多就去设置里调。`:"正确率从今天开始累计。"}
+    </div>
+
+    <div style="${CARD_BOX}">
+      <div style="${CARD_TITLE}">最近 7 天练习量</div>
+      ${barChart(last7,"var(--accent)")}
+    </div>
+
+    <div style="${CARD_BOX}">
+      <div style="${CARD_TITLE}">未来 7 天要复习</div>
+      ${barChart(next7,"var(--accent)")}
+      <div style="font-size:.68rem;color:var(--ink-dim);margin-top:10px;line-height:1.55">
+        “今天”这格含逾期没复习的。未来 30 天共 ${fc30} 张到期。
+        ${peak>limit?`<br><span style="color:var(--gold)">⚠ 最高一天 ${peak} 张，超过你设的每次上限 ${limit} 张，那天背不完会顺延堆积。</span>`:""}
       </div>
     </div>
 
-    <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px">
-      <div style="font-size:.8rem;font-weight:600;margin-bottom:12px">最近 7 天</div>
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;height:80px;gap:6px">
-        ${last7.map(x=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
-          <div style="font-size:.62rem;color:var(--ink-dim);margin-bottom:2px">${x.n||""}</div>
-          <div style="width:100%;height:${Math.round(x.n/maxN*60)}px;min-height:${x.n?'4px':'0'};background:var(--accent);border-radius:3px 3px 0 0;opacity:${x.n?'1':'.15'}"></div>
-          <div style="font-size:.64rem;color:var(--ink-dim);margin-top:4px">${x.day}</div>
-        </div>`).join("")}
-      </div>
-    </div>
-
-    <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px">
-      <div style="font-size:.8rem;font-weight:600;margin-bottom:12px">总进度：${seen}/${total} 已开始，${mastered} 已稳固</div>
+    <div style="${CARD_BOX}">
+      <div style="${CARD_TITLE}">总进度：${seen}/${total} 已开始，${mastered} 已稳固</div>
       ${catBars}
     </div>
 
-    <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px">
+    <div style="${CARD_BOX}">
       <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleLearned()">
         <div style="font-size:.8rem;font-weight:600">已学过的词（${seen}）</div>
         <span id="learned-arrow" style="font-size:.8rem;color:var(--ink-dim)">展开 ▸</span>
@@ -3490,7 +3651,7 @@ function cleanupLegacyData(){
   setTimeout(()=>location.reload(),900);
 }
 // 完整备份：导出全部 localStorage 数据（含复习进度/文章/语法/错题/统计等）
-const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride","vocab_v5_lesson_explain","vocab_v5_trash","vocab_v5_hidden","vocab_v5_nce_grammar_due"];
+const ALL_BACKUP_KEYS=["gh_vocab_srs_v1","vocab_v5_cfg","vocab_v5_imported","vocab_v5_phrases","vocab_v5_grammar","vocab_v5_daily","vocab_v5_daily_learned","vocab_v5_daily_acc","vocab_v5_fsrs_reset","vocab_v5_dissect","vocab_v5_tagcache","vocab_v5_articles","vocab_v5_art_progress","vocab_v5_mistakes","vocab_v5_chat","vocab_v5_catoverride","vocab_v5_lesson_explain","vocab_v5_trash","vocab_v5_hidden","vocab_v5_nce_grammar_due"];
 function exportAll(){
   const dump={__vocab_backup__:true,version:5,date:new Date().toISOString(),data:{}};
   ALL_BACKUP_KEYS.forEach(k=>{
