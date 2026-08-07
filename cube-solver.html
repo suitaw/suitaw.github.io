@@ -1184,6 +1184,9 @@ const prCv = $('prCv');
 // G 是「整个魔方相对中心块参照系转了多少」。转中间层会挪动中心块，
 // 而状态模型是以中心块为参照的、表示不了；于是把中间层转动拆成
 // 「两个外层反向转 + 整体转回来」，后者只累积到 G，不进状态模型。
+// 俯角上限收在 ±66°。再往上抬，水平拖动绕的那根竖直轴就快正对屏幕了，
+// 绕它转必然表现为画面自转 —— 这是几何决定的，补偿不掉，只能不进那个区间
+const PR_PITCH_MAX = 1.15;
 const PR = {ctx:prCv.getContext('2d'), W:0, H:0, yaw:-0.62, pitch:0.42,
             G:[[1,0,0],[0,1,0],[0,0,1]],
             get cam(){ return mmul(mmul(rotM(0,this.pitch), rotM(1,this.yaw)), this.G); },
@@ -1257,7 +1260,9 @@ function prSpin(turn, quarter, record, tag){
         done.push(moveFor(axis, 1, -rotSign));
         done.push(moveFor(axis, -1, -rotSign));
       }
-      PR.G = mmul(rotM(axis, total), PR.G);
+      // 右乘：渲染是 cam·G·p，要让所有模型点再经过一次旋转，得叠在 G 右边。
+      // 左乘等于在世界空间转，只有 G 还是单位阵时才碰巧一样。
+      PR.G = mmul(PR.G, rotM(axis, total));
     }
     for(const m of done){ bakeGeo(m, PR.cubies); prState = applyMove(prState, m); }
     if(record){ prHist.push({turn, quarter}); prCount++; }
@@ -1379,7 +1384,7 @@ prStage.addEventListener('pointermove', e => {
     }
   }else{
     PR.yaw += (x-prDrag.x)*0.008;
-    PR.pitch = Math.max(-1.4, Math.min(1.4, PR.pitch + (y-prDrag.y)*0.008));
+    PR.pitch = Math.max(-PR_PITCH_MAX, Math.min(PR_PITCH_MAX, PR.pitch + (y-prDrag.y)*0.008));
     if(!prBusy) prRender();
   }
   prDrag.x = x; prDrag.y = y;
