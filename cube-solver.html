@@ -1,0 +1,739 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>魔方复原助手</title>
+<style>
+  :root{
+    --bg:#0d1015; --panel:#161b23; --line:#252c38; --line2:#333d4d;
+    --txt:#e8ecf2; --dim:#8a94a6; --acc:#4c8dff; --ok:#31a24c; --err:#ff5d5d;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);
+    font:15px/1.5 -apple-system,"PingFang SC","Noto Sans CJK SC",system-ui,sans-serif}
+  body{padding-bottom:env(safe-area-inset-bottom)}
+  h2{font-size:15px;margin:0 0 10px;font-weight:600}
+  .muted{color:var(--dim);font-size:13px}
+  button{font:inherit;font-size:14px;color:var(--txt);background:#1e2530;cursor:pointer;
+    border:1px solid var(--line2);border-radius:10px;padding:10px 14px}
+  button:active{background:#28313f}
+  button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  button:disabled{opacity:.35;cursor:default}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .row>button{flex:1 1 0;min-width:88px}
+
+  /* ---- 顶部页签 ---- */
+  #tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:10}
+  #tabs button{flex:1;border:0;border-radius:0;background:transparent;color:var(--dim);
+    padding:14px 0;border-bottom:2px solid transparent}
+  #tabs button.on{color:var(--txt);border-bottom-color:var(--acc);font-weight:600}
+  .page{display:none;padding:16px}
+  .page.on{display:block}
+
+  /* ---- 展开图 ---- */
+  #net{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+    max-width:340px;margin:0 auto 14px;
+    grid-template-areas:". u . ." "l f r b" ". d . ."}
+  .fwrap{display:flex;flex-direction:column;gap:3px}
+  .fwrap>span{font-size:10px;color:var(--dim);text-align:center;line-height:1.2}
+  .face{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
+    background:#000;padding:2px;border-radius:4px;aspect-ratio:1}
+  .cell{aspect-ratio:1;border-radius:2px;cursor:pointer;position:relative}
+  .cell.center{cursor:default}
+  .cell.center::after{content:'';position:absolute;inset:32%;border-radius:50%;
+    background:rgba(0,0,0,.35)}
+  .cell.cursor{box-shadow:0 0 0 2px var(--txt);z-index:2}
+  .cell.cursor::before{content:'';position:absolute;inset:0;border-radius:2px;
+    background:rgba(76,141,255,.35);animation:pulse 1.1s ease-in-out infinite}
+  @keyframes pulse{50%{background:rgba(76,141,255,.05)}}
+
+  /* ---- 调色板 ---- */
+  #pal{display:flex;gap:8px;justify-content:center;margin:14px 0}
+  #pal .sw{width:42px;height:42px;border-radius:10px;border:3px solid transparent;
+    cursor:pointer;position:relative}
+  #pal .sw.on{border-color:var(--txt)}
+  #pal .sw b{position:absolute;bottom:-18px;left:0;right:0;text-align:center;
+    font-size:11px;color:var(--dim);font-weight:400}
+  #palwrap{padding-bottom:20px}
+  #tally{text-align:center;font-size:12px;color:var(--dim);margin:10px 0 14px;
+    font-family:ui-monospace,Menlo,monospace}
+  #msg{margin:12px 0;padding:11px 13px;border-radius:10px;font-size:13.5px;display:none}
+  #msg.err{display:block;background:rgba(255,93,93,.12);border:1px solid rgba(255,93,93,.4);color:#ffb0b0}
+  #msg.ok{display:block;background:rgba(49,162,76,.12);border:1px solid rgba(49,162,76,.4);color:#8fe0a5}
+
+  /* ---- 3D ---- */
+  #stage{position:relative;width:100%;aspect-ratio:1/.92;max-height:46vh;
+    background:#0b0e13;border-radius:14px;overflow:hidden;touch-action:none;
+    border:1px solid var(--line)}
+  #cv{display:block;width:100%;height:100%}
+  #hint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#5b6577}
+
+  /* ---- 步骤 ---- */
+  #now{text-align:center;margin:14px 0 4px}
+  #nowMove{font-size:44px;font-weight:700;font-family:ui-monospace,Menlo,monospace;
+    letter-spacing:.04em;line-height:1.1}
+  #nowDesc{font-size:14px;color:var(--dim);margin-top:4px}
+  #prog{display:flex;justify-content:space-between;font-size:12.5px;color:var(--dim);
+    margin:12px 2px 8px}
+  #bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-bottom:14px}
+  #bar i{display:block;height:100%;background:var(--acc);transition:width .18s}
+  #phases{display:flex;gap:4px;margin:14px 0 6px}
+  #phases div{flex:1;height:22px;border-radius:5px;background:#1b212b;font-size:10px;
+    display:flex;align-items:center;justify-content:center;color:var(--dim);cursor:pointer;
+    overflow:hidden;white-space:nowrap}
+  #phases div.done{background:#1e3a26;color:#8fe0a5}
+  #phases div.cur{background:var(--acc);color:#fff;font-weight:600}
+  #seq{font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:2.1;
+    color:var(--dim);word-break:break-all;max-height:110px;overflow-y:auto;
+    background:#12161d;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  #seq span{padding:2px 4px;border-radius:4px;cursor:pointer}
+  #seq span.past{color:#3d4757}
+  #seq span.cur{background:var(--acc);color:#fff;font-weight:700}
+  .legend{font-size:12px;color:var(--dim);margin-top:14px;line-height:1.8}
+  .legend b{color:var(--txt);font-weight:600}
+</style>
+
+<div id="tabs">
+  <button id="tabIn" class="on">① 输入你的魔方</button>
+  <button id="tabGo">② 跟着复原</button>
+</div>
+
+<!-- ============ 输入页 ============ -->
+<div id="pIn" class="page on">
+  <h2>按 <b style="color:#f2f4f7">白色朝下</b>、<b style="color:#31a24c">绿色朝前</b> 拿好魔方</h2>
+  <p class="muted" style="margin:0 0 14px">
+    这样拿的时候，上面是黄、右面是橙、左面是红、后面是蓝。中心块不用填（它们固定了每个面）。
+    <b style="color:var(--txt)">照着闪烁的格子，点下面对应的颜色就行</b>，会自动跳到下一格；
+    点某个格子可以跳回去改。
+  </p>
+
+  <div id="net"></div>
+  <div id="palwrap"><div id="pal"></div></div>
+  <div id="tally"></div>
+  <div id="msg"></div>
+
+  <div class="row" style="margin-bottom:8px">
+    <button id="btnSolve" class="pri">求解</button>
+    <button id="btnBack">退一格</button>
+  </div>
+  <div class="row">
+    <button id="btnReset">全部清空</button>
+    <button id="btnSolved">填成复原态</button>
+    <button id="btnRandom">随便打乱一个</button>
+  </div>
+</div>
+
+<!-- ============ 复原页 ============ -->
+<div id="pGo" class="page">
+  <div id="stage"><canvas id="cv"></canvas><div id="hint">拖动可转视角</div></div>
+
+  <div id="now"><div id="nowMove">—</div><div id="nowDesc">先在第①页输入魔方状态</div></div>
+
+  <div id="prog"><span id="progL">—</span><span id="progR"></span></div>
+  <div id="bar"><i style="width:0"></i></div>
+
+  <div class="row">
+    <button id="btnPrev">← 上一步</button>
+    <button id="btnNext" class="pri">下一步 →</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="btnAuto">自动播放</button>
+    <button id="btnRestart">回到开头</button>
+  </div>
+
+  <div id="phases"></div>
+  <div id="seq"></div>
+
+  <div class="legend">
+    <b>怎么看记号：</b>字母是要转的那一面，<b>正对着那一面</b>看，
+    没有符号 = 顺时针 90°，<b>'</b> = 逆时针 90°，<b>2</b> = 转 180°。
+    <div style="margin-top:6px">
+      <b>U</b> 上·黄　<b>D</b> 下·白　<b>R</b> 右·橙　<b>L</b> 左·红　<b>F</b> 前·绿　<b>B</b> 后·蓝
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================
+   1. 状态模型：角块/棱块的位置与朝向
+   角 URF UFL ULB UBR DFR DLF DBL DRB = 0..7
+   棱 UR UF UL UB DR DF DL DB FR FL BL BR = 0..11
+   ========================================================== */
+const solvedState = () => ({
+  cp:[0,1,2,3,4,5,6,7], co:[0,0,0,0,0,0,0,0],
+  ep:[0,1,2,3,4,5,6,7,8,9,10,11], eo:[0,0,0,0,0,0,0,0,0,0,0,0]
+});
+
+const MOVE_DEFS = {
+  U: { cp:[3,0,1,2,4,5,6,7], co:[0,0,0,0,0,0,0,0],
+       ep:[3,0,1,2,4,5,6,7,8,9,10,11], eo:[0,0,0,0,0,0,0,0,0,0,0,0] },
+  D: { cp:[0,1,2,3,5,6,7,4], co:[0,0,0,0,0,0,0,0],
+       ep:[0,1,2,3,5,6,7,4,8,9,10,11], eo:[0,0,0,0,0,0,0,0,0,0,0,0] },
+  R: { cp:[4,1,2,0,7,5,6,3], co:[2,0,0,1,1,0,0,2],
+       ep:[8,1,2,3,11,5,6,7,4,9,10,0], eo:[0,0,0,0,0,0,0,0,0,0,0,0] },
+  L: { cp:[0,2,6,3,4,1,5,7], co:[0,1,2,0,0,2,1,0],
+       ep:[0,1,10,3,4,5,9,7,8,2,6,11], eo:[0,0,0,0,0,0,0,0,0,0,0,0] },
+  F: { cp:[1,5,2,3,0,4,6,7], co:[1,2,0,0,2,1,0,0],
+       ep:[0,9,2,3,4,8,6,7,1,5,10,11], eo:[0,1,0,0,0,1,0,0,1,1,0,0] },
+  B: { cp:[0,1,3,7,4,5,2,6], co:[0,0,1,2,0,0,2,1],
+       ep:[0,1,2,11,4,5,6,10,8,9,3,7], eo:[0,0,0,1,0,0,0,1,0,0,1,1] }
+};
+
+// 群复合：在 s 上施加置换 m
+function applyDef(s, m){
+  const r = {cp:[],co:[],ep:[],eo:[]};
+  for(let i=0;i<8;i++){ r.cp[i]=s.cp[m.cp[i]]; r.co[i]=(s.co[m.cp[i]]+m.co[i])%3; }
+  for(let i=0;i<12;i++){ r.ep[i]=s.ep[m.ep[i]]; r.eo[i]=(s.eo[m.ep[i]]+m.eo[i])%2; }
+  return r;
+}
+function applyMove(s, mv){
+  const n = mv.endsWith("'") ? 3 : mv.endsWith('2') ? 2 : 1;
+  let r = s;
+  for(let i=0;i<n;i++) r = applyDef(r, MOVE_DEFS[mv[0]]);
+  return r;
+}
+const applySeq = (s, seq) => seq.reduce(applyMove, s);
+const eqState = (a,b) => a.cp.join()===b.cp.join() && a.co.join()===b.co.join() &&
+                         a.ep.join()===b.ep.join() && a.eo.join()===b.eo.join();
+const isSolved = s => eqState(s, solvedState());
+
+/* ==========================================================
+   2. 展开图 54 格 ↔ 状态
+   格子编号 U 0-8, R 9-17, F 18-26, D 27-35, L 36-44, B 45-53
+   ========================================================== */
+const FACE_ORDER = ['U','R','F','D','L','B'];
+const fidx = (f,n) => FACE_ORDER.indexOf(f)*9 + n;
+
+const CORNER_FACELET = [
+  [fidx('U',8),fidx('R',0),fidx('F',2)], [fidx('U',6),fidx('F',0),fidx('L',2)],
+  [fidx('U',0),fidx('L',0),fidx('B',2)], [fidx('U',2),fidx('B',0),fidx('R',2)],
+  [fidx('D',2),fidx('F',8),fidx('R',6)], [fidx('D',0),fidx('L',8),fidx('F',6)],
+  [fidx('D',6),fidx('B',8),fidx('L',6)], [fidx('D',8),fidx('R',8),fidx('B',6)]
+];
+const EDGE_FACELET = [
+  [fidx('U',5),fidx('R',1)], [fidx('U',7),fidx('F',1)], [fidx('U',3),fidx('L',1)],
+  [fidx('U',1),fidx('B',1)], [fidx('D',5),fidx('R',7)], [fidx('D',1),fidx('F',7)],
+  [fidx('D',3),fidx('L',7)], [fidx('D',7),fidx('B',7)], [fidx('F',5),fidx('R',3)],
+  [fidx('F',3),fidx('L',5)], [fidx('B',5),fidx('L',3)], [fidx('B',3),fidx('R',5)]
+];
+const SOLVED_FACELET = [];
+for(const f of FACE_ORDER) for(let i=0;i<9;i++) SOLVED_FACELET.push(f);
+const CORNER_COLOR = CORNER_FACELET.map(t => t.map(i => SOLVED_FACELET[i]));
+const EDGE_COLOR   = EDGE_FACELET.map(t => t.map(i => SOLVED_FACELET[i]));
+
+function cubieToFacelet(s){
+  const fc = new Array(54);
+  for(const f of FACE_ORDER) fc[fidx(f,4)] = f;
+  for(let i=0;i<8;i++){ const j=s.cp[i], o=s.co[i];
+    for(let k=0;k<3;k++) fc[CORNER_FACELET[i][(k+o)%3]] = CORNER_COLOR[j][k]; }
+  for(let i=0;i<12;i++){ const j=s.ep[i], o=s.eo[i];
+    for(let k=0;k<2;k++) fc[EDGE_FACELET[i][(k+o)%2]] = EDGE_COLOR[j][k]; }
+  return fc;
+}
+
+const FACE_CN = {U:'上面（黄）',R:'右面（橙）',F:'前面（绿）',
+                 D:'底面（白）',L:'左面（红）',B:'后面（蓝）'};
+
+// 返回 {state} 或 {error}
+function faceletToCubie(fc){
+  if(fc.some(c => !c)) return {error:'还有格子没填颜色'};
+  const centers = FACE_ORDER.map(f => fc[fidx(f,4)]);
+  if(new Set(centers).size !== 6) return {error:'六个中心块颜色必须各不相同'};
+  const cnt = {};
+  for(const c of fc) cnt[c] = (cnt[c]||0)+1;
+  for(const c of centers)
+    if(cnt[c] !== 9) return {error:`${FACE_CN[c]} 的颜色填了 ${cnt[c]||0} 格，应该正好 9 格`};
+
+  const toFace = {};
+  FACE_ORDER.forEach((f,i) => toFace[centers[i]] = f);
+  const F = fc.map(c => toFace[c]);
+
+  const cp=[],co=[],ep=[],eo=[];
+  for(let i=0;i<8;i++){
+    const t = CORNER_FACELET[i].map(k => F[k]);
+    const o = t.findIndex(c => c==='U' || c==='D');
+    if(o < 0) return {error:'有个角块上既没有黄色也没有白色 —— 真实魔方的每个角必有其一'};
+    const a=t[(o+1)%3], b=t[(o+2)%3];
+    const j = CORNER_COLOR.findIndex(c => c[1]===a && c[2]===b);
+    if(j < 0) return {error:'有个角块的三色组合在真实魔方上不存在'};
+    cp.push(j); co.push(o);
+  }
+  for(let i=0;i<12;i++){
+    const [a,b] = EDGE_FACELET[i].map(k => F[k]);
+    let j = EDGE_COLOR.findIndex(c => c[0]===a && c[1]===b);
+    if(j >= 0){ ep.push(j); eo.push(0); continue; }
+    j = EDGE_COLOR.findIndex(c => c[0]===b && c[1]===a);
+    if(j < 0) return {error:'有个棱块的两色组合在真实魔方上不存在'};
+    ep.push(j); eo.push(1);
+  }
+  if(new Set(cp).size !== 8)  return {error:'有角块重复了，检查是不是某个角填错了'};
+  if(new Set(ep).size !== 12) return {error:'有棱块重复了，检查是不是某个棱填错了'};
+
+  const sum = a => a.reduce((x,y)=>x+y,0);
+  if(sum(co)%3 !== 0) return {error:'有一个角块被拧转了 —— 这个状态真实魔方拼不出来，请检查角块的颜色朝向'};
+  if(sum(eo)%2 !== 0) return {error:'有一个棱块被翻转了 —— 这个状态真实魔方拼不出来，请检查棱块的颜色朝向'};
+  const par = p => { let c=0; for(let i=0;i<p.length;i++) for(let j=i+1;j<p.length;j++) if(p[i]>p[j]) c++; return c%2; };
+  if(par(cp) !== par(ep)) return {error:'有两个块被对调了 —— 这个状态真实魔方拼不出来，请再核对一遍'};
+  return {state:{cp,co,ep,eo}};
+}
+
+/* ==========================================================
+   3. 求解器：层先法，分阶段小范围搜索
+   每个阶段用一组不破坏已完成部分的宏动作做广度优先搜索
+   ========================================================== */
+const inv1 = m => m.endsWith('2') ? m : m.endsWith("'") ? m[0] : m + "'";
+const compile = seq => ({seq, def: applySeq(solvedState(), seq)});
+const rev = seq => seq.slice().reverse().map(inv1);
+
+const RAW18 = [];
+for(const f of 'UDRLFB') for(const s of ['',"'",'2']) RAW18.push([f+s]);
+const M18 = RAW18.map(compile);
+
+// 共轭宏 X Y X'：保持 D 层棱不动（会拎起 D 层角，正好用来插角）
+const RAW_CONJ = [['U'],["U'"],['U2']];
+for(const x of ['R',"R'",'L',"L'",'F',"F'",'B',"B'"])
+  for(const y of ['U',"U'",'U2']) RAW_CONJ.push([x,y,inv1(x)]);
+const CONJ = RAW_CONJ.map(compile);
+const CROSS_SET = RAW_CONJ.concat([['F2'],['R2'],['L2'],['B2']]).map(compile);
+
+// 中层棱插入：标准 8 步公式，保持第一层
+const MID_SET = [['U'],["U'"],['U2']].concat([
+  "U R U' R' U' F' U F", "U' L' U L U F U' F'",
+  "U B U' B' U' R' U R", "U' R' U R U B U' B'",
+  "U L U' L' U' B' U B", "U' B' U B U L U' L'",
+  "U F U' F' U' L' U L", "U' F' U F U R U' R'"
+].map(x=>x.split(' '))).map(compile);
+
+// 最后一层：拆成教程里的四步，每步动作集小、搜索浅
+const U3     = [['U'],["U'"],['U2']];
+const F_EDGE = "F R U R' U' F'".split(' ');
+const SUNE   = "R U R' U R U2 R'".split(' ');
+const ASUNE  = "R' U' R U' R' U2 R".split(' ');
+const TPERM  = "R U R' U' R' F R2 U' R' U' R U R' F'".split(' ');
+const APERM  = "R' F R' B2 R F' R' B2 R2".split(' ');
+const UPERM_A= "R2 U R U R' U' R' U' R' U R'".split(' ');
+const UPERM_B= "R U' R U R U R U' R' U' R2".split(' ');
+const OLL_EDGE = U3.concat([F_EDGE]).map(compile);
+const OLL_CORN = U3.concat([SUNE, ASUNE]).map(compile);
+const PLL_CORN = U3.concat([APERM, rev(APERM), TPERM]).map(compile);
+const PLL_EDGE = U3.concat([UPERM_A, UPERM_B, TPERM]).map(compile);
+
+function bfs(start, moveSet, keyOf, isGoal, maxDepth){
+  if(isGoal(start)) return [];
+  const seen = new Set([keyOf(start)]);
+  let frontier = [{s:start, path:[]}];
+  for(let d=0; d<maxDepth; d++){
+    const next = [];
+    for(const node of frontier){
+      for(const mv of moveSet){
+        const s2 = applyDef(node.s, mv.def);
+        const k = keyOf(s2);
+        if(seen.has(k)) continue;
+        seen.add(k);
+        const path = node.path.concat(mv.seq);
+        if(isGoal(s2)) return path;
+        next.push({s:s2, path});
+      }
+    }
+    frontier = next;
+    if(!frontier.length) break;
+  }
+  return null;
+}
+
+const edgeKey   = (s,id) => { const p=s.ep.indexOf(id); return p*2+s.eo[p]; };
+const cornerKey = (s,id) => { const p=s.cp.indexOf(id); return p*3+s.co[p]; };
+const edgeOK    = (s,id) => s.ep[id]===id && s.eo[id]===0;
+const cornerOK  = (s,id) => s.cp[id]===id && s.co[id]===0;
+
+const CROSS=[5,4,7,6], F1CORN=[4,5,6,7], MIDEDGE=[8,9,10,11], LL=[0,1,2,3];
+
+function solve(state){
+  let s = state; const out = [];
+  const run = (moveSet, keyOf, isGoal, depth, label) => {
+    const p = bfs(s, moveSet, keyOf, isGoal, depth);
+    if(p === null) throw new Error('求解失败于：' + label);
+    s = applySeq(s, p);
+    const last = out[out.length-1];
+    if(last && last.label === label) last.moves = last.moves.concat(p);
+    else out.push({label, moves:p});
+  };
+
+  for(let k=0;k<4;k++){
+    const d = CROSS.slice(0,k+1);
+    run(k===0 ? M18 : CROSS_SET,
+        st => d.map(i=>edgeKey(st,i)).join(','),
+        st => d.every(i=>edgeOK(st,i)), k===0?4:6, '白十字');
+  }
+  for(let k=0;k<4;k++){
+    const d = F1CORN.slice(0,k+1);
+    run(CONJ,
+        st => CROSS.map(i=>edgeKey(st,i)).join(',')+'|'+d.map(i=>cornerKey(st,i)).join(','),
+        st => CROSS.every(i=>edgeOK(st,i)) && d.every(i=>cornerOK(st,i)), 5, '第一层角');
+  }
+  for(let k=0;k<4;k++){
+    const d = MIDEDGE.slice(0,k+1);
+    run(MID_SET,
+        st => d.map(i=>edgeKey(st,i)).join(',')+'|'+F1CORN.map(i=>cornerKey(st,i)).join(',')
+              +'|'+CROSS.map(i=>edgeKey(st,i)).join(','),
+        st => CROSS.every(i=>edgeOK(st,i)) && F1CORN.every(i=>cornerOK(st,i))
+              && d.every(i=>edgeOK(st,i)), 4, '中层棱');
+  }
+  const llKey = st => LL.map(i=>cornerKey(st,i)).join(',')+'|'+LL.map(i=>edgeKey(st,i)).join(',');
+  const eFlat = st => LL.every(i => st.eo[st.ep.indexOf(i)]===0);
+  const cFlat = st => LL.every(i => st.co[st.cp.indexOf(i)]===0);
+  run(OLL_EDGE, llKey, eFlat, 6, '顶层十字');
+  run(OLL_CORN, llKey, st => eFlat(st)&&cFlat(st), 8, '顶面同色');
+  run(PLL_CORN, llKey, st => eFlat(st)&&cFlat(st)&&LL.every(i=>cornerOK(st,i)), 6, '顶层角归位');
+  run(PLL_EDGE, llKey, st => isSolved(st), 6, '顶层棱归位');
+
+  return {steps: out.filter(x=>x.moves.length), final: s};
+}
+
+/* ==========================================================
+   4. 3D 渲染
+   坐标：+X 右 -X 左 / +Y 上 -Y 下 / +Z 前 -Z 后
+   ========================================================== */
+const COLORS = {U:'#f7d114', R:'#f08019', F:'#31a24c',
+                D:'#f2f4f7', L:'#d93a35', B:'#1560d0'};
+const NRM = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+const TANU= [[0,1,0],[0,1,0],[1,0,0],[1,0,0],[1,0,0],[1,0,0]];
+const TANV= [[0,0,1],[0,0,1],[0,0,1],[0,0,1],[0,1,0],[0,1,0]];
+
+const mmul=(a,b)=>{const m=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){let s=0;for(let k=0;k<3;k++)s+=a[i][k]*b[k][j];m[i][j]=s;}return m;};
+const vmul=(m,v)=>[m[0][0]*v[0]+m[0][1]*v[1]+m[0][2]*v[2],
+                   m[1][0]*v[0]+m[1][1]*v[1]+m[1][2]*v[2],
+                   m[2][0]*v[0]+m[2][1]*v[1]+m[2][2]*v[2]];
+function rotM(ax,a){const c=Math.cos(a),s=Math.sin(a);
+  return ax===0?[[1,0,0],[0,c,-s],[0,s,c]]:ax===1?[[c,0,s],[0,1,0],[-s,0,c]]:[[c,-s,0],[s,c,0],[0,0,1]];}
+
+// (方块位置, 面法向) → 展开图格子编号
+function geoFacelet(p,n){
+  if(n[1]===1)  return (p[2]+1)*3+(p[0]+1);
+  if(n[1]===-1) return 27+(1-p[2])*3+(p[0]+1);
+  if(n[2]===1)  return 18+(1-p[1])*3+(p[0]+1);
+  if(n[2]===-1) return 45+(1-p[1])*3+(1-p[0]);
+  if(n[0]===1)  return 9+(1-p[1])*3+(1-p[2]);
+  return 36+(1-p[1])*3+(p[2]+1);
+}
+// 几何模型的转动：轴 / 层 / 正方向
+const GEO_MV = {U:{axis:1,layer:1,sign:-1}, D:{axis:1,layer:-1,sign:1},
+                R:{axis:0,layer:1,sign:-1}, L:{axis:0,layer:-1,sign:1},
+                F:{axis:2,layer:1,sign:-1}, B:{axis:2,layer:-1,sign:1}};
+
+let cubies = [];
+function buildGeo(fc){
+  cubies = [];
+  for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++){
+    if(!x&&!y&&!z) continue;
+    const p=[x,y,z];
+    cubies.push({p:p.slice(), r:[[1,0,0],[0,1,0],[0,0,1]],
+      cols: NRM.map(n => (p[0]*n[0]+p[1]*n[1]+p[2]*n[2])===1 ? COLORS[fc[geoFacelet(p,n)]] : null)});
+  }
+}
+function bakeGeo(mv){
+  const d = GEO_MV[mv[0]];
+  const n = mv.endsWith("'") ? 3 : mv.endsWith('2') ? 2 : 1;
+  for(let k=0;k<n;k++){
+    const m = rotM(d.axis, d.sign*Math.PI/2);
+    for(const cb of cubies) if(cb.p[d.axis]===d.layer){
+      cb.p = vmul(m, cb.p).map(Math.round);
+      cb.r = mmul(m, cb.r);
+    }
+  }
+}
+
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+let W=0,H=0,yaw=-0.62,pitch=-0.42;
+const CAM_D=9.4, GAP=1.045, STICK=0.90;
+
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const r = cv.getBoundingClientRect();
+  W = Math.max(1,Math.round(r.width)); H = Math.max(1,Math.round(r.height));
+  cv.width = W*dpr; cv.height = H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', () => { resize(); render(); });
+
+function shade(hex,k){
+  const n = parseInt(hex.slice(1),16);
+  return 'rgb('+[16,8,0].map(sh=>Math.min(255,((n>>sh)&255)*k)|0).join(',')+')';
+}
+
+function render(anim){
+  if(!W) return;
+  const g = ctx.createRadialGradient(W/2,H*0.42,10,W/2,H*0.42,Math.max(W,H)*0.8);
+  g.addColorStop(0,'#1a2130'); g.addColorStop(1,'#0b0e13');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  if(!cubies.length) return;
+
+  const cam = mmul(rotM(0,pitch), rotM(1,yaw));
+  const f = Math.min(W,H)*1.5;
+  const proj = v => [W/2 + v[0]*f/(CAM_D-v[2]), H/2 - v[1]*f/(CAM_D-v[2])];
+  const polys = [];
+
+  for(const cb of cubies){
+    const extra = (anim && cb.p[anim.axis]===anim.layer) ? anim.m : null;
+    const toView = lv => {
+      let w = [cb.p[0]*GAP+lv[0], cb.p[1]*GAP+lv[1], cb.p[2]*GAP+lv[2]];
+      if(extra) w = vmul(extra, w);
+      return vmul(cam, w);
+    };
+    for(let i=0;i<6;i++){
+      const nl = vmul(cb.r, NRM[i]), ul = vmul(cb.r, TANU[i]), vl = vmul(cb.r, TANV[i]);
+      const cl = [nl[0]*0.5, nl[1]*0.5, nl[2]*0.5];
+      const ctr = toView(cl);
+      const nv = vmul(cam, extra ? vmul(extra, nl) : nl);
+      if(nv[0]*ctr[0] + nv[1]*ctr[1] + nv[2]*(ctr[2]-CAM_D) >= 0) continue;  // 背面剔除
+      const corner = (su,sv,k) => toView([
+        cl[0]+(ul[0]*su+vl[0]*sv)*k, cl[1]+(ul[1]*su+vl[1]*sv)*k, cl[2]+(ul[2]*su+vl[2]*sv)*k]);
+      const quad = k => [corner(.5,.5,k),corner(-.5,.5,k),corner(-.5,-.5,k),corner(.5,-.5,k)].map(proj);
+      polys.push({z:ctr[2], base:quad(1), face:quad(STICK), c:cb.cols[i],
+                  lit:0.74+0.26*Math.max(0, nv[1]*0.45+nv[2]*0.75)});
+    }
+  }
+  polys.sort((a,b)=>a.z-b.z);
+  for(const p of polys){
+    ctx.beginPath(); ctx.moveTo(p.base[0][0],p.base[0][1]);
+    for(let i=1;i<4;i++) ctx.lineTo(p.base[i][0],p.base[i][1]);
+    ctx.closePath(); ctx.fillStyle='#0a0c10'; ctx.fill();
+    if(!p.c) continue;
+    ctx.beginPath(); ctx.moveTo(p.face[0][0],p.face[0][1]);
+    for(let i=1;i<4;i++) ctx.lineTo(p.face[i][0],p.face[i][1]);
+    ctx.closePath(); ctx.fillStyle=shade(p.c,p.lit); ctx.fill();
+  }
+}
+
+/* ---- 拖动转视角 ---- */
+let drag=null;
+const stage=document.getElementById('stage');
+stage.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};stage.setPointerCapture(e.pointerId);});
+stage.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  yaw += (e.clientX-drag.x)*0.008;
+  pitch = Math.max(-1.4, Math.min(1.4, pitch + (e.clientY-drag.y)*0.008));
+  drag = {x:e.clientX,y:e.clientY};
+  if(!playing) render();
+});
+const endDrag=()=>{drag=null;};
+stage.addEventListener('pointerup',endDrag);
+stage.addEventListener('pointercancel',endDrag);
+
+/* ==========================================================
+   5. 输入界面
+   ========================================================== */
+// 展开图上的视觉顺序：上面 → 中间一圈 → 底面
+const NET_FACES = [['U','u','上面'],['L','l','左面'],['F','f','前面'],
+                   ['R','r','右面'],['B','b','后面'],['D','d','底面']];
+// 填色光标按这个顺序走遍 48 个非中心格
+const ORDER = [];
+for(const [f] of NET_FACES) for(let i=0;i<9;i++) if(i!==4) ORDER.push(fidx(f,i));
+
+let net = SOLVED_FACELET.slice();   // 当前展开图的 54 格
+let cursor = 0;                      // 光标在 ORDER 里的下标
+
+const $ = id => document.getElementById(id);
+const netEl = $('net');
+const cellEls = {};
+
+NET_FACES.forEach(([f,area,cn])=>{
+  const w = document.createElement('div');
+  w.className = 'fwrap'; w.style.gridArea = area;
+  const lab = document.createElement('span');
+  lab.textContent = cn;
+  const d = document.createElement('div');
+  d.className = 'face';
+  for(let i=0;i<9;i++){
+    const c = document.createElement('div');
+    c.className = 'cell' + (i===4 ? ' center' : '');
+    const gi = fidx(f,i);
+    cellEls[gi] = c;
+    if(i!==4) c.onclick = () => { cursor = ORDER.indexOf(gi); paintNet(); };
+    d.appendChild(c);
+  }
+  w.appendChild(lab); w.appendChild(d); netEl.appendChild(w);
+});
+
+const palEl = $('pal');
+FACE_ORDER.forEach(f=>{
+  const b = document.createElement('div');
+  b.className = 'sw';
+  b.style.background = COLORS[f];
+  b.innerHTML = '<b>'+FACE_CN[f].replace(/（.*/,'')+'</b>';
+  // 点颜色 = 填进当前光标格，然后自动跳到下一格
+  b.onclick = () => {
+    net[ORDER[cursor]] = f;
+    if(cursor < ORDER.length-1) cursor++;
+    paintNet();
+  };
+  palEl.appendChild(b);
+});
+
+function paintNet(){
+  for(const gi in cellEls){
+    const v = net[gi];
+    cellEls[gi].style.background = v ? COLORS[v] : '#1b212b';
+    cellEls[gi].classList.remove('cursor');
+  }
+  cellEls[ORDER[cursor]].classList.add('cursor');
+
+  const cnt = {};
+  for(const c of net) if(c) cnt[c]=(cnt[c]||0)+1;
+  const left = net.filter(c=>!c).length;
+  $('tally').textContent = FACE_ORDER.map(f=>{
+    const n = cnt[f]||0;
+    return FACE_CN[f].replace(/.*（|）/g,'') + ' ' + n + (n===9?'':'/9');
+  }).join('　') + (left ? '　｜ 还差 '+left+' 格' : '');
+  $('msg').className = '';
+}
+$('btnReset').onclick = () => {
+  net = new Array(54).fill(null);
+  for(const f of FACE_ORDER) net[fidx(f,4)] = f;
+  cursor = 0; paintNet();
+};
+$('btnBack').onclick = () => { if(cursor>0) cursor--; paintNet(); };
+$('btnSolved').onclick = () => { net = SOLVED_FACELET.slice(); cursor=0; paintNet(); };
+$('btnRandom').onclick = () => {
+  let s = solvedState();
+  const M = ['U','D','R','L','F','B'];
+  for(let i=0;i<28;i++) s = applyMove(s, M[(Math.random()*6)|0]+['',"'",'2'][(Math.random()*3)|0]);
+  net = cubieToFacelet(s); cursor = 0; paintNet();
+};
+
+/* ==========================================================
+   6. 播放
+   ========================================================== */
+let plan = [];        // [{move, phase}]
+let phaseList = [];
+let startFacelet = null;
+let cur = 0;          // 已完成的步数
+let playing = false, auto = false;
+
+function showMsg(text, kind){
+  const m = $('msg'); m.textContent = text; m.className = kind;
+}
+
+$('btnSolve').onclick = () => {
+  const r = faceletToCubie(net);
+  if(r.error){ showMsg(r.error, 'err'); return; }
+  let res;
+  try { res = solve(r.state); }
+  catch(e){ showMsg('没能解出来：'+e.message+'（这是个 bug，请把当前状态截图给我）', 'err'); return; }
+
+  plan = []; phaseList = [];
+  res.steps.forEach(st=>{
+    phaseList.push({label:st.label, from:plan.length, len:st.moves.length});
+    st.moves.forEach(m => plan.push({move:m, phase:st.label}));
+  });
+  startFacelet = net.slice();
+  cur = 0;
+  buildGeo(startFacelet);
+  showMsg('解出来了，共 '+plan.length+' 步。切到第②页跟着转。', 'ok');
+  goTab(1);
+  resize(); renderStep();
+};
+
+function goTab(i){
+  $('tabIn').classList.toggle('on', i===0);
+  $('tabGo').classList.toggle('on', i===1);
+  $('pIn').classList.toggle('on', i===0);
+  $('pGo').classList.toggle('on', i===1);
+  if(i===1){ resize(); render(); }
+}
+$('tabIn').onclick = () => goTab(0);
+$('tabGo').onclick = () => goTab(1);
+
+// 重放到第 n 步（用于回退和跳转）
+function seekTo(n){
+  buildGeo(startFacelet);
+  for(let i=0;i<n;i++) bakeGeo(plan[i].move);
+  cur = n;
+  renderStep();
+}
+
+const MOVE_DIR = {"":'顺时针 90°', "'":'逆时针 90°', "2":'转 180°'};
+function describe(mv){
+  const suf = mv.length>1 ? mv[1] : '';
+  return FACE_CN[mv[0]] + '，正对着它 ' + MOVE_DIR[suf];
+}
+
+function renderStep(){
+  const total = plan.length;
+  const done = cur >= total;
+  const nx = done ? null : plan[cur];
+
+  $('nowMove').textContent = nx ? nx.move : (total ? '完成' : '—');
+  $('nowMove').style.color = nx ? 'var(--txt)' : 'var(--ok)';
+  $('nowDesc').textContent = nx ? describe(nx.move)
+    : (total ? '魔方已经复原了' : '先在第①页输入魔方状态');
+  $('progL').textContent = total ? ('第 '+Math.min(cur+1,total)+' / '+total+' 步') : '—';
+  $('progR').textContent = nx ? nx.phase : (total?'全部完成':'');
+  $('bar').firstElementChild.style.width = total ? (cur/total*100)+'%' : '0';
+
+  const ph = $('phases'); ph.innerHTML = '';
+  phaseList.forEach((p,i)=>{
+    const d = document.createElement('div');
+    d.textContent = p.label.replace(/^(白|第一层|中层|顶层|顶面)/,'');
+    d.title = p.label;
+    if(cur >= p.from + p.len) d.classList.add('done');
+    else if(cur >= p.from) d.classList.add('cur');
+    d.onclick = () => { if(!playing) seekTo(p.from); };
+    ph.appendChild(d);
+  });
+
+  const sq = $('seq'); sq.innerHTML = '';
+  plan.forEach((m,i)=>{
+    const s = document.createElement('span');
+    s.textContent = m.move;
+    s.className = i<cur ? 'past' : i===cur ? 'cur' : '';
+    s.onclick = () => { if(!playing) seekTo(i); };
+    sq.appendChild(s); sq.appendChild(document.createTextNode(' '));
+  });
+  const c = sq.querySelector('.cur');
+  if(c) c.scrollIntoView({block:'nearest'});
+
+  $('btnPrev').disabled = playing || cur===0;
+  $('btnNext').disabled = playing || done;
+  $('btnAuto').disabled = !total;
+  $('btnAuto').textContent = auto ? '停止' : '自动播放';
+  render();
+}
+
+// 播放一步动画
+function animateStep(cb){
+  const mv = plan[cur].move;
+  const d = GEO_MV[mv[0]];
+  const turns = mv.endsWith("'") ? -1 : mv.endsWith('2') ? 2 : 1;
+  const dur = Math.abs(turns)>1 ? 420 : 300;
+  const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+  const t0 = performance.now();
+  playing = true;
+  $('btnPrev').disabled = $('btnNext').disabled = true;
+  (function frame(now){
+    const t = Math.min(1, (now-t0)/dur);
+    render({axis:d.axis, layer:d.layer, m: rotM(d.axis, d.sign*turns*Math.PI/2*ease(t))});
+    if(t < 1) requestAnimationFrame(frame);
+    else { bakeGeo(mv); cur++; playing=false; renderStep(); if(cb) cb(); }
+  })(t0);
+}
+
+$('btnNext').onclick = () => { if(!playing && cur<plan.length) animateStep(); };
+$('btnPrev').onclick = () => { if(!playing && cur>0) seekTo(cur-1); };
+$('btnRestart').onclick = () => { if(!playing){ auto=false; seekTo(0); } };
+$('btnAuto').onclick = () => {
+  if(auto){ auto=false; renderStep(); return; }
+  if(cur >= plan.length) seekTo(0);
+  auto = true; renderStep();
+  (function step(){
+    if(!auto || cur>=plan.length){ auto=false; renderStep(); return; }
+    animateStep(() => setTimeout(step, 130));
+  })();
+};
+
+/* ---- 启动 ---- */
+paintNet();
+buildGeo(SOLVED_FACELET);
+resize();
+renderStep();
+</script>
