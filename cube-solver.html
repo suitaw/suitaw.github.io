@@ -91,6 +91,21 @@
   .legend{font-size:12px;color:var(--dim);margin-top:14px;line-height:1.8}
   .legend b{color:var(--txt);font-weight:600}
 
+  /* ---- 练习 ---- */
+  #prStage{position:relative;width:100%;aspect-ratio:1/.95;max-height:44vh;
+    background:#0b0e13;border-radius:14px;overflow:hidden;touch-action:none;
+    border:1px solid var(--line)}
+  #prCv{display:block;width:100%;height:100%}
+  #prHint2{position:absolute;left:10px;bottom:8px;font-size:11px;color:#5b6577}
+  #prBar{display:flex;justify-content:space-between;align-items:baseline;
+    margin:12px 2px 4px;font-family:ui-monospace,Menlo,monospace;color:var(--dim);font-size:12px}
+  #prBar b{font-size:24px;font-weight:700;color:var(--txt);margin-right:4px}
+  #prMsg{min-height:22px;font-size:14px;color:var(--acc);text-align:center;margin:8px 0}
+  #prMsg.win{color:var(--ok);font-weight:700;font-size:17px}
+  #prKeys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
+  #prKeys button{padding:11px 0;min-width:0;font-size:15px;font-weight:600;
+    font-family:ui-monospace,Menlo,monospace}
+
   /* ---- 摄像头识别 ---- */
   #camOv{position:fixed;inset:0;background:#0b0e13;z-index:100;display:none;
     flex-direction:column;padding:12px calc(12px + env(safe-area-inset-left))
@@ -122,8 +137,9 @@
 </style>
 
 <div id="tabs">
-  <button id="tabIn" class="on">① 输入你的魔方</button>
+  <button id="tabIn" class="on">① 输入</button>
   <button id="tabGo">② 跟着复原</button>
+  <button id="tabPr">③ 自己练</button>
 </div>
 
 <!-- ============ 输入页 ============ -->
@@ -155,6 +171,36 @@
     <button id="btnReset">全部清空</button>
     <button id="btnSolved">填成复原态</button>
     <button id="btnRandom">随便打乱一个</button>
+  </div>
+</div>
+
+<!-- ============ 练习页 ============ -->
+<div id="pPr" class="page">
+  <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层，拖空白转视角</div></div>
+
+  <div id="prBar">
+    <span><b id="prTime">0:00</b>用时</span>
+    <span><b id="prCount">0</b>步</span>
+  </div>
+  <div id="prMsg"></div>
+
+  <div class="row">
+    <button id="prScram" class="pri">打乱</button>
+    <button id="prUndo">撤销</button>
+    <button id="prReset">还原成复原态</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="prTip">提示下一步</button>
+    <button id="prSolveIt">交给它解</button>
+  </div>
+
+  <div id="prKeys"></div>
+
+  <div class="legend">
+    <b>两种操作方式：</b>在魔方表面按住往某个方向拖，就转那一层；拖空白处转视角。
+    嫌不好按就用下面的按钮。
+    <div style="margin-top:6px">「提示下一步」按层先法给，会告诉你现在该做哪个阶段；
+    「交给它解」把当前状态送到第②页求完整解法。</div>
   </div>
 </div>
 
@@ -747,20 +793,21 @@ const GEO_MV = {U:{axis:1,layer:1,sign:-1}, D:{axis:1,layer:-1,sign:1},
 
 let cubies = [];
 function buildGeo(fc){
-  cubies = [];
+  const cs = [];
   for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++){
     if(!x&&!y&&!z) continue;
     const p=[x,y,z];
-    cubies.push({p:p.slice(), r:[[1,0,0],[0,1,0],[0,0,1]],
+    cs.push({p:p.slice(), r:[[1,0,0],[0,1,0],[0,0,1]],
       cols: NRM.map(n => (p[0]*n[0]+p[1]*n[1]+p[2]*n[2])===1 ? COLORS[fc[geoFacelet(p,n)]] : null)});
   }
+  return cs;
 }
-function bakeGeo(mv){
+function bakeGeo(mv, cs){
   const d = GEO_MV[mv[0]];
   const n = mv.endsWith("'") ? 3 : mv.endsWith('2') ? 2 : 1;
   for(let k=0;k<n;k++){
     const m = rotM(d.axis, d.sign*Math.PI/2);
-    for(const cb of cubies) if(cb.p[d.axis]===d.layer){
+    for(const cb of cs) if(cb.p[d.axis]===d.layer){
       cb.p = vmul(m, cb.p).map(Math.round);
       cb.r = mmul(m, cb.r);
     }
@@ -788,7 +835,17 @@ function shade(hex,k){
   return 'rgb('+[16,8,0].map(sh=>Math.min(255,((n>>sh)&255)*k)|0).join(',')+')';
 }
 
-function render(anim){
+// 主视图。用 getter 包住原有的全局变量，这样渲染器能同时驱动别的画布
+// （参考姿势小图、练习页），而已有代码不用改。
+const MAIN = {
+  get ctx(){return ctx;}, get W(){return W;}, get H(){return H;},
+  get yaw(){return yaw;}, get pitch(){return pitch;}, get cubies(){return cubies;}
+};
+
+// V 省略时画主视图；V.collect 为真时把贴纸的屏幕多边形留下来供点击拾取
+function render(anim, V){
+  V = V || MAIN;
+  const {ctx, W, H, yaw, pitch, cubies} = V;
   if(!W) return;
   const g = ctx.createRadialGradient(W/2,H*0.42,10,W/2,H*0.42,Math.max(W,H)*0.8);
   g.addColorStop(0,'#1a2130'); g.addColorStop(1,'#0b0e13');
@@ -817,10 +874,11 @@ function render(anim){
         cl[0]+(ul[0]*su+vl[0]*sv)*k, cl[1]+(ul[1]*su+vl[1]*sv)*k, cl[2]+(ul[2]*su+vl[2]*sv)*k]);
       const quad = k => [corner(.5,.5,k),corner(-.5,.5,k),corner(-.5,-.5,k),corner(.5,-.5,k)].map(proj);
       polys.push({z:ctr[2], base:quad(1), face:quad(STICK), c:cb.cols[i],
-                  lit:0.74+0.26*Math.max(0, nv[1]*0.45+nv[2]*0.75)});
+                  lit:0.74+0.26*Math.max(0, nv[1]*0.45+nv[2]*0.75), cb, fi:i});
     }
   }
   polys.sort((a,b)=>a.z-b.z);
+  if(V.collect) V.picks = polys.filter(p=>p.c);   // 已按由远及近排好，拾取时倒着找
   for(const p of polys){
     ctx.beginPath(); ctx.moveTo(p.base[0][0],p.base[0][1]);
     for(let i=1;i<4;i++) ctx.lineTo(p.base[i][0],p.base[i][1]);
@@ -958,7 +1016,7 @@ function loadPlan(steps){
   });
   startFacelet = net.slice();
   cur = 0; hasPlan = true;
-  buildGeo(startFacelet);
+  cubies = buildGeo(startFacelet);
   if(!plan.length){
     // 输入的本来就是复原态，没什么可转的，留在这一页说清楚就行
     showMsg('你输入的这个魔方已经是复原状态了，不用转。', 'ok');
@@ -975,7 +1033,7 @@ function invalidatePlan(){
   if(!hasPlan) return;
   hasPlan = false; plan = []; phaseList = [];
   startFacelet = null; cur = 0; auto = false;
-  buildGeo(SOLVED_FACELET);
+  cubies = buildGeo(SOLVED_FACELET);
   renderStep();
 }
 
@@ -1007,20 +1065,21 @@ $('btnSolve').onclick = () => {
   }
 };
 
+const TABS = [['tabIn','pIn'], ['tabGo','pGo'], ['tabPr','pPr']];
 function goTab(i){
-  $('tabIn').classList.toggle('on', i===0);
-  $('tabGo').classList.toggle('on', i===1);
-  $('pIn').classList.toggle('on', i===0);
-  $('pGo').classList.toggle('on', i===1);
+  TABS.forEach(([t,p],k)=>{
+    $(t).classList.toggle('on', k===i);
+    $(p).classList.toggle('on', k===i);
+  });
   if(i===1){ resize(); render(); }
+  if(i===2){ prResize(); prRender(); }
 }
-$('tabIn').onclick = () => goTab(0);
-$('tabGo').onclick = () => goTab(1);
+TABS.forEach(([t],i)=> $(t).onclick = () => goTab(i));
 
 // 重放到第 n 步（用于回退和跳转）
 function seekTo(n){
-  buildGeo(startFacelet);
-  for(let i=0;i<n;i++) bakeGeo(plan[i].move);
+  cubies = buildGeo(startFacelet);
+  for(let i=0;i<n;i++) bakeGeo(plan[i].move, cubies);
   cur = n;
   renderStep();
 }
@@ -1091,7 +1150,7 @@ function animateStep(cb){
     const t = Math.min(1, (now-t0)/dur);
     render({axis:d.axis, layer:d.layer, m: rotM(d.axis, d.sign*turns*Math.PI/2*ease(t))});
     if(t < 1) requestAnimationFrame(frame);
-    else { bakeGeo(mv); cur++; playing=false; renderStep(); if(cb) cb(); }
+    else { bakeGeo(mv, cubies); cur++; playing=false; renderStep(); if(cb) cb(); }
   })(t0);
 }
 
@@ -1109,7 +1168,215 @@ $('btnAuto').onclick = () => {
 };
 
 /* ==========================================================
-   8. 摄像头 / 照片识别
+   8. 练习模式：自己在 3D 魔方上转，练复原
+   ========================================================== */
+const prCv = $('prCv');
+const PR = {ctx:prCv.getContext('2d'), W:0, H:0, yaw:-0.62, pitch:0.42,
+            cubies:[], collect:true, picks:[]};
+let prState = solvedState();     // 与几何模型同步，用来判定复原和求提示
+let prHist = [], prCount = 0, prBusy = false;
+let prT0 = 0, prElapsed = 0, prTick = 0;
+
+function prResize(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const r = prCv.getBoundingClientRect();
+  PR.W = Math.max(1, Math.round(r.width));
+  PR.H = Math.max(1, Math.round(r.height));
+  prCv.width = PR.W*dpr; prCv.height = PR.H*dpr;
+  PR.ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+const prRender = anim => render(anim, PR);
+
+const fmtT = ms => {
+  const s = Math.floor(ms/1000);
+  return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+};
+function prUpdate(){
+  $('prTime').textContent = fmtT(prElapsed + (prT0 ? Date.now()-prT0 : 0));
+  $('prCount').textContent = prCount;
+}
+function prStartClock(){
+  if(prT0) return;
+  prT0 = Date.now();
+  prTick = setInterval(prUpdate, 250);
+}
+function prStopClock(){
+  if(prT0){ prElapsed += Date.now()-prT0; prT0 = 0; }
+  clearInterval(prTick); prTick = 0;
+  prUpdate();
+}
+const prMsg = (t,win) => { $('prMsg').textContent = t; $('prMsg').className = win?'win':''; };
+
+/* ---- 执行一次转动 ---- */
+function prTurn(mv, record){
+  if(prBusy) return;
+  prBusy = true;
+  if(record) prStartClock();
+  const d = GEO_MV[mv[0]];
+  const turns = mv.endsWith("'") ? -1 : mv.endsWith('2') ? 2 : 1;
+  const dur = Math.abs(turns)>1 ? 260 : 170;
+  const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+  const t0 = performance.now();
+  (function frame(now){
+    const t = Math.min(1,(now-t0)/dur);
+    prRender({axis:d.axis, layer:d.layer, m:rotM(d.axis, d.sign*turns*Math.PI/2*ease(t))});
+    if(t<1){ requestAnimationFrame(frame); return; }
+    bakeGeo(mv, PR.cubies);
+    prState = applyMove(prState, mv);
+    if(record){ prHist.push(mv); prCount++; }
+    prBusy = false;
+    prRender(); prUpdate();
+    if(record && isSolved(prState)){
+      prStopClock();
+      prMsg(`复原了！用时 ${fmtT(prElapsed)}，共 ${prCount} 步`, true);
+    }
+  })(t0);
+}
+
+/* ---- 点击拾取：找出手指按在哪一张贴纸上 ---- */
+function pointInQuad(x,y,q){
+  let sign = 0;
+  for(let i=0;i<4;i++){
+    const a=q[i], b=q[(i+1)%4];
+    const cr = (b[0]-a[0])*(y-a[1]) - (b[1]-a[1])*(x-a[0]);
+    if(!cr) continue;
+    const s = cr>0 ? 1 : -1;
+    if(!sign) sign = s;
+    else if(sign !== s) return false;
+  }
+  return true;
+}
+function prPick(x,y){
+  const ps = PR.picks || [];
+  for(let i=ps.length-1;i>=0;i--)          // 由近及远
+    if(pointInQuad(x,y,ps[i].face)) return ps[i];
+  return null;
+}
+
+/* ---- 把「在某张贴纸上朝某方向拖」翻译成一个转动记号 ----
+   不去分解拖动向量：面快要侧对镜头时会被压扁，两个切向在屏幕上几乎重合，
+   分解就会挑错层。改成把这张贴纸能参与的四种转动都试一遍，
+   算出各自会让它往屏幕哪个方向走，取最贴合手指的那个。 */
+const cross = (a,b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+function prDragMove(pick, dx, dy){
+  const cb = pick.cb, i = pick.fi;
+  const n = vmul(cb.r, NRM[i]);
+  const cam = mmul(rotM(0,PR.pitch), rotM(1,PR.yaw));
+  const f = Math.min(PR.W,PR.H)*1.5;
+  const proj = w => { const q = vmul(cam,w), d = CAM_D-q[2];
+    return [PR.W/2 + q[0]*f/d, PR.H/2 - q[1]*f/d]; };
+  const c0 = [cb.p[0]*GAP+n[0]*0.5, cb.p[1]*GAP+n[1]*0.5, cb.p[2]*GAP+n[2]*0.5];
+  const o = proj(c0);
+
+  let best = null, bestScore = 0;
+  for(const tan of [vmul(cb.r,TANU[i]), vmul(cb.r,TANV[i])]){
+    const ax = cross(n, tan).map(Math.round);
+    let axis = 0, s = 0;
+    for(let k=0;k<3;k++) if(Math.abs(ax[k]) > 0.5){ axis = k; s = ax[k] > 0 ? 1 : -1; }
+    const layer = cb.p[axis];
+    if(!layer) continue;                        // 中间层没有对应的面记号
+    for(const dir of [1,-1]){
+      const p1 = proj(vmul(rotM(axis, s*dir*0.12), c0));   // 转一点点，看往哪走
+      const score = (p1[0]-o[0])*dx + (p1[1]-o[1])*dy;
+      if(score <= bestScore) continue;
+      bestScore = score;
+      const rotSign = dir * s;                  // 绕 +axis 的旋转方向
+      for(const face in GEO_MV){
+        const d = GEO_MV[face];
+        if(d.axis===axis && d.layer===layer)
+          best = rotSign === d.sign ? face : face + "'";
+      }
+    }
+  }
+  return best;
+}
+
+/* ---- 手势 ---- */
+let prDrag = null;
+const prStage = $('prStage');
+prStage.addEventListener('pointerdown', e => {
+  if(prBusy) return;
+  const r = prCv.getBoundingClientRect();
+  const x = e.clientX-r.left, y = e.clientY-r.top;
+  prDrag = {x, y, x0:x, y0:y, pick:prPick(x,y), fired:false};
+  prStage.setPointerCapture(e.pointerId);
+});
+prStage.addEventListener('pointermove', e => {
+  if(!prDrag) return;
+  const r = prCv.getBoundingClientRect();
+  const x = e.clientX-r.left, y = e.clientY-r.top;
+  if(prDrag.pick){
+    if(prDrag.fired) return;
+    const dx = x-prDrag.x0, dy = y-prDrag.y0;
+    if(dx*dx + dy*dy < 18*18) return;           // 太短当抖动
+    prDrag.fired = true;
+    const mv = prDragMove(prDrag.pick, dx, dy);
+    if(mv){ prMsg(''); prTurn(mv, true); }
+    else prMsg('中间层转不了，试试外面那层');
+  }else{
+    PR.yaw += (x-prDrag.x)*0.008;
+    PR.pitch = Math.max(-1.4, Math.min(1.4, PR.pitch + (y-prDrag.y)*0.008));
+    if(!prBusy) prRender();
+  }
+  prDrag.x = x; prDrag.y = y;
+});
+const prEnd = () => { prDrag = null; };
+prStage.addEventListener('pointerup', prEnd);
+prStage.addEventListener('pointercancel', prEnd);
+
+/* ---- 按钮 ---- */
+["U","U'","D","D'","R","R'","L","L'","F","F'","B","B'"].forEach(k=>{
+  const b = document.createElement('button');
+  b.textContent = k;
+  b.onclick = () => { prMsg(''); prTurn(k, true); };
+  $('prKeys').appendChild(b);
+});
+
+function prLoad(st){
+  prState = st;
+  PR.cubies = buildGeo(cubieToFacelet(st));
+  prHist = []; prCount = 0; prElapsed = 0; prT0 = 0;
+  clearInterval(prTick); prTick = 0;
+  prUpdate(); prRender();
+}
+$('prScram').onclick = () => {
+  if(prBusy) return;
+  const M = ['U','D','R','L','F','B'];
+  let s = solvedState(), prev = '';
+  for(let i=0;i<25;i++){
+    let f; do{ f = M[(Math.random()*6)|0]; }while(f===prev); prev = f;
+    s = applyMove(s, f + ['',"'",'2'][(Math.random()*3)|0]);
+  }
+  prLoad(s);
+  prMsg('打乱好了，开始转吧。第一步之后开始计时。');
+};
+$('prReset').onclick = () => { if(!prBusy){ prLoad(solvedState()); prMsg(''); } };
+$('prUndo').onclick = () => {
+  if(prBusy || !prHist.length) return;
+  const last = prHist.pop();
+  prCount = Math.max(0, prCount-1);
+  prMsg('');
+  prTurn(inv1(last), false);
+};
+$('prTip').onclick = () => {
+  if(prBusy) return;
+  if(isSolved(prState)){ prMsg('已经是复原状态了'); return; }
+  try{
+    const r = solve(prState);
+    const st = r.steps.find(x => x.moves.length);
+    prMsg(st ? `现在该做「${st.label}」，下一步：${st.moves[0]}` : '就差一点了');
+  }catch(e){ prMsg('这个状态算不出提示（应该是 bug）'); }
+};
+$('prSolveIt').onclick = () => {
+  if(prBusy) return;
+  if(isSolved(prState)){ prMsg('已经复原了，不用解'); return; }
+  net = cubieToFacelet(prState);
+  cursor = 0; paintNet();
+  doSolve(prState);
+};
+
+/* ==========================================================
+   9. 摄像头 / 照片识别
    六个拍摄姿势下，屏幕上 3×3 的格子恰好对应展开图那一面的 9 格
    （顺序一致，已用几何模型核对过），所以直接按 fidx(face, 0..8) 回填
    ========================================================== */
@@ -1209,21 +1476,14 @@ function classifyAll(){
 
 /* ---- 参考姿势的 3D 小图 ---- */
 function drawRef(){
-  // 借用主渲染器画这张小图，画完把全局状态原样还原，别弄脏第②页的魔方
-  const sCub=cubies, sCtx=ctx, sW=W, sH=H, sYaw=yaw, sPit=pitch;
-  try{
-    buildGeo(SOLVED_FACELET);
-    const rot=CAM_ROT[camStep];
-    if(rot){                                  // 把整个魔方摆成该姿势
-      const m=rotM(rot[0],rot[1]);
-      for(const cb of cubies){ cb.p=vmul(m,cb.p).map(Math.round); cb.r=mmul(m,cb.r); }
-    }
-    ctx=refCtx; W=192; H=192; yaw=-0.34; pitch=0.28;
-    refCtx.setTransform(1,0,0,1,0,0);
-    render();
-  }finally{
-    cubies=sCub; ctx=sCtx; W=sW; H=sH; yaw=sYaw; pitch=sPit;
+  const cs = buildGeo(SOLVED_FACELET);
+  const rot = CAM_ROT[camStep];
+  if(rot){                                    // 把整个魔方摆成该姿势
+    const m = rotM(rot[0], rot[1]);
+    for(const cb of cs){ cb.p=vmul(m,cb.p).map(Math.round); cb.r=mmul(m,cb.r); }
   }
+  refCtx.setTransform(1,0,0,1,0,0);
+  render(null, {ctx:refCtx, W:192, H:192, yaw:-0.34, pitch:0.28, cubies:cs});
 }
 
 /* ---- 界面刷新 ---- */
@@ -1332,7 +1592,9 @@ $('camInput').onchange = async e => {
 
 /* ---- 启动 ---- */
 paintNet();
-buildGeo(SOLVED_FACELET);
+cubies = buildGeo(SOLVED_FACELET);
 resize();
 renderStep();
+prLoad(solvedState());
+window.addEventListener('resize', () => { prResize(); prRender(); });
 </script>
