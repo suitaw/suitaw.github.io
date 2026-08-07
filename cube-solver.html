@@ -176,7 +176,7 @@
 
 <!-- ============ 练习页 ============ -->
 <div id="pPr" class="page">
-  <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层，拖空白转视角</div></div>
+  <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层 · 拖四周留白转视角</div></div>
 
   <div id="prBar">
     <span><b id="prTime">0:00</b>用时</span>
@@ -197,8 +197,12 @@
   <div id="prKeys"></div>
 
   <div class="legend">
-    <b>两种操作方式：</b>在魔方表面按住往某个方向拖，就转那一层（中间层也能拖）；
-    拖空白处转视角。嫌不好按就用下面的按钮，<b>M/E/S</b> 是三个中间层。
+    <b>拖魔方 = 转层。</b>按住往某个方向拖，会先<b>高亮</b>将要转的那一层并显示记号，
+    方向不对就接着改，<b>松手才真正转</b>。中间层也能拖。
+    <div style="margin-top:6px">要转某一层，得在<b>它的侧面</b>拖 —— 比如想转右面(R)，
+    在顶面或前面<b>靠右那一列</b>上拖；在右面自己上面怎么拖都转不到它。</div>
+    <div style="margin-top:6px">手指离魔方远一点（四周留白处）拖，才是转视角。
+    嫌不好按就用下面的按钮，<b>M/E/S</b> 是三个中间层。</div>
     <div style="margin-top:6px">「提示下一步」按层先法给，会告诉你现在该做哪个阶段；
     「交给它解」把当前状态送到第②页求完整解法。</div>
   </div>
@@ -874,7 +878,8 @@ function render(anim, V){
         cl[0]+(ul[0]*su+vl[0]*sv)*k, cl[1]+(ul[1]*su+vl[1]*sv)*k, cl[2]+(ul[2]*su+vl[2]*sv)*k]);
       const quad = k => [corner(.5,.5,k),corner(-.5,.5,k),corner(-.5,-.5,k),corner(.5,-.5,k)].map(proj);
       polys.push({z:ctr[2], base:quad(1), face:quad(STICK), c:cb.cols[i],
-                  lit:0.74+0.26*Math.max(0, nv[1]*0.45+nv[2]*0.75), cb, fi:i});
+                  lit:0.74+0.26*Math.max(0, nv[1]*0.45+nv[2]*0.75), cb, fi:i,
+                  hot: !!(V.hl && cb.p[V.hl.axis]===V.hl.layer)});
     }
   }
   polys.sort((a,b)=>a.z-b.z);
@@ -886,7 +891,12 @@ function render(anim, V){
     if(!p.c) continue;
     ctx.beginPath(); ctx.moveTo(p.face[0][0],p.face[0][1]);
     for(let i=1;i<4;i++) ctx.lineTo(p.face[i][0],p.face[i][1]);
-    ctx.closePath(); ctx.fillStyle=shade(p.c,p.lit); ctx.fill();
+    ctx.closePath();
+    ctx.fillStyle = shade(p.c, p.hot ? p.lit*1.45 : p.lit);
+    ctx.fill();
+    if(p.hot){                                  // 待转的那一层描白边，一眼看清
+      ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=2.5; ctx.stroke();
+    }
   }
 }
 
@@ -1177,7 +1187,7 @@ const prCv = $('prCv');
 const PR = {ctx:prCv.getContext('2d'), W:0, H:0, yaw:-0.62, pitch:0.42,
             G:[[1,0,0],[0,1,0],[0,0,1]],
             get cam(){ return mmul(mmul(rotM(0,this.pitch), rotM(1,this.yaw)), this.G); },
-            cubies:[], collect:true, picks:[]};
+            cubies:[], collect:true, picks:[], hl:null};
 let prState = solvedState();     // 与几何模型同步，用来判定复原和求提示
 let prHist = [], prCount = 0, prBusy = false;
 let prT0 = 0, prElapsed = 0, prTick = 0;
@@ -1278,7 +1288,16 @@ function prPick(x,y){
   const ps = PR.picks || [];
   for(let i=ps.length-1;i>=0;i--)          // 由近及远
     if(pointInQuad(x,y,ps[i].base)) return ps[i];
-  return null;
+  // 没直接命中就找最近的一格：手指落在缝里、黑边上、或者贴着魔方边缘，
+  // 都还算想转魔方，别一下子跳去转视角
+  let best=null, bd=Infinity, diag=0;
+  for(const p of ps){
+    const q=p.base;
+    const cx=(q[0][0]+q[1][0]+q[2][0]+q[3][0])/4, cy=(q[0][1]+q[1][1]+q[2][1]+q[3][1])/4;
+    const d=(cx-x)*(cx-x)+(cy-y)*(cy-y);
+    if(d<bd){ bd=d; best=p; diag=Math.hypot(q[0][0]-q[2][0], q[0][1]-q[2][1]); }
+  }
+  return (best && bd < diag*diag*0.36) ? best : null;   // 大约半格以内
 }
 
 /* ---- 把「在某张贴纸上朝某方向拖」翻译成一个转动记号 ----
@@ -1295,6 +1314,14 @@ function moveFor(axis, layer, rotSign){
   }
   return null;
 }
+// 中间层记号：M 跟 L 同向、E 跟 D 同向、S 跟 F 同向
+const MID_AXIS = ['M','E','S'], MID_SIGN = [1, 1, -1];
+function turnLabel(t){
+  if(t.layer !== 0) return moveFor(t.axis, t.layer, t.rotSign);
+  const c = MID_AXIS[t.axis];
+  return t.rotSign === MID_SIGN[t.axis] ? c : c + "'";
+}
+
 // 返回 {axis, layer, rotSign}：转哪根轴、哪一层、朝哪个方向
 function prDragTurn(pick, dx, dy){
   const cb = pick.cb, i = pick.fi;
@@ -1334,17 +1361,22 @@ prStage.addEventListener('pointerdown', e => {
   prDrag = {x, y, x0:x, y0:y, pick:prPick(x,y), fired:false};
   prStage.setPointerCapture(e.pointerId);
 });
+// 拖动过程中只做预览（高亮待转的层），松手才真正执行 —— 方向不对可以边拖边改
 prStage.addEventListener('pointermove', e => {
   if(!prDrag) return;
   const r = prCv.getBoundingClientRect();
   const x = e.clientX-r.left, y = e.clientY-r.top;
   if(prDrag.pick){
-    if(prDrag.fired) return;
     const dx = x-prDrag.x0, dy = y-prDrag.y0;
-    if(dx*dx + dy*dy < 26*26) return;           // 拖够一段再判方向，短了容易被手抖带偏
-    prDrag.fired = true;
-    const turn = prDragTurn(prDrag.pick, dx, dy);
-    if(turn){ prMsg(''); prSpin(turn, 1, true); }
+    const t = (dx*dx + dy*dy < 12*12) ? null : prDragTurn(prDrag.pick, dx, dy);
+    const same = t && prDrag.turn && t.axis===prDrag.turn.axis
+                 && t.layer===prDrag.turn.layer && t.rotSign===prDrag.turn.rotSign;
+    if(!same){
+      prDrag.turn = t;
+      PR.hl = t ? {axis:t.axis, layer:t.layer} : null;
+      prMsg(t ? '松手就转 ' + turnLabel(t) : '');
+      prRender();
+    }
   }else{
     PR.yaw += (x-prDrag.x)*0.008;
     PR.pitch = Math.max(-1.4, Math.min(1.4, PR.pitch + (y-prDrag.y)*0.008));
@@ -1352,13 +1384,19 @@ prStage.addEventListener('pointermove', e => {
   }
   prDrag.x = x; prDrag.y = y;
 });
-const prEnd = () => { prDrag = null; };
+const prEnd = () => {
+  const t = prDrag && prDrag.turn;
+  prDrag = null;
+  PR.hl = null;
+  if(t){ prMsg(''); prSpin(t, 1, true); }
+  else prRender();
+};
 prStage.addEventListener('pointerup', prEnd);
 prStage.addEventListener('pointercancel', prEnd);
 
 /* ---- 按钮 ---- */
-// M 跟 L 同向、E 跟 D 同向、S 跟 F 同向，这是标准约定
-const PR_MID = {M:{axis:0,rotSign:1}, E:{axis:1,rotSign:1}, S:{axis:2,rotSign:-1}};
+const PR_MID = {};
+MID_AXIS.forEach((c,ax)=>{ PR_MID[c] = {axis:ax, rotSign:MID_SIGN[ax]}; });
 ["U","U'","D","D'","R","R'","L","L'","F","F'","B","B'",
  "M","M'","E","E'","S","S'"].forEach(k=>{
   const b = document.createElement('button');
