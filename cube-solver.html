@@ -826,7 +826,7 @@ FACE_ORDER.forEach(f=>{
   b.onclick = () => {
     net[ORDER[cursor]] = f;
     if(cursor < ORDER.length-1) cursor++;
-    paintNet();
+    paintNet(); invalidatePlan();
   };
   palEl.appendChild(b);
 });
@@ -851,15 +851,15 @@ function paintNet(){
 $('btnReset').onclick = () => {
   net = new Array(54).fill(null);
   for(const f of FACE_ORDER) net[fidx(f,4)] = f;
-  cursor = 0; paintNet();
+  cursor = 0; paintNet(); invalidatePlan();
 };
 $('btnBack').onclick = () => { if(cursor>0) cursor--; paintNet(); };
-$('btnSolved').onclick = () => { net = SOLVED_FACELET.slice(); cursor=0; paintNet(); };
+$('btnSolved').onclick = () => { net = SOLVED_FACELET.slice(); cursor=0; paintNet(); invalidatePlan(); };
 $('btnRandom').onclick = () => {
   let s = solvedState();
   const M = ['U','D','R','L','F','B'];
   for(let i=0;i<28;i++) s = applyMove(s, M[(Math.random()*6)|0]+['',"'",'2'][(Math.random()*3)|0]);
-  net = cubieToFacelet(s); cursor = 0; paintNet();
+  net = cubieToFacelet(s); cursor = 0; paintNet(); invalidatePlan();
 };
 
 /* ==========================================================
@@ -870,6 +870,7 @@ let phaseList = [];
 let startFacelet = null;
 let cur = 0;          // 已完成的步数
 let playing = false, auto = false;
+let hasPlan = false;  // 是否求过解。不能用 plan.length 代替：解法可能就是 0 步
 
 function showMsg(text, kind){
   const m = $('msg'); m.textContent = text; m.className = kind;
@@ -890,11 +891,26 @@ function loadPlan(steps){
     st.moves.forEach(m => plan.push({move:m, phase:st.label}));
   });
   startFacelet = net.slice();
-  cur = 0;
+  cur = 0; hasPlan = true;
   buildGeo(startFacelet);
+  if(!plan.length){
+    // 输入的本来就是复原态，没什么可转的，留在这一页说清楚就行
+    showMsg('你输入的这个魔方已经是复原状态了，不用转。', 'ok');
+    renderStep();
+    return;
+  }
   showMsg('解出来了，共 '+plan.length+' 步。切到第②页跟着转。', 'ok');
   goTab(1);
   resize(); renderStep();
+}
+
+// 改动输入后旧解法就作废了，别让第②页继续放着过期的步骤
+function invalidatePlan(){
+  if(!hasPlan) return;
+  hasPlan = false; plan = []; phaseList = [];
+  startFacelet = null; cur = 0; auto = false;
+  buildGeo(SOLVED_FACELET);
+  renderStep();
 }
 
 function doSolve(state){
@@ -954,11 +970,15 @@ function renderStep(){
   const done = cur >= total;
   const nx = done ? null : plan[cur];
 
-  $('nowMove').textContent = nx ? nx.move : (total ? '完成' : '—');
-  $('nowMove').style.color = nx ? 'var(--txt)' : 'var(--ok)';
-  $('nowDesc').textContent = nx ? describe(nx.move)
-    : (total ? '魔方已经复原了' : '先在第①页输入魔方状态');
-  $('progL').textContent = total ? ('第 '+Math.min(cur+1,total)+' / '+total+' 步') : '—';
+  $('nowMove').textContent = nx ? nx.move : !hasPlan ? '—' : total ? '完成' : '已复原';
+  $('nowMove').style.color = nx ? 'var(--txt)' : hasPlan ? 'var(--ok)' : 'var(--dim)';
+  $('nowDesc').textContent =
+      nx      ? describe(nx.move)
+    : !hasPlan? '先在第①页输入魔方状态，再点求解'
+    : total   ? '魔方已经复原了'
+    :           '你输入的就是复原状态，不需要转';
+  $('progL').textContent = total ? ('第 '+Math.min(cur+1,total)+' / '+total+' 步')
+                                 : (hasPlan ? '0 步' : '—');
   $('progR').textContent = nx ? nx.phase : (total?'全部完成':'');
   $('bar').firstElementChild.style.width = total ? (cur/total*100)+'%' : '0';
 
