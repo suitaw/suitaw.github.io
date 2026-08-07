@@ -253,6 +253,11 @@ function cubieToFacelet(s){
 
 const FACE_CN = {U:'上面（黄）',R:'右面（橙）',F:'前面（绿）',
                  D:'底面（白）',L:'左面（红）',B:'后面（蓝）'};
+const COLOR_CN  = {U:'黄',R:'橙',F:'绿',D:'白',L:'红',B:'蓝'};
+const CORNER_CN = ['上·右·前','上·前·左','上·左·后','上·后·右',
+                   '下·前·右','下·左·前','下·后·左','下·右·后'];
+const EDGE_CN   = ['上·右','上·前','上·左','上·后','下·右','下·前',
+                   '下·左','下·后','前·右','前·左','后·左','后·右'];
 
 // 返回 {state} 或 {error}
 function faceletToCubie(fc){
@@ -271,11 +276,16 @@ function faceletToCubie(fc){
   const cp=[],co=[],ep=[],eo=[];
   for(let i=0;i<8;i++){
     const t = CORNER_FACELET[i].map(k => F[k]);
+    const say = t.map(x => COLOR_CN[x]).join('+');
     const o = t.findIndex(c => c==='U' || c==='D');
-    if(o < 0) return {error:'有个角块上既没有黄色也没有白色 —— 真实魔方的每个角必有其一'};
-    const a=t[(o+1)%3], b=t[(o+2)%3];
-    const j = CORNER_COLOR.findIndex(c => c[1]===a && c[2]===b);
-    if(j < 0) return {error:'有个角块的三色组合在真实魔方上不存在'};
+    if(o < 0) return {error:`「${CORNER_CN[i]}」这个角是 ${say}，既没有黄也没有白 ——`
+      + ' 真实魔方每个角必有其一，检查这三格'};
+    // 三个面色都得对上。角块的三色是有手性的：(白,绿,橙) 和 (白,橙,绿) 互为镜像，
+    // 只比后两个会把它们当成同一个块，于是不可能的状态会被放行
+    const j = CORNER_COLOR.findIndex(c =>
+      c[0]===t[o] && c[1]===t[(o+1)%3] && c[2]===t[(o+2)%3]);
+    if(j < 0) return {error:`「${CORNER_CN[i]}」这个角是 ${say}，真实魔方上没有这样的角`
+      + '（三个颜色绕的方向不对），检查这三格'};
     cp.push(j); co.push(o);
   }
   for(let i=0;i<12;i++){
@@ -283,7 +293,8 @@ function faceletToCubie(fc){
     let j = EDGE_COLOR.findIndex(c => c[0]===a && c[1]===b);
     if(j >= 0){ ep.push(j); eo.push(0); continue; }
     j = EDGE_COLOR.findIndex(c => c[0]===b && c[1]===a);
-    if(j < 0) return {error:'有个棱块的两色组合在真实魔方上不存在'};
+    if(j < 0) return {error:`「${EDGE_CN[i]}」这个棱是 ${COLOR_CN[a]}+${COLOR_CN[b]}，`
+      + '真实魔方上没有这样的棱，检查这两格'};
     ep.push(j); eo.push(1);
   }
   if(new Set(cp).size !== 8)  return {error:'有角块重复了，检查是不是某个角填错了'};
