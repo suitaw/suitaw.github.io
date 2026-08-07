@@ -1491,9 +1491,17 @@ function prDragTurn(pick, dx, dy){
 // 横一下竖一下会累积出绕屏幕法线的自转，来回几次画面就歪了。
 // 这两根轴组合起来不会自转，怎么拖都不歪；又没有欧拉角那种俯角死区，
 // 一路翻过去也不会卡住（翻过头会上下颠倒，那是转台式的正常表现）
+let prYawSign = 1;
 function prOrbit(dx, dy){
-  // 黄轴在 R 眼里的方向要先过一遍 G，不然转过中间层之后绕的就不是它了
-  if(dx) PR.R = mmul(PR.R, axisRotM(vmul(PR.G, [0,1,0]), dx*0.008));
+  if(dx){
+    // 黄轴在 R 眼里的方向要先过一遍 G，不然转过中间层之后绕的就不是它了
+    const up = vmul(PR.G, [0,1,0]);
+    // 魔方翻过头、黄轴朝下时，绕它转在屏幕上就是反的（地球仪转到南极朝上一个道理），
+    // 得跟着翻符号才跟手。黄轴快正对屏幕时 uy 在 0 附近抖，留个死区别让方向乱跳
+    const uy = vmul(PR.R, up)[1];
+    if(Math.abs(uy) > 0.15) prYawSign = uy >= 0 ? 1 : -1;
+    PR.R = mmul(PR.R, axisRotM(up, prYawSign*dx*0.008));
+  }
   if(dy) PR.R = mmul(axisRotM([1,0,0], dy*0.008), PR.R);
 }
 // 双指拧 = 绕屏幕法线转（roll）。屏幕 y 朝下，两指顺时针拧 dA 变大，
@@ -1506,6 +1514,8 @@ let prHomeRAF = 0;
 // 转过中间层（G 不是单位阵）时这一步会把魔方整个转回来，屏幕上的层就又跟记号对上了
 function prRecenter(){
   const target = mmul(PR_CAM0, mtrans(PR.G)), R0 = PR.R;
+  prYawSign = 1;                          // 摆正了，黄轴又朝上
+
   cancelAnimationFrame(prHomeRAF);
   // 从「还差这么多」这个旋转里取出轴和角，绕它转过去，别硬跳
   const d = mmul(target, mtrans(R0));
@@ -1791,7 +1801,7 @@ function prLoad(st, scram){
   prHist = []; prCount = 0; prElapsed = 0; prT0 = 0;
   prScramSeq = scram || '';
   PR.G = [[1,0,0],[0,1,0],[0,0,1]];
-  PR.R = PR_CAM0;                       // 新的一局从标准持方视角开始
+  PR.R = PR_CAM0; prYawSign = 1;        // 新的一局从标准持方视角开始
   cancelAnimationFrame(prHomeRAF);
   prPlan = null; prPlanRender();         // 换局了，旧解法作废
   clearInterval(prTick); prTick = 0;
