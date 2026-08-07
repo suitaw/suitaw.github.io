@@ -91,6 +91,29 @@
   .legend{font-size:12px;color:var(--dim);margin-top:14px;line-height:1.8}
   .legend b{color:var(--txt);font-weight:600}
 
+  /* ---- 摄像头识别 ---- */
+  #camOv{position:fixed;inset:0;background:#0b0e13;z-index:100;display:none;
+    flex-direction:column;padding:12px calc(12px + env(safe-area-inset-left))
+      calc(12px + env(safe-area-inset-bottom));gap:10px}
+  #camOv.on{display:flex}
+  #camTitle{font-size:16px;font-weight:600;text-align:center}
+  #camTip{font-size:13px;color:var(--dim);text-align:center;line-height:1.5}
+  #camTip b{color:var(--txt)}
+  #camBody{flex:1;min-height:0;display:flex;gap:10px;align-items:center;justify-content:center}
+  #camPrev{flex:0 1 auto;max-width:100%;max-height:100%;aspect-ratio:1;
+    border-radius:12px;background:#000;touch-action:none}
+  #camRef{width:96px;height:96px;flex:none;border-radius:10px;background:#12161d;
+    border:1px solid var(--line)}
+  #camSide{display:flex;flex-direction:column;gap:8px;align-items:center;flex:none}
+  #camSide small{font-size:10px;color:var(--dim);text-align:center;line-height:1.3}
+  #camDots{display:grid;grid-template-columns:repeat(3,14px);gap:3px}
+  #camDots i{width:14px;height:14px;border-radius:3px;background:#1b212b}
+  #camErr{font-size:13px;color:#ffb0b0;text-align:center;min-height:18px}
+  #camProg{display:flex;gap:4px;justify-content:center}
+  #camProg i{width:26px;height:5px;border-radius:3px;background:#242c39}
+  #camProg i.done{background:var(--ok)}
+  #camProg i.cur{background:var(--acc)}
+
   /* ---- 算法切换 ---- */
   .seg{display:flex;flex-direction:column;align-items:center;gap:1px;padding:9px 8px;
     background:#12161d;color:var(--dim)}
@@ -125,11 +148,40 @@
     <button id="btnSolve" class="pri">求解</button>
     <button id="btnBack">退一格</button>
   </div>
+  <div class="row" style="margin-bottom:8px">
+    <button id="btnCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别</button>
+  </div>
   <div class="row">
     <button id="btnReset">全部清空</button>
     <button id="btnSolved">填成复原态</button>
     <button id="btnRandom">随便打乱一个</button>
   </div>
+</div>
+
+<!-- ============ 摄像头识别 ============ -->
+<div id="camOv">
+  <div id="camProg"></div>
+  <div id="camTitle"></div>
+  <div id="camTip"></div>
+  <div id="camBody">
+    <canvas id="camPrev"></canvas>
+    <div id="camSide">
+      <canvas id="camRef" width="192" height="192"></canvas>
+      <small>照这个姿势拿</small>
+      <div id="camDots"></div>
+      <small>取到的颜色</small>
+    </div>
+  </div>
+  <div id="camErr"></div>
+  <div class="row">
+    <button id="camShot" class="pri">采集这一面</button>
+    <button id="camBack">上一面</button>
+  </div>
+  <div class="row">
+    <button id="camFile">改用照片</button>
+    <button id="camClose">取消</button>
+  </div>
+  <input type="file" id="camInput" accept="image/*" hidden>
 </div>
 
 <!-- ============ 复原页 ============ -->
@@ -715,7 +767,8 @@ function bakeGeo(mv){
   }
 }
 
-const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const cv = document.getElementById('cv');
+let ctx = cv.getContext('2d');   // 参考姿势小图会临时把它指向另一张画布
 // pitch 取正值才是从斜上方往下看：黄顶 + 绿前 + 橙右，
 // 和「白色朝下、绿色朝前」拿着魔方时眼睛看到的一致
 let W=0,H=0,yaw=-0.62,pitch=0.42;
@@ -1053,6 +1106,228 @@ $('btnAuto').onclick = () => {
     if(!auto || cur>=plan.length){ auto=false; renderStep(); return; }
     animateStep(() => setTimeout(step, 130));
   })();
+};
+
+/* ==========================================================
+   8. 摄像头 / 照片识别
+   六个拍摄姿势下，屏幕上 3×3 的格子恰好对应展开图那一面的 9 格
+   （顺序一致，已用几何模型核对过），所以直接按 fidx(face, 0..8) 回填
+   ========================================================== */
+const CAM_STEPS = [
+  {f:'F', tip:'<b>绿色</b>对着镜头，<b>白色朝下</b>'},
+  {f:'R', tip:'往左转 90°：<b>橙色</b>对着镜头，<b>白色仍朝下</b>'},
+  {f:'B', tip:'再往左转 90°：<b>蓝色</b>对着镜头，<b>白色仍朝下</b>'},
+  {f:'L', tip:'再往左转 90°：<b>红色</b>对着镜头，<b>白色仍朝下</b>'},
+  {f:'U', tip:'<b>黄色</b>对着镜头，<b>绿色朝下</b>'},
+  {f:'D', tip:'<b>白色</b>对着镜头，<b>绿色朝上</b>'}
+];
+// 参考姿势预览用的整体旋转（与上面六个姿势一一对应）
+const CAM_ROT = [
+  null, [1,-Math.PI/2], [1,-Math.PI], [1,-Math.PI*1.5], [0,Math.PI/2], [0,-Math.PI/2]
+];
+
+const camOv=$('camOv'), camPrev=$('camPrev'), camRef=$('camRef');
+const camCtx=camPrev.getContext('2d',{willReadFrequently:true});
+const refCtx=camRef.getContext('2d');
+let camStep=0, camStream=null, camVideo=null, camRAF=0;
+let camStill=null;                 // 照片模式下的静态图
+let camPicked=[];                  // 每一面采到的 9 个 RGB
+const CAM_SIZE=480;                // 预览画布的内部分辨率
+
+for(let i=0;i<9;i++) $('camDots').appendChild(document.createElement('i'));
+$('camProg').innerHTML = CAM_STEPS.map(()=>'<i></i>').join('');
+
+/* ---- 取样：在画面正中取一个正方形框，框内 3×3 各取中心一小块的平均色 ---- */
+function sampleGrid(ctx){
+  const box = CAM_SIZE*0.68, x0=(CAM_SIZE-box)/2, y0=(CAM_SIZE-box)/2, c=box/3;
+  const out=[];
+  for(let r=0;r<3;r++)for(let q=0;q<3;q++){
+    const cx=x0+c*(q+0.5), cy=y0+c*(r+0.5), rad=Math.round(c*0.18);
+    const d=ctx.getImageData(Math.round(cx-rad), Math.round(cy-rad), rad*2, rad*2).data;
+    let R=0,G=0,B=0;
+    for(let i=0;i<d.length;i+=4){ R+=d[i]; G+=d[i+1]; B+=d[i+2]; }
+    const n=d.length/4;
+    out.push([R/n|0, G/n|0, B/n|0]);
+  }
+  return out;
+}
+function drawBox(ctx){
+  const box=CAM_SIZE*0.68, x0=(CAM_SIZE-box)/2, y0=(CAM_SIZE-box)/2, c=box/3;
+  ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=3;
+  ctx.strokeRect(x0,y0,box,box);
+  ctx.lineWidth=1.5; ctx.strokeStyle='rgba(255,255,255,.65)';
+  for(let i=1;i<3;i++){
+    ctx.beginPath(); ctx.moveTo(x0+c*i,y0); ctx.lineTo(x0+c*i,y0+box); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x0,y0+c*i); ctx.lineTo(x0+box,y0+c*i); ctx.stroke();
+  }
+}
+// 把来源按 cover 方式铺满正方形画布，这样取样坐标和看到的完全一致
+function drawCover(src,sw,sh){
+  const s=Math.max(CAM_SIZE/sw, CAM_SIZE/sh), w=sw*s, h=sh*s;
+  camCtx.drawImage(src,(CAM_SIZE-w)/2,(CAM_SIZE-h)/2,w,h);
+}
+
+/* ---- 颜色：转到 LAB，比色度为主、亮度为辅，抗光照变化 ---- */
+function rgb2lab(c){
+  let [r,g,b]=c.map(v=>{v/=255; return v>0.04045?Math.pow((v+0.055)/1.055,2.4):v/12.92;});
+  let x=(r*0.4124+g*0.3576+b*0.1805)/0.95047,
+      y=(r*0.2126+g*0.7152+b*0.0722),
+      z=(r*0.0193+g*0.1192+b*0.9505)/1.08883;
+  const f=t=>t>0.008856?Math.cbrt(t):(7.787*t+16/116);
+  x=f(x); y=f(y); z=f(z);
+  return [116*y-16, 500*(x-y), 200*(y-z)];
+}
+const labDist=(p,q)=>{
+  const dL=(p[0]-q[0])*0.45, da=p[1]-q[1], db=p[2]-q[2];   // 亮度权重压低
+  return dL*dL+da*da+db*db;
+};
+
+/* ---- 六面采完后统一归类：中心块当参照，并强制每色恰好 9 格 ---- */
+function classifyAll(){
+  const labs = camPicked.flat().map(rgb2lab);              // 54 个，顺序同 CAM_STEPS
+  const refIdx = CAM_STEPS.map((_,s)=>s*9+4);              // 每面的中心格
+  const refs = refIdx.map(i=>labs[i]);
+  const faces = CAM_STEPS.map(s=>s.f);
+
+  const cand=[];
+  for(let i=0;i<54;i++) for(let k=0;k<6;k++)
+    cand.push([labDist(labs[i],refs[k]), i, k]);
+  cand.sort((a,b)=>a[0]-b[0]);
+
+  const got=new Array(54).fill(null), used=new Array(6).fill(0);
+  for(const [,i,k] of cand){
+    if(got[i]||used[k]>=9) continue;
+    got[i]=faces[k]; used[k]++;
+  }
+  // 中心块是已知的，直接钉死，避免被贪心分配挪走
+  refIdx.forEach((i,k)=>{ got[i]=faces[k]; });
+
+  const out=new Array(54);
+  CAM_STEPS.forEach((st,s)=>{ for(let j=0;j<9;j++) out[fidx(st.f,j)] = got[s*9+j]; });
+  return out;
+}
+
+/* ---- 参考姿势的 3D 小图 ---- */
+function drawRef(){
+  // 借用主渲染器画这张小图，画完把全局状态原样还原，别弄脏第②页的魔方
+  const sCub=cubies, sCtx=ctx, sW=W, sH=H, sYaw=yaw, sPit=pitch;
+  try{
+    buildGeo(SOLVED_FACELET);
+    const rot=CAM_ROT[camStep];
+    if(rot){                                  // 把整个魔方摆成该姿势
+      const m=rotM(rot[0],rot[1]);
+      for(const cb of cubies){ cb.p=vmul(m,cb.p).map(Math.round); cb.r=mmul(m,cb.r); }
+    }
+    ctx=refCtx; W=192; H=192; yaw=-0.34; pitch=0.28;
+    refCtx.setTransform(1,0,0,1,0,0);
+    render();
+  }finally{
+    cubies=sCub; ctx=sCtx; W=sW; H=sH; yaw=sYaw; pitch=sPit;
+  }
+}
+
+/* ---- 界面刷新 ---- */
+function camRender(){
+  const st=CAM_STEPS[camStep];
+  $('camTitle').textContent = `第 ${camStep+1} / 6 面：${FACE_CN[st.f]}`;
+  $('camTip').innerHTML = st.tip;
+  [...$('camProg').children].forEach((el,i)=>{
+    el.className = i<camStep ? 'done' : i===camStep ? 'cur' : ''; });
+  $('camBack').disabled = camStep===0;
+  $('camShot').textContent = camStep===5 ? '采集并完成' : '采集这一面';
+  drawRef();
+}
+function camLoop(){
+  if(!camOv.classList.contains('on')) return;
+  if(camStill) drawCover(camStill, camStill.width, camStill.height);
+  else if(camVideo && camVideo.videoWidth) drawCover(camVideo, camVideo.videoWidth, camVideo.videoHeight);
+  else { camCtx.fillStyle='#000'; camCtx.fillRect(0,0,CAM_SIZE,CAM_SIZE); }
+  drawBox(camCtx);
+  try{
+    const g=sampleGrid(camCtx);
+    [...$('camDots').children].forEach((el,i)=>{
+      el.style.background = `rgb(${g[i][0]},${g[i][1]},${g[i][2]})`; });
+  }catch(e){}
+  camRAF=requestAnimationFrame(camLoop);
+}
+
+async function camOpen(){
+  camStep=0; camPicked=[]; camStill=null; $('camErr').textContent='';
+  camPrev.width=camPrev.height=CAM_SIZE;
+  camOv.classList.add('on');
+  camRender();
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    camVideo=document.createElement('video');
+    camVideo.playsInline=true; camVideo.muted=true;
+    camVideo.srcObject=camStream;
+    await camVideo.play();
+  }catch(e){
+    $('camErr').textContent='打不开摄像头（'+(e.name||e.message)+'），可以点「改用照片」';
+  }
+  camLoop();
+}
+function camStop(){
+  cancelAnimationFrame(camRAF);
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+  camVideo=null; camStill=null;
+  camOv.classList.remove('on');
+}
+
+$('btnCam').onclick = camOpen;
+$('camClose').onclick = camStop;
+$('camBack').onclick = () => {
+  if(camStep>0){ camStep--; camPicked.pop(); camStill=null; $('camErr').textContent=''; camRender(); }
+};
+$('camShot').onclick = () => {
+  camPicked[camStep] = sampleGrid(camCtx);
+  camStill=null;
+  if(camStep < 5){ camStep++; $('camErr').textContent=''; camRender(); return; }
+  // 六面齐了，归类并回填展开图
+  const guess = classifyAll();
+  camStop();
+  net = guess; cursor = 0; paintNet(); invalidatePlan();
+  const chk = faceletToCubie(net);
+  showMsg(chk.error
+    ? '识别完了，但有对不上的地方：' + chk.error + '　—— 在上面的展开图里改掉那几格再求解'
+    : '识别完了，六个面都填好了。对着实物核对一下，没问题就点求解。', chk.error ? 'err' : 'ok');
+  window.scrollTo(0,0);
+};
+
+/* ---- 照片模式：字节只读一次，相册给的引用可能立刻失效 ---- */
+$('camFile').onclick = () => $('camInput').click();
+$('camInput').onchange = async e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value='';
+  if(!f) return;
+  $('camErr').textContent='读取中…';
+  try{
+    let buf;
+    try{ buf = await f.arrayBuffer(); }
+    catch(e1){
+      buf = await new Promise((res,rej)=>{        // 这两条在 Blink 里是不同实现，偶有一条能通
+        const r=new FileReader();
+        r.onload=()=>res(r.result); r.onerror=()=>rej(r.error||e1);
+        r.readAsArrayBuffer(f);
+      });
+    }
+    if(!buf || !buf.byteLength) throw new Error('NotReadableError');
+    const blob = new Blob([buf], {type: f.type || 'image/jpeg'});
+    // blob 是内存里的副本，不是相册那个随时会失效的引用，所以这里可以放心解码
+    camStill = await (self.createImageBitmap ? createImageBitmap(blob) : new Promise((res,rej)=>{
+      const u=URL.createObjectURL(blob), im=new Image();
+      im.onload=()=>{ URL.revokeObjectURL(u); res(im); };
+      im.onerror=()=>{ URL.revokeObjectURL(u); rej(new Error('DecodeError')); };
+      im.src=u;
+    }));
+    if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; camVideo=null; }
+    $('camErr').textContent='用的是这张照片，对准框后点采集';
+  }catch(err){
+    const n=(err&&err.name)||'';
+    $('camErr').textContent = (n==='NotReadableError'||n==='NotFoundError')
+      ? '系统没让浏览器读到这张图，换「文件」入口重选同一张通常就好'
+      : '读取失败'+(n?'（'+n+'）':'');
+  }
 };
 
 /* ---- 启动 ---- */
