@@ -212,6 +212,7 @@
     <button id="prReset">还原成复原态</button>
   </div>
   <div class="row" style="margin-top:8px">
+    <button id="prHome">摆正视角</button>
     <button id="prTip">提示下一步</button>
     <button id="prSolveIt">交给它解</button>
   </div>
@@ -219,12 +220,17 @@
   <div id="prKeys"></div>
 
   <div class="legend">
-    <b>拖魔方 = 转层。</b>按住往某个方向拖，会先<b>高亮</b>将要转的那一层并显示记号，
-    方向不对就接着改，<b>松手才真正转</b>。中间层也能拖。
+    <b>拖魔方 = 转层。</b>按住往某个方向拖，那一层就<b>跟着手指转</b>，像真魔方一样。
+    <b>转过一半松手</b>才算一步，不到一半松手会弹回去。刚开始拖时层还能改，
+    方向不对接着拖就行。中间层也能拖。
     <div style="margin-top:6px">要转某一层，得在<b>它的侧面</b>拖 —— 比如想转右面(R)，
     在顶面或前面<b>靠右那一列</b>上拖；在右面自己上面怎么拖都转不到它。</div>
-    <div style="margin-top:6px">手指离魔方远一点（四周留白处）拖，才是转视角。
-    嫌不好按就用下面的按钮，<b>M/E/S</b> 是三个中间层。</div>
+    <div style="margin-top:6px">手指离魔方远一点（四周留白处）拖，才是转视角，
+    <b>任意角度都能翻过去</b>。翻乱了按<b>「摆正视角」</b>回到黄顶绿前橙右 ——
+    转过中间层之后也靠它把魔方整个转回来，屏幕上的层才跟记号对得上。</div>
+    <div style="margin-top:6px">嫌不好按就用下面的按钮，正好是求解器会用到的 18 个记号，
+    带 <b>2</b> 的那一行是转 180°，跟公式里的 <b>R2</b> 一一对应。
+    中间层没给按钮，拖着转就行。</div>
     <div style="margin-top:6px"><b>转动记录</b>把你转过的每一步按顺序记下来，
     最后一步是蓝的。<b>点某一步</b>就退回到转它之前，用来找是哪一步转错的。
     「复制」把打乱序列和你的转动一起拷走。</div>
@@ -805,6 +811,13 @@ const vmul=(m,v)=>[m[0][0]*v[0]+m[0][1]*v[1]+m[0][2]*v[2],
                    m[2][0]*v[0]+m[2][1]*v[1]+m[2][2]*v[2]];
 function rotM(ax,a){const c=Math.cos(a),s=Math.sin(a);
   return ax===0?[[1,0,0],[0,c,-s],[0,s,c]]:ax===1?[[c,0,s],[0,1,0],[-s,0,c]]:[[c,-s,0],[s,c,0],[0,0,1]];}
+// 绕任意单位轴转（罗德里格斯）。练习页的视角要绕斜轴转，主轴那三个不够用
+function axisRotM(a,t){const c=Math.cos(t),s=Math.sin(t),k=1-c,[x,y,z]=a;
+  return [[c+x*x*k, x*y*k-z*s, x*z*k+y*s],
+          [y*x*k+z*s, c+y*y*k, y*z*k-x*s],
+          [z*x*k-y*s, z*y*k+x*s, c+z*z*k]];}
+// 旋转矩阵的逆 = 转置
+const mtrans = m => [[m[0][0],m[1][0],m[2][0]],[m[0][1],m[1][1],m[2][1]],[m[0][2],m[1][2],m[2][2]]];
 
 // (方块位置, 面法向) → 展开图格子编号
 function geoFacelet(p,n){
@@ -1209,12 +1222,14 @@ const prCv = $('prCv');
 // G 是「整个魔方相对中心块参照系转了多少」。转中间层会挪动中心块，
 // 而状态模型是以中心块为参照的、表示不了；于是把中间层转动拆成
 // 「两个外层反向转 + 整体转回来」，后者只累积到 G，不进状态模型。
-// 俯角上限收在 ±66°。再往上抬，水平拖动绕的那根竖直轴就快正对屏幕了，
-// 绕它转必然表现为画面自转 —— 这是几何决定的，补偿不掉，只能不进那个区间
-const PR_PITCH_MAX = 1.15;
-const PR = {ctx:prCv.getContext('2d'), W:0, H:0, yaw:-0.62, pitch:0.42,
-            G:[[1,0,0],[0,1,0],[0,0,1]],
-            get cam(){ return mmul(mmul(rotM(0,this.pitch), rotM(1,this.yaw)), this.G); },
+// 标准持方视角：黄顶、绿前、橙右（pitch 取正才是从斜上方往下看）
+const PR_CAM0 = mmul(rotM(0,0.42), rotM(1,-0.62));
+// 视角姿态直接存一个旋转矩阵，不用 yaw/pitch 两个欧拉角：拖动时绕
+// 「屏幕里垂直于手指方向」的那根轴转（左乘，作用在相机空间）。这样翻到
+// 哪个角度都不会有万向节锁 —— 以前限死俯角 ±66° 就是为了躲它，现在不用了
+const PR = {ctx:prCv.getContext('2d'), W:0, H:0,
+            R:PR_CAM0, G:[[1,0,0],[0,1,0],[0,0,1]],
+            get cam(){ return mmul(this.R, this.G); },
             cubies:[], collect:true, picks:[], hl:null};
 let prState = solvedState();     // 与几何模型同步，用来判定复原和求提示
 let prHist = [], prCount = 0, prBusy = false, prScramSeq = '';
@@ -1258,7 +1273,8 @@ function prTurn(mv, record){
   if(prBusy) return null;
   const d = GEO_MV[mv[0]];
   const turns = mv.endsWith("'") ? -1 : mv.endsWith('2') ? 2 : 1;
-  return prSpin({axis:d.axis, layer:d.layer, rotSign:d.sign*turns},
+  // rotSign 只表示方向，别把 2 乘进去 —— 那样动画会转满一整圈，记号也会写成 U'2
+  return prSpin({axis:d.axis, layer:d.layer, rotSign: turns<0 ? -d.sign : d.sign},
                 Math.abs(turns), record, [mv]);
 }
 /* 把一次转动落到模型上：几何 + 状态 + 视角 G。不带动画，回退时也用它 */
@@ -1280,28 +1296,35 @@ function prBake(turn, quarter){
   for(const m of done){ bakeGeo(m, PR.cubies); prState = applyMove(prState, m); }
 }
 // turn = {axis, layer, rotSign}；layer 为 0 就是中间层
-function prSpin(turn, quarter, record, tag){
+// from：这一层已经被手指转到的角度（弧度）。跟手拖到一半松手时从那儿接着补，
+// 不从 0 重放。quarter 为 0 表示「弹回原位」——只放动画，不落到模型上
+function prSpin(turn, quarter, record, tag, from){
   if(prBusy) return null;
   prBusy = true;
   if(record) prStartClock();
   const {axis, layer, rotSign} = turn;
-  const dur = quarter>1 ? 260 : 170;
   const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
   const t0 = performance.now();
   const total = rotSign*quarter*Math.PI/2;
+  from = from || 0;
+  // 时长按「还差多少角度」缩放：手指已经转过大半时只补最后一点，别再慢慢转一遍
+  const dur = Math.max(80, (quarter>1 ? 260 : 170)
+              * Math.abs(total-from) / (Math.abs(total) || Math.PI/2));
   const label = tag || [layer===0 ? '中间层' : ''];
   (function frame(now){
     const t = Math.min(1,(now-t0)/dur);
-    prRender({axis, layer, m:rotM(axis, total*ease(t))});
+    prRender({axis, layer, m:rotM(axis, from + (total-from)*ease(t))});
     if(t<1){ requestAnimationFrame(frame); return; }
-    prBake(turn, quarter);
-    if(record){
-      prHist.push({turn, quarter, label:turnLabel(turn) + (quarter>1 ? '2' : '')});
-      prCount++; prLogRender();
+    if(quarter){
+      prBake(turn, quarter);
+      if(record){
+        prHist.push({turn, quarter, label:turnLabel(turn) + (quarter>1 ? '2' : '')});
+        prCount++; prLogRender();
+      }
     }
     prBusy = false;
     prRender(); prUpdate();
-    if(record && isSolved(prState)){
+    if(record && quarter && isSolved(prState)){
       prStopClock();
       prMsg(`复原了！用时 ${fmtT(prElapsed)}，共 ${prCount} 步`, true);
     }
@@ -1360,7 +1383,9 @@ function turnLabel(t){
   return t.rotSign === MID_SIGN[t.axis] ? c : c + "'";
 }
 
-// 返回 {axis, layer, rotSign}：转哪根轴、哪一层、朝哪个方向
+// 返回 {axis, layer, rotSign, v}：转哪根轴、哪一层、朝哪个方向，
+// v 是「这一层每转 1 弧度，手指底下这张贴纸在屏幕上挪多少像素」，
+// 拿它把手指位移反算成角度，就能跟手转
 function prDragTurn(pick, dx, dy){
   const cb = pick.cb, i = pick.fi;
   const n = vmul(cb.r, NRM[i]);
@@ -1381,7 +1406,9 @@ function prDragTurn(pick, dx, dy){
       const score = (p1[0]-o[0])*dx + (p1[1]-o[1])*dy;
       if(score <= bestScore) continue;
       bestScore = score;
-      best = {axis, layer:cb.p[axis], rotSign:dir*s};
+      const k = s*dir*0.12;                               // 刚才试转了多少弧度
+      best = {axis, layer:cb.p[axis], rotSign:dir*s,
+              v:[(p1[0]-o[0])/k, (p1[1]-o[1])/k]};
     }
   }
   // 面几乎侧对镜头被压成一条线时，四个候选得分都接近 0、符号不可靠。
@@ -1389,45 +1416,93 @@ function prDragTurn(pick, dx, dy){
   return bestScore > 0 ? best : null;
 }
 
+/* ---- 视角：轨迹球 + 一键摆正 ---- */
+// 绕「屏幕里垂直于手指方向」的轴转。左乘 = 在相机空间转，
+// 转的是屏幕的横轴/竖轴，永远不会正对镜头，所以翻多少都不会卡住
+function prOrbit(dx, dy){
+  const a = Math.hypot(dx, dy);
+  if(!a) return;
+  PR.R = mmul(axisRotM([dy/a, dx/a, 0], a*0.008), PR.R);
+}
+let prHomeRAF = 0;
+// 摆回黄顶绿前橙右。cam = R·G，要让 cam 等于 PR_CAM0，就取 R = PR_CAM0·G⁻¹ ——
+// 转过中间层（G 不是单位阵）时这一步会把魔方整个转回来，屏幕上的层就又跟记号对上了
+function prRecenter(){
+  const target = mmul(PR_CAM0, mtrans(PR.G)), R0 = PR.R;
+  cancelAnimationFrame(prHomeRAF);
+  // 从「还差这么多」这个旋转里取出轴和角，绕它转过去，别硬跳
+  const d = mmul(target, mtrans(R0));
+  const ang = Math.acos(Math.max(-1, Math.min(1, (d[0][0]+d[1][1]+d[2][2]-1)/2)));
+  const s = Math.sin(ang);
+  if(!(ang > 1e-4) || Math.abs(s) < 1e-6){ PR.R = target; prRender(); return; }
+  const ax = [(d[2][1]-d[1][2])/(2*s), (d[0][2]-d[2][0])/(2*s), (d[1][0]-d[0][1])/(2*s)];
+  const t0 = performance.now(), dur = 240;
+  (function frame(now){
+    const t = Math.min(1, (now-t0)/dur);
+    const e = t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+    PR.R = t>=1 ? target : mmul(axisRotM(ax, ang*e), R0);
+    prRender();
+    if(t<1) prHomeRAF = requestAnimationFrame(frame);
+  })(t0);
+}
+
 /* ---- 手势 ---- */
 let prDrag = null;
 const prStage = $('prStage');
 prStage.addEventListener('pointerdown', e => {
   if(prBusy) return;
+  cancelAnimationFrame(prHomeRAF);        // 摆正动画没放完就上手了，让手指说了算
   const r = prCv.getBoundingClientRect();
   const x = e.clientX-r.left, y = e.clientY-r.top;
-  prDrag = {x, y, x0:x, y0:y, pick:prPick(x,y), fired:false};
+  prDrag = {x, y, px:x, py:y, x0:x, y0:y, pick:prPick(x,y),
+            turn:null, ang:0, locked:false, msg:''};
   prStage.setPointerCapture(e.pointerId);
 });
-// 拖动过程中只做预览（高亮待转的层），松手才真正执行 —— 方向不对可以边拖边改
+// 那一层跟着手指转，像真魔方。转过 45° 松手才算一步，不到就弹回去。
+// 刚开始拖时层还能改（方向判错了接着拖就是），转过约 15° 之后锁定
+const PR_LOCK = 0.26, PR_SNAP = Math.PI/4;
 prStage.addEventListener('pointermove', e => {
   if(!prDrag) return;
   const r = prCv.getBoundingClientRect();
   const x = e.clientX-r.left, y = e.clientY-r.top;
+  prDrag.x = x; prDrag.y = y;
   if(prDrag.pick){
     const dx = x-prDrag.x0, dy = y-prDrag.y0;
-    const t = (dx*dx + dy*dy < 12*12) ? null : prDragTurn(prDrag.pick, dx, dy);
-    const same = t && prDrag.turn && t.axis===prDrag.turn.axis
-                 && t.layer===prDrag.turn.layer && t.rotSign===prDrag.turn.rotSign;
-    if(!same){
-      prDrag.turn = t;
-      PR.hl = t ? {axis:t.axis, layer:t.layer} : null;
-      prMsg(t ? '松手就转 ' + turnLabel(t) : '');
-      prRender();
+    if(!prDrag.locked)
+      prDrag.turn = (dx*dx + dy*dy < 10*10) ? null : prDragTurn(prDrag.pick, dx, dy);
+    const t = prDrag.turn;
+    let ang = 0;
+    if(t){
+      // v 是「每 1 弧度挪多少像素」的线性化结果，可贴纸实际是绕轴走圆弧、
+      // 屏幕位移按 sin 走。直接除会越转越跟不上手（45° 时差两成半），
+      // 反过来取 asin 才跟手；顺带天然卡在 ±90°，不用再 clamp
+      const vn = Math.hypot(t.v[0], t.v[1]);
+      const u = vn ? (dx*t.v[0] + dy*t.v[1]) / vn : 0;
+      ang = Math.asin(Math.max(-1, Math.min(1, u/(vn||1))));
+      if(Math.abs(ang) > PR_LOCK) prDrag.locked = true;   // 锁定后可以反着拖回来
     }
+    prDrag.ang = ang;
+    PR.hl = t ? {axis:t.axis, layer:t.layer} : null;
+    const msg = !t || !ang ? ''
+      : (Math.abs(ang) > PR_SNAP ? '松手就转 ' : '再多转一点：')
+        + turnLabel({axis:t.axis, layer:t.layer, rotSign: ang>0 ? 1 : -1});
+    if(msg !== prDrag.msg){ prDrag.msg = msg; prMsg(msg); }
+    prRender(t ? {axis:t.axis, layer:t.layer, m:rotM(t.axis, ang)} : null);
   }else{
-    PR.yaw += (x-prDrag.x)*0.008;
-    PR.pitch = Math.max(-PR_PITCH_MAX, Math.min(PR_PITCH_MAX, PR.pitch + (y-prDrag.y)*0.008));
+    prOrbit(x-prDrag.px, y-prDrag.py);
     if(!prBusy) prRender();
   }
-  prDrag.x = x; prDrag.y = y;
+  prDrag.px = x; prDrag.py = y;
 });
 const prEnd = () => {
-  const t = prDrag && prDrag.turn;
+  const d = prDrag;
   prDrag = null;
   PR.hl = null;
-  if(t){ prMsg(''); prSpin(t, 1, true); }
-  else prRender();
+  if(!d || !d.turn || !d.ang){ prRender(); return; }
+  prMsg('');
+  const t = {axis:d.turn.axis, layer:d.turn.layer, rotSign: d.ang>0 ? 1 : -1};
+  // 过半就补成一整格并记一步，没过半就原路弹回（quarter 给 0）
+  prSpin(t, Math.abs(d.ang) > PR_SNAP ? 1 : 0, Math.abs(d.ang) > PR_SNAP, null, d.ang);
 };
 prStage.addEventListener('pointerup', prEnd);
 prStage.addEventListener('pointercancel', prEnd);
@@ -1470,19 +1545,13 @@ $('prCopy').onclick = () => {
     .then(() => prMsg('记录已复制'), () => prMsg('复制失败了'));
 };
 
-/* ---- 按钮 ---- */
-const PR_MID = {};
-MID_AXIS.forEach((c,ax)=>{ PR_MID[c] = {axis:ax, rotSign:MID_SIGN[ax]}; });
+/* ---- 按钮 ----
+   正好是求解器会用到的那 18 个记号，一一对应。中间层不给按钮，拖着转就是 */
 ["U","U'","D","D'","R","R'","L","L'","F","F'","B","B'",
- "M","M'","E","E'","S","S'"].forEach(k=>{
+ "U2","D2","R2","L2","F2","B2"].forEach(k=>{
   const b = document.createElement('button');
   b.textContent = k;
-  const mid = PR_MID[k[0]], back = k.endsWith("'");
-  b.onclick = () => {
-    prMsg('');
-    if(mid) prSpin({axis:mid.axis, layer:0, rotSign:back?-mid.rotSign:mid.rotSign}, 1, true);
-    else prTurn(k, true);
-  };
+  b.onclick = () => { prMsg(''); prTurn(k, true); };
   $('prKeys').appendChild(b);
 });
 
@@ -1492,6 +1561,8 @@ function prLoad(st, scram){
   prHist = []; prCount = 0; prElapsed = 0; prT0 = 0;
   prScramSeq = scram || '';
   PR.G = [[1,0,0],[0,1,0],[0,0,1]];
+  PR.R = PR_CAM0;                       // 新的一局从标准持方视角开始
+  cancelAnimationFrame(prHomeRAF);
   clearInterval(prTick); prTick = 0;
   prUpdate(); prLogRender(); prRender();
 }
@@ -1516,6 +1587,7 @@ $('prUndo').onclick = () => {
   const t = last.turn;
   prSpin({axis:t.axis, layer:t.layer, rotSign:-t.rotSign}, last.quarter, false);
 };
+$('prHome').onclick = () => { if(!prBusy) prRecenter(); };
 $('prTip').onclick = () => {
   if(prBusy) return;
   if(isSolved(prState)){ prMsg('已经是复原状态了'); return; }
