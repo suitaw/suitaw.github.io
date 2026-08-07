@@ -102,6 +102,24 @@
   #prBar b{font-size:24px;font-weight:700;color:var(--txt);margin-right:4px}
   #prMsg{min-height:22px;font-size:14px;color:var(--acc);text-align:center;margin:8px 0}
   #prMsg.win{color:var(--ok);font-weight:700;font-size:17px}
+  #prPlan{display:none;margin-top:10px;background:#12161d;border:1px solid var(--line);
+    border-radius:10px;padding:8px 10px}
+  #prPlan.on{display:block}
+  #prPlanHd{display:flex;align-items:center;gap:8px}
+  #prPlanNow{font-family:ui-monospace,Menlo,monospace;font-size:27px;font-weight:700;
+    min-width:54px;text-align:center;letter-spacing:.02em}
+  #prPlanDesc{flex:1;font-size:12.5px;color:var(--dim);line-height:1.35}
+  #prPlanHd button{padding:5px 9px;font-size:12px;border-radius:7px;flex:none}
+  #prPlanHd button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  #prPlanOff{display:none;font-size:12.5px;color:#ffb0b0;margin-top:6px;
+    align-items:center;gap:8px}
+  #prPlanOff.on{display:flex}
+  #prPlanOff button{padding:4px 9px;font-size:12px;border-radius:7px}
+  #prPlanSeq{display:flex;gap:4px;overflow-x:auto;margin-top:7px;padding-bottom:2px;
+    font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  #prPlanSeq span{padding:3px 7px;border-radius:6px;background:#1b212b;white-space:nowrap}
+  #prPlanSeq span.done{color:#3d4757}
+  #prPlanSeq span.cur{background:var(--acc);color:#fff;font-weight:700}
   #prLog{margin:10px 0 2px;background:#12161d;border:1px solid var(--line);
     border-radius:10px;padding:8px 10px}
   #prLogHd{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);
@@ -191,13 +209,37 @@
 
 <!-- ============ 练习页 ============ -->
 <div id="pPr" class="page">
-  <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层 · 拖四周留白转视角</div></div>
+  <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层 · 留白转视角 · 双指拧正</div></div>
 
   <div id="prBar">
     <span><b id="prTime">0:00</b>用时</span>
     <span><b id="prCount">0</b>步</span>
   </div>
   <div id="prMsg"></div>
+
+  <div id="prPlan">
+    <div id="prPlanHd">
+      <b id="prPlanNow">R</b>
+      <span id="prPlanDesc"></span>
+      <button id="prPlanTog">箭头</button>
+      <button id="prPlanX">×</button>
+    </div>
+    <div id="prPlanOff"><span>跟解法对不上了</span><button id="prPlanAgain">重新算</button></div>
+    <div id="prPlanSeq"></div>
+  </div>
+
+  <div id="prKeys"></div>
+
+  <div class="row" style="margin-top:12px">
+    <button id="prScram" class="pri">打乱</button>
+    <button id="prUndo">撤销</button>
+    <button id="prReset">还原成复原态</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="prHome">摆正视角</button>
+    <button id="prTip">提示下一步</button>
+    <button id="prSolveIt">跟着解法转</button>
+  </div>
 
   <div id="prLog">
     <div id="prLogHd"><span>转动记录 · <b id="prLogN">0 步</b></span>
@@ -206,19 +248,6 @@
     <div id="prMoves"><em>还没转过</em></div>
   </div>
 
-  <div class="row">
-    <button id="prScram" class="pri">打乱</button>
-    <button id="prUndo">撤销</button>
-    <button id="prReset">还原成复原态</button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <button id="prHome">摆正视角</button>
-    <button id="prTip">提示下一步</button>
-    <button id="prSolveIt">交给它解</button>
-  </div>
-
-  <div id="prKeys"></div>
-
   <div class="legend">
     <b>拖魔方 = 转层。</b>按住往某个方向拖，那一层就<b>跟着手指转</b>，像真魔方一样。
     <b>转过一半松手</b>才算一步，不到一半松手会弹回去。刚开始拖时层还能改，
@@ -226,7 +255,9 @@
     <div style="margin-top:6px">要转某一层，得在<b>它的侧面</b>拖 —— 比如想转右面(R)，
     在顶面或前面<b>靠右那一列</b>上拖；在右面自己上面怎么拖都转不到它。</div>
     <div style="margin-top:6px">手指离魔方远一点（四周留白处）拖，才是转视角，
-    <b>任意角度都能翻过去</b>。翻乱了按<b>「摆正视角」</b>回到黄顶绿前橙右 ——
+    <b>任意角度都能翻过去，而且不会越拖越歪</b>。
+    <b>两根手指拧</b>可以把画面转正（连着平移也能调视角）。
+    一键回到黄顶绿前橙右按<b>「摆正视角」</b> ——
     转过中间层之后也靠它把魔方整个转回来，屏幕上的层才跟记号对得上。</div>
     <div style="margin-top:6px">嫌不好按就用下面的按钮，正好是求解器会用到的 18 个记号，
     带 <b>2</b> 的那一行是转 180°，跟公式里的 <b>R2</b> 一一对应。
@@ -234,8 +265,13 @@
     <div style="margin-top:6px"><b>转动记录</b>把你转过的每一步按顺序记下来，
     最后一步是蓝的。<b>点某一步</b>就退回到转它之前，用来找是哪一步转错的。
     「复制」把打乱序列和你的转动一起拷走。</div>
-    <div style="margin-top:6px">「提示下一步」按层先法给，会告诉你现在该做哪个阶段；
-    「交给它解」把当前状态送到第②页求完整解法。</div>
+    <div style="margin-top:6px"><b>「跟着解法转」</b>就在这一页把整套解法摆出来：
+    大字是当前该转的记号，旁边一句中文说明哪一面往哪转，下面是整条序列。
+    <b>转对了自动往下走</b>，不用来回切页。<b>R2</b> 这种分两次转也认得出来。
+    转岔了会提示，撤销回去就接着走。</div>
+    <div style="margin-top:6px">不认记号就开着<b>「箭头」</b>：该转的那一层上会画一个
+    黄色箭头，照着箭头方向拧就行（开关状态记住，下次还是这样）。
+    解法用第①页选的算法：最短解法约 20 步、分步教学约 120 步。</div>
   </div>
 </div>
 
@@ -936,6 +972,38 @@ function render(anim, V){
       ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=2.5; ctx.stroke();
     }
   }
+  if(V.arrow) drawArrow(ctx, polys, V.arrow, w => proj(vmul(cam, w)));
+}
+
+/* 在该转的那一层上画个箭头，指明往哪边拧 —— 不认记号也能照着转 */
+function drawArrow(ctx, polys, a, toScr){
+  const area = q => Math.abs((q[0][0]-q[2][0])*(q[1][1]-q[3][1]) -
+                             (q[1][0]-q[3][0])*(q[0][1]-q[2][1]))/2;
+  let best = null, ba = 0;
+  for(const p of polys){                        // 这一层里最正对镜头的那张贴纸
+    if(!p.c || p.cb.p[a.axis] !== a.layer) continue;
+    const s = area(p.face);
+    if(s > ba){ ba = s; best = p; }
+  }
+  if(!best) return;
+  const cb = best.cb, n = vmul(cb.r, NRM[best.fi]);
+  const c0 = [cb.p[0]*GAP+n[0]*0.5, cb.p[1]*GAP+n[1]*0.5, cb.p[2]*GAP+n[2]*0.5];
+  const o = toScr(c0), p1 = toScr(vmul(rotM(a.axis, a.rotSign*0.3), c0));
+  const L = Math.hypot(p1[0]-o[0], p1[1]-o[1]);
+  if(L < 1) return;
+  const ux = (p1[0]-o[0])/L, uy = (p1[1]-o[1])/L, r = Math.sqrt(ba)*0.6, h = r*0.62;
+  const x0 = o[0]-ux*r, y0 = o[1]-uy*r, x1 = o[0]+ux*r, y1 = o[1]+uy*r;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for(const [w,col] of [[7,'rgba(0,0,0,.6)'], [3.5,'#ffe14d']]){
+    ctx.strokeStyle = col; ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x1-ux*h-uy*h*0.6, y1-uy*h+ux*h*0.6);
+    ctx.lineTo(x1, y1);
+    ctx.lineTo(x1-ux*h+uy*h*0.6, y1-uy*h-ux*h*0.6);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
 }
 
 /* ---- 拖动转视角 ---- */
@@ -1323,6 +1391,7 @@ function prSpin(turn, quarter, record, tag, from){
       }
     }
     prBusy = false;
+    if(quarter) prPlanSync();
     prRender(); prUpdate();
     if(record && quarter && isSolved(prState)){
       prStopClock();
@@ -1416,13 +1485,21 @@ function prDragTurn(pick, dx, dy){
   return bestScore > 0 ? best : null;
 }
 
-/* ---- 视角：轨迹球 + 一键摆正 ---- */
-// 绕「屏幕里垂直于手指方向」的轴转。左乘 = 在相机空间转，
-// 转的是屏幕的横轴/竖轴，永远不会正对镜头，所以翻多少都不会卡住
+/* ---- 视角：转台式拖动 + 双指转正 + 一键摆正 ---- */
+// 横拖绕魔方自己的竖轴（黄轴）转，竖拖绕屏幕横轴转。
+// 别用「绕垂直于手指方向的轴转」那种轨迹球：两个方向的旋转不可交换，
+// 横一下竖一下会累积出绕屏幕法线的自转，来回几次画面就歪了。
+// 这两根轴组合起来不会自转，怎么拖都不歪；又没有欧拉角那种俯角死区，
+// 一路翻过去也不会卡住（翻过头会上下颠倒，那是转台式的正常表现）
 function prOrbit(dx, dy){
-  const a = Math.hypot(dx, dy);
-  if(!a) return;
-  PR.R = mmul(axisRotM([dy/a, dx/a, 0], a*0.008), PR.R);
+  // 黄轴在 R 眼里的方向要先过一遍 G，不然转过中间层之后绕的就不是它了
+  if(dx) PR.R = mmul(PR.R, axisRotM(vmul(PR.G, [0,1,0]), dx*0.008));
+  if(dy) PR.R = mmul(axisRotM([1,0,0], dy*0.008), PR.R);
+}
+// 双指拧 = 绕屏幕法线转（roll）。屏幕 y 朝下，两指顺时针拧 dA 变大，
+// 而绕相机 +Z 转正角在屏幕上是逆时针，所以要取负号才跟手
+function prRoll(dA){
+  if(dA) PR.R = mmul(axisRotM([0,0,1], -dA), PR.R);
 }
 let prHomeRAF = 0;
 // 摆回黄顶绿前橙右。cam = R·G，要让 cam 等于 PR_CAM0，就取 R = PR_CAM0·G⁻¹ ——
@@ -1446,25 +1523,59 @@ function prRecenter(){
   })(t0);
 }
 
-/* ---- 手势 ---- */
+/* ---- 手势 ----
+   一根手指：按在魔方上就转层，按在四周留白处就转视角。
+   两根手指：拧 = 把画面转正（roll），一起平移 = 转视角。 */
 let prDrag = null;
+const prPts = new Map();        // 还按着的手指：pointerId → [x,y]
+let prTwo = null;               // 双指基准：两指连线的角度 + 中点
 const prStage = $('prStage');
+const prXY = e => { const r = prCv.getBoundingClientRect();
+                    return [e.clientX-r.left, e.clientY-r.top]; };
+const prTwoInfo = () => {
+  const [a, b] = [...prPts.values()];
+  return {a:Math.atan2(b[1]-a[1], b[0]-a[0]), cx:(a[0]+b[0])/2, cy:(a[1]+b[1])/2};
+};
+// 第二根手指落下时放弃正在拖的那一层：转过的角度原路弹回，不记步
+function prDropDrag(){
+  const d = prDrag;
+  prDrag = null; PR.hl = null; prMsg('');
+  if(d && d.turn && d.ang)
+    prSpin({axis:d.turn.axis, layer:d.turn.layer, rotSign:d.ang>0?1:-1},
+           0, false, null, d.ang);
+  else prRender();
+}
 prStage.addEventListener('pointerdown', e => {
   if(prBusy) return;
   cancelAnimationFrame(prHomeRAF);        // 摆正动画没放完就上手了，让手指说了算
-  const r = prCv.getBoundingClientRect();
-  const x = e.clientX-r.left, y = e.clientY-r.top;
+  const [x, y] = prXY(e);
+  prPts.set(e.pointerId, [x, y]);
+  prStage.setPointerCapture(e.pointerId);
+  if(prPts.size === 2){ prDropDrag(); prTwo = prTwoInfo(); return; }
+  if(prPts.size > 2) return;
   prDrag = {x, y, px:x, py:y, x0:x, y0:y, pick:prPick(x,y),
             turn:null, ang:0, locked:false, msg:''};
-  prStage.setPointerCapture(e.pointerId);
 });
 // 那一层跟着手指转，像真魔方。转过 45° 松手才算一步，不到就弹回去。
 // 刚开始拖时层还能改（方向判错了接着拖就是），转过约 15° 之后锁定
 const PR_LOCK = 0.26, PR_SNAP = Math.PI/4;
 prStage.addEventListener('pointermove', e => {
+  if(!prPts.has(e.pointerId)) return;
+  const [x, y] = prXY(e);
+  prPts.set(e.pointerId, [x, y]);
+  if(prPts.size >= 2){
+    if(prPts.size > 2 || !prTwo) return;
+    const n = prTwoInfo();
+    let dA = n.a - prTwo.a;
+    while(dA >  Math.PI) dA -= 2*Math.PI;   // 连线角度绕过 ±180° 时别炸
+    while(dA < -Math.PI) dA += 2*Math.PI;
+    prRoll(dA);
+    prOrbit(n.cx-prTwo.cx, n.cy-prTwo.cy);
+    prTwo = n;
+    if(!prBusy) prRender();
+    return;
+  }
   if(!prDrag) return;
-  const r = prCv.getBoundingClientRect();
-  const x = e.clientX-r.left, y = e.clientY-r.top;
   prDrag.x = x; prDrag.y = y;
   if(prDrag.pick){
     const dx = x-prDrag.x0, dy = y-prDrag.y0;
@@ -1494,11 +1605,14 @@ prStage.addEventListener('pointermove', e => {
   }
   prDrag.px = x; prDrag.py = y;
 });
-const prEnd = () => {
+const prEnd = e => {
+  if(e && e.pointerId != null) prPts.delete(e.pointerId); else prPts.clear();
+  if(prPts.size < 2) prTwo = null;
+  if(prPts.size) return;              // 还有手指按着，等全松开再收尾
   const d = prDrag;
   prDrag = null;
   PR.hl = null;
-  if(!d || !d.turn || !d.ang){ prRender(); return; }
+  if(!d || !d.turn || !d.ang){ if(d) prRender(); return; }
   prMsg('');
   const t = {axis:d.turn.axis, layer:d.turn.layer, rotSign: d.ang>0 ? 1 : -1};
   // 过半就补成一整格并记一步，没过半就原路弹回（quarter 给 0）
@@ -1527,7 +1641,7 @@ function prRewind(n){
     prBake({axis:h.turn.axis, layer:h.turn.layer, rotSign:-h.turn.rotSign}, h.quarter);
   }
   prCount = prHist.length;
-  prLogRender(); prRender(); prUpdate();
+  prLogRender(); prPlanSync(); prRender(); prUpdate();
   prMsg(n ? `已退回到第 ${n} 步之后` : '已退回到起始状态');
 }
 $('prMoves').onclick = e => {
@@ -1544,6 +1658,122 @@ $('prCopy').onclick = () => {
   navigator.clipboard.writeText(txt)
     .then(() => prMsg('记录已复制'), () => prMsg('复制失败了'));
 };
+
+/* ==========================================================
+   练习页跟着解法转：解法就摆在魔方下面，转对了自动往下走
+   ========================================================== */
+let prPlan = null;
+let prArrowOn = localStorage.getItem('cube_pr_arrow') !== '0';
+
+const stEq = (a,b) => {
+  for(let i=0;i<8;i++)  if(a.cp[i]!==b.cp[i] || a.co[i]!==b.co[i]) return false;
+  for(let i=0;i<12;i++) if(a.ep[i]!==b.ep[i] || a.eo[i]!==b.eo[i]) return false;
+  return true;
+};
+// 记号 → 转哪一层、朝哪边
+const prMoveTurn = mv => {
+  const d = GEO_MV[mv[0]];
+  return d ? {axis:d.axis, layer:d.layer, rotSign: mv.endsWith("'") ? -d.sign : d.sign} : null;
+};
+// 按「一格 90°」把解法摊开：R2 摊成两格，于是你分两次转 R 它也认得出来。
+// 每一格之后的状态都存着，转完拿当前状态回来比对，就知道走到哪儿了
+function prPlanMake(moves){
+  const qm = [], atMove = [], states = [];
+  let s = prState;
+  states.push(s);
+  moves.forEach((mv,mi) => {
+    const one = mv.endsWith('2') ? mv[0] : mv;
+    for(let k = mv.endsWith('2') ? 2 : 1; k>0; k--){
+      s = applyMove(s, one);
+      qm.push(one); atMove.push(mi); states.push(s);
+    }
+  });
+  return {moves, qm, atMove, states, i:0, off:false};
+}
+function prPlanStart(){
+  if(prBusy) return;
+  if(isSolved(prState)){ prMsg('已经复原了，不用解'); return; }
+  const run = () => {
+    let moves;
+    try{
+      if(algo === 'teach'){
+        moves = [];
+        solve(prState).steps.forEach(st => st.moves.forEach(m => moves.push(m)));
+      }else{
+        const r = kSolve(prState, {timeMs:600});
+        if(!r){ prMsg('没能在限定步数内解出来（这是个 bug）'); return; }
+        moves = r.moves;
+      }
+    }catch(e){ prMsg('这个状态算不出解法（应该是 bug）'); return; }
+    prPlan = prPlanMake(moves);
+    prMsg(`解出来了，共 ${moves.length} 步。照着下面转，转对了自动往下走。`);
+    prPlanRender(); prRender();
+  };
+  // 最短解法第一次要建搜索表，先把提示画出来再算，别让界面像卡死
+  if(algo === 'short' && !kTables){
+    prMsg('第一次求最短解法要先建搜索表，等几秒…');
+    setTimeout(run, 60);
+  }else run();
+}
+// 转完一步就拿当前状态回解法里找位置：找得到就是走到那儿了，找不到就是转岔了
+function prPlanSync(){
+  if(!prPlan) return;
+  const S = prPlan.states, i = prPlan.i;
+  // 同一个状态可能在解法里出现不止一次，所以先按「最可能发生的事」认：
+  // 往下走一格 → 撤销一格 → 原地。都不是才去全局找最近的那个位置。
+  // （不这么排的话，重复状态会让光标在两格之间来回跳，走不完）
+  let best = -1;
+  if(i+1 < S.length && stEq(S[i+1], prState)) best = i+1;
+  else if(i > 0 && stEq(S[i-1], prState)) best = i-1;
+  else if(stEq(S[i], prState)) best = i;
+  else{
+    let bd = Infinity;
+    for(let k=0;k<S.length;k++){
+      const d = Math.abs(k-i);
+      if(d < bd && stEq(S[k], prState)){ bd = d; best = k; }
+    }
+  }
+  if(best < 0) prPlan.off = true;
+  else { prPlan.i = best; prPlan.off = false; }
+  prPlanRender();
+}
+function prPlanRender(){
+  PR.arrow = null;
+  $('prPlan').classList.toggle('on', !!prPlan);
+  if(!prPlan) return;
+  const n = prPlan.qm.length, i = prPlan.i, done = i >= n;
+  $('prPlanOff').classList.toggle('on', prPlan.off && !done);
+  if(prPlan.off && !done){
+    $('prPlanNow').textContent = '?';
+    $('prPlanDesc').textContent = '转的这步不在解法里了，可以撤销回去，或者重新算一份';
+  }else if(done){
+    $('prPlanNow').textContent = '✓';
+    $('prPlanDesc').textContent = '解法走完了';
+  }else{
+    // 半途才转完一格的（比如 R2 只转了一半），就只提示剩下那一格
+    const mi = prPlan.atMove[i];
+    const mv = (i===0 || prPlan.atMove[i-1] !== mi) ? prPlan.moves[mi] : prPlan.qm[i];
+    $('prPlanNow').textContent = mv;
+    $('prPlanDesc').textContent = describe(mv) + `　还剩 ${n-i} 格`;
+    if(prArrowOn) PR.arrow = prMoveTurn(prPlan.qm[i]);
+  }
+  const seq = $('prPlanSeq');
+  seq.innerHTML = prPlan.moves.map((m,k) => {
+    const at = done ? prPlan.moves.length : prPlan.atMove[i];
+    return `<span class="${k<at?'done':k===at?'cur':''}">${m}</span>`;
+  }).join('');
+  const cur = seq.querySelector('span.cur');
+  if(cur && cur.offsetLeft != null) seq.scrollLeft = cur.offsetLeft - 70;
+}
+$('prPlanTog').onclick = () => {
+  prArrowOn = !prArrowOn;
+  localStorage.setItem('cube_pr_arrow', prArrowOn ? '1' : '0');
+  $('prPlanTog').classList.toggle('on', prArrowOn);
+  prPlanRender(); prRender();
+};
+$('prPlanX').onclick = () => { prPlan = null; prPlanRender(); prRender(); };
+$('prPlanAgain').onclick = prPlanStart;
+$('prPlanTog').classList.toggle('on', prArrowOn);
 
 /* ---- 按钮 ----
    正好是求解器会用到的那 18 个记号，一一对应。中间层不给按钮，拖着转就是 */
@@ -1563,6 +1793,7 @@ function prLoad(st, scram){
   PR.G = [[1,0,0],[0,1,0],[0,0,1]];
   PR.R = PR_CAM0;                       // 新的一局从标准持方视角开始
   cancelAnimationFrame(prHomeRAF);
+  prPlan = null; prPlanRender();         // 换局了，旧解法作废
   clearInterval(prTick); prTick = 0;
   prUpdate(); prLogRender(); prRender();
 }
@@ -1597,13 +1828,7 @@ $('prTip').onclick = () => {
     prMsg(st ? `现在该做「${st.label}」，下一步：${st.moves[0]}` : '就差一点了');
   }catch(e){ prMsg('这个状态算不出提示（应该是 bug）'); }
 };
-$('prSolveIt').onclick = () => {
-  if(prBusy) return;
-  if(isSolved(prState)){ prMsg('已经复原了，不用解'); return; }
-  net = cubieToFacelet(prState);
-  cursor = 0; paintNet();
-  doSolve(prState);
-};
+$('prSolveIt').onclick = prPlanStart;
 
 /* ==========================================================
    9. 摄像头 / 照片识别
