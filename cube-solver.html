@@ -102,6 +102,21 @@
   #prBar b{font-size:24px;font-weight:700;color:var(--txt);margin-right:4px}
   #prMsg{min-height:22px;font-size:14px;color:var(--acc);text-align:center;margin:8px 0}
   #prMsg.win{color:var(--ok);font-weight:700;font-size:17px}
+  #prLog{margin:10px 0 2px;background:#12161d;border:1px solid var(--line);
+    border-radius:10px;padding:8px 10px}
+  #prLogHd{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);
+    margin-bottom:6px}
+  #prLogHd button{padding:4px 9px;font-size:12px;border-radius:7px}
+  #prScramTxt{display:none;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;
+    color:#5b6577;word-break:break-all;line-height:1.6;margin-bottom:6px}
+  #prMoves{display:flex;flex-wrap:wrap;gap:4px;max-height:104px;overflow-y:auto;
+    font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  #prMoves span{padding:3px 7px;border-radius:6px;background:#1b212b;cursor:pointer;
+    white-space:nowrap}
+  #prMoves span i{font-style:normal;color:#5b6577;font-size:10px;margin-right:3px}
+  #prMoves span.last{background:var(--acc);color:#fff;font-weight:700}
+  #prMoves span.last i{color:rgba(255,255,255,.75)}
+  #prMoves em{font-style:normal;color:#5b6577;font-size:12px}
   #prKeys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
   #prKeys button{padding:11px 0;min-width:0;font-size:15px;font-weight:600;
     font-family:ui-monospace,Menlo,monospace}
@@ -184,6 +199,13 @@
   </div>
   <div id="prMsg"></div>
 
+  <div id="prLog">
+    <div id="prLogHd"><span>转动记录 · <b id="prLogN">0 步</b></span>
+      <span style="flex:1"></span><button id="prCopy">复制</button></div>
+    <div id="prScramTxt"></div>
+    <div id="prMoves"><em>还没转过</em></div>
+  </div>
+
   <div class="row">
     <button id="prScram" class="pri">打乱</button>
     <button id="prUndo">撤销</button>
@@ -203,6 +225,9 @@
     在顶面或前面<b>靠右那一列</b>上拖；在右面自己上面怎么拖都转不到它。</div>
     <div style="margin-top:6px">手指离魔方远一点（四周留白处）拖，才是转视角。
     嫌不好按就用下面的按钮，<b>M/E/S</b> 是三个中间层。</div>
+    <div style="margin-top:6px"><b>转动记录</b>把你转过的每一步按顺序记下来，
+    最后一步是蓝的。<b>点某一步</b>就退回到转它之前，用来找是哪一步转错的。
+    「复制」把打乱序列和你的转动一起拷走。</div>
     <div style="margin-top:6px">「提示下一步」按层先法给，会告诉你现在该做哪个阶段；
     「交给它解」把当前状态送到第②页求完整解法。</div>
   </div>
@@ -1192,7 +1217,7 @@ const PR = {ctx:prCv.getContext('2d'), W:0, H:0, yaw:-0.62, pitch:0.42,
             get cam(){ return mmul(mmul(rotM(0,this.pitch), rotM(1,this.yaw)), this.G); },
             cubies:[], collect:true, picks:[], hl:null};
 let prState = solvedState();     // 与几何模型同步，用来判定复原和求提示
-let prHist = [], prCount = 0, prBusy = false;
+let prHist = [], prCount = 0, prBusy = false, prScramSeq = '';
 let prT0 = 0, prElapsed = 0, prTick = 0;
 
 function prResize(){
@@ -1236,6 +1261,24 @@ function prTurn(mv, record){
   return prSpin({axis:d.axis, layer:d.layer, rotSign:d.sign*turns},
                 Math.abs(turns), record, [mv]);
 }
+/* 把一次转动落到模型上：几何 + 状态 + 视角 G。不带动画，回退时也用它 */
+function prBake(turn, quarter){
+  const {axis, layer, rotSign} = turn;
+  const done = [];
+  if(layer !== 0){
+    for(let k=0;k<quarter;k++) done.push(moveFor(axis, layer, rotSign));
+  }else{
+    // 两个外层朝反方向转，再把整个魔方转回来（只体现在视角上）
+    for(let k=0;k<quarter;k++){
+      done.push(moveFor(axis, 1, -rotSign));
+      done.push(moveFor(axis, -1, -rotSign));
+    }
+    // 右乘：渲染是 cam·G·p，要让所有模型点再经过一次旋转，得叠在 G 右边。
+    // 左乘等于在世界空间转，只有 G 还是单位阵时才碰巧一样。
+    PR.G = mmul(PR.G, rotM(axis, rotSign*quarter*Math.PI/2));
+  }
+  for(const m of done){ bakeGeo(m, PR.cubies); prState = applyMove(prState, m); }
+}
 // turn = {axis, layer, rotSign}；layer 为 0 就是中间层
 function prSpin(turn, quarter, record, tag){
   if(prBusy) return null;
@@ -1251,21 +1294,11 @@ function prSpin(turn, quarter, record, tag){
     const t = Math.min(1,(now-t0)/dur);
     prRender({axis, layer, m:rotM(axis, total*ease(t))});
     if(t<1){ requestAnimationFrame(frame); return; }
-    const done = [];
-    if(layer !== 0){
-      for(let k=0;k<quarter;k++) done.push(moveFor(axis, layer, rotSign));
-    }else{
-      // 两个外层朝反方向转，再把整个魔方转回来（只体现在视角上）
-      for(let k=0;k<quarter;k++){
-        done.push(moveFor(axis, 1, -rotSign));
-        done.push(moveFor(axis, -1, -rotSign));
-      }
-      // 右乘：渲染是 cam·G·p，要让所有模型点再经过一次旋转，得叠在 G 右边。
-      // 左乘等于在世界空间转，只有 G 还是单位阵时才碰巧一样。
-      PR.G = mmul(PR.G, rotM(axis, total));
+    prBake(turn, quarter);
+    if(record){
+      prHist.push({turn, quarter, label:turnLabel(turn) + (quarter>1 ? '2' : '')});
+      prCount++; prLogRender();
     }
-    for(const m of done){ bakeGeo(m, PR.cubies); prState = applyMove(prState, m); }
-    if(record){ prHist.push({turn, quarter}); prCount++; }
     prBusy = false;
     prRender(); prUpdate();
     if(record && isSolved(prState)){
@@ -1399,6 +1432,44 @@ const prEnd = () => {
 prStage.addEventListener('pointerup', prEnd);
 prStage.addEventListener('pointercancel', prEnd);
 
+/* ---- 转动记录：自己转过的每一步都留着，方便回头对照哪一步转错了 ---- */
+function prLogRender(){
+  const box = $('prMoves');
+  $('prLogN').textContent = prHist.length + ' 步';
+  box.innerHTML = prHist.length
+    ? prHist.map((h,i) => `<span data-i="${i}"${i===prHist.length-1?' class="last"':''}>` +
+        `<i>${i+1}</i>${h.label}</span>`).join('')
+    : '<em>还没转过</em>';
+  box.scrollTop = box.scrollHeight;
+  const s = $('prScramTxt');
+  s.textContent = prScramSeq ? '打乱：' + prScramSeq : '';
+  s.style.display = prScramSeq ? 'block' : 'none';
+}
+// 回到「第 n 步之后」的状态：把后面的步倒着撤掉，不做动画（可能一次退很多步）
+function prRewind(n){
+  while(prHist.length > n){
+    const h = prHist.pop();
+    prBake({axis:h.turn.axis, layer:h.turn.layer, rotSign:-h.turn.rotSign}, h.quarter);
+  }
+  prCount = prHist.length;
+  prLogRender(); prRender(); prUpdate();
+  prMsg(n ? `已退回到第 ${n} 步之后` : '已退回到起始状态');
+}
+$('prMoves').onclick = e => {
+  const s = e.target.closest('span[data-i]');
+  if(!s || prBusy) return;
+  const i = +s.dataset.i, back = prHist.length - i;
+  if(back > 1 && !confirm(`退回到第 ${i+1} 步之前？后面这 ${back} 步会被撤销`)) return;
+  prRewind(i);
+};
+$('prCopy').onclick = () => {
+  const txt = (prScramSeq ? '打乱：' + prScramSeq + '\n' : '')
+            + '我的转动：' + (prHist.map(h=>h.label).join(' ') || '（无）');
+  if(!navigator.clipboard){ prMsg('这个环境不让复制'); return; }
+  navigator.clipboard.writeText(txt)
+    .then(() => prMsg('记录已复制'), () => prMsg('复制失败了'));
+};
+
 /* ---- 按钮 ---- */
 const PR_MID = {};
 MID_AXIS.forEach((c,ax)=>{ PR_MID[c] = {axis:ax, rotSign:MID_SIGN[ax]}; });
@@ -1415,23 +1486,25 @@ MID_AXIS.forEach((c,ax)=>{ PR_MID[c] = {axis:ax, rotSign:MID_SIGN[ax]}; });
   $('prKeys').appendChild(b);
 });
 
-function prLoad(st){
+function prLoad(st, scram){
   prState = st;
   PR.cubies = buildGeo(cubieToFacelet(st));
   prHist = []; prCount = 0; prElapsed = 0; prT0 = 0;
+  prScramSeq = scram || '';
   PR.G = [[1,0,0],[0,1,0],[0,0,1]];
   clearInterval(prTick); prTick = 0;
-  prUpdate(); prRender();
+  prUpdate(); prLogRender(); prRender();
 }
 $('prScram').onclick = () => {
   if(prBusy) return;
   const M = ['U','D','R','L','F','B'];
-  let s = solvedState(), prev = '';
+  let s = solvedState(), prev = '', seq = [];
   for(let i=0;i<25;i++){
     let f; do{ f = M[(Math.random()*6)|0]; }while(f===prev); prev = f;
-    s = applyMove(s, f + ['',"'",'2'][(Math.random()*3)|0]);
+    const mv = f + ['',"'",'2'][(Math.random()*3)|0];
+    seq.push(mv); s = applyMove(s, mv);
   }
-  prLoad(s);
+  prLoad(s, seq.join(' '));
   prMsg('打乱好了，开始转吧。第一步之后开始计时。');
 };
 $('prReset').onclick = () => { if(!prBusy){ prLoad(solvedState()); prMsg(''); } };
@@ -1439,7 +1512,7 @@ $('prUndo').onclick = () => {
   if(prBusy || !prHist.length) return;
   const last = prHist.pop();
   prCount = Math.max(0, prCount-1);
-  prMsg('');
+  prMsg(''); prLogRender();
   const t = last.turn;
   prSpin({axis:t.axis, layer:t.layer, rotSign:-t.rotSign}, last.quarter, false);
 };
