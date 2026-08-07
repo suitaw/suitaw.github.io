@@ -90,6 +90,12 @@
   #seq span.cur{background:var(--acc);color:#fff;font-weight:700}
   .legend{font-size:12px;color:var(--dim);margin-top:14px;line-height:1.8}
   .legend b{color:var(--txt);font-weight:600}
+
+  /* ---- 算法切换 ---- */
+  .seg{display:flex;flex-direction:column;align-items:center;gap:1px;padding:9px 8px;
+    background:#12161d;color:var(--dim)}
+  .seg.on{background:#243044;border-color:var(--acc);color:var(--txt);font-weight:600}
+  .seg i{font-style:normal;font-size:11px;opacity:.75;font-weight:400}
 </style>
 
 <div id="tabs">
@@ -111,6 +117,10 @@
   <div id="tally"></div>
   <div id="msg"></div>
 
+  <div class="row" id="algo" style="margin-bottom:10px">
+    <button id="algoShort" class="seg on">最短解法<i>约 20 步</i></button>
+    <button id="algoTeach" class="seg">分步教学<i>约 120 步</i></button>
+  </div>
   <div class="row" style="margin-bottom:8px">
     <button id="btnSolve" class="pri">求解</button>
     <button id="btnBack">退一格</button>
@@ -148,6 +158,17 @@
     没有符号 = 顺时针 90°，<b>'</b> = 逆时针 90°，<b>2</b> = 转 180°。
     <div style="margin-top:6px">
       <b>U</b> 上·黄　<b>D</b> 下·白　<b>R</b> 右·橙　<b>L</b> 左·红　<b>F</b> 前·绿　<b>B</b> 后·蓝
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+      <b>两种解法的区别：</b>
+      <div style="margin-top:4px">
+        <b>最短解法</b>约 20 步，但过程<b>看不出任何进展</b>——魔方一直是乱的，
+        直到最后几步突然复原。好处是快，坏处是转错了你发现不了。
+      </div>
+      <div style="margin-top:4px">
+        <b>分步教学</b>约 120 步，按「白十字 → 第一层 → 中层 → 顶层」推进，
+        每个阶段做完都看得见成果，转错了能立刻发现。第一次玩建议用这个。
+      </div>
     </div>
   </div>
 </div>
@@ -390,6 +411,246 @@ function solve(state){
 }
 
 /* ==========================================================
+   7. Kociemba 两阶段算法 —— 求接近最优的短解法
+   阶段1：把状态带进子群 G1 = <U,D,R2,L2,F2,B2>
+   阶段2：在 G1 内部收尾，只用 U D R2 L2 F2 B2
+   ========================================================== */
+const FACE_LIST = ['U','R','F','D','L','B'];          // 对面 = 索引 +3
+const MOVES18 = [];
+for(const f of FACE_LIST) for(const suf of ['', '2', "'"]) MOVES18.push(f+suf);
+const P2_IDX = [0,1,2, 4, 7, 9,10,11, 13, 16];        // U U2 U' R2 F2 D D2 D' L2 B2
+const MOVES_P2 = P2_IDX.map(i => MOVES18[i]);
+
+const kBinom = (n,k) => {
+  if(k<0 || n<0 || k>n) return 0;
+  let r = 1;
+  for(let i=0;i<k;i++) r = r*(n-i)/(i+1);
+  return Math.round(r);
+};
+const kFACT = [1,1,2,6,24,120,720,5040,40320];
+
+function kPermToIdx(p){
+  const n = p.length; let idx = 0;
+  for(let i=0;i<n;i++){
+    let c = 0;
+    for(let j=i+1;j<n;j++) if(p[j] < p[i]) c++;
+    idx = idx*(n-i) + c;
+  }
+  return idx;
+}
+function kIdxToPerm(idx, n){
+  const avail = [...Array(n).keys()], p = [];
+  for(let i=0;i<n;i++){
+    const f = kFACT[n-1-i], k = Math.floor(idx/f);
+    idx %= f;
+    p.push(avail.splice(k,1)[0]);
+  }
+  return p;
+}
+// 组合数系统：k 个升序位置 ↔ 0..C(n,k)-1
+function kCombToIdx(pos){
+  let v = 0;
+  for(let j=0;j<pos.length;j++) v += kBinom(pos[j], j+1);
+  return v;
+}
+function kIdxToComb(v, k){
+  const res = [];
+  for(let j=k;j>=1;j--){
+    let c = j-1;
+    while(kBinom(c+1, j) <= v) c++;
+    res.push(c); v -= kBinom(c, j);
+  }
+  return res.reverse();
+}
+
+/* ---------- 六个坐标 ---------- */
+const N_TWIST=2187, N_FLIP=2048, N_SLICE=495, N_CPERM=40320, N_EPERM=40320, N_SPERM=24;
+
+const getTwist = s => { let v=0; for(let i=0;i<7;i++) v = v*3 + s.co[i]; return v; };
+function setTwist(s, v){
+  const co = new Array(8); let sum = 0;
+  for(let i=6;i>=0;i--){ co[i] = v%3; v = (v-co[i])/3; sum += co[i]; }
+  co[7] = (3 - sum%3) % 3;
+  s.co = co;
+}
+const getFlip = s => { let v=0; for(let i=0;i<11;i++) v = v*2 + s.eo[i]; return v; };
+function setFlip(s, v){
+  const eo = new Array(12); let sum = 0;
+  for(let i=10;i>=0;i--){ eo[i] = v%2; v = (v-eo[i])/2; sum += eo[i]; }
+  eo[11] = sum % 2;
+  s.eo = eo;
+}
+// 四个中层棱(编号 8..11)占了 12 个位置里的哪四个
+function getSlice(s){
+  const pos = [];
+  for(let i=0;i<12;i++) if(s.ep[i] >= 8) pos.push(i);
+  return kCombToIdx(pos);
+}
+function setSlice(s, v){
+  const pos = kIdxToComb(v, 4);
+  const ep = new Array(12).fill(-1);
+  pos.forEach((p,i) => ep[p] = 8+i);
+  let n = 0;
+  for(let i=0;i<12;i++) if(ep[i] < 0) ep[i] = n++;
+  s.ep = ep;
+}
+const getCPerm = s => kPermToIdx(s.cp);
+const setCPerm = (s,v) => { s.cp = kIdxToPerm(v, 8); };
+// 阶段2 专用：G1 内 ep[0..7] 必为 0..7 的排列，ep[8..11] 必为 8..11 的排列
+const getEPerm = s => kPermToIdx(s.ep.slice(0,8));
+function setEPerm(s, v){ s.ep = kIdxToPerm(v,8).concat([8,9,10,11]); }
+const getSPerm = s => kPermToIdx(s.ep.slice(8,12).map(x => x-8));
+function setSPerm(s, v){ s.ep = [0,1,2,3,4,5,6,7].concat(kIdxToPerm(v,4).map(x => x+8)); }
+
+/* ---------- 转移表 ---------- */
+function kBuildMove(size, get, set, moves){
+  const nm = moves.length;
+  const t = new Uint16Array(size*nm);
+  const s = solvedState();
+  for(let v=0; v<size; v++){
+    set(s, v);
+    for(let m=0;m<nm;m++) t[v*nm+m] = get(applyMove(s, moves[m]));
+  }
+  return t;
+}
+
+/* ---------- 剪枝表（从目标状态反向逐层填充）---------- */
+function kBuildPrune(sizeA, sizeB, tabA, tabB, nm, goalA, goalB){
+  const total = sizeA*sizeB;
+  const p = new Uint8Array(total).fill(255);
+  p[goalA*sizeB + goalB] = 0;
+  let done = 1, depth = 0;
+  while(done < total){
+    let found = 0;
+    for(let i=0;i<total;i++){
+      if(p[i] !== depth) continue;
+      const a = (i/sizeB)|0, b = i%sizeB;
+      for(let m=0;m<nm;m++){
+        const j = tabA[a*nm+m]*sizeB + tabB[b*nm+m];
+        if(p[j] === 255){ p[j] = depth+1; found++; }
+      }
+    }
+    if(!found) break;
+    done += found; depth++;
+  }
+  return p;
+}
+
+/* ---------- 表的装配 ---------- */
+let kTables = null;
+function kInitTables(log){
+  if(kTables) return kTables;
+  const t0 = Date.now();
+  const say = m => { if(log) log(m, Date.now()-t0); };
+
+  const twistMove = kBuildMove(N_TWIST, getTwist, setTwist, MOVES18);
+  const flipMove  = kBuildMove(N_FLIP,  getFlip,  setFlip,  MOVES18);
+  const sliceMove = kBuildMove(N_SLICE, getSlice, setSlice, MOVES18);
+  say('阶段1 转移表');
+
+  const cpermMove = kBuildMove(N_CPERM, getCPerm, setCPerm, MOVES_P2);
+  const epermMove = kBuildMove(N_EPERM, getEPerm, setEPerm, MOVES_P2);
+  const spermMove = kBuildMove(N_SPERM, getSPerm, setSPerm, MOVES_P2);
+  say('阶段2 转移表');
+
+  const sv = solvedState();
+  const goal = {twist:getTwist(sv), flip:getFlip(sv), slice:getSlice(sv),
+                cperm:getCPerm(sv), eperm:getEPerm(sv), sperm:getSPerm(sv)};
+
+  const pTwistSlice = kBuildPrune(N_TWIST, N_SLICE, twistMove, sliceMove, 18, goal.twist, goal.slice);
+  const pFlipSlice  = kBuildPrune(N_FLIP,  N_SLICE, flipMove,  sliceMove, 18, goal.flip,  goal.slice);
+  say('阶段1 剪枝表');
+
+  const pCornSlice  = kBuildPrune(N_CPERM, N_SPERM, cpermMove, spermMove, 10, goal.cperm, goal.sperm);
+  const pEdgeSlice  = kBuildPrune(N_EPERM, N_SPERM, epermMove, spermMove, 10, goal.eperm, goal.sperm);
+  say('阶段2 剪枝表');
+
+  kTables = {twistMove, flipMove, sliceMove, cpermMove, epermMove, spermMove,
+       pTwistSlice, pFlipSlice, pCornSlice, pEdgeSlice, goal};
+  return kTables;
+}
+
+/* ---------- 两阶段 IDA* 搜索 ---------- */
+const P2_FACE = P2_IDX.map(i => (i/3)|0);
+const IS_P2 = new Array(18).fill(false);
+P2_IDX.forEach(i => IS_P2[i] = true);
+
+function kSolve(state, opts){
+  opts = opts || {};
+  const T = kInitTables();
+  const {twistMove, flipMove, sliceMove, cpermMove, epermMove, spermMove,
+         pTwistSlice, pFlipSlice, pCornSlice, pEdgeSlice, goal} = T;
+  const GS = goal.slice;
+  const maxTotal = opts.maxLen || 26;
+  const deadline = Date.now() + (opts.timeMs || 1500);
+
+  let best = null, bestSplit = 0, stop = false;
+  const path1 = [], path2 = [];
+
+  // 阶段2：只用 U D R2 L2 F2 B2 把 G1 里的状态解完
+  function dfs2(cp, ep, sp, depth, prevFace){
+    if(depth === 0) return cp===0 && ep===0 && sp===0;
+    if(Math.max(pCornSlice[cp*24+sp], pEdgeSlice[ep*24+sp]) > depth) return false;
+    for(let mi=0; mi<10; mi++){
+      const f = P2_FACE[mi];
+      if(f === prevFace || f === prevFace-3) continue;
+      path2.push(mi);
+      if(dfs2(cpermMove[cp*10+mi], epermMove[ep*10+mi], spermMove[sp*10+mi], depth-1, f)) return true;
+      path2.pop();
+    }
+    return false;
+  }
+
+  // 阶段1 走到 G1 之后，接着把阶段2 解出来，总长更短就采纳
+  function tryPhase2(){
+    const seq1 = path1.map(i => MOVES18[i]);
+    const s1 = applySeq(state, seq1);
+    const cp0 = getCPerm(s1), ep0 = getEPerm(s1), sp0 = getSPerm(s1);
+    const lastFace = path1.length ? (path1[path1.length-1]/3)|0 : -9;
+    const limit = (best ? best.length : maxTotal+1) - seq1.length - 1;
+    for(let d2=0; d2<=limit; d2++){
+      path2.length = 0;
+      if(dfs2(cp0, ep0, sp0, d2, lastFace)){
+        best = seq1.concat(path2.map(i => MOVES_P2[i]));
+        bestSplit = seq1.length;
+        return;
+      }
+    }
+  }
+
+  // 阶段1：把状态带进 G1。枚举多个解，各自试阶段2，取总长最短
+  function dfs1(tw, fl, sl, depth, prevFace){
+    if(stop) return;
+    if(depth === 0){
+      if(tw===0 && fl===0 && sl===GS) tryPhase2();
+      return;
+    }
+    if(Math.max(pTwistSlice[tw*N_SLICE+sl], pFlipSlice[fl*N_SLICE+sl]) > depth) return;
+    for(let mi=0; mi<18; mi++){
+      const f = (mi/3)|0;
+      if(f === prevFace || f === prevFace-3) continue;
+      // 最后一步若是阶段2 的动作，等价的更短解已在上一层出现过
+      if(depth === 1 && IS_P2[mi]) continue;
+      path1.push(mi);
+      dfs1(twistMove[tw*18+mi], flipMove[fl*18+mi], sliceMove[sl*18+mi], depth-1, f);
+      path1.pop();
+      if(stop) return;
+      if(best && Date.now() > deadline){ stop = true; return; }
+    }
+  }
+
+  const tw0 = getTwist(state), fl0 = getFlip(state), sl0 = getSlice(state);
+  for(let d1=0; d1<=12; d1++){
+    if(best && d1 >= best.length) break;
+    path1.length = 0;
+    dfs1(tw0, fl0, sl0, d1, -9);
+    if(stop) break;
+  }
+  return best ? {moves:best, split:bestSplit} : null;
+}
+
+
+/* ==========================================================
    4. 3D 渲染
    坐标：+X 右 -X 左 / +Y 上 -Y 下 / +Z 前 -Z 后
    ========================================================== */
@@ -614,15 +875,17 @@ function showMsg(text, kind){
   const m = $('msg'); m.textContent = text; m.className = kind;
 }
 
-$('btnSolve').onclick = () => {
-  const r = faceletToCubie(net);
-  if(r.error){ showMsg(r.error, 'err'); return; }
-  let res;
-  try { res = solve(r.state); }
-  catch(e){ showMsg('没能解出来：'+e.message+'（这是个 bug，请把当前状态截图给我）', 'err'); return; }
+let algo = 'short';   // short = Kociemba 最短解法，teach = 层先法分步教学
+$('algoShort').onclick = () => { algo='short';
+  $('algoShort').classList.add('on'); $('algoTeach').classList.remove('on'); };
+$('algoTeach').onclick = () => { algo='teach';
+  $('algoTeach').classList.add('on'); $('algoShort').classList.remove('on'); };
 
+// 把求解结果装进播放器
+function loadPlan(steps){
   plan = []; phaseList = [];
-  res.steps.forEach(st=>{
+  steps.forEach(st=>{
+    if(!st.moves.length) return;
     phaseList.push({label:st.label, from:plan.length, len:st.moves.length});
     st.moves.forEach(m => plan.push({move:m, phase:st.label}));
   });
@@ -632,6 +895,34 @@ $('btnSolve').onclick = () => {
   showMsg('解出来了，共 '+plan.length+' 步。切到第②页跟着转。', 'ok');
   goTab(1);
   resize(); renderStep();
+}
+
+function doSolve(state){
+  if(algo === 'teach'){
+    let res;
+    try { res = solve(state); }
+    catch(e){ showMsg('没能解出来：'+e.message+'（这是个 bug，请把当前状态截图给我）','err'); return; }
+    loadPlan(res.steps);
+  }else{
+    const r = kSolve(state, {timeMs:600});
+    if(!r){ showMsg('没能在限定步数内解出来（这是个 bug，请把当前状态截图给我）','err'); return; }
+    loadPlan([
+      {label:'第一阶段', moves:r.moves.slice(0, r.split)},
+      {label:'第二阶段', moves:r.moves.slice(r.split)}
+    ]);
+  }
+}
+
+$('btnSolve').onclick = () => {
+  const r = faceletToCubie(net);
+  if(r.error){ showMsg(r.error, 'err'); return; }
+  // 最短解法要先建搜索表，头一次得等几秒；先把提示画出来再算，别把界面卡住
+  if(algo === 'short' && !kTables){
+    showMsg('第一次求最短解法要先建搜索表，等几秒（之后就不用再等了）…', 'ok');
+    setTimeout(() => doSolve(r.state), 60);
+  }else{
+    doSolve(r.state);
+  }
 };
 
 function goTab(i){
