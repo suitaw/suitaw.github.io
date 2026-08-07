@@ -152,7 +152,7 @@ const invert   = m => ({f:m.f, dir:-m.dir});
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 let W=0, H=0, DPR=1;
-let yaw = -0.62, pitch = -0.48;     // 视角
+let yaw = -0.62, pitch = 0.48;      // 视角：正 pitch = 从斜上方俯视
 const CAM_D = 9.2;                   // 摄像机距离
 const GAP = 1.045;                   // 方块间距
 const STICK = 0.90;                  // 贴纸缩放（留黑边）
