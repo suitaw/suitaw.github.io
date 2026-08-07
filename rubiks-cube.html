@@ -1,0 +1,428 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>魔方 · 打乱与复原</title>
+<style>
+  :root{
+    --bg:#0d1015; --panel:#161b23; --line:#252c38;
+    --txt:#e8ecf2; --dim:#8a94a6; --acc:#4c8dff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+    font:15px/1.5 -apple-system,"PingFang SC","Noto Sans CJK SC",system-ui,sans-serif;
+    overscroll-behavior:none}
+  #wrap{display:flex;flex-direction:column;height:100%}
+  #stage{flex:1;position:relative;min-height:0;touch-action:none}
+  canvas{display:block;width:100%;height:100%}
+  #hud{position:absolute;left:0;right:0;top:0;padding:14px 16px;pointer-events:none}
+  #phase{font-size:13px;letter-spacing:.08em;color:var(--dim)}
+  #phase b{color:var(--txt);font-weight:600}
+  #moves{margin-top:6px;font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:13px;color:var(--dim);word-break:break-all;line-height:1.7}
+  #moves i{font-style:normal;color:#2f3846}
+  #moves em{font-style:normal;color:var(--acc);font-weight:700}
+  #rec{position:absolute;right:14px;top:14px;display:none;align-items:center;gap:6px;
+    font-size:12px;color:#ff5d5d}
+  #rec.on{display:flex}
+  #rec span{width:8px;height:8px;border-radius:50%;background:#ff5d5d;
+    animation:blink 1s steps(2,start) infinite}
+  @keyframes blink{50%{opacity:0}}
+  #bar{background:var(--panel);border-top:1px solid var(--line);
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+    display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  button{flex:1 1 auto;min-width:76px;padding:10px 12px;border-radius:10px;
+    border:1px solid var(--line);background:#1e2530;color:var(--txt);
+    font-size:14px;font-family:inherit;cursor:pointer}
+  button:active{background:#28313f}
+  button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+  button.rec{background:#c0392b;border-color:#c0392b;color:#fff}
+  label{flex:1 1 100%;display:flex;align-items:center;gap:10px;
+    font-size:13px;color:var(--dim)}
+  input[type=range]{flex:1;accent-color:var(--acc)}
+  #tip{flex:1 1 100%;font-size:12px;color:var(--dim);margin:0}
+</style>
+
+<div id="wrap">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="hud">
+      <div id="phase"></div>
+      <div id="moves"></div>
+    </div>
+    <div id="rec"><span></span>录制中</div>
+  </div>
+  <div id="bar">
+    <button id="play" class="pri">暂停</button>
+    <button id="again">换一组打乱</button>
+    <button id="recBtn" class="rec">录成视频</button>
+    <label>速度 <input id="spd" type="range" min="0.4" max="2.5" step="0.1" value="1"><b id="spdv" style="color:var(--txt);width:34px;text-align:right">1.0x</b></label>
+    <p id="tip">拖动画面可转视角。“录成视频”会从头录一整轮打乱+复原后自动保存。</p>
+  </div>
+</div>
+
+<script>
+/* ---------- 3x3 矩阵与向量 ---------- */
+const ident = () => [[1,0,0],[0,1,0],[0,0,1]];
+function mul(a,b){
+  const m=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){
+    let s=0; for(let k=0;k<3;k++) s+=a[i][k]*b[k][j];
+    m[i][j]=s;
+  }
+  return m;
+}
+function apply(m,v){
+  return [
+    m[0][0]*v[0]+m[0][1]*v[1]+m[0][2]*v[2],
+    m[1][0]*v[0]+m[1][1]*v[1]+m[1][2]*v[2],
+    m[2][0]*v[0]+m[2][1]*v[1]+m[2][2]*v[2]
+  ];
+}
+function rotAxis(axis,ang){
+  const c=Math.cos(ang), s=Math.sin(ang);
+  if(axis===0) return [[1,0,0],[0,c,-s],[0,s,c]];
+  if(axis===1) return [[c,0,s],[0,1,0],[-s,0,c]];
+  return [[c,-s,0],[s,c,0],[0,0,1]];
+}
+
+/* ---------- 魔方状态 ---------- */
+// 面配色：上白 下黄 右红 左橙 前绿 后蓝
+const FACES = [
+  {n:[ 1, 0, 0], u:[0,1,0], v:[0,0,1], c:'#d93a35'}, // R 红
+  {n:[-1, 0, 0], u:[0,1,0], v:[0,0,1], c:'#f08019'}, // L 橙
+  {n:[ 0, 1, 0], u:[1,0,0], v:[0,0,1], c:'#f2f4f7'}, // U 白
+  {n:[ 0,-1, 0], u:[1,0,0], v:[0,0,1], c:'#f7d114'}, // D 黄
+  {n:[ 0, 0, 1], u:[1,0,0], v:[0,1,0], c:'#31a24c'}, // F 绿
+  {n:[ 0, 0,-1], u:[1,0,0], v:[0,1,0], c:'#1560d0'}  // B 蓝
+];
+
+const INNER = '#101318';   // 内部面颜色
+let cubies = [];
+
+function buildCube(){
+  cubies = [];
+  for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++){
+    if(x===0&&y===0&&z===0) continue;
+    const p=[x,y,z];
+    const cols = FACES.map(F =>
+      (p[0]*F.n[0]+p[1]*F.n[1]+p[2]*F.n[2])===1 ? F.c : INNER
+    );
+    cubies.push({p, r:ident(), cols});
+  }
+}
+
+// 面记号 -> 转轴/层/正方向角度（顺时针为记号本义）
+const MOVES = {
+  U:{axis:1, layer: 1, sign:-1},
+  D:{axis:1, layer:-1, sign: 1},
+  R:{axis:0, layer: 1, sign:-1},
+  L:{axis:0, layer:-1, sign: 1},
+  F:{axis:2, layer: 1, sign:-1},
+  B:{axis:2, layer:-1, sign: 1}
+};
+const FACE_KEYS = Object.keys(MOVES);
+
+function inLayer(cb, mv){ return cb.p[mv.axis] === mv.layer; }
+
+// 把一次转动固化进 cubie 的位置与朝向
+function bake(move){
+  const mv = MOVES[move.f];
+  const m = rotAxis(mv.axis, mv.sign * move.dir * Math.PI/2);
+  for(const cb of cubies){
+    if(!inLayer(cb, mv)) continue;
+    cb.p = apply(m, cb.p).map(n => Math.round(n));
+    cb.r = mul(m, cb.r);
+  }
+}
+
+function randomScramble(n){
+  const seq=[]; let prev='', prev2='';
+  while(seq.length<n){
+    const f = FACE_KEYS[(Math.random()*6)|0];
+    if(f===prev) continue;                                  // 不连着转同一面
+    if(f===prev2 && MOVES[f].axis===MOVES[prev].axis) continue; // 不做 R L R 这种冗余
+    seq.push({f, dir: Math.random()<0.5 ? 1 : -1});
+    prev2 = prev; prev = f;
+  }
+  return seq;
+}
+const notation = m => m.f + (m.dir===1 ? '' : "'");
+const invert   = m => ({f:m.f, dir:-m.dir});
+
+/* ---------- 渲染 ---------- */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W=0, H=0, DPR=1;
+let yaw = -0.62, pitch = -0.48;     // 视角
+const CAM_D = 9.2;                   // 摄像机距离
+const GAP = 1.045;                   // 方块间距
+const STICK = 0.90;                  // 贴纸缩放（留黑边）
+
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  const r = cv.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width));
+  H = Math.max(1, Math.round(r.height));
+  cv.width = W*DPR; cv.height = H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize);
+
+function project(v){
+  const f = Math.min(W,H) * 1.45;
+  const d = CAM_D - v[2];
+  return [W/2 + v[0]*f/d, H/2 - v[1]*f/d];
+}
+
+function drawBackground(){
+  const g = ctx.createRadialGradient(W/2, H*0.42, 10, W/2, H*0.42, Math.max(W,H)*0.78);
+  g.addColorStop(0, '#1a2130');
+  g.addColorStop(1, '#0d1015');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,H);
+}
+
+function render(anim){
+  drawBackground();
+  const cam = mul(rotAxis(0, pitch), rotAxis(1, yaw));
+  const polys = [];
+
+  for(const cb of cubies){
+    // 正在转动的那一层额外叠加动画旋转
+    const extra = (anim && inLayer(cb, anim.mv)) ? anim.m : null;
+    const worldOf = lv => {
+      let w = [
+        cb.p[0]*GAP + lv[0],
+        cb.p[1]*GAP + lv[1],
+        cb.p[2]*GAP + lv[2]
+      ];
+      if(extra) w = apply(extra, w);
+      return apply(cam, w);
+    };
+
+    for(let i=0;i<6;i++){
+      const F = FACES[i];
+      const nl = apply(cb.r, F.n);
+      const ul = apply(cb.r, F.u);
+      const vl = apply(cb.r, F.v);
+      const cl = [nl[0]*0.5, nl[1]*0.5, nl[2]*0.5];
+
+      const centerV = worldOf(cl);
+      // 背面剔除：法向与视线同向则不可见
+      let nv = apply(cam, extra ? apply(extra, nl) : nl);
+      const eye = [centerV[0], centerV[1], centerV[2]-CAM_D];
+      if(nv[0]*eye[0] + nv[1]*eye[1] + nv[2]*eye[2] >= 0) continue;
+
+      const corner = (su,sv,k) => worldOf([
+        cl[0] + (ul[0]*su + vl[0]*sv)*k,
+        cl[1] + (ul[1]*su + vl[1]*sv)*k,
+        cl[2] + (ul[2]*su + vl[2]*sv)*k
+      ]);
+      const quad = k => [corner(0.5,0.5,k), corner(-0.5,0.5,k),
+                         corner(-0.5,-0.5,k), corner(0.5,-0.5,k)].map(project);
+
+      // 光照：法向朝上越多越亮
+      const lit = 0.72 + 0.28 * Math.max(0, nv[1]*0.45 + nv[2]*0.75);
+      polys.push({z:centerV[2], base:quad(1), face:quad(STICK), c:cb.cols[i], lit});
+    }
+  }
+
+  polys.sort((a,b) => a.z - b.z);   // 画家算法：远的先画
+  for(const p of polys){
+    ctx.beginPath();
+    ctx.moveTo(p.base[0][0], p.base[0][1]);
+    for(let i=1;i<4;i++) ctx.lineTo(p.base[i][0], p.base[i][1]);
+    ctx.closePath();
+    ctx.fillStyle = '#0b0d11';
+    ctx.fill();
+
+    if(p.c === INNER) continue;
+    ctx.beginPath();
+    ctx.moveTo(p.face[0][0], p.face[0][1]);
+    for(let i=1;i<4;i++) ctx.lineTo(p.face[i][0], p.face[i][1]);
+    ctx.closePath();
+    ctx.fillStyle = shade(p.c, p.lit);
+    ctx.fill();
+  }
+}
+
+function shade(hex, k){
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, ((n>>16)&255)*k)|0;
+  const g = Math.min(255, ((n>>8)&255)*k)|0;
+  const b = Math.min(255, (n&255)*k)|0;
+  return 'rgb('+r+','+g+','+b+')';
+}
+
+/* ---------- 时间线 ---------- */
+const SCRAMBLE_LEN = 20;
+let program = [], idx = 0, elapsed = 0, playing = true, speed = 1;
+let scrambleSeq = [];
+let recordOneRound = false;
+
+function buildProgram(){
+  buildCube();
+  scrambleSeq = randomScramble(SCRAMBLE_LEN);
+  program = [];
+  program.push({wait:700, phase:'ready'});
+  scrambleSeq.forEach((m,i) =>
+    program.push({move:m, dur:175, phase:'scramble', step:i}));
+  program.push({wait:1000, phase:'mixed'});
+  scrambleSeq.slice().reverse().forEach((m,i) =>
+    program.push({move:invert(m), dur:255, phase:'solve', step:i}));
+  program.push({wait:1600, phase:'done'});
+  idx = 0; elapsed = 0;
+}
+
+const easeInOut = t => t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+
+const $phase = document.getElementById('phase');
+const $moves = document.getElementById('moves');
+
+function updateHud(item){
+  const P = {ready:'准备', scramble:'打乱', mixed:'已打乱', solve:'复原', done:'复原完成'};
+  const done = item.phase === 'done';
+  $phase.innerHTML = '<b>' + (P[item.phase]||'') + '</b>' +
+    (item.phase==='scramble' || item.phase==='solve'
+      ? '　' + (item.step+1) + ' / ' + SCRAMBLE_LEN : '');
+
+  let html = '';
+  if(item.phase === 'scramble' || item.phase === 'mixed' || item.phase === 'ready'){
+    html = scrambleSeq.map((m,i) => {
+      const t = notation(m);
+      if(item.phase!=='scramble') return item.phase==='mixed' ? t : '<i>'+t+'</i>';
+      if(i < item.step) return t;
+      if(i === item.step) return '<em>'+t+'</em>';
+      return '<i>'+t+'</i>';
+    }).join(' ');
+  }else{
+    const rev = scrambleSeq.slice().reverse().map(invert);
+    html = rev.map((m,i) => {
+      const t = notation(m);
+      if(done) return t;
+      if(i < item.step) return '<i>'+t+'</i>';
+      if(i === item.step) return '<em>'+t+'</em>';
+      return t;
+    }).join(' ');
+  }
+  $moves.innerHTML = html;
+}
+
+let last = performance.now();
+function frame(now){
+  const dt = Math.min(64, now - last); last = now;
+  let anim = null;
+
+  if(playing && program.length){
+    elapsed += dt * speed;
+    let item = program[idx];
+    let span = item.move ? item.dur : item.wait;
+    while(elapsed >= span){
+      elapsed -= span;
+      if(item.move) bake(item.move);
+      idx++;
+      if(idx >= program.length){
+        if(recordOneRound){ recordOneRound = false; stopRecording(); }
+        buildProgram();          // 重置 idx / elapsed，开始下一轮
+      }
+      item = program[idx];
+      span = item.move ? item.dur : item.wait;
+    }
+    if(item.move){
+      const mv = MOVES[item.move.f];
+      const t = easeInOut(Math.min(1, elapsed / item.dur));
+      anim = {mv, m: rotAxis(mv.axis, mv.sign * item.move.dir * Math.PI/2 * t)};
+    }
+    updateHud(item);
+  }else if(program.length){
+    const item = program[idx];
+    if(item.move){
+      const mv = MOVES[item.move.f];
+      const t = easeInOut(Math.min(1, elapsed / item.dur));
+      anim = {mv, m: rotAxis(mv.axis, mv.sign * item.move.dir * Math.PI/2 * t)};
+    }
+  }
+
+  render(anim);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- 交互：拖动转视角 ---------- */
+let drag = null;
+const stage = document.getElementById('stage');
+stage.addEventListener('pointerdown', e => {
+  drag = {x:e.clientX, y:e.clientY};
+  stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener('pointermove', e => {
+  if(!drag) return;
+  yaw   += (e.clientX - drag.x) * 0.008;
+  pitch += (e.clientY - drag.y) * 0.008;
+  pitch = Math.max(-1.35, Math.min(1.35, pitch));
+  drag = {x:e.clientX, y:e.clientY};
+});
+const endDrag = () => { drag = null; };
+stage.addEventListener('pointerup', endDrag);
+stage.addEventListener('pointercancel', endDrag);
+
+/* ---------- 控件 ---------- */
+const $play = document.getElementById('play');
+$play.onclick = () => { playing = !playing; $play.textContent = playing ? '暂停' : '播放'; };
+document.getElementById('again').onclick = () => { buildProgram(); playing = true; $play.textContent='暂停'; };
+const $spd = document.getElementById('spd'), $spdv = document.getElementById('spdv');
+$spd.oninput = () => { speed = +$spd.value; $spdv.textContent = speed.toFixed(1)+'x'; };
+
+/* ---------- 录制导出 ---------- */
+let recorder = null, chunks = [], recMime = '';
+const $rec = document.getElementById('rec');
+const $recBtn = document.getElementById('recBtn');
+
+function pickMime(){
+  const list = ['video/mp4;codecs=avc1', 'video/mp4',
+                'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  for(const m of list){
+    if(window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
+  }
+  return '';
+}
+
+function startRecording(){
+  recMime = pickMime();
+  if(!recMime){ alert('这个浏览器不支持录制（MediaRecorder）'); return; }
+  const stream = cv.captureStream(30);
+  chunks = [];
+  recorder = new MediaRecorder(stream, {mimeType:recMime, videoBitsPerSecond: 6000000});
+  recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data); };
+  recorder.onstop = save;
+  recorder.start();
+
+  buildProgram();               // 从头录一整轮
+  playing = true; $play.textContent = '暂停';
+  recordOneRound = true;
+  $rec.classList.add('on');
+  $recBtn.textContent = '停止录制';
+}
+
+function stopRecording(){
+  if(recorder && recorder.state !== 'inactive') recorder.stop();
+  recorder = null; recordOneRound = false;
+  $rec.classList.remove('on');
+  $recBtn.textContent = '录成视频';
+}
+
+function save(){
+  const blob = new Blob(chunks, {type: recMime});
+  const ext = recMime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'rubiks-cube.' + ext;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+$recBtn.onclick = () => { recorder ? stopRecording() : startRecording(); };
+
+/* ---------- 启动 ---------- */
+resize();
+buildProgram();
+requestAnimationFrame(frame);
+</script>
