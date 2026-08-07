@@ -1,0 +1,18 @@
+# 本机用的东西，不上 GitHub Pages
+
+# 指向 ~/storage/downloads 的软链，方便从手机下载目录取文件
+Download
+
+# 部署脚本和给别的 AI 工具看的规则，只在这台机器上有意义
+deploy.sh
+deploy_*.sh
+AGENTS.md
+
+# 自己写的项目笔记
+*-结构说明.md
+
+# 临时产物
+output/
+*.jpg
+*.png
+*.webp
