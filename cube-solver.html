@@ -381,7 +381,8 @@
     <summary>怎么玩（手势、按钮、转动记录）</summary>
     <b>拖魔方 = 转层。</b>按住往某个方向拖，那一层就<b>跟着手指转</b>，像真魔方一样。
     <b>转过一格的一半松手</b>才算一步，不到就弹回去（这个门槛在设置里能改）。
-    接着往下拖能<b>一口气转 180°、270°</b>，不用松手重拖。刚开始拖时层还能改，
+    接着往下拖能<b>一口气转 180°</b>，不用松手重拖（一次最多 180°；
+    要转 270° 就是反方向 90°，反着拖一下更省事）。刚开始拖时层还能改，
     方向不对接着拖就行。中间层也能拖。按住一格不动，会告诉你这格能转哪两层。
     <div style="margin-top:6px">要转某一层，得在<b>它的侧面</b>拖 —— 比如想转右面(R)，
     在顶面或前面<b>靠右那一列</b>上拖；在右面自己上面怎么拖都转不到它。</div>
@@ -2194,16 +2195,17 @@ const PR_LOCK = 0.26;      // 转过这么多弧度就锁定层，之后拖动�
 // 到 PR_SIN 这个点改成按当时的切线斜率线性延伸，导数接得上、还单调。
 // 切点定在 0.9 而不是更早，是为了让延伸段够陡：拖满 180° 约 1.8 个 |v|
 // （正对镜头时二百多像素，屏幕上够得着），定在 0.7 要 2.4 个，拖不到头。
-// 一口气最多 270°，再多没意义
+// 一口气最多 180°。再往上（270°）拖起来手要走很长一段，中途容易过冲成误转，
+// 而且 270° = 反方向 90°，反着拖一下更省事
 const PR_SIN = 0.9, PR_SIN_A = Math.asin(PR_SIN),
-      PR_SIN_K = 1/Math.sqrt(1-PR_SIN*PR_SIN), PR_MAXA = 3*Math.PI/2;
+      PR_SIN_K = 1/Math.sqrt(1-PR_SIN*PR_SIN), PR_MAXA = Math.PI;
 // 拖过的角度算几个整格：每格里超过「转成的门槛」就进位。
 // 门槛正好 45° 时等价于四舍五入，调低更容易转成、调高更不容易误转
 function prQuarters(ang){
   const a = Math.abs(ang), Q = Math.PI/2;
   const whole = Math.floor(a/Q + 1e-9);
   const rem = a - whole*Q;
-  return Math.min(3, whole + (rem > prCfg('snap')*Math.PI/180 ? 1 : 0));
+  return Math.min(2, whole + (rem > prCfg('snap')*Math.PI/180 ? 1 : 0));
 }
 // 快划判定：速度够快、且确实划出了一段距离
 const PR_FLING = 0.55, PR_FLING_D = 26;
@@ -3316,7 +3318,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-08 07:07';
+const BUILD = '2026-08-08 08:26';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
