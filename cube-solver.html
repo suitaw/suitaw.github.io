@@ -232,21 +232,28 @@
 
   /* ---- 摄像头识别 ---- */
   #camOv{position:fixed;inset:0;background:#0b0e13;z-index:100;display:none;
-    flex-direction:column;padding:12px calc(12px + env(safe-area-inset-left))
+    flex-direction:column;overflow-y:auto;padding:12px calc(12px + env(safe-area-inset-left))
       calc(12px + env(safe-area-inset-bottom));gap:10px}
   #camOv.on{display:flex}
   #camTitle{font-size:16px;font-weight:600;text-align:center}
   #camTip{font-size:13px;color:var(--dim);text-align:center;line-height:1.5}
   #camTip b{color:var(--txt)}
-  #camBody{flex:1;min-height:0;display:flex;gap:10px;align-items:center;justify-content:center}
-  #camPrev{flex:0 1 auto;max-width:100%;max-height:100%;aspect-ratio:1;
+  /* 参考图和取色格放在预览「下面」而不是右边：竖屏手机横向最紧，
+     并排放会把右边那栏挤出屏幕，而且预览越小越难把取样框对准魔方 */
+  #camBody{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;
+    align-items:center;justify-content:center}
+  /* canvas 是替换元素，同时给 max-width 和 max-height 会自动保持 1:1 不被拉扁。
+     max-height 里减掉的是下面那一栏的高度（不减的话百分比按整个 camBody 算，会撑出去） */
+  #camPrev{flex:none;width:auto;height:auto;max-width:100%;
+    max-height:max(160px, calc(100% - 104px));aspect-ratio:1;
     border-radius:12px;background:#000;touch-action:none}
-  #camRef{width:96px;height:96px;flex:none;border-radius:10px;background:#12161d;
+  #camRef{width:76px;height:76px;flex:none;border-radius:10px;background:#12161d;
     border:1px solid var(--line)}
-  #camSide{display:flex;flex-direction:column;gap:8px;align-items:center;flex:none}
+  #camSide{display:flex;gap:20px;align-items:flex-start;justify-content:center;flex:none}
+  #camSide>div{display:flex;flex-direction:column;align-items:center;gap:5px}
   #camSide small{font-size:10px;color:var(--dim);text-align:center;line-height:1.3}
-  #camDots{display:grid;grid-template-columns:repeat(3,14px);gap:3px}
-  #camDots i{width:14px;height:14px;border-radius:3px;background:#1b212b}
+  #camDots{display:grid;grid-template-columns:repeat(3,22px);gap:4px}
+  #camDots i{width:22px;height:22px;border-radius:4px;background:#1b212b}
   #camErr{font-size:13px;color:#ffb0b0;text-align:center;min-height:18px}
   #camProg{display:flex;gap:4px;justify-content:center}
   #camProg i{width:26px;height:5px;border-radius:3px;background:#242c39}
@@ -452,10 +459,8 @@
   <div id="camBody">
     <canvas id="camPrev"></canvas>
     <div id="camSide">
-      <canvas id="camRef" width="192" height="192"></canvas>
-      <small>照这个姿势拿</small>
-      <div id="camDots"></div>
-      <small>取到的颜色</small>
+      <div><canvas id="camRef" width="192" height="192"></canvas><small>照这个姿势拿</small></div>
+      <div><div id="camDots"></div><small>取到的颜色</small></div>
     </div>
   </div>
   <div id="camErr"></div>
@@ -3032,9 +3037,11 @@ function drawBox(ctx){
 /* 拖框 / 两指缩放。画布内部是 CAM_SIZE 见方，手指坐标要按显示尺寸换算过去 */
 const camPts = new Map();
 let camDragBox = null, camPinch = null;
+// 两个方向分开换算：画布万一被布局拉成不是正方形，只按宽度算会让竖着拖的距离对不上
 const camXY = e => {
-  const r = camPrev.getBoundingClientRect(), k = CAM_SIZE / (r.width || 1);
-  return [(e.clientX-r.left)*k, (e.clientY-r.top)*k];
+  const r = camPrev.getBoundingClientRect();
+  return [(e.clientX-r.left) * CAM_SIZE/(r.width||1),
+          (e.clientY-r.top)  * CAM_SIZE/(r.height||1)];
 };
 camPrev.addEventListener('pointerdown', e => {
   const [x,y] = camXY(e);
@@ -3318,7 +3325,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-08 08:26';
+const BUILD = '2026-08-08 11:32';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
