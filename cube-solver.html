@@ -1,5 +1,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- 用缓存前必须回源校验一下。不加的话手机浏览器会拿着旧的 HTML 不放，
+     改了半天刷新出来还是老样子。no-cache 不是不缓存，内容没变时仍然走 304，不费流量 -->
+<meta http-equiv="Cache-Control" content="no-cache">
 <title>魔方复原助手</title>
 <style>
   :root{
@@ -166,6 +169,12 @@
   #prKeys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
   #prKeys button{padding:11px 0;min-width:0;font-size:15px;font-weight:600;
     font-family:ui-monospace,Menlo,monospace}
+
+  /* ---- 版本 ---- */
+  #ver{text-align:center;font-size:11px;color:#5b6577;padding:14px 10px 20px;
+    font-family:ui-monospace,Menlo,monospace}
+  #ver b{color:var(--dim);font-weight:600}
+  #ver span{cursor:pointer;text-decoration:underline dotted;margin-left:6px}
 
   /* ---- 教程 ---- */
   #tuList{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
@@ -390,6 +399,8 @@
     <div class="legend" id="tuLegend"></div>
   </div>
 </div>
+
+<div id="ver">版本 <b id="verTxt">—</b><span id="verReload">强制刷新</span></div>
 
 <!-- ============ 摄像头识别 ============ -->
 <div id="camOv">
@@ -2944,4 +2955,16 @@ tuListRender();
 window.addEventListener('resize', () => {
   inResize(); inRender(); prResize(); prRender(); tuResize(); tuRender();
 });
+
+/* ---- 版本 ----
+   BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
+   刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
+const BUILD = '2026-08-07 21:00';
+$('verTxt').textContent = BUILD;
+$('verReload').onclick = () => {
+  // 给地址加个用不重样的参数，绕开缓存重新取一份
+  const u = new URL(location.href);
+  u.searchParams.set('_', Date.now().toString(36));
+  location.replace(u.toString());
+};
 </script>
