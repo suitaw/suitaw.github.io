@@ -2945,9 +2945,15 @@ $('camShot').onclick = () => {
   camStop();
   net = guess; paintNet(); invalidatePlan();
   const chk = faceletToCubie(net);
+  // 能指出具体哪几格的（角/棱配色不对）已经被 netTrouble 标红了，直接让他点那儿改。
+  // 奇偶性、朝向这类整体约束 netTrouble 故意不查，那种情况一格都没标红，
+  // 就别说「标红的格子」了 —— 得让他整体核对
+  const bad = netTrouble(net);
   showMsg(chk.error
-    ? '识别完了，但有对不上的地方：' + chk.error + '　—— 在上面的展开图里改掉那几格再求解'
-    : '识别完了，六个面都填好了。对着实物核对一下，没问题就点求解。', chk.error ? 'err' : 'ok');
+    ? '识别完了，但有对不上的地方：' + chk.error + '　—— '
+      + (bad ? '标红的格子就是问题所在：先在色板选对的颜色，再点那一格改掉'
+             : '这类问题看不出是哪一格错，多半是某个块的朝向认反了，转着魔方整体核对一遍')
+    : '识别完了，六个面都填好了。转着核对一遍，没问题就点求解。', chk.error ? 'err' : 'ok');
   window.scrollTo(0,0);
 };
 
@@ -3004,7 +3010,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-07 21:32';
+const BUILD = '2026-08-07 21:43';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
