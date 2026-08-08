@@ -15,10 +15,16 @@
   body{padding-bottom:env(safe-area-inset-bottom)}
   h2{font-size:15px;margin:0 0 10px;font-weight:600}
   .muted{color:var(--dim);font-size:13px}
+  /* 横向 padding 只留 10px：三列一行时每格约 104px，14px 会让「随便打乱」这种
+     五六个字的标签折行，一个按钮占两行、旁边的占一行，一排就参差不齐了 */
   button{font:inherit;font-size:14px;color:var(--txt);background:#1e2530;cursor:pointer;
-    border:1px solid var(--line2);border-radius:10px;padding:10px 14px}
+    border:1px solid var(--line2);border-radius:10px;padding:10px}
   button:active{background:#28313f}
   button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  /* 辅助操作（清空、填个样例这类）不该和主操作一样重 */
+  button.sub{background:transparent;border-color:var(--line);color:var(--dim);font-size:13px;
+    padding:8px 10px}
+  button.sub:active{background:#1b212b}
   button:disabled{opacity:.35;cursor:default}
   .row{display:flex;gap:8px;flex-wrap:wrap}
   .row>button{flex:1 1 0;min-width:88px}
@@ -68,10 +74,14 @@
     cursor:pointer;position:relative;display:flex;align-items:center;
     justify-content:center;font-weight:700;font-size:17px}
   #pal .sw.on{border-color:var(--txt)}
-  #pal .sw.done{opacity:.32}
+  /* 填完的色要弱下去，但不能用 opacity —— 那会把上面的数字和下面的名字一起吃掉，
+     六个色全填完时整排就成了看不清的灰块。用 inset 阴影只压背景，字照旧清楚 */
+  #pal .sw.done{box-shadow:inset 0 0 0 99px rgba(13,16,21,.66)}
   #pal .sw i{font-style:normal;color:rgba(0,0,0,.62);text-shadow:0 1px 0 rgba(255,255,255,.3)}
+  #pal .sw.done i{color:var(--ok);text-shadow:none;font-size:19px}
   #pal .sw b{position:absolute;bottom:-18px;left:0;right:0;text-align:center;
     font-size:11px;color:var(--dim);font-weight:400}
+  #pal .sw.on b{color:var(--txt)}
   #palwrap{padding-bottom:20px}
   #tally{text-align:center;font-size:12px;color:var(--dim);margin:10px 0 14px;
     font-family:ui-monospace,Menlo,monospace}
@@ -109,6 +119,15 @@
   #seq span.cur{background:var(--acc);color:#fff;font-weight:700}
   .legend{font-size:12px;color:var(--dim);margin-top:14px;line-height:1.8}
   .legend b{color:var(--txt);font-weight:600}
+  /* 长说明收起来。手机上这几段常驻要占大半屏，真正要看的是上面的魔方和按钮 */
+  details.help{background:#12161d;border:1px solid var(--line);border-radius:10px;
+    padding:9px 12px;margin-top:16px}
+  details.help>summary{font-size:12.5px;color:var(--dim);cursor:pointer;list-style:none;
+    line-height:1.4}
+  details.help>summary::-webkit-details-marker{display:none}
+  details.help>summary::before{content:'▸ ';color:var(--acc)}
+  details.help[open]>summary{margin-bottom:8px}
+  details.help[open]>summary::before{content:'▾ '}
 
   /* ---- 练习 ---- */
   #prStage{position:relative;width:100%;aspect-ratio:1/.95;max-height:44vh;
@@ -134,8 +153,9 @@
     align-items:center;gap:8px}
   #prPlanOff.on{display:flex}
   #prPlanOff button{padding:4px 9px;font-size:12px;border-radius:7px}
-  #prPlanBar{display:flex;gap:6px;margin-top:7px}
-  #prPlanBar button{flex:1;padding:6px 4px;font-size:12px;border-radius:7px;white-space:nowrap}
+  #prPlanBar{display:flex;gap:6px;margin-top:8px}
+  #prPlanBar button{flex:1;padding:7px 4px;font-size:12px;border-radius:7px;white-space:nowrap;
+    background:#1b212b;border-color:var(--line)}
   #prPlanBar button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
   #prPlanSeq{display:flex;gap:4px;overflow-x:auto;margin-top:7px;padding-bottom:2px;
     font-family:ui-monospace,Menlo,monospace;font-size:13px}
@@ -286,12 +306,12 @@
     <button id="btnCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别</button>
   </div>
   <div class="row" style="margin-bottom:8px">
-    <button id="inToPr" style="flex:1 1 100%">把这个魔方拿到③自己练</button>
+    <button id="inToPr" class="sub" style="flex:1 1 100%">把这个魔方拿到③自己练</button>
   </div>
   <div class="row">
-    <button id="btnReset">全部清空</button>
-    <button id="btnSolved">填成复原态</button>
-    <button id="btnRandom">随便打乱一个</button>
+    <button id="btnReset" class="sub">全部清空</button>
+    <button id="btnSolved" class="sub">填复原态</button>
+    <button id="btnRandom" class="sub">随便打乱</button>
   </div>
 </div>
 
@@ -327,7 +347,7 @@
   <div class="row" style="margin-top:12px">
     <button id="prScram" class="pri">打乱</button>
     <button id="prUndo">撤销</button>
-    <button id="prReset">还原成复原态</button>
+    <button id="prReset" class="sub">回到复原态</button>
   </div>
   <div class="row" style="margin-top:8px">
     <button id="prHome">摆正视角</button>
@@ -338,7 +358,7 @@
     <button id="prCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别一个魔方来练</button>
   </div>
   <div class="row" style="margin-top:8px">
-    <button id="prToIn" style="flex:1 1 100%">把这个魔方填进①输入页</button>
+    <button id="prToIn" class="sub" style="flex:1 1 100%">把这个魔方填进①输入页</button>
   </div>
 
   <div id="prLog">
@@ -357,7 +377,8 @@
     </div>
   </div>
 
-  <div class="legend">
+  <details class="legend help">
+    <summary>怎么玩（手势、按钮、转动记录）</summary>
     <b>拖魔方 = 转层。</b>按住往某个方向拖，那一层就<b>跟着手指转</b>，像真魔方一样。
     <b>转过一格的一半松手</b>才算一步，不到就弹回去（这个门槛在设置里能改）。
     接着往下拖能<b>一口气转 180°、270°</b>，不用松手重拖。刚开始拖时层还能改，
@@ -384,7 +405,7 @@
     <div style="margin-top:6px">不认记号就开着<b>「箭头」</b>：该转的那一层上会画一个
     黄色箭头，照着箭头方向拧就行（开关状态记住，下次还是这样）。
     解法用第①页选的算法：最短解法约 20 步、分步教学约 120 步。</div>
-  </div>
+  </details>
 </div>
 
 <!-- ============ 教程页 ============ -->
@@ -421,8 +442,6 @@
     <div class="legend" id="tuLegend"></div>
   </div>
 </div>
-
-<div id="ver">版本 <b id="verTxt">—</b><span id="verReload">强制刷新</span></div>
 
 <!-- ============ 摄像头识别 ============ -->
 <div id="camOv">
@@ -472,7 +491,8 @@
   <div id="phases"></div>
   <div id="seq"></div>
 
-  <div class="legend">
+  <details class="legend help">
+    <summary>怎么看记号 · 两种解法的区别</summary>
     <b>怎么看记号：</b>字母是要转的那一面，<b>正对着那一面</b>看，
     没有符号 = 顺时针 90°，<b>'</b> = 逆时针 90°，<b>2</b> = 转 180°。
     <div style="margin-top:6px">
@@ -489,8 +509,11 @@
         每个阶段做完都看得见成果，转错了能立刻发现。第一次玩建议用这个。
       </div>
     </div>
-  </div>
+  </details>
 </div>
+
+<!-- 版本行要排在所有 .page 后面。放在 pGo 前面的话，第②页的版本会跑到内容上方去 -->
+<div id="ver">版本 <b id="verTxt">—</b><span id="verReload">强制刷新</span></div>
 
 <script>
 /* ==========================================================
@@ -1309,7 +1332,7 @@ function paintNet(){
   }
   for(const f of FACE_ORDER){
     const n = netLeft(f);
-    palEls[f].querySelector('i').textContent = n || '';
+    palEls[f].querySelector('i').textContent = n || '✓';   // 填完显示对勾，比留空更明确
     palEls[f].classList.toggle('on', f === curColor);
     palEls[f].classList.toggle('done', n === 0);
   }
@@ -3293,7 +3316,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-08 06:42';
+const BUILD = '2026-08-08 07:07';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
