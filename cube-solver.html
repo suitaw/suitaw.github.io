@@ -714,6 +714,37 @@ const PHASE_OK = [
   st => isSolved(st),
 ];
 
+/* 约掉冗余步。每个阶段是四个子目标各做一次 BFS 拼起来的，接缝处常出现
+   R 紧跟着 R'（各自那一小段最短，拼一起就不是了）。对面的手可以对穿过去
+   （R 和 L 交换得动），所以 R L R' 也能并成 L。
+   **只在一个阶段内部约**：约简保证这一段整体的效果不变，所以阶段末的状态
+   一分不差，PHASE_OK、阶段标签、教程出题全照旧。跨阶段边界约会改掉边界处的
+   状态，「白十字做完了」那类判据就不成立了 —— 实测跨边界也只多省 1.2 步，不值 */
+const RED_OPP = {U:'D',D:'U',R:'L',L:'R',F:'B',B:'F'};
+const redAmt = mv => mv.endsWith('2') ? 2 : mv.endsWith("'") ? 3 : 1;
+const redMk  = (f,a) => a===1 ? f : a===2 ? f+'2' : f+"'";
+function reduceMoves(moves){
+  let cur = moves;
+  for(let pass=0; pass<20; pass++){
+    const out = []; let changed = false;
+    for(const mv of cur){
+      const f = mv[0];
+      let j = out.length - 1;
+      while(j >= 0 && RED_OPP[out[j][0]] === f) j--;     // 只有对面的手能跨过去
+      if(j >= 0 && out[j][0] === f){
+        const a = (redAmt(mv) + redAmt(out[j])) % 4;
+        out.splice(j, 1); changed = true;
+        if(a) out.splice(j, 0, redMk(f, a));             // 合成一手放回原位
+        continue;
+      }
+      out.push(mv);
+    }
+    cur = out;
+    if(!changed) break;                                  // 合并之后可能又能接着并，跑到不动为止
+  }
+  return cur;
+}
+
 function solve(state){
   let s = state; const out = [];
   const run = (moveSet, keyOf, isGoal, depth, label) => {
@@ -751,6 +782,7 @@ function solve(state){
   run(PLL_CORN, llKey, st => eFlat(st)&&cFlat(st)&&LL.every(i=>cornerOK(st,i)), 6, '顶层角归位');
   run(PLL_EDGE, llKey, st => isSolved(st), 6, '顶层棱归位');
 
+  out.forEach(st => { st.moves = reduceMoves(st.moves); });
   return {steps: out.filter(x=>x.moves.length), final: s};
 }
 
@@ -3261,7 +3293,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-08 06:12';
+const BUILD = '2026-08-08 06:42';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
