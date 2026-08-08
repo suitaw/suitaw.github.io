@@ -6,237 +6,309 @@
 <title>魔方复原助手</title>
 <style>
   :root{
-    --bg:#0d1015; --panel:#161b23; --line:#252c38; --line2:#333d4d;
-    --txt:#e8ecf2; --dim:#8a94a6; --acc:#4c8dff; --ok:#31a24c; --err:#ff5d5d;
+    /* 底色分三层：页面 / 卡片 / 可按的东西。原来只有两层，什么都糊在一起分不出主次 */
+    --bg:#0a0d13; --stage:#0b0f16;
+    --panel:#131923; --panel2:#1b2330; --panel3:#242e3d;
+    --line:#212a37; --line2:#2e3a4b;
+    --txt:#e9edf4; --dim:#8b97ab; --dim2:#5c6779;
+    --acc:#5b8cff; --accd:#3f6fe0;
+    --ok:#35c26a; --err:#ff6b6b;
+    --r:14px; --r2:10px; --r3:8px;
+    /* 六个面的颜色也是这页的视觉主线：色块、按钮、图例都引它。
+       值必须和 3D 渲染里的 COLORS 一模一样 —— 色条说「橙」，就得是魔方上那个橙 */
+    --cU:#f7d114; --cR:#f08019; --cF:#31a24c; --cD:#f2f4f7; --cL:#d93a35; --cB:#1560d0;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);
-    font:15px/1.5 -apple-system,"PingFang SC","Noto Sans CJK SC",system-ui,sans-serif}
-  body{padding-bottom:env(safe-area-inset-bottom)}
-  h2{font-size:15px;margin:0 0 10px;font-weight:600}
-  .muted{color:var(--dim);font-size:13px}
-  /* 横向 padding 只留 10px：三列一行时每格约 104px，14px 会让「随便打乱」这种
-     五六个字的标签折行，一个按钮占两行、旁边的占一行，一排就参差不齐了 */
-  button{font:inherit;font-size:14px;color:var(--txt);background:#1e2530;cursor:pointer;
-    border:1px solid var(--line2);border-radius:10px;padding:10px}
-  button:active{background:#28313f}
-  button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  html{background:var(--bg)}
+  body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);
+    font:15px/1.55 -apple-system,"PingFang SC","Noto Sans CJK SC",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}
+  /* 顶部一层很淡的辉光。纯装饰、不占布局，fixed 所以滚动时不动 */
+  body::before{content:'';position:fixed;left:0;right:0;top:0;height:320px;pointer-events:none;
+    background:radial-gradient(120% 100% at 50% -25%,rgba(91,140,255,.14),transparent 72%)}
+  #tabs,.page,#ver{position:relative}
+
+  h2{font-size:16.5px;margin:0 0 8px;font-weight:600;letter-spacing:.01em}
+  .muted{color:var(--dim);font-size:13px;line-height:1.7}
+  /* 小标题：分组用，比 h2 轻，用来把一堆按钮分出"这是干嘛的" */
+  .lbl{font-size:11.5px;letter-spacing:.08em;color:#7c889b;font-weight:600;margin:0 0 9px}
+
+  button{font:inherit;font-size:14px;color:var(--txt);background:var(--panel2);cursor:pointer;
+    border:1px solid var(--line2);border-radius:var(--r2);padding:11px 10px;
+    transition:background .12s ease,border-color .12s ease}
+  button:active{background:var(--panel3)}
+  button.pri{background:linear-gradient(180deg,#6f9dff,var(--accd));border-color:#4a77e6;color:#fff;
+    font-weight:600;box-shadow:0 8px 18px -10px rgba(63,111,224,.95)}
+  button.pri:active{background:linear-gradient(180deg,#5b8cff,#3560c9)}
+  button.big{padding:14px 10px;font-size:16px}
   /* 辅助操作（清空、填个样例这类）不该和主操作一样重 */
   button.sub{background:transparent;border-color:var(--line);color:var(--dim);font-size:13px;
-    padding:8px 10px}
-  button.sub:active{background:#1b212b}
-  button:disabled{opacity:.35;cursor:default}
+    padding:9px 10px}
+  button.sub:active{background:var(--panel)}
+  button:disabled{opacity:.3;cursor:default;box-shadow:none}
   .row{display:flex;gap:8px;flex-wrap:wrap}
+  /* 横向 padding 只留 10px：三列一行时每格约 104px，14px 会让「随便打乱」这种
+     五六个字的标签折行，一个按钮占两行、旁边的占一行，一排就参差不齐了 */
   .row>button{flex:1 1 0;min-width:88px}
+  /* 一排塞四个小按钮时不能守 88px 下限，不然必然折成 2+2 */
+  .row.tight>button{min-width:0;font-size:13px;padding:9px 4px}
+
+  /* 卡片：把相关的东西圈到一起，是这次改版分主次的主要手段 */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:12px 13px;margin:12px 0}
+  .card.flat{background:#101620}
 
   /* ---- 顶部页签 ---- */
-  #tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--line);
-    position:sticky;top:0;z-index:10}
-  #tabs button{flex:1;border:0;border-radius:0;background:transparent;color:var(--dim);
-    padding:14px 0;border-bottom:2px solid transparent}
-  #tabs button.on{color:var(--txt);border-bottom-color:var(--acc);font-weight:600}
-  .page{display:none;padding:16px}
+  #tabs{display:flex;gap:4px;padding:8px 10px;background:rgba(10,13,19,.82);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  #tabs button{flex:1;border:1px solid transparent;border-radius:var(--r2);background:transparent;
+    color:var(--dim);padding:10px 0;font-size:13.5px}
+  #tabs button.on{color:#cfe0ff;font-weight:600;
+    background:linear-gradient(180deg,rgba(91,140,255,.20),rgba(91,140,255,.08));
+    border-color:rgba(91,140,255,.38)}
+  .page{display:none;padding:16px 14px 0;max-width:620px;margin:0 auto}
   .page.on{display:block}
+
+  /* 持方速查：六个面各是什么颜色，一排小胶囊比一句话好认 */
+  /* 六个一排在 390px 上会折成 5+1，用三列两行才齐 */
+  #grip{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 13px}
+  #grip span{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11.5px;
+    color:var(--dim);background:var(--panel);border:1px solid var(--line);
+    border-radius:99px;padding:5px 8px}
+  #grip i{width:11px;height:11px;border-radius:3px;background:var(--c);
+    box-shadow:0 0 0 1px rgba(0,0,0,.5) inset}
+  /* 填色三步走 */
+  ol.steps{margin:0 0 14px;padding:0 0 0 20px;color:var(--dim);font-size:12.8px;line-height:1.65}
+  ol.steps li{margin-bottom:3px}
+  ol.steps b{color:var(--txt);font-weight:600}
+  ol.steps::marker{color:var(--acc)}
 
   /* ---- 展开图 ---- */
   #net{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
-    max-width:340px;margin:0 auto 14px;
+    max-width:340px;margin:0 auto 6px;
     grid-template-areas:". u . ." "l f r b" ". d . ."}
   .fwrap{display:flex;flex-direction:column;gap:3px}
   .fwrap>span{font-size:10px;color:var(--dim);text-align:center;line-height:1.2}
   .face{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
-    background:#000;padding:2px;border-radius:4px;aspect-ratio:1}
+    background:#05070a;padding:2px;border-radius:5px;aspect-ratio:1}
   .cell{aspect-ratio:1;border-radius:2px;cursor:pointer;position:relative}
   .cell.center{cursor:default}
   .cell.center::after{content:'';position:absolute;inset:32%;border-radius:50%;
     background:rgba(0,0,0,.35)}
   .cell.cursor{box-shadow:0 0 0 2px var(--txt);z-index:2}
-  .cell.bad{box-shadow:0 0 0 2px #ff5d5d;z-index:3}
+  .cell.bad{box-shadow:0 0 0 2px var(--err);z-index:3}
   .cell.cursor::before{content:'';position:absolute;inset:0;border-radius:2px;
-    background:rgba(76,141,255,.35);animation:pulse 1.1s ease-in-out infinite}
-  @keyframes pulse{50%{background:rgba(76,141,255,.05)}}
+    background:rgba(91,140,255,.35);animation:pulse 1.1s ease-in-out infinite}
+  @keyframes pulse{50%{background:rgba(91,140,255,.05)}}
+
+  /* ---- 3D 舞台（输入 / 复原 / 练习 / 教程 四处同一套外观）---- */
+  #inStage,#stage,#prStage,#tuStage{position:relative;width:100%;overflow:hidden;
+    background:radial-gradient(120% 100% at 50% 0%,#141b26,var(--stage) 70%);
+    border:1px solid var(--line);border-radius:var(--r);touch-action:none}
+  #inStage{aspect-ratio:1/.95;max-height:42vh}
+  #stage{aspect-ratio:1/.92;max-height:46vh}
+  #prStage{aspect-ratio:1/.95;max-height:44vh}
+  #tuStage{aspect-ratio:1/.95;max-height:42vh}
+  #inCv,#cv,#prCv,#tuCv{display:block;width:100%;height:100%}
+  /* 舞台里的提示语压在底部一条渐变上，压着魔方的时候也读得清 */
+  #inHint,#hint,#prHint2{position:absolute;left:0;right:0;bottom:0;padding:16px 12px 7px;
+    font-size:11px;color:#7b8697;line-height:1.4;pointer-events:none;
+    background:linear-gradient(0deg,rgba(8,11,16,.92),transparent)}
 
   /* ---- 调色板 ---- */
-  #inStage{position:relative;width:100%;aspect-ratio:1/.95;max-height:42vh;
-    background:#0b0e13;border-radius:14px;overflow:hidden;touch-action:none;
-    border:1px solid var(--line);margin-bottom:8px}
-  #inCv{display:block;width:100%;height:100%}
-  #inHint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#5b6577}
-  #netBox{margin:12px 0 4px;background:#12161d;border:1px solid var(--line);
-    border-radius:10px;padding:8px 10px}
-  #netBox>summary{font-size:12px;color:var(--dim);cursor:pointer;list-style:none}
-  #netBox>summary::-webkit-details-marker{display:none}
-  #netBox>summary::before{content:'▸ ';color:var(--acc)}
-  #netBox[open]>summary::before{content:'▾ '}
-  #netBox #net{margin-top:10px}
-  #pal{display:flex;gap:8px;justify-content:center;margin:14px 0}
-  #pal .sw{width:42px;height:42px;border-radius:10px;border:3px solid transparent;
+  #palwrap{padding-bottom:22px}
+  #pal{display:flex;gap:9px;justify-content:center;margin:16px 0 0}
+  #pal .sw{width:44px;height:44px;border-radius:12px;border:2px solid transparent;
     cursor:pointer;position:relative;display:flex;align-items:center;
-    justify-content:center;font-weight:700;font-size:17px}
-  #pal .sw.on{border-color:var(--txt)}
+    justify-content:center;font-weight:700;font-size:17px;
+    box-shadow:0 2px 8px -3px rgba(0,0,0,.8)}
+  #pal .sw.on{border-color:var(--txt);transform:scale(1.06)}
   /* 填完的色要弱下去，但不能用 opacity —— 那会把上面的数字和下面的名字一起吃掉，
      六个色全填完时整排就成了看不清的灰块。用 inset 阴影只压背景，字照旧清楚 */
-  #pal .sw.done{box-shadow:inset 0 0 0 99px rgba(13,16,21,.66)}
+  #pal .sw.done{box-shadow:inset 0 0 0 99px rgba(13,16,21,.68)}
   #pal .sw i{font-style:normal;color:rgba(0,0,0,.62);text-shadow:0 1px 0 rgba(255,255,255,.3)}
   #pal .sw.done i{color:var(--ok);text-shadow:none;font-size:19px}
-  #pal .sw b{position:absolute;bottom:-18px;left:0;right:0;text-align:center;
+  #pal .sw b{position:absolute;bottom:-19px;left:-4px;right:-4px;text-align:center;
     font-size:11px;color:var(--dim);font-weight:400}
   #pal .sw.on b{color:var(--txt)}
-  #palwrap{padding-bottom:20px}
-  #tally{text-align:center;font-size:12px;color:var(--dim);margin:10px 0 14px;
+  #tally{text-align:center;font-size:12px;color:var(--dim);margin:8px 0 0;
     font-family:ui-monospace,Menlo,monospace}
-  #msg{margin:12px 0;padding:11px 13px;border-radius:10px;font-size:13.5px;display:none}
-  #msg.err{display:block;background:rgba(255,93,93,.12);border:1px solid rgba(255,93,93,.4);color:#ffb0b0}
-  #msg.ok{display:block;background:rgba(49,162,76,.12);border:1px solid rgba(49,162,76,.4);color:#8fe0a5}
+  #msg{margin:12px 0 0;padding:11px 13px;border-radius:var(--r2);font-size:13.5px;display:none}
+  #msg.err{display:block;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.4);color:#ffb3b3}
+  #msg.ok{display:block;background:rgba(53,194,106,.12);border:1px solid rgba(53,194,106,.4);color:#8fe6ab}
 
-  /* ---- 3D ---- */
-  #stage{position:relative;width:100%;aspect-ratio:1/.92;max-height:46vh;
-    background:#0b0e13;border-radius:14px;overflow:hidden;touch-action:none;
-    border:1px solid var(--line)}
-  #cv{display:block;width:100%;height:100%}
-  #hint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#5b6577}
+  /* 展开图折叠框：和 details.help 一个样式，见下面 */
+  #netBox #net{margin-top:10px}
 
   /* ---- 步骤 ---- */
-  #now{text-align:center;margin:14px 0 4px}
-  #nowMove{font-size:44px;font-weight:700;font-family:ui-monospace,Menlo,monospace;
-    letter-spacing:.04em;line-height:1.1}
-  #nowDesc{font-size:14px;color:var(--dim);margin-top:4px}
+  #now{text-align:center;margin:2px 0 6px}
+  #nowMove{font-size:46px;font-weight:700;font-family:ui-monospace,Menlo,monospace;
+    letter-spacing:.04em;line-height:1.05}
+  #nowDesc{font-size:14px;color:var(--dim);margin-top:5px}
   #prog{display:flex;justify-content:space-between;font-size:12.5px;color:var(--dim);
-    margin:12px 2px 8px}
-  #bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-bottom:14px}
-  #bar i{display:block;height:100%;background:var(--acc);transition:width .18s}
-  #phases{display:flex;gap:4px;margin:14px 0 6px}
-  #phases div{flex:1;height:22px;border-radius:5px;background:#1b212b;font-size:10px;
+    margin:12px 2px 7px}
+  #bar{height:5px;background:#0d1219;border-radius:3px;overflow:hidden;
+    box-shadow:0 0 0 1px var(--line) inset}
+  #bar i{display:block;height:100%;border-radius:3px;transition:width .18s;
+    background:linear-gradient(90deg,var(--accd),#7ba8ff)}
+  #phases{display:flex;gap:4px;margin:13px 0 0}
+  #phases div{flex:1;height:24px;border-radius:6px;background:var(--panel2);font-size:10px;
     display:flex;align-items:center;justify-content:center;color:var(--dim);cursor:pointer;
-    overflow:hidden;white-space:nowrap}
-  #phases div.done{background:#1e3a26;color:#8fe0a5}
-  #phases div.cur{background:var(--acc);color:#fff;font-weight:600}
+    overflow:hidden;white-space:nowrap;border:1px solid transparent}
+  #phases div.done{background:rgba(53,194,106,.16);border-color:rgba(53,194,106,.32);color:#8fe6ab}
+  #phases div.cur{background:linear-gradient(180deg,#6f9dff,var(--accd));border-color:#4a77e6;
+    color:#fff;font-weight:600}
   #seq{font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:2.1;
-    color:var(--dim);word-break:break-all;max-height:110px;overflow-y:auto;
-    background:#12161d;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+    color:var(--dim);word-break:break-all;max-height:112px;overflow-y:auto;
+    background:#0d1219;border:1px solid var(--line);border-radius:var(--r2);
+    padding:9px 11px;margin-top:11px}
   #seq span{padding:2px 4px;border-radius:4px;cursor:pointer}
   #seq span.past{color:#3d4757}
   #seq span.cur{background:var(--acc);color:#fff;font-weight:700}
-  .legend{font-size:12px;color:var(--dim);margin-top:14px;line-height:1.8}
+  /* 还没求解时这两块是空的，留着就是两个莫名其妙的空盒子 */
+  #seq:empty,#phases:empty{display:none}
+  /* 第②页的空状态：进度条那套全藏掉，只留一句话和一颗引路按钮 */
+  #goCard.empty{text-align:center}
+  #goCard.empty #prog,#goCard.empty #bar{display:none}
+  #goCard.empty #nowMove{display:none}
+  #goCard.empty #nowDesc{font-size:14.5px;padding:6px 0 2px}
+  #goToIn{display:none;margin:12px auto 2px}
+  #goCard.empty #goToIn{display:inline-block}
+
+  .legend{font-size:12.3px;color:var(--dim);line-height:1.75}
   .legend b{color:var(--txt);font-weight:600}
   /* 长说明收起来。手机上这几段常驻要占大半屏，真正要看的是上面的魔方和按钮 */
-  details.help{background:#12161d;border:1px solid var(--line);border-radius:10px;
-    padding:9px 12px;margin-top:16px}
-  details.help>summary{font-size:12.5px;color:var(--dim);cursor:pointer;list-style:none;
-    line-height:1.4}
-  details.help>summary::-webkit-details-marker{display:none}
-  details.help>summary::before{content:'▸ ';color:var(--acc)}
-  details.help[open]>summary{margin-bottom:8px}
-  details.help[open]>summary::before{content:'▾ '}
+  details.help,#netBox{background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--r);padding:10px 13px;margin:12px 0}
+  details.help>summary,#netBox>summary{font-size:12.5px;color:var(--dim);cursor:pointer;
+    list-style:none;line-height:1.4}
+  details.help>summary::-webkit-details-marker,
+  #netBox>summary::-webkit-details-marker{display:none}
+  details.help>summary::before,#netBox>summary::before{content:'▸ ';color:var(--acc)}
+  details.help[open]>summary{margin-bottom:9px;color:var(--txt)}
+  details.help[open]>summary::before,#netBox[open]>summary::before{content:'▾ '}
 
   /* ---- 练习 ---- */
-  #prStage{position:relative;width:100%;aspect-ratio:1/.95;max-height:44vh;
-    background:#0b0e13;border-radius:14px;overflow:hidden;touch-action:none;
-    border:1px solid var(--line)}
-  #prCv{display:block;width:100%;height:100%}
-  #prHint2{position:absolute;left:10px;bottom:8px;font-size:11px;color:#5b6577}
   #prBar{display:flex;justify-content:space-between;align-items:baseline;
-    margin:12px 2px 4px;font-family:ui-monospace,Menlo,monospace;color:var(--dim);font-size:12px}
-  #prBar b{font-size:24px;font-weight:700;color:var(--txt);margin-right:4px}
-  #prMsg{min-height:22px;font-size:14px;color:var(--acc);text-align:center;margin:8px 0}
+    margin:12px 0 0;padding:9px 13px;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--r);font-family:ui-monospace,Menlo,monospace;color:var(--dim);font-size:12px}
+  #prBar b{font-size:24px;font-weight:700;color:var(--txt);margin-right:5px}
+  #prMsg{min-height:22px;font-size:14px;color:var(--acc);text-align:center;margin:9px 0 0}
   #prMsg.win{color:var(--ok);font-weight:700;font-size:17px}
-  #prPlan{display:none;margin-top:10px;background:#12161d;border:1px solid var(--line);
-    border-radius:10px;padding:8px 10px}
+  #prPlan{display:none;margin-top:12px;background:var(--panel);
+    border:1px solid rgba(91,140,255,.3);border-radius:var(--r);padding:10px 12px}
   #prPlan.on{display:block}
-  #prPlanHd{display:flex;align-items:center;gap:8px}
-  #prPlanNow{font-family:ui-monospace,Menlo,monospace;font-size:27px;font-weight:700;
-    min-width:54px;text-align:center;letter-spacing:.02em}
-  #prPlanDesc{flex:1;font-size:12.5px;color:var(--dim);line-height:1.35}
-  #prPlanHd button{padding:5px 9px;font-size:12px;border-radius:7px;flex:none}
+  #prPlanHd{display:flex;align-items:center;gap:9px}
+  #prPlanNow{font-family:ui-monospace,Menlo,monospace;font-size:28px;font-weight:700;
+    min-width:56px;text-align:center;letter-spacing:.02em;color:#cfe0ff}
+  #prPlanDesc{flex:1;font-size:12.5px;color:var(--dim);line-height:1.4}
+  #prPlanHd button{padding:6px 10px;font-size:12px;border-radius:var(--r3);flex:none}
   #prPlanHd button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
-  #prPlanOff{display:none;font-size:12.5px;color:#ffb0b0;margin-top:6px;
+  #prPlanOff{display:none;font-size:12.5px;color:#ffb3b3;margin-top:7px;
     align-items:center;gap:8px}
   #prPlanOff.on{display:flex}
-  #prPlanOff button{padding:4px 9px;font-size:12px;border-radius:7px}
-  #prPlanBar{display:flex;gap:6px;margin-top:8px}
-  #prPlanBar button{flex:1;padding:7px 4px;font-size:12px;border-radius:7px;white-space:nowrap;
-    background:#1b212b;border-color:var(--line)}
+  #prPlanOff button{padding:4px 9px;font-size:12px;border-radius:var(--r3)}
+  #prPlanBar{display:flex;gap:6px;margin-top:9px}
+  #prPlanBar button{flex:1;padding:8px 4px;font-size:12px;border-radius:var(--r3);
+    white-space:nowrap;background:var(--panel2);border-color:var(--line)}
   #prPlanBar button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
-  #prPlanSeq{display:flex;gap:4px;overflow-x:auto;margin-top:7px;padding-bottom:2px;
+  #prPlanSeq{display:flex;gap:4px;overflow-x:auto;margin-top:8px;padding-bottom:2px;
     font-family:ui-monospace,Menlo,monospace;font-size:13px}
   /* 每一手都点得到，所以留出手指够得着的padding */
-  #prPlanSeq span{padding:5px 9px;border-radius:6px;background:#1b212b;white-space:nowrap;
-    cursor:pointer;user-select:none}
+  #prPlanSeq span{padding:5px 9px;border-radius:var(--r3);background:var(--panel2);
+    white-space:nowrap;cursor:pointer;user-select:none}
   #prPlanSeq span.done{color:#3d4757}
   #prPlanSeq span.cur{background:var(--acc);color:#fff;font-weight:700}
-  #prLog{margin:10px 0 2px;background:#12161d;border:1px solid var(--line);
-    border-radius:10px;padding:8px 10px}
+
+  /* 18 个记号：底下一道横杠标出转的是哪一面，比清一色灰块好找得多 */
+  #prKeys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:14px}
+  #prKeys button{padding:11px 0 13px;min-width:0;font-size:15px;font-weight:600;position:relative;
+    font-family:ui-monospace,Menlo,monospace;border-color:var(--line)}
+  #prKeys button::after{content:'';position:absolute;left:50%;bottom:5px;width:15px;height:2.5px;
+    transform:translateX(-50%);border-radius:2px;background:var(--kc);opacity:.9}
+  #prKeys button[data-f=U]{--kc:var(--cU)} #prKeys button[data-f=D]{--kc:var(--cD)}
+  #prKeys button[data-f=R]{--kc:var(--cR)} #prKeys button[data-f=L]{--kc:var(--cL)}
+  #prKeys button[data-f=F]{--kc:var(--cF)} #prKeys button[data-f=B]{--kc:var(--cB)}
+
+  #prLog,#prSet{margin:12px 0 0;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--r);padding:10px 12px}
   #prLogHd{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);
-    margin-bottom:6px}
-  #prLogHd button{padding:4px 9px;font-size:12px;border-radius:7px}
+    margin-bottom:7px}
+  #prLogHd button{padding:5px 10px;font-size:12px;border-radius:var(--r3)}
   #prScramTxt{display:none;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;
-    color:#5b6577;word-break:break-all;line-height:1.6;margin-bottom:6px}
+    color:var(--dim2);word-break:break-all;line-height:1.6;margin-bottom:6px}
   #prMoves{display:flex;flex-wrap:wrap;gap:4px;max-height:104px;overflow-y:auto;
     font-family:ui-monospace,Menlo,monospace;font-size:13px}
-  #prMoves span{padding:3px 7px;border-radius:6px;background:#1b212b;cursor:pointer;
+  #prMoves span{padding:3px 7px;border-radius:6px;background:var(--panel2);cursor:pointer;
     white-space:nowrap}
-  #prMoves span i{font-style:normal;color:#5b6577;font-size:10px;margin-right:3px}
+  #prMoves span i{font-style:normal;color:var(--dim2);font-size:10px;margin-right:3px}
   #prMoves span.last{background:var(--acc);color:#fff;font-weight:700}
   #prMoves span.last i{color:rgba(255,255,255,.75)}
-  #prMoves em{font-style:normal;color:#5b6577;font-size:12px}
-  #prSet{margin:10px 0 2px;background:#12161d;border:1px solid var(--line);
-    border-radius:10px;padding:8px 10px}
+  #prMoves em{font-style:normal;color:var(--dim2);font-size:12px}
   #prSetHd{display:flex;align-items:center;font-size:12px;color:var(--dim);cursor:pointer}
   #prSetHd b{margin-left:auto;font-size:11px;color:var(--acc);font-weight:600}
   #prSetBody{display:none;margin-top:4px}
   #prSet.on #prSetBody{display:block}
-  .prSetRow{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:12.5px}
+  .prSetRow{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12.5px}
   .prSetRow>span{flex:none;width:66px;color:var(--dim)}
-  .prSetRow .segs{display:flex;flex:1;gap:4px}
-  .prSetRow .segs button{flex:1;padding:6px 2px;min-width:0;font-size:12px;border-radius:7px}
+  .prSetRow .segs{display:flex;flex:1;gap:3px;background:#0d1219;border-radius:var(--r3);padding:3px}
+  .prSetRow .segs button{flex:1;padding:6px 2px;min-width:0;font-size:12px;border-radius:6px;
+    background:transparent;border-color:transparent;color:var(--dim)}
   .prSetRow .segs button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
-  #prSetNote{font-size:11px;color:#5b6577;line-height:1.5;margin-top:9px}
-  #prKeys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
-  #prKeys button{padding:11px 0;min-width:0;font-size:15px;font-weight:600;
-    font-family:ui-monospace,Menlo,monospace}
+  #prSetNote{font-size:11px;color:var(--dim2);line-height:1.55;margin-top:11px}
 
   /* ---- 版本 ---- */
-  #ver{text-align:center;font-size:11px;color:#5b6577;padding:14px 10px 20px;
+  #ver{text-align:center;font-size:11px;color:var(--dim2);padding:18px 10px 24px;
     font-family:ui-monospace,Menlo,monospace}
   #ver b{color:var(--dim);font-weight:600}
   #ver span{cursor:pointer;text-decoration:underline dotted;margin-left:6px}
 
   /* ---- 教程 ---- */
-  #tuList{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-  .tuCard{background:#12161d;border:1px solid var(--line);border-radius:11px;
-    padding:10px 11px;cursor:pointer;text-align:left}
-  .tuCard.done{border-color:rgba(49,162,76,.5)}
-  .tuCard h4{margin:0 0 3px;font-size:13.5px;font-weight:600}
-  .tuCard p{margin:0;font-size:11px;color:var(--dim);line-height:1.4}
-  .tuCard i{font-style:normal;color:var(--ok);font-size:11px}
-  #tuStage{position:relative;width:100%;aspect-ratio:1/.95;max-height:42vh;
-    background:#0b0e13;border-radius:14px;overflow:hidden;touch-action:none;
-    border:1px solid var(--line)}
-  #tuCv{display:block;width:100%;height:100%}
-  #tuHd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  #tuList{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+  .tuCard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:11px 12px 12px 14px;cursor:pointer;text-align:left;position:relative;
+    display:flex;flex-direction:column;gap:4px;overflow:hidden}
+  /* 左边一道色条：这一课在做哪一层 */
+  .tuCard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--pc)}
+  .tuCard[data-p=D]{--pc:var(--cD)} .tuCard[data-p=F]{--pc:var(--cF)}
+  .tuCard[data-p=U]{--pc:var(--cU)} .tuCard[data-p=x]{--pc:var(--line2)}
+  .tuCard:active{background:var(--panel2)}
+  .tuCard.done{border-color:rgba(53,194,106,.45);
+    background:linear-gradient(180deg,rgba(53,194,106,.07),var(--panel))}
+  .tuCard h4{margin:0;font-size:13.5px;font-weight:600;line-height:1.35}
+  .tuCard p{margin:0;font-size:11px;color:var(--dim);line-height:1.5;flex:1}
+  .tuCard i{font-style:normal;color:var(--ok);font-size:10.5px;font-weight:600}
+  #tuHd{display:flex;align-items:center;gap:8px;margin-bottom:12px}
   #tuHd h3{margin:0;font-size:16px;font-weight:600;flex:1}
-  #tuHd button{padding:6px 10px;font-size:12px;border-radius:8px;flex:none}
+  #tuHd button{padding:7px 11px;font-size:12px;border-radius:var(--r3);flex:none}
   #tuSpd{min-width:46px;font-family:inherit}
-  #tuTitle{font-size:15px;font-weight:600;color:var(--acc);text-align:center;margin:12px 0 6px}
-  #tuDesc{font-size:13.5px;color:var(--txt);text-align:center;line-height:1.6;
-    min-height:44px;padding:0 4px}
-  #tuAlg{font-family:ui-monospace,Menlo,monospace;font-size:14px;text-align:center;
-    color:var(--acc);margin-top:7px;letter-spacing:.03em;min-height:20px}
-  #tuNav{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px 0 4px}
-  #tuNav button{padding:9px 16px;border-radius:10px}
-  #tuNav #tuPlay{padding:9px 22px;font-weight:600}
-  #tuDots{display:flex;gap:4px;justify-content:center;margin-bottom:10px}
-  #tuDots i{width:18px;height:4px;border-radius:2px;background:#242c39}
-  #tuDots i.on{background:var(--acc)}
-  #tuDots i.seen{background:#3d4757}
+  #tuDots{display:flex;gap:5px;justify-content:center;margin:12px 0 0}
+  #tuDots i{width:20px;height:4px;border-radius:2px;background:#232c39}
+  #tuDots i.on{background:var(--acc);box-shadow:0 0 8px -1px rgba(91,140,255,.9)}
+  #tuDots i.seen{background:#41506a}
+  /* 目标 + 说明 + 公式 合成一块，看起来是"这一步在讲什么"的整体 */
+  #tuBody{margin-top:12px;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--r);padding:13px 14px}
+  #tuTitle{font-size:15px;font-weight:600;color:#cfe0ff;text-align:center;margin:0 0 7px}
+  #tuDesc{font-size:13.5px;color:var(--txt);text-align:center;line-height:1.7;min-height:44px}
+  #tuAlg{font-family:ui-monospace,Menlo,monospace;font-size:14.5px;text-align:center;
+    color:var(--acc);letter-spacing:.04em;min-height:0}
+  #tuAlg:not(:empty){margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  #tuNav{display:flex;align-items:center;justify-content:center;gap:9px;margin:12px 0 0}
+  #tuNav button{flex:1;padding:11px 8px;border-radius:var(--r2)}
+  #tuNav #tuPlay{flex:1.2;font-weight:600}
+  #tuLegend{margin-top:14px;background:#101620;border:1px solid var(--line);
+    border-radius:var(--r);padding:11px 13px;font-size:12px;line-height:1.7}
+  #tuLegend:empty{display:none}
 
   /* ---- 摄像头识别 ---- */
-  #camOv{position:fixed;inset:0;background:#0b0e13;z-index:100;display:none;
+  #camOv{position:fixed;inset:0;background:var(--bg);z-index:100;display:none;
     flex-direction:column;overflow-y:auto;padding:12px calc(12px + env(safe-area-inset-left))
       calc(12px + env(safe-area-inset-bottom));gap:10px}
   #camOv.on{display:flex}
   #camTitle{font-size:16px;font-weight:600;text-align:center}
-  #camTip{font-size:13px;color:var(--dim);text-align:center;line-height:1.5}
+  #camTip{font-size:13px;color:var(--dim);text-align:center;line-height:1.55}
   #camTip b{color:var(--txt)}
   /* 参考图和取色格放在预览「下面」而不是右边：竖屏手机横向最紧，
      并排放会把右边那栏挤出屏幕，而且预览越小越难把取样框对准魔方 */
@@ -246,25 +318,26 @@
      max-height 里减掉的是下面那一栏的高度（不减的话百分比按整个 camBody 算，会撑出去） */
   #camPrev{flex:none;width:auto;height:auto;max-width:100%;
     max-height:max(160px, calc(100% - 104px));aspect-ratio:1;
-    border-radius:12px;background:#000;touch-action:none}
-  #camRef{width:76px;height:76px;flex:none;border-radius:10px;background:#12161d;
+    border-radius:var(--r);background:#000;touch-action:none}
+  #camRef{width:76px;height:76px;flex:none;border-radius:var(--r2);background:var(--panel);
     border:1px solid var(--line)}
   #camSide{display:flex;gap:20px;align-items:flex-start;justify-content:center;flex:none}
   #camSide>div{display:flex;flex-direction:column;align-items:center;gap:5px}
   #camSide small{font-size:10px;color:var(--dim);text-align:center;line-height:1.3}
   #camDots{display:grid;grid-template-columns:repeat(3,22px);gap:4px}
-  #camDots i{width:22px;height:22px;border-radius:4px;background:#1b212b}
-  #camErr{font-size:13px;color:#ffb0b0;text-align:center;min-height:18px}
+  #camDots i{width:22px;height:22px;border-radius:5px;background:var(--panel2)}
+  #camErr{font-size:13px;color:#ffb3b3;text-align:center;min-height:18px}
   #camProg{display:flex;gap:4px;justify-content:center}
-  #camProg i{width:26px;height:5px;border-radius:3px;background:#242c39}
+  #camProg i{width:26px;height:5px;border-radius:3px;background:#232c39}
   #camProg i.done{background:var(--ok)}
   #camProg i.cur{background:var(--acc)}
 
   /* ---- 算法切换 ---- */
-  .seg{display:flex;flex-direction:column;align-items:center;gap:1px;padding:9px 8px;
-    background:#12161d;color:var(--dim)}
-  .seg.on{background:#243044;border-color:var(--acc);color:var(--txt);font-weight:600}
-  .seg i{font-style:normal;font-size:11px;opacity:.75;font-weight:400}
+  .seg{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 8px;
+    background:var(--panel2);border-color:var(--line);color:var(--dim)}
+  .seg.on{background:linear-gradient(180deg,rgba(91,140,255,.22),rgba(91,140,255,.09));
+    border-color:rgba(91,140,255,.5);color:#cfe0ff;font-weight:600}
+  .seg i{font-style:normal;font-size:11px;opacity:.8;font-weight:400}
 </style>
 
 <div id="tabs">
@@ -276,49 +349,58 @@
 
 <!-- ============ 输入页 ============ -->
 <div id="pIn" class="page on">
-  <h2>按 <b style="color:#f2f4f7">白色朝下</b>、<b style="color:#31a24c">绿色朝前</b> 拿好魔方</h2>
-  <p class="muted" style="margin:0 0 14px">
-    这样拿的时候，上面是黄、右面是橙、左面是红、后面是蓝。中心块不用填（它们固定了每个面）。
-    <b style="color:var(--txt)">先点一个颜色，再把魔方上这个颜色的格子挨个点掉</b>，
-    一个色填完会自动换下一个。色块上的数字是这色还差几格。
-    点已经填过的格子可以清掉重填；<b style="color:var(--txt)">填错了会当场告诉你</b>，
-    不用等填满 48 格。
-  </p>
+  <h2>按 <b style="color:#f2f4f7">白色朝下</b>、<b style="color:var(--cF)">绿色朝前</b> 拿好魔方</h2>
+  <div id="grip">
+    <span style="--c:var(--cU)"><i></i>上 黄</span><span style="--c:var(--cD)"><i></i>下 白</span>
+    <span style="--c:var(--cF)"><i></i>前 绿</span><span style="--c:var(--cB)"><i></i>后 蓝</span>
+    <span style="--c:var(--cR)"><i></i>右 橙</span><span style="--c:var(--cL)"><i></i>左 红</span>
+  </div>
+  <ol class="steps">
+    <li><b>先点一个颜色</b>，再把魔方上这个颜色的格子挨个点掉，填完自动换下一色。</li>
+    <li>色块上的数字是<b>这色还差几格</b>；中心块不用填。</li>
+    <li>点填过的格子可以清掉重填，<b>填错了会当场告诉你</b>，不用等填满 48 格。</li>
+  </ol>
 
   <div id="inStage"><canvas id="inCv"></canvas>
     <div id="inHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
-  <div class="row" style="margin-bottom:4px">
+  <div class="row tight" style="margin-top:10px">
     <button id="inFlip">翻到背面</button>
     <button id="inHome">摆正视角</button>
     <button id="inClearOne">清掉这格</button>
+    <button id="btnBack">退一格</button>
   </div>
   <div id="palwrap"><div id="pal"></div></div>
   <div id="tally"></div>
   <div id="msg"></div>
+
+  <div class="card">
+    <div class="lbl">用哪种解法</div>
+    <div class="row" id="algo" style="margin-bottom:10px">
+      <button id="algoShort" class="seg on">最短解法<i>约 20 步</i></button>
+      <button id="algoTeach" class="seg">分步教学<i>约 120 步</i></button>
+    </div>
+    <div class="row">
+      <button id="btnSolve" class="pri big" style="flex:1 1 100%">求解</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="btnCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别</button>
+  </div>
 
   <details id="netBox">
     <summary>展开图总览（可以在这儿点，也可以检查填得对不对）</summary>
     <div id="net"></div>
   </details>
 
-  <div class="row" id="algo" style="margin-bottom:10px">
-    <button id="algoShort" class="seg on">最短解法<i>约 20 步</i></button>
-    <button id="algoTeach" class="seg">分步教学<i>约 120 步</i></button>
-  </div>
-  <div class="row" style="margin-bottom:8px">
-    <button id="btnSolve" class="pri">求解</button>
-    <button id="btnBack">退一格</button>
-  </div>
-  <div class="row" style="margin-bottom:8px">
-    <button id="btnCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别</button>
-  </div>
-  <div class="row" style="margin-bottom:8px">
-    <button id="inToPr" class="sub" style="flex:1 1 100%">把这个魔方拿到③自己练</button>
-  </div>
+  <div class="lbl" style="margin-top:16px">其它</div>
   <div class="row">
     <button id="btnReset" class="sub">全部清空</button>
     <button id="btnSolved" class="sub">填复原态</button>
     <button id="btnRandom" class="sub">随便打乱</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="inToPr" class="sub" style="flex:1 1 100%">把这个魔方拿到③自己练</button>
   </div>
 </div>
 
@@ -349,9 +431,10 @@
     <div id="prPlanSeq"></div>
   </div>
 
-  <div id="prKeys"></div>
+  <div class="lbl" style="margin-top:16px">转一层 · 带 2 的是 180°</div>
+  <div id="prKeys" style="margin-top:0"></div>
 
-  <div class="row" style="margin-top:12px">
+  <div class="row" style="margin-top:14px">
     <button id="prScram" class="pri">打乱</button>
     <button id="prUndo">撤销</button>
     <button id="prReset" class="sub">回到复原态</button>
@@ -425,6 +508,7 @@
       每课讲完可以<b style="color:var(--txt)">当场出一个卡在这一步的魔方</b>练，
       转到位了它自己知道。<b style="color:var(--txt)">课程不锁</b>，会哪课跳哪课。
     </p>
+    <div class="lbl" id="tuProg"></div>
     <div id="tuList"></div>
   </div>
 
@@ -436,16 +520,18 @@
     </div>
     <div id="tuStage"><canvas id="tuCv"></canvas></div>
     <div id="tuDots"></div>
-    <div id="tuTitle"></div>
-    <div id="tuDesc"></div>
-    <div id="tuAlg"></div>
+    <div id="tuBody">
+      <div id="tuTitle"></div>
+      <div id="tuDesc"></div>
+      <div id="tuAlg"></div>
+    </div>
     <div id="tuNav">
       <button id="tuPrev">‹ 上一步</button>
       <button id="tuPlay" class="pri">播放</button>
       <button id="tuNext">下一步 ›</button>
     </div>
-    <div class="row" style="margin-top:10px">
-      <button id="tuPractice" class="pri">出一个卡在这步的魔方来练</button>
+    <div class="row" style="margin-top:9px">
+      <button id="tuPractice">出一个卡在这步的魔方来练</button>
     </div>
     <div class="legend" id="tuLegend"></div>
   </div>
@@ -480,10 +566,15 @@
 <div id="pGo" class="page">
   <div id="stage"><canvas id="cv"></canvas><div id="hint">拖动可转视角</div></div>
 
-  <div id="now"><div id="nowMove">—</div><div id="nowDesc">先在第①页输入魔方状态</div></div>
-
-  <div id="prog"><span id="progL">—</span><span id="progR"></span></div>
-  <div id="bar"><i style="width:0"></i></div>
+  <!-- .empty 由 renderStep 挂上：没解法时把进度条那套藏掉，别让空页看着像坏了 -->
+  <div class="card empty" id="goCard">
+    <div id="now"><div id="nowMove">—</div><div id="nowDesc">先在第①页输入魔方状态</div></div>
+    <button id="goToIn" class="sub">去第①页输入 →</button>
+    <div id="prog"><span id="progL">—</span><span id="progR"></span></div>
+    <div id="bar"><i style="width:0"></i></div>
+    <div id="phases"></div>
+    <div id="seq"></div>
+  </div>
 
   <div class="row">
     <button id="btnPrev">← 上一步</button>
@@ -493,9 +584,6 @@
     <button id="btnAuto">自动播放</button>
     <button id="btnRestart">回到开头</button>
   </div>
-
-  <div id="phases"></div>
-  <div id="seq"></div>
 
   <details class="legend help">
     <summary>怎么看记号 · 两种解法的区别</summary>
@@ -1154,7 +1242,7 @@ function render(anim, V){
   const {ctx, W, H, yaw, pitch, cubies} = V;
   if(!W) return;
   const g = ctx.createRadialGradient(W/2,H*0.42,10,W/2,H*0.42,Math.max(W,H)*0.8);
-  g.addColorStop(0,'#1a2130'); g.addColorStop(1,'#0b0e13');
+  g.addColorStop(0,'#182030'); g.addColorStop(1,'#0b0f16');   // 和 CSS 里舞台的底色对齐
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
   if(!cubies.length) return;
 
@@ -1333,7 +1421,7 @@ const netNext = () => { for(const gi of ORDER) if(!net[gi]) return gi; return -1
 function paintNet(){
   for(const gi in cellEls){
     const v = net[gi];
-    cellEls[gi].style.background = v ? COLORS[v] : '#1b212b';
+    cellEls[gi].style.background = v ? COLORS[v] : 'var(--panel2)';
     cellEls[gi].classList.remove('cursor','bad');
   }
   for(const f of FACE_ORDER){
@@ -1640,6 +1728,7 @@ function goTab(i){
   if(i===3){ tuResize(); tuRender(); }
 }
 TABS.forEach(([t],i)=> $(t).onclick = () => goTab(i));
+$('goToIn').onclick = () => goTab(0);            // 第②页空着的时候那颗引路按钮
 
 // 重放到第 n 步（用于回退和跳转）
 function seekTo(n){
@@ -1659,6 +1748,7 @@ function renderStep(){
   const total = plan.length;
   const done = cur >= total;
   const nx = done ? null : plan[cur];
+  $('goCard').classList.toggle('empty', !hasPlan);
 
   $('nowMove').textContent = nx ? nx.move : !hasPlan ? '—' : total ? '完成' : '已复原';
   $('nowMove').style.color = nx ? 'var(--txt)' : hasPlan ? 'var(--ok)' : 'var(--dim)';
@@ -2537,6 +2627,7 @@ $('prPlanAgain').onclick = prPlanStart;
  "U2","D2","R2","L2","F2","B2"].forEach(k=>{
   const b = document.createElement('button');
   b.textContent = k;
+  b.dataset.f = k[0];                          // 按钮底下那道横杠靠它上色，一眼看出转的是哪一面
   b.onclick = () => { prMsg(''); prTurn(k, true); };
   $('prKeys').appendChild(b);
 });
@@ -2827,10 +2918,14 @@ const TU_LESSONS = [
 
 /* ---- 课程列表 ---- */
 function tuListRender(){
+  // data-p 只管卡片左边那道色条：这一课在做哪一层就用那层的颜色（白 / 中层绿 / 顶层黄）
+  const bar = p => p < 0 ? 'x' : p <= 1 ? 'D' : p === 2 ? 'F' : 'U';
   $('tuList').innerHTML = TU_LESSONS.map((L,i) =>
-    `<button class="tuCard${tuDone.includes(i)?' done':''}" data-i="${i}">` +
+    `<button class="tuCard${tuDone.includes(i)?' done':''}" data-i="${i}" data-p="${bar(L.phase)}">` +
     `<h4>${L.name}</h4><p>${L.tip}</p>` +
     (tuDone.includes(i) ? '<i>✓ 练过了</i>' : '') + '</button>').join('');
+  $('tuProg').textContent = tuDone.length
+    ? `已经练过 ${tuDone.length} / ${TU_LESSONS.length} 课` : `共 ${TU_LESSONS.length} 课`;
 }
 $('tuList').onclick = e => {
   const c = e.target.closest('.tuCard');
@@ -3325,7 +3420,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-08 11:32';
+const BUILD = '2026-08-08 14:49';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
