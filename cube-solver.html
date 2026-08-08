@@ -167,6 +167,34 @@
   #prKeys button{padding:11px 0;min-width:0;font-size:15px;font-weight:600;
     font-family:ui-monospace,Menlo,monospace}
 
+  /* ---- 教程 ---- */
+  #tuList{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .tuCard{background:#12161d;border:1px solid var(--line);border-radius:11px;
+    padding:10px 11px;cursor:pointer;text-align:left}
+  .tuCard.done{border-color:rgba(49,162,76,.5)}
+  .tuCard h4{margin:0 0 3px;font-size:13.5px;font-weight:600}
+  .tuCard p{margin:0;font-size:11px;color:var(--dim);line-height:1.4}
+  .tuCard i{font-style:normal;color:var(--ok);font-size:11px}
+  #tuStage{position:relative;width:100%;aspect-ratio:1/.95;max-height:42vh;
+    background:#0b0e13;border-radius:14px;overflow:hidden;touch-action:none;
+    border:1px solid var(--line)}
+  #tuCv{display:block;width:100%;height:100%}
+  #tuHd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  #tuHd h3{margin:0;font-size:16px;font-weight:600;flex:1}
+  #tuHd button{padding:6px 10px;font-size:12px;border-radius:8px;flex:none}
+  #tuTitle{font-size:15px;font-weight:600;color:var(--acc);text-align:center;margin:12px 0 6px}
+  #tuDesc{font-size:13.5px;color:var(--txt);text-align:center;line-height:1.6;
+    min-height:44px;padding:0 4px}
+  #tuAlg{font-family:ui-monospace,Menlo,monospace;font-size:14px;text-align:center;
+    color:var(--acc);margin-top:7px;letter-spacing:.03em;min-height:20px}
+  #tuNav{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px 0 4px}
+  #tuNav button{padding:9px 16px;border-radius:10px}
+  #tuNav #tuPlay{padding:9px 22px;font-weight:600}
+  #tuDots{display:flex;gap:4px;justify-content:center;margin-bottom:10px}
+  #tuDots i{width:18px;height:4px;border-radius:2px;background:#242c39}
+  #tuDots i.on{background:var(--acc)}
+  #tuDots i.seen{background:#3d4757}
+
   /* ---- 摄像头识别 ---- */
   #camOv{position:fixed;inset:0;background:#0b0e13;z-index:100;display:none;
     flex-direction:column;padding:12px calc(12px + env(safe-area-inset-left))
@@ -201,6 +229,7 @@
   <button id="tabIn" class="on">① 输入</button>
   <button id="tabGo">② 跟着复原</button>
   <button id="tabPr">③ 自己练</button>
+  <button id="tabTu">④ 学</button>
 </div>
 
 <!-- ============ 输入页 ============ -->
@@ -325,6 +354,40 @@
     <div style="margin-top:6px">不认记号就开着<b>「箭头」</b>：该转的那一层上会画一个
     黄色箭头，照着箭头方向拧就行（开关状态记住，下次还是这样）。
     解法用第①页选的算法：最短解法约 20 步、分步教学约 120 步。</div>
+  </div>
+</div>
+
+<!-- ============ 教程页 ============ -->
+<div id="pTu" class="page">
+  <div id="tuHome">
+    <h2>照着学，一步一步把魔方还原</h2>
+    <p class="muted" style="margin:0 0 14px">
+      八课，跟第②页「分步教学」的解法是同一套 —— 这里讲的公式，就是求解器实际会用的那几条。
+      每课讲完可以<b style="color:var(--txt)">当场出一个卡在这一步的魔方</b>练，
+      转到位了它自己知道。<b style="color:var(--txt)">课程不锁</b>，会哪课跳哪课。
+    </p>
+    <div id="tuList"></div>
+  </div>
+
+  <div id="tuLesson" style="display:none">
+    <div id="tuHd">
+      <button id="tuBack">‹ 课程</button>
+      <h3 id="tuName"></h3>
+    </div>
+    <div id="tuStage"><canvas id="tuCv"></canvas></div>
+    <div id="tuDots"></div>
+    <div id="tuTitle"></div>
+    <div id="tuDesc"></div>
+    <div id="tuAlg"></div>
+    <div id="tuNav">
+      <button id="tuPrev">‹ 上一步</button>
+      <button id="tuPlay" class="pri">播放</button>
+      <button id="tuNext">下一步 ›</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="tuPractice" class="pri">出一个卡在这步的魔方来练</button>
+    </div>
+    <div class="legend" id="tuLegend"></div>
   </div>
 </div>
 
@@ -600,6 +663,22 @@ const edgeOK    = (s,id) => s.ep[id]===id && s.eo[id]===0;
 const cornerOK  = (s,id) => s.cp[id]===id && s.co[id]===0;
 
 const CROSS=[5,4,7,6], F1CORN=[4,5,6,7], MIDEDGE=[8,9,10,11], LL=[0,1,2,3];
+const eFlat = st => LL.every(i => st.eo[st.ep.indexOf(i)]===0);   // 顶层棱都翻正了
+const cFlat = st => LL.every(i => st.co[st.cp.indexOf(i)]===0);   // 顶层角都翻正了
+
+/* 七个阶段各自「做完了」的判据。solve 里每一阶段搜索的目标就是它们，
+   教程拿同一套去判学员有没有做到 —— 教的和解的必须是一回事，
+   所以这里只允许引用上面那几个基础判定，不要另写一套 */
+const PHASE_NAME = ['白十字','第一层角','中层棱','顶层十字','顶面同色','顶层角归位','顶层棱归位'];
+const PHASE_OK = [
+  st => CROSS.every(i=>edgeOK(st,i)),
+  st => PHASE_OK[0](st) && F1CORN.every(i=>cornerOK(st,i)),
+  st => PHASE_OK[1](st) && MIDEDGE.every(i=>edgeOK(st,i)),
+  st => PHASE_OK[2](st) && eFlat(st),
+  st => PHASE_OK[3](st) && cFlat(st),
+  st => PHASE_OK[4](st) && LL.every(i=>cornerOK(st,i)),
+  st => isSolved(st),
+];
 
 function solve(state){
   let s = state; const out = [];
@@ -633,8 +712,6 @@ function solve(state){
               && d.every(i=>edgeOK(st,i)), 4, '中层棱');
   }
   const llKey = st => LL.map(i=>cornerKey(st,i)).join(',')+'|'+LL.map(i=>edgeKey(st,i)).join(',');
-  const eFlat = st => LL.every(i => st.eo[st.ep.indexOf(i)]===0);
-  const cFlat = st => LL.every(i => st.co[st.cp.indexOf(i)]===0);
   run(OLL_EDGE, llKey, eFlat, 6, '顶层十字');
   run(OLL_CORN, llKey, st => eFlat(st)&&cFlat(st), 8, '顶面同色');
   run(PLL_CORN, llKey, st => eFlat(st)&&cFlat(st)&&LL.every(i=>cornerOK(st,i)), 6, '顶层角归位');
@@ -1031,8 +1108,12 @@ function render(anim, V){
       continue;
     }
     outline(p.face);
-    ctx.fillStyle = shade(p.c, (p.hot||marked) ? p.lit*1.45 : p.lit);
+    // 教程要「讲哪个块就亮哪个」：focus 说不中的压暗下去，重点自己就跳出来了
+    const dim = V.focus && !V.focus(p.cb, p.fi);
+    ctx.fillStyle = shade(p.c, dim ? p.lit*0.26
+                                   : (p.hot||marked) ? p.lit*1.45 : p.lit);
     ctx.fill();
+    if(dim) continue;
     if(p.hot || marked){                        // 待转的那一层／该填的那一格描白边
       ctx.strokeStyle = marked ? (V.markCol||'rgba(255,255,255,.95)')
                                : 'rgba(255,255,255,.95)';
@@ -1434,7 +1515,7 @@ $('btnSolve').onclick = () => {
   }
 };
 
-const TABS = [['tabIn','pIn'], ['tabGo','pGo'], ['tabPr','pPr']];
+const TABS = [['tabIn','pIn'], ['tabGo','pGo'], ['tabPr','pPr'], ['tabTu','pTu']];
 function goTab(i){
   TABS.forEach(([t,p],k)=>{
     $(t).classList.toggle('on', k===i);
@@ -1443,6 +1524,7 @@ function goTab(i){
   if(i===1){ resize(); render(); }
   if(i===0){ inResize(); inRender(); }
   if(i===2){ prResize(); prRender(); }
+  if(i===3){ tuResize(); tuRender(); }
 }
 TABS.forEach(([t],i)=> $(t).onclick = () => goTab(i));
 
@@ -1552,6 +1634,9 @@ const PR = {ctx:prCv.getContext('2d'), W:0, H:0,
             get cam(){ return mmul(this.R, this.G); },
             cubies:[], collect:true, picks:[], hl:null};
 let prState = solvedState();     // 与几何模型同步，用来判定复原和求提示
+// 从教程「出一道题」过来时记着练的是哪一阶段：做到那一步就算成了。
+// 换了魔方（prLoad）就作废 —— 目标是跟着那一道题来的
+let prGoal = null;
 let prHist = [], prCount = 0, prBusy = false, prScramSeq = '';
 let prT0 = 0, prElapsed = 0, prTick = 0;
 
@@ -1704,9 +1789,17 @@ function prSpin(turn, quarter, record, tag, from){
     prBusy = false;
     if(quarter) prPlanSync();
     prRender(); prUpdate();
-    if(record && quarter && isSolved(prState)){
-      prStopClock();
-      prMsg(`复原了！用时 ${fmtT(prElapsed)}，共 ${prCount} 步`, true);
+    // 从教程「出一道题」过来时，做到那一课的目标就算成了，不用做到整个复原
+    if(record && quarter){
+      if(prGoal && PHASE_OK[prGoal.phase](prState)){
+        prStopClock();
+        prMsg(`「${prGoal.name}」做出来了！用时 ${fmtT(prElapsed)}，共 ${prCount} 步`, true);
+        tuMarkDone(prGoal.lesson);
+        prGoal = null;
+      }else if(!prGoal && isSolved(prState)){
+        prStopClock();
+        prMsg(`复原了！用时 ${fmtT(prElapsed)}，共 ${prCount} 步`, true);
+      }
     }
   })(t0);
   return label;
@@ -2236,7 +2329,7 @@ $('prPlanAgain').onclick = prPlanStart;
 });
 
 function prLoad(st, scram){
-  prState = st;
+  prState = st; prGoal = null;
   PR.cubies = buildGeo(cubieToFacelet(st));
   prHist = []; prCount = 0; prElapsed = 0; prT0 = 0;
   prScramSeq = scram || '';
@@ -2279,6 +2372,296 @@ $('prTip').onclick = () => {
   }catch(e){ prMsg('这个状态算不出提示（应该是 bug）'); }
 };
 $('prSolveIt').onclick = prPlanStart;
+
+/* ==========================================================
+   10. 教程：八课，跟层先法的七个阶段一一对应
+   讲的公式直接引用求解器在用的那些常量，不另抄一份 —— 教的和解的必须一致
+   ========================================================== */
+const tuCv = $('tuCv');
+const TU = {ctx:tuCv.getContext('2d'), W:0, H:0,
+            R:PR_CAM0, G:[[1,0,0],[0,1,0],[0,0,1]], yawSign:1,
+            get cam(){ return mmul(this.R, this.G); },
+            cubies:[], collect:false, picks:[], hl:null, focus:null, arrow:null};
+let tuState = solvedState();       // 演示用的魔方，跟练习页那个互不干扰
+let tuBusy = false, tuLesson = -1, tuStep = 0, tuPlaying = false;
+const tuDone = JSON.parse(localStorage.getItem('cube_tu_done') || '[]');
+
+function tuResize(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const r = tuCv.getBoundingClientRect();
+  TU.W = Math.max(1, Math.round(r.width));
+  TU.H = Math.max(1, Math.round(r.height));
+  tuCv.width = TU.W*dpr; tuCv.height = TU.H*dpr;
+  TU.ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+const tuRender = anim => render(anim, TU);
+function tuSet(st){
+  tuState = st;
+  TU.cubies = buildGeo(cubieToFacelet(st));
+  tuRender();
+}
+
+/* ---- 块的种类：讲基础知识时按类型高亮 ---- */
+// 一个方块有几个面朝外，就是几色块：1=中心 2=棱 3=角
+const cubieKind = cb => Math.abs(cb.p[0]) + Math.abs(cb.p[1]) + Math.abs(cb.p[2]);
+const focusKind = k => cb => cubieKind(cb) === k;
+// 只亮某一层（比如讲 U 就把 U 层亮出来）
+const focusLayer = (axis, layer) => cb => cb.p[axis] === layer;
+// 只亮底面那四个棱（白十字）
+const focusCross = () => cb => cubieKind(cb) === 2 && cb.p[1] === -1;
+const focusD = () => cb => cb.p[1] === -1;
+const focusMid = () => cb => cubieKind(cb) === 2 && cb.p[1] === 0;
+const focusU = () => cb => cb.p[1] === 1;
+
+/* ---- 演示一串记号 ---- */
+function tuSpin(mv, done){
+  const d = GEO_MV[mv[0]];
+  if(!d){ done && done(); return; }
+  const turns = mv.endsWith("'") ? -1 : mv.endsWith('2') ? 2 : 1;
+  const axis = d.axis, layer = d.layer, quarter = Math.abs(turns);
+  const rotSign = turns < 0 ? -d.sign : d.sign;
+  const total = rotSign*quarter*Math.PI/2;
+  const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+  const spd = prCfg('spd') || 0.6;              // 教程里就算关了动画也放慢一点，不然看不清在转什么
+  const t0 = performance.now(), dur = (quarter>1 ? 340 : 240)*spd;
+  tuBusy = true;
+  (function frame(now){
+    const t = dur ? Math.min(1,(now-t0)/dur) : 1;
+    tuRender({axis, layer, m:rotM(axis, total*ease(t))});
+    if(t<1){ requestAnimationFrame(frame); return; }
+    bakeGeo(mv, TU.cubies);
+    tuState = applyMove(tuState, mv);
+    tuBusy = false;
+    tuRender();
+    done && done();
+  })(t0);
+}
+function tuPlaySeq(moves, i, done){
+  if(!tuPlaying || i >= moves.length){ tuPlaying = false; tuNavRender(); done && done(); return; }
+  TU.arrow = prCfg('arrow') ? prMoveTurn(moves[i]) : null;
+  tuSpin(moves[i], () => { TU.arrow = null; setTimeout(() => tuPlaySeq(moves, i+1, done), 90); });
+}
+
+/* ==========================================================
+   课程内容
+   每一步：t 标题 / d 说明 / scr 起始状态怎么摆（从复原态执行这串）
+          / alg 这一步要演示的公式 / focus 只亮哪些块
+   公式一律引用求解器里的常量，别另抄字符串
+   ========================================================== */
+const TU_LESSONS = [
+{ name:'1. 基础知识', tip:'先认块、认记号。这一课不用动手，看完就行。', phase:-1, steps:[
+  {t:'魔方由 26 个小块组成', d:'看着是 27 个格子，中间那颗你永远看不到。它们分三种，颜色数不一样。'},
+  {t:'中心块：6 粒，一个颜色', d:'每个面正中间那粒。它们彼此的相对位置永远不变 —— 所以中心块的颜色就定死了这个面最后该是什么色。',
+   focus:focusKind(1)},
+  {t:'棱块：12 粒，两个颜色', d:'夹在两个中心块之间的那些。两个颜色，就得同时对上两个面。',
+   focus:focusKind(2)},
+  {t:'角块：8 粒，三个颜色', d:'八个角上的。三个颜色，最难摆 —— 位置对了朝向还可能不对。',
+   focus:focusKind(3)},
+  {t:'怎么拿：白色朝下、绿色朝前', d:'这一页从头到尾都这么拿。这样拿的时候，上面是黄、右面是橙、左面是红、后面是蓝。'},
+  {t:'记号 U：把上面那层顺时针转', d:'U 是 Up。顺时针是「你从上往下看」的顺时针。', alg:['U'], focus:focusU()},
+  {t:"记号 U'：反过来转", d:"带一撇就是反方向。带 2（比如 U2）就是转 180°，正反都一样。", alg:["U'"], focus:focusU()},
+  {t:'另外五个面同理', d:'D 下、R 右、L 左、F 前、B 后。每个都是「面朝自己时的顺时针」。',
+   alg:['R','L','F','B','D'], },
+  {t:'就这些', d:'六个字母 + 撇 + 2，一共 18 种转法，所有公式都由它们拼出来。'},
+]},
+{ name:'2. 白十字', tip:'底面白色的四个棱，白面朝下、侧面颜色也要对上。', phase:0, steps:[
+  {t:'目标：底面一个白十字', d:'白色四个棱块归位。注意不是白面朝下就行 —— 它另一个颜色必须和那一面的中心块对上。',
+   scr:[], focus:focusCross()},
+  {t:'侧面必须对齐', d:'这就是做好的样子：从侧面看，每个棱的颜色都和它下面的中心块同色，连成一个「T」。',
+   scr:[], focus:focusD()},
+  {t:'找一个白棱', d:'比如这个白+绿的棱，现在在顶层。要把它送到前面底下去。', scr:['F','R','U'], focus:focusCross()},
+  {t:'先对准，再翻下去', d:'转 U 层，把它的绿色对准绿色中心，然后那一面转 180°，它就下去了 —— 底下已经摆好的不会被碰到。',
+   scr:['F2'], alg:['F2']},
+  {t:'四个棱都这么做', d:'白+绿、白+橙、白+蓝、白+红，一个一个来。这一课没有公式要背，全靠对准了再翻下去。'},
+]},
+{ name:'3. 第一层角', tip:'底面四个角归位，第一层就整层做完了。', phase:1, steps:[
+  {t:'目标：底面整层做完', d:'白十字的基础上，把四个白色角块也放进去。做完底面全白，而且侧面第一圈也都对上了。',
+   scr:[], focus:focusD()},
+  {t:'把角块转到它的正上方', d:'先转 U 层，让这个白角停在它该去的那个位置的正上方 —— 别急着往下塞。',
+   scr:["R","U","R'","U'"], focus:focusKind(3)},
+  {t:"公式：R U R' —— 拎起来、错开、放回去", d:"这三步的意思是：把那一列拎起来，趁机把角块错到位，再放回去。底下已经做好的会原样还回来。",
+   alg:["R","U","R'"]},
+  {t:'朝向不对就多做几遍', d:"角块位置对了但颜色朝向不对，把 R U R' U' 连做几遍，它会自己转过来。这就是俗称的「小鱼」前身。",
+   alg:["R","U","R'","U'","R","U","R'","U'"]},
+  {t:'四个角都放完，第一层就好了', d:'到这儿魔方翻过来看，底面一整片白，侧面第一圈也是齐的。'},
+]},
+{ name:'4. 中层棱', tip:'中间那一圈的四个棱。这一课开始有正经公式了。', phase:2, steps:[
+  {t:'目标：中间一圈对齐', d:'中层四个棱归位。注意中层的棱上没有白也没有黄 —— 有黄的那些是顶层的，别往这儿放。',
+   scr:[], focus:focusMid()},
+  {t:'先在顶层找一个没有黄色的棱', d:'把它转到「侧面颜色和那一面中心块对上」的位置，这时它会指向某一面，形成一个倒 T。',
+   scr:rev(MID_SET[3].seq), focus:focusKind(2)},
+  {t:'要往右下方插，用这一条', d:"U R U' R' U' F' U F —— 前半截把它送走，后半截把被弄乱的补回来。",
+   alg:MID_SET[3].seq},
+  {t:'要往左下方插，用镜像的那条', d:"U' L' U L U F U' F' —— 和上面完全对称，把 R 换成 L、方向全反过来。",
+   alg:MID_SET[4].seq},
+  {t:'棱块卡在中层但方向反了？', d:'先随便用一条公式把它顶到顶层，再按上面的做法重新插一次。'},
+  {t:'做完前两层', d:'到这里魔方的下面两层全好了，只剩顶上一层 —— 后面四课都在处理它。'},
+]},
+{ name:'5. 顶层十字', tip:'先不管顶层块的位置，只把黄色朝上翻正。', phase:3, steps:[
+  {t:'目标：顶面一个黄十字', d:'只看顶面的四个棱，让它们的黄色都朝上。这一步不管它们的位置对不对，只管朝向。',
+   scr:[], focus:cb => cubieKind(cb)===2 && cb.p[1]===1},
+  {t:'就一条公式', d:"F R U R' U' F' —— 顶上是什么形状就做几遍，它会一路从「点」变成「一字」再变成「十字」。",
+   scr:rev(F_EDGE), alg:F_EDGE},
+  {t:'一个点：做三遍', d:'顶上一个黄色都没有（只有中心黄），连做三遍这条公式就能出十字。'},
+  {t:'一条横线：做两遍', d:'把横线摆成左右方向，做两遍。'},
+  {t:'一个拐角：做一遍', d:'把拐角摆到左上角（九点和十二点方向），做一遍就出十字。'},
+]},
+{ name:'6. 顶面同色', tip:'把顶层四个角也翻正，整个顶面变成一片黄。', phase:4, steps:[
+  {t:'目标：顶面全黄', d:'十字有了，还剩四个角的朝向。做完顶面一整片黄 —— 但侧面还是乱的，那是下一课的事。',
+   scr:[], focus:focusU()},
+  {t:'小鱼公式 Sune', d:"R U R' U R U2 R' —— 一次转正一组角。做的时候把已经翻正的那个角放在左下（西南）方向。",
+   scr:rev(SUNE), alg:SUNE},
+  {t:'反小鱼 Anti-Sune', d:"R' U' R U' R' U2 R —— 上面那条的镜像。碰到反着的情形用它，能少做几遍。",
+   scr:rev(ASUNE), alg:ASUNE},
+  {t:'翻不完就再来一遍', d:'只会这两条也能做完，最多重复几次。中途顶面会看着更乱，别慌，继续做就会好。'},
+]},
+{ name:'7. 顶层角归位', tip:'顶面已经全黄，现在把四个角挪到它们该在的位置。', phase:5, steps:[
+  {t:'目标：四个角各就各位', d:'顶面全黄之后，角块可能还站错了地方。这一步只挪角，不碰它们的朝向。',
+   scr:[], focus:cb => cubieKind(cb)===3 && cb.p[1]===1},
+  {t:'先找有没有已经对的角', d:'看四个角的侧面两色，能和两边中心块对上的那个就是已经到位的。把它放在右后方。'},
+  {t:'A-perm：转三个角', d:"R' F R' B2 R F' R' B2 R2 —— 让另外三个角轮换一圈，那个到位的不动。",
+   scr:rev(APERM), alg:APERM},
+  {t:'一个对的都没有？', d:'随便做一遍上面那条，就会出现一个到位的角，然后再按上面来。'},
+]},
+{ name:'8. 顶层棱归位', tip:'最后四个棱一挪，魔方就好了。', phase:6, steps:[
+  {t:'最后一步', d:'角都到位了，只剩顶层四个棱还在错的地方。挪完就复原了。',
+   scr:[], focus:cb => cubieKind(cb)===2 && cb.p[1]===1},
+  {t:'U-perm：转三个棱', d:"R2 U R U R' U' R' U' R' U R' —— 三个棱顺着轮换一圈。把已经对的那个放在后面。",
+   scr:rev(UPERM_A), alg:UPERM_A},
+  {t:'反方向的 U-perm', d:"R U' R U R U R U' R' U' R2 —— 要往另一个方向轮换时用这条。",
+   scr:rev(UPERM_B), alg:UPERM_B},
+  {t:'四个棱两两对调？', d:'做一遍任意一条 U-perm，就会变成「三个轮换」的情形，再做一次就好了。'},
+  {t:'复原了', d:'八课到此结束。接下来就是多练 —— 「出一个卡在这步的魔方」每一课都能用，哪步不熟练哪步。'},
+]},
+];
+
+/* ---- 课程列表 ---- */
+function tuListRender(){
+  $('tuList').innerHTML = TU_LESSONS.map((L,i) =>
+    `<button class="tuCard${tuDone.includes(i)?' done':''}" data-i="${i}">` +
+    `<h4>${L.name}</h4><p>${L.tip}</p>` +
+    (tuDone.includes(i) ? '<i>✓ 练过了</i>' : '') + '</button>').join('');
+}
+$('tuList').onclick = e => {
+  const c = e.target.closest('.tuCard');
+  if(c) tuOpen(+c.dataset.i);
+};
+function tuOpen(i){
+  tuLesson = i; tuStep = 0;
+  $('tuHome').style.display = 'none';
+  $('tuLesson').style.display = '';
+  $('tuName').textContent = TU_LESSONS[i].name;
+  $('tuPractice').style.display = TU_LESSONS[i].phase < 0 ? 'none' : '';
+  $('tuLegend').innerHTML = TU_LESSONS[i].phase < 0 ? '' :
+    '<b>「出一个卡在这步的魔方来练」</b>会随机打乱一个魔方、' +
+    '把这一课之前的部分先替你做好，然后跳到第③页。' +
+    '你只要把这一课的目标做出来就行 —— 做到了它会自己告诉你，不用做到整个复原。';
+  tuResize(); tuGo(0);
+  tuListRender();
+}
+$('tuBack').onclick = () => {
+  tuPlaying = false;
+  $('tuHome').style.display = '';
+  $('tuLesson').style.display = 'none';
+};
+
+/* ---- 走到第 n 步 ---- */
+function tuGo(n){
+  const L = TU_LESSONS[tuLesson];
+  if(!L) return;
+  tuPlaying = false;
+  tuStep = Math.max(0, Math.min(L.steps.length-1, n));
+  const s = L.steps[tuStep];
+  $('tuTitle').textContent = s.t;
+  $('tuDesc').textContent = s.d;
+  $('tuAlg').textContent = s.alg ? s.alg.join(' ') : '';
+  TU.focus = s.focus || null;
+  TU.arrow = null;
+  // 每一步都从它自己的起点摆起，来回翻看不会越看越乱
+  let st = solvedState();
+  for(const mv of (s.scr || [])) st = applyMove(st, mv);
+  tuSet(st);
+  tuNavRender();
+}
+function tuNavRender(){
+  const L = TU_LESSONS[tuLesson];
+  if(!L) return;
+  $('tuDots').innerHTML = L.steps.map((_,i) =>
+    `<i class="${i===tuStep?'on':i<tuStep?'seen':''}"></i>`).join('');
+  $('tuPrev').disabled = tuStep === 0;
+  $('tuNext').disabled = tuStep === L.steps.length-1;
+  const s = L.steps[tuStep];
+  $('tuPlay').textContent = tuPlaying ? '停' : (s.alg ? '演示' : '播放');
+  $('tuPlay').disabled = !s.alg;
+}
+$('tuPrev').onclick = () => { if(!tuBusy) tuGo(tuStep-1); };
+$('tuNext').onclick = () => { if(!tuBusy) tuGo(tuStep+1); };
+$('tuPlay').onclick = () => {
+  const s = TU_LESSONS[tuLesson].steps[tuStep];
+  if(!s.alg || tuBusy) return;
+  if(tuPlaying){ tuPlaying = false; tuNavRender(); return; }
+  tuGo(tuStep);                       // 先回到这一步的起点，重复看不会叠加
+  tuPlaying = true; tuNavRender();
+  tuPlaySeq(s.alg, 0);
+};
+
+/* ---- 演示的魔方也能转着看 ---- */
+const tuStage = $('tuStage');
+let tuDrag = null;
+const tuXY = e => { const r = tuCv.getBoundingClientRect();
+                    return [e.clientX-r.left, e.clientY-r.top]; };
+tuStage.addEventListener('pointerdown', e => {
+  const [x,y] = tuXY(e);
+  tuDrag = {x, y};
+  tuStage.setPointerCapture(e.pointerId);
+});
+tuStage.addEventListener('pointermove', e => {
+  if(!tuDrag) return;
+  const [x,y] = tuXY(e);
+  vOrbit(TU, x-tuDrag.x, y-tuDrag.y);
+  tuDrag = {x, y};
+  if(!tuBusy) tuRender();
+});
+const tuEndDrag = () => { tuDrag = null; };
+tuStage.addEventListener('pointerup', tuEndDrag);
+tuStage.addEventListener('pointercancel', tuEndDrag);
+
+// 练成一课就记一笔，列表上打勾
+function tuMarkDone(i){
+  if(i == null || tuDone.includes(i)) return;
+  tuDone.push(i);
+  localStorage.setItem('cube_tu_done', JSON.stringify(tuDone));
+  tuListRender();
+}
+
+/* ---- 出一道卡在这一课的题 ----
+   随机打乱，用求解器解出来，只把这一课之前的阶段替他做完 ——
+   于是魔方正好停在这一课的起点上，前面的成果都在，练的就是这一步 */
+function tuMakeTask(phase){
+  const M = ['U','D','R','L','F','B'];
+  for(let tries=0; tries<8; tries++){
+    let s = solvedState();
+    for(let i=0;i<25;i++)
+      s = applyMove(s, M[(Math.random()*6)|0]+['',"'",'2'][(Math.random()*3)|0]);
+    let r;
+    try{ r = solve(s); }catch(e){ continue; }
+    const before = PHASE_NAME.slice(0, phase);
+    for(const st of r.steps) if(before.includes(st.label)) s = applySeq(s, st.moves);
+    // 前面的都做好了、这一步还没做，才是一道能练的题
+    if((phase === 0 || PHASE_OK[phase-1](s)) && !PHASE_OK[phase](s)) return s;
+  }
+  return null;
+}
+$('tuPractice').onclick = () => {
+  const L = TU_LESSONS[tuLesson];
+  if(L.phase < 0) return;
+  const s = tuMakeTask(L.phase);
+  if(!s){ alert('没凑出合适的题，再点一次试试'); return; }
+  prLoad(s);
+  prGoal = {phase:L.phase, name:PHASE_NAME[L.phase], lesson:tuLesson};
+  prMsg('这一课的目标：把「' + PHASE_NAME[L.phase] + '」做出来');
+  goTab(2);
+};
 
 /* ==========================================================
    9. 摄像头 / 照片识别
@@ -2504,5 +2887,8 @@ renderStep();
 prLoad(solvedState());
 // 把存下来的设置铺到界面上（箭头按钮的高亮、计时器显示与否都在这儿定）
 prSetPut('vib', prSetIdx.vib);
-window.addEventListener('resize', () => { inResize(); inRender(); prResize(); prRender(); });
+tuListRender();
+window.addEventListener('resize', () => {
+  inResize(); inRender(); prResize(); prRender(); tuResize(); tuRender();
+});
 </script>
