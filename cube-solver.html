@@ -280,6 +280,9 @@
   <div class="row" style="margin-bottom:8px">
     <button id="btnCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别</button>
   </div>
+  <div class="row" style="margin-bottom:8px">
+    <button id="inToPr" style="flex:1 1 100%">把这个魔方拿到③自己练</button>
+  </div>
   <div class="row">
     <button id="btnReset">全部清空</button>
     <button id="btnSolved">填成复原态</button>
@@ -1538,6 +1541,16 @@ $('btnSolve').onclick = () => {
   }else{
     doSolve(r.state);
   }
+};
+
+// prToIn 的反方向。同样是直接搬状态，不走截图识别
+$('inToPr').onclick = () => {
+  const r = faceletToCubie(net);
+  if(r.error){ showMsg(r.error, 'err'); return; }
+  prLoad(r.state);
+  goTab(2);
+  prMsg(isSolved(r.state) ? '搬过来了，不过这个魔方已经是复原态了'
+                          : '已经把①输入页那个魔方原样搬过来了，可以直接练');
 };
 
 const TABS = [['tabIn','pIn'], ['tabGo','pGo'], ['tabPr','pPr'], ['tabTu','pTu']];
@@ -3134,7 +3147,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-08 04:25';
+const BUILD = '2026-08-08 05:39';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
