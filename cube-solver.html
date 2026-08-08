@@ -191,6 +191,7 @@
   #tuHd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
   #tuHd h3{margin:0;font-size:16px;font-weight:600;flex:1}
   #tuHd button{padding:6px 10px;font-size:12px;border-radius:8px;flex:none}
+  #tuSpd{min-width:46px;font-family:inherit}
   #tuTitle{font-size:15px;font-weight:600;color:var(--acc);text-align:center;margin:12px 0 6px}
   #tuDesc{font-size:13.5px;color:var(--txt);text-align:center;line-height:1.6;
     min-height:44px;padding:0 4px}
@@ -382,6 +383,7 @@
     <div id="tuHd">
       <button id="tuBack">‹ 课程</button>
       <h3 id="tuName"></h3>
+      <button id="tuSpd">速度</button>
     </div>
     <div id="tuStage"><canvas id="tuCv"></canvas></div>
     <div id="tuDots"></div>
@@ -2457,7 +2459,16 @@ const focusPiece = (...fs) => {
 const focusAt = (x,y,z) => cb => cb.p[0]===x && cb.p[1]===y && cb.p[2]===z;
 // 几个并起来。讲「棱的侧面色要和中心块同色」这种**对照**关系时，
 // 参照的那个中心块也得亮着 —— 压暗了就没法比了
-const focusAny = (...fs) => cb => fs.some(f => f(cb));
+const focusAny = (...fs) => (cb, fi) => fs.some(f => f(cb, fi));
+/* 只亮「顶面朝上」的那几张贴纸。讲顶面是什么形状（十字/一字/拐角/点）时必须用它：
+   按块亮的话，棱块露在侧面的那半也会亮，形状根本看不出来；
+   而且中心块得亮着 —— 讲「一个点」时，那个点就是它。
+   render 调 focus 时会把 fi 一起传进来，没传（测试里按块问）就退化成块判定 */
+const focusTopShape = () => (cb, fi) =>
+  cb.p[1] === 1 && cubieKind(cb) <= 2 &&
+  (fi === undefined || vmul(cb.r, NRM[fi])[1] > 0.5);
+const focusTopFace = () => (cb, fi) =>
+  cb.p[1] === 1 && (fi === undefined || vmul(cb.r, NRM[fi])[1] > 0.5);
 const focusSideCenters = () => cb => cubieKind(cb)===1 && cb.p[1]===0;   // 四个侧面中心
 
 /* 每一课做完之后长什么样。全是「这一阶段做完、下一阶段还没动」的真实状态 ——
@@ -2476,6 +2487,21 @@ const focusD = () => cb => cb.p[1] === -1;
 const focusMid = () => cb => cubieKind(cb) === 2 && cb.p[1] === 0;
 const focusU = () => cb => cb.p[1] === 1;
 
+/* ---- 演示速度 ----
+   跟练习页那个「转动动画」分开：练习是自己转，快一点才顺手；
+   教程是看别人转，得看清楚每一下在动哪一层。默认给「慢」 */
+const TU_SPD = [2.6, 1.6, 1.0, 0.6];           // 倍率，越大越慢
+const TU_SPD_CN = ['很慢', '慢', '正常', '快'];
+let tuSpd = +(localStorage.getItem('cube_tu_spd') ?? 1);
+if(!(tuSpd >= 0 && tuSpd < TU_SPD.length)) tuSpd = 1;
+function tuSpdRender(){ $('tuSpd').textContent = TU_SPD_CN[tuSpd]; }
+$('tuSpd').onclick = () => {
+  tuSpd = (tuSpd + 1) % TU_SPD.length;
+  localStorage.setItem('cube_tu_spd', tuSpd);
+  tuSpdRender();
+};
+tuSpdRender();
+
 /* ---- 演示一串记号 ---- */
 function tuSpin(mv, done){
   const d = GEO_MV[mv[0]];
@@ -2485,7 +2511,7 @@ function tuSpin(mv, done){
   const rotSign = turns < 0 ? -d.sign : d.sign;
   const total = rotSign*quarter*Math.PI/2;
   const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
-  const spd = prCfg('spd') || 0.6;              // 教程里就算关了动画也放慢一点，不然看不清在转什么
+  const spd = TU_SPD[tuSpd];
   const t0 = performance.now(), dur = (quarter>1 ? 340 : 240)*spd;
   tuBusy = true;
   (function frame(now){
@@ -2502,7 +2528,8 @@ function tuSpin(mv, done){
 function tuPlaySeq(moves, i, done){
   if(!tuPlaying || i >= moves.length){ tuPlaying = false; tuNavRender(); done && done(); return; }
   TU.arrow = prCfg('arrow') ? prMoveTurn(moves[i]) : null;
-  tuSpin(moves[i], () => { TU.arrow = null; setTimeout(() => tuPlaySeq(moves, i+1, done), 90); });
+  tuSpin(moves[i], () => { TU.arrow = null;
+    setTimeout(() => tuPlaySeq(moves, i+1, done), 110*TU_SPD[tuSpd]); });
 }
 
 /* ==========================================================
@@ -2569,25 +2596,25 @@ const TU_LESSONS = [
    scr:DONE_F2L, focus:cb => cb.p[1] !== 1},
 ]},
 { name:'5. 顶层十字', tip:'先不管顶层块的位置，只把黄色朝上翻正。', phase:3, steps:[
-  {t:'目标：顶面一个黄十字', d:'只看顶面的四个棱，让它们的黄色都朝上，连成一个十字。这一步不管它们的位置对不对，只管朝向 —— 图上四个角还是歪的，那是下一课的事。',
-   scr:DONE_XEDGE, focus:cb => cubieKind(cb)===2 && cb.p[1]===1},
+  {t:'目标：顶面一个黄十字', d:'只看顶面正中那一竖一横五格：让四个棱的黄色都朝上，连成十字。这一步不管它们的位置对不对，只管朝向 —— 四个角还是歪的，那是下一课的事。',
+   scr:DONE_XEDGE, focus:focusTopShape()},
   {t:'就一条公式', d:"F R U R' U' F' —— 顶上是什么形状就做几遍，它会一路从「点」变成「一字」再变成「十字」。",
    scr:rev(F_EDGE), alg:F_EDGE},
-  {t:'情形一：一条横线', d:'两个棱的黄色朝上、连成一条左右方向的横线。对着这个方向做一遍，正好出十字。',
-   scr:rev(F_EDGE), alg:F_EDGE, focus:cb => cubieKind(cb)===2 && cb.p[1]===1},
-  {t:'情形二：一个拐角', d:'两个黄色成 L 形。这个方向做一遍还出不来（会先变成横线），得再做一遍 —— 演示里做的就是两遍。',
+  {t:'情形一：一条横线', d:'亮着的五格里，黄色的连成一条左右方向的横线。对着这个方向做一遍，正好出十字。',
+   scr:rev(F_EDGE), alg:F_EDGE, focus:focusTopShape()},
+  {t:'情形二：一个拐角', d:'黄色的两格挨在一起、成 L 形。这个方向做一遍还出不来（会先变成横线），得再做一遍 —— 演示里做的就是两遍。',
    scr:[...rev(F_EDGE), ...rev(F_EDGE)], alg:[...F_EDGE, ...F_EDGE],
-   focus:cb => cubieKind(cb)===2 && cb.p[1]===1},
-  {t:'情形三：一个点', d:'四个棱一个都没翻正。这种情况光重复这条公式是出不来十字的 —— 它只会在几种形状之间打转，中间必须转一下 U 换个方向。演示里是：做两遍、转一下 U、再做一遍。',
+   focus:focusTopShape()},
+  {t:'情形三：一个点', d:'亮着的五格里只有正中间那颗是黄的 —— 四个棱一个都没翻正，所以叫「点」。这种情况光重复这条公式出不来十字，它只会在几种形状之间打转，中间必须转一下 U 换个方向。演示里是：做两遍、转一下 U、再做一遍。',
    scr:rev([...F_EDGE, ...F_EDGE, "U'", ...F_EDGE]),
    alg:[...F_EDGE, ...F_EDGE, "U'", ...F_EDGE],
-   focus:cb => cubieKind(cb)===2 && cb.p[1]===1},
+   focus:focusTopShape()},
   {t:'记不住形状也没关系', d:'反正就这一条公式：做一遍看看，没出十字就转转 U 换个方向再做，几遍之内一定出来。'},
 ]},
 { name:'6. 顶面同色', tip:'把顶层四个角也翻正，整个顶面变成一片黄。', phase:4, steps:[
   {t:'目标：顶面全黄', d:'十字有了，还剩四个角的朝向。做完顶面一整片黄，就长这样 —— 但侧面还是乱的，那是下一课的事。',
-   scr:DONE_TOP, focus:focusU()},
-  {t:'小鱼公式 Sune', d:"R U R' U R U2 R' —— 一次转正一组角。亮着的这个位置上的角，是顶层唯一一个黄色已经朝上的；做的时候就把它摆在这儿：左前方（俯视图的左下角）。",
+   scr:DONE_TOP, focus:focusTopFace()},
+  {t:'小鱼公式 Sune', d:"R U R' U R U2 R' —— 一次转正一组角。亮着的这个位置上的角，是顶层唯一一个黄色已经朝上的。做的时候就把它摆在这儿 —— 绿面和红面交界的那个上角。",
    scr:rev(SUNE), alg:SUNE, focus:focusAt(-1,1,1)},
   {t:'反小鱼 Anti-Sune', d:"R' U' R U' R' U2 R —— 上面那条的镜像。碰到反着的情形用它，能少做几遍。",
    scr:rev(ASUNE), alg:ASUNE},
@@ -2597,7 +2624,7 @@ const TU_LESSONS = [
   {t:'目标：四个角各就各位', d:'顶面已经全黄，但角块还站错了地方 —— 看亮着的四个角，它们侧面的颜色和两边的中心块对不上。这一步只挪位置，不碰朝向。',
    scr:DONE_TOP, focus:cb => cubieKind(cb)===3 && cb.p[1]===1},
   {t:'先找有没有已经对的角', d:'看四个角的侧面两色，能和两边中心块对上的那个就是已经到位的。找到它，把它转到左前方。'},
-  {t:'A-perm：转三个角', d:"R' F R' B2 R F' R' B2 R2 —— 让另外三个角轮换一圈。亮着的这颗是已经到位的那个，在左前方，做完它原地不动。",
+  {t:'A-perm：转三个角', d:"R' F R' B2 R F' R' B2 R2 —— 让另外三个角轮换一圈。亮着的这颗是已经到位的那个，摆在绿面和红面交界的那个上角，做完它原地不动。",
    scr:rev(APERM), alg:APERM, focus:focusPiece('U','F','L')},
   {t:'一个对的都没有？', d:'随便做一遍上面那条，就会出现一个到位的角，然后再按上面来。'},
 ]},
@@ -2606,8 +2633,8 @@ const TU_LESSONS = [
    scr:DONE_CORN, focus:cb => cubieKind(cb)===2 && cb.p[1]===1},
   {t:'U-perm：转三个棱', d:"R2 U R U R' U' R' U' R' U R' —— 三个棱顺着轮换一圈。顶面后排亮着的那颗就是已经对上的（它的蓝面贴着后面，图上看不到）。做的时候把它摆在后面，公式不碰它。",
    scr:rev(UPERM_A), alg:UPERM_A, focus:focusPiece('U','B')},
-  {t:'反方向的 U-perm', d:"R U' R U R U R U' R' U' R2 —— 要往另一个方向轮换时用这条。",
-   scr:rev(UPERM_B), alg:UPERM_B},
+  {t:'反方向的 U-perm', d:"R U' R U R U R U' R' U' R2 —— 三个棱往另一个方向轮换时用这条。已经对上的还是那颗（亮着的，贴着蓝色那面），一样摆在后面。",
+   scr:rev(UPERM_B), alg:UPERM_B, focus:focusPiece('U','B')},
   {t:'四个棱两两对调？', d:'做一遍任意一条 U-perm，就会变成「三个轮换」的情形，再做一次就好了。'},
   {t:'复原了', d:'八课到此结束。接下来就是多练 —— 「出一个卡在这步的魔方」每一课都能用，哪步不熟练哪步。'},
 ]},
@@ -2977,7 +3004,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-07 21:25';
+const BUILD = '2026-08-07 21:32';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
