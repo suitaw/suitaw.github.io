@@ -324,6 +324,9 @@
     <button id="prSolveIt">跟着解法转</button>
   </div>
   <div class="row" style="margin-top:8px">
+    <button id="prCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别一个魔方来练</button>
+  </div>
+  <div class="row" style="margin-top:8px">
     <button id="prToIn" style="flex:1 1 100%">把这个魔方填进①输入页</button>
   </div>
 
@@ -3023,7 +3026,10 @@ function camLoop(){
   camRAF=requestAnimationFrame(camLoop);
 }
 
-async function camOpen(){
+// 识别完了往哪儿送：'in' 回填①输入页，'pr' 直接装进③自己练
+let camDest = 'in';
+async function camOpen(dest){
+  camDest = dest === 'pr' ? 'pr' : 'in';
   camStep=0; camPicked=[]; camStill=null; $('camErr').textContent='';
   camPrev.width=camPrev.height=CAM_SIZE;
   camBoxReset();
@@ -3047,7 +3053,8 @@ function camStop(){
   camOv.classList.remove('on');
 }
 
-$('btnCam').onclick = camOpen;
+$('btnCam').onclick = () => camOpen('in');
+$('prCam').onclick  = () => camOpen('pr');
 $('camClose').onclick = camStop;
 $('camBack').onclick = () => {
   if(camStep>0){ camStep--; camPicked.pop(); camStill=null; $('camErr').textContent=''; camRender(); }
@@ -3070,27 +3077,38 @@ $('camShot').onclick = () => {
   camPicked[camStep] = sampleGrid(camCtx);
   camStill=null;
   if(camStep < 5){ camStep++; $('camErr').textContent=''; camRender(); return; }
-  // 六面齐了，归类并回填展开图
+  // 六面齐了，归类
   const guess = classifyAll();
   camStop();
-  net = guess; paintNet(); invalidatePlan();
   const dup = camDupFaces(camPicked);
-  const chk = faceletToCubie(net);
-  // 能指出具体哪几格的（角/棱配色不对）已经被 netTrouble 标红了，直接让他点那儿改。
-  // 奇偶性、朝向这类整体约束 netTrouble 故意不查，那种情况一格都没标红，
-  // 就别说「标红的格子」了 —— 得让他整体核对
-  const bad = netTrouble(net);
   const dupMsg = dup
     ? `　另外：「${FACE_CN[CAM_STEPS[dup[0]].f]}」和「${FACE_CN[CAM_STEPS[dup[1]].f]}」`
       + '这两面取到的颜色几乎一模一样 —— 多半是同一张图采了两遍，或者换面时忘了换图。'
     : '';
+  const chk = faceletToCubie(guess);
+
+  // 送去练习页。练习页装不下不合法的魔方，认错了就退回输入页去改
+  if(camDest === 'pr' && !chk.error){
+    prLoad(chk.state);
+    goTab(2);
+    prMsg('识别完了，已经搬过来了。开转之前先转着核对一遍。' + dupMsg, false);
+    return;
+  }
+
+  net = guess; paintNet(); invalidatePlan();
+  // 能指出具体哪几格的（角/棱配色不对）已经被 netTrouble 标红了，直接让他点那儿改。
+  // 奇偶性、朝向这类整体约束 netTrouble 故意不查，那种情况一格都没标红，
+  // 就别说「标红的格子」了 —— 得让他整体核对
+  const bad = netTrouble(guess);
+  const backMsg = camDest === 'pr' ? '（识别的结果还不能直接拿去练，先在这一页改对）' : '';
   showMsg(chk.error
-    ? '识别完了，但有对不上的地方：' + chk.error + '　—— '
+    ? '识别完了，但有对不上的地方' + backMsg + '：' + chk.error + '　—— '
       + (bad ? '标红的格子就是问题所在：先在色板选对的颜色，再点那一格改掉'
              : '这类问题看不出是哪一格错，多半是某个块的朝向认反了，转着魔方整体核对一遍')
       + dupMsg
     : '识别完了，六个面都填好了。转着核对一遍，没问题就点求解。' + dupMsg,
     (chk.error || dup) ? 'err' : 'ok');
+  goTab(0);
   window.scrollTo(0,0);
 };
 
@@ -3147,7 +3165,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-08 05:39';
+const BUILD = '2026-08-08 05:44';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
