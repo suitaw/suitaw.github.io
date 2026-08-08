@@ -1341,17 +1341,22 @@ const inRender = () => render(null, IN);
 
 // 整体翻一格。输入页填的是贴纸颜色、不是转动状态，所以几何一格都不能动 ——
 // 只把「魔方相对参照系转了多少」记进 G，跟练习页的 prWholeSpin 一个道理
-function inWhole(axis, rotSign, quarter){
+// toR 的用意同 prWholeSpin：快划时把手指拖出来的零头一起平滑收掉，不要先弹回再转
+function inWhole(axis, rotSign, quarter, toR){
   if(inBusy) return;
   inBusy = true;
   const G0 = IN.G, total = rotSign*quarter*Math.PI/2;
+  const lerp = toR ? slerpR(IN.R, toR) : null;
   const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
   const spd = prCfg('spd'), t0 = performance.now(), dur = 200*spd;
   (function frame(now){
     const t = dur ? Math.min(1,(now-t0)/dur) : 1;
-    IN.G = mmul(G0, rotM(axis, total*ease(t)));
+    const e = ease(t);
+    if(lerp) IN.R = lerp(e);
+    IN.G = mmul(G0, rotM(axis, total*e));
     inRender();
     if(t<1){ requestAnimationFrame(frame); return; }
+    if(lerp) IN.R = toR;
     IN.G = mmul(G0, rotM(axis, total));
     inBusy = false; buzz(8); inRender();
   })(t0);
@@ -1381,7 +1386,7 @@ inStage.addEventListener('pointerdown', e => {
     return;
   }
   if(inPts.size > 2) return;
-  inDrag = {x0:x, y0:y, px:x, py:y, moved:0, vx:0, vy:0, t:performance.now()};
+  inDrag = {x0:x, y0:y, px:x, py:y, moved:0, vx:0, vy:0, t:performance.now(), R0:IN.R};
 });
 inStage.addEventListener('pointermove', e => {
   if(!inPts.has(e.pointerId)) return;
@@ -1429,8 +1434,11 @@ const inEnd = e => {
   if(prCfg('fling') && Math.hypot(d.vx, d.vy) > PR_FLING
      && Math.hypot(d.px-d.x0, d.py-d.y0) > PR_FLING_D){
     const horiz = Math.abs(d.vx) >= Math.abs(d.vy);
+    const R1 = IN.R;                          // 轴按按下时的视角算，理由同 prWholeFling
+    IN.R = d.R0;
     const a = vScreenAxis(IN, horiz ? [0,1,0] : [1,0,0]);
-    inWhole(a.axis, a.sign * ((horiz ? d.vx : d.vy) > 0 ? 1 : -1), 1);
+    IN.R = R1;
+    inWhole(a.axis, a.sign * ((horiz ? d.vx : d.vy) > 0 ? 1 : -1), 1, d.R0);
   }
 };
 inStage.addEventListener('pointerup', inEnd);
@@ -1959,18 +1967,34 @@ const prRoll  = dA => vRoll(PR, dA);
    要变的只有「魔方相对参照系转了多少」，也就是 G。渲染是 cam·G·p，
    动画期间直接插值 G 就行，不用给 render 加「转全部块」的分支。
    不记进转动记录：它不改变魔方状态，记进去只会让步数虚增、退回也没意义 */
-function prWholeSpin(axis, rotSign, quarter){
+// 两个姿态之间的最短旋转，返回一个「插值到 t」的函数。
+// 从旋转矩阵之差里取轴和角，绕它转过去，别硬跳
+function slerpR(R1, R2){
+  const d = mmul(R2, mtrans(R1));
+  const ang = Math.acos(Math.max(-1, Math.min(1, (d[0][0]+d[1][1]+d[2][2]-1)/2)));
+  const s = Math.sin(ang);
+  if(!(ang > 1e-4) || Math.abs(s) < 1e-6) return () => R2;
+  const ax = [(d[2][1]-d[1][2])/(2*s), (d[0][2]-d[2][0])/(2*s), (d[1][0]-d[0][1])/(2*s)];
+  return t => (t >= 1 ? R2 : mmul(axisRotM(ax, ang*t), R1));
+}
+// toR 给了就顺带把视角收回到那个姿态（快划要用：手指已经把画面拖歪了一点，
+// 得跟整体转一起平滑收回去。先硬跳回再转的话，屏幕上会先弹一下再转，看着像翻了两面）
+function prWholeSpin(axis, rotSign, quarter, toR){
   if(prBusy) return;
   prBusy = true;
   const G0 = PR.G, total = rotSign*quarter*Math.PI/2;
+  const lerp = toR ? slerpR(PR.R, toR) : null;
   const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
   const t0 = performance.now(), dur = 190*prCfg('spd');
   prMsg('整体转 ' + wholeLabel(axis, rotSign, quarter));
   (function frame(now){
     const t = dur ? Math.min(1,(now-t0)/dur) : 1;
-    PR.G = mmul(G0, rotM(axis, total*ease(t)));
+    const e = ease(t);
+    if(lerp) PR.R = lerp(e);
+    PR.G = mmul(G0, rotM(axis, total*e));
     prRender();
     if(t<1){ requestAnimationFrame(frame); return; }
+    if(lerp) PR.R = toR;
     PR.G = mmul(G0, rotM(axis, total));
     prBusy = false; buzz(8); prRender();
   })(t0);
@@ -1989,14 +2013,18 @@ function vScreenAxis(V, camDir){
   return {axis, sign};
 }
 // 在留白处快划一下 = 整个魔方翻一格。慢慢拖还是自由看角度，
-// 快划就把这一下自由转撤销掉（R 回到按下时的样子），换成吸附到整格的 x/y/z
+// 快划就把这一下自由转出来的零头收掉，换成吸附到整格的 x/y/z
 function prWholeFling(d){
-  PR.R = d.R0;
   const horiz = Math.abs(d.vx) >= Math.abs(d.vy);
-  // 横划绕屏幕竖直方向那根轴，竖划绕屏幕水平方向那根轴
+  // 绕哪根轴，要按「手指按下时」的视角算 —— 划的过程中画面已经跟着转了一点，
+  // 拿转过之后的视角去挑轴，快划到接近 45° 时会挑错
+  const R1 = PR.R;
+  PR.R = d.R0;
   const a = vScreenAxis(PR, horiz ? [0,1,0] : [1,0,0]);
+  PR.R = R1;
   const drive = horiz ? d.vx : d.vy;
-  prWholeSpin(a.axis, a.sign * (drive > 0 ? 1 : -1), 1);
+  // 传 d.R0：动画里从手指停下的地方平滑收回去，不硬跳
+  prWholeSpin(a.axis, a.sign * (drive > 0 ? 1 : -1), 1, d.R0);
 }
 
 let prHomeRAF = 0;
@@ -2007,17 +2035,11 @@ function prRecenter(){
   PR.yawSign = 1;                         // 摆正了，黄轴又朝上
 
   cancelAnimationFrame(prHomeRAF);
-  // 从「还差这么多」这个旋转里取出轴和角，绕它转过去，别硬跳
-  const d = mmul(target, mtrans(R0));
-  const ang = Math.acos(Math.max(-1, Math.min(1, (d[0][0]+d[1][1]+d[2][2]-1)/2)));
-  const s = Math.sin(ang);
-  if(!(ang > 1e-4) || Math.abs(s) < 1e-6){ PR.R = target; prRender(); return; }
-  const ax = [(d[2][1]-d[1][2])/(2*s), (d[0][2]-d[2][0])/(2*s), (d[1][0]-d[0][1])/(2*s)];
+  const lerp = slerpR(R0, target);
   const t0 = performance.now(), dur = 240;
   (function frame(now){
     const t = Math.min(1, (now-t0)/dur);
-    const e = t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
-    PR.R = t>=1 ? target : mmul(axisRotM(ax, ang*e), R0);
+    PR.R = lerp(t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2);
     prRender();
     if(t<1) prHomeRAF = requestAnimationFrame(frame);
   })(t0);
@@ -2401,6 +2423,10 @@ function tuSet(st){
   tuRender();
 }
 
+// 讲底层的课（白十字、第一层角）得从斜下方往上看，不然亮的那几块全在背面，
+// 屏幕上就是一片黑。仰角比默认的俯角小一点，白面和前面、右面都还看得见
+const TU_CAM_UP = mmul(rotM(0,-0.62), rotM(1,-0.62));
+
 /* ---- 块的种类：讲基础知识时按类型高亮 ---- */
 // 一个方块有几个面朝外，就是几色块：1=中心 2=棱 3=角
 const cubieKind = cb => Math.abs(cb.p[0]) + Math.abs(cb.p[1]) + Math.abs(cb.p[2]);
@@ -2466,24 +2492,26 @@ const TU_LESSONS = [
 ]},
 { name:'2. 白十字', tip:'底面白色的四个棱，白面朝下、侧面颜色也要对上。', phase:0, steps:[
   {t:'目标：底面一个白十字', d:'白色四个棱块归位。注意不是白面朝下就行 —— 它另一个颜色必须和那一面的中心块对上。',
-   scr:[], focus:focusCross()},
+   scr:[], focus:focusCross(), view:TU_CAM_UP},
   {t:'侧面必须对齐', d:'这就是做好的样子：从侧面看，每个棱的颜色都和它下面的中心块同色，连成一个「T」。',
-   scr:[], focus:focusD()},
-  {t:'找一个白棱', d:'比如这个白+绿的棱，现在在顶层。要把它送到前面底下去。', scr:['F','R','U'], focus:focusCross()},
-  {t:'先对准，再翻下去', d:'转 U 层，把它的绿色对准绿色中心，然后那一面转 180°，它就下去了 —— 底下已经摆好的不会被碰到。',
-   scr:['F2'], alg:['F2']},
+   scr:[], focus:focusD(), view:TU_CAM_UP},
+  {t:'找一个白棱', d:'白+绿那个棱现在翻在顶层，而且绿色那面还没对着绿色中心 —— 先别急着往下塞。',
+   scr:rev(["U'",'F2']), focus:cb => cubieKind(cb)===2},
+  {t:'先对准，再翻下去', d:"转 U 层让它的绿色对准绿色中心（这里是 U'），然后前面转 180°（F2），它就下去了 —— 底下已经摆好的不会被碰到。",
+   scr:rev(["U'",'F2']), alg:["U'",'F2']},
   {t:'四个棱都这么做', d:'白+绿、白+橙、白+蓝、白+红，一个一个来。这一课没有公式要背，全靠对准了再翻下去。'},
 ]},
 { name:'3. 第一层角', tip:'底面四个角归位，第一层就整层做完了。', phase:1, steps:[
   {t:'目标：底面整层做完', d:'白十字的基础上，把四个白色角块也放进去。做完底面全白，而且侧面第一圈也都对上了。',
-   scr:[], focus:focusD()},
+   scr:[], focus:focusD(), view:TU_CAM_UP},
   {t:'把角块转到它的正上方', d:'先转 U 层，让这个白角停在它该去的那个位置的正上方 —— 别急着往下塞。',
    scr:["R","U","R'","U'"], focus:focusKind(3)},
   {t:"公式：R U R' —— 拎起来、错开、放回去", d:"这三步的意思是：把那一列拎起来，趁机把角块错到位，再放回去。底下已经做好的会原样还回来。",
    alg:["R","U","R'"]},
   {t:'朝向不对就多做几遍', d:"角块位置对了但颜色朝向不对，把 R U R' U' 连做几遍，它会自己转过来。这就是俗称的「小鱼」前身。",
    alg:["R","U","R'","U'","R","U","R'","U'"]},
-  {t:'四个角都放完，第一层就好了', d:'到这儿魔方翻过来看，底面一整片白，侧面第一圈也是齐的。'},
+  {t:'四个角都放完，第一层就好了', d:'到这儿魔方翻过来看，底面一整片白，侧面第一圈也是齐的。',
+   focus:focusD(), view:TU_CAM_UP},
 ]},
 { name:'4. 中层棱', tip:'中间那一圈的四个棱。这一课开始有正经公式了。', phase:2, steps:[
   {t:'目标：中间一圈对齐', d:'中层四个棱归位。注意中层的棱上没有白也没有黄 —— 有黄的那些是顶层的，别往这儿放。',
@@ -2577,6 +2605,10 @@ function tuGo(n){
   $('tuAlg').textContent = s.alg ? s.alg.join(' ') : '';
   TU.focus = s.focus || null;
   TU.arrow = null;
+  // 视角也一并摆正：说明里说的「顶层」「前面」都是按标准持方讲的，
+  // 上一步转着看过就留着歪的话，这一步的话就对不上画面了。
+  // 讲底层的步骤自带一个仰视角，不然要讲的块全在背面看不见
+  TU.R = s.view || PR_CAM0; TU.G = [[1,0,0],[0,1,0],[0,0,1]]; TU.yawSign = 1;
   // 每一步都从它自己的起点摆起，来回翻看不会越看越乱
   let st = solvedState();
   for(const mv of (s.scr || [])) st = applyMove(st, mv);
