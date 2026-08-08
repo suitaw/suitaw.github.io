@@ -42,15 +42,31 @@
   .cell.center::after{content:'';position:absolute;inset:32%;border-radius:50%;
     background:rgba(0,0,0,.35)}
   .cell.cursor{box-shadow:0 0 0 2px var(--txt);z-index:2}
+  .cell.bad{box-shadow:0 0 0 2px #ff5d5d;z-index:3}
   .cell.cursor::before{content:'';position:absolute;inset:0;border-radius:2px;
     background:rgba(76,141,255,.35);animation:pulse 1.1s ease-in-out infinite}
   @keyframes pulse{50%{background:rgba(76,141,255,.05)}}
 
   /* ---- 调色板 ---- */
+  #inStage{position:relative;width:100%;aspect-ratio:1/.95;max-height:42vh;
+    background:#0b0e13;border-radius:14px;overflow:hidden;touch-action:none;
+    border:1px solid var(--line);margin-bottom:8px}
+  #inCv{display:block;width:100%;height:100%}
+  #inHint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#5b6577}
+  #netBox{margin:12px 0 4px;background:#12161d;border:1px solid var(--line);
+    border-radius:10px;padding:8px 10px}
+  #netBox>summary{font-size:12px;color:var(--dim);cursor:pointer;list-style:none}
+  #netBox>summary::-webkit-details-marker{display:none}
+  #netBox>summary::before{content:'▸ ';color:var(--acc)}
+  #netBox[open]>summary::before{content:'▾ '}
+  #netBox #net{margin-top:10px}
   #pal{display:flex;gap:8px;justify-content:center;margin:14px 0}
   #pal .sw{width:42px;height:42px;border-radius:10px;border:3px solid transparent;
-    cursor:pointer;position:relative}
+    cursor:pointer;position:relative;display:flex;align-items:center;
+    justify-content:center;font-weight:700;font-size:17px}
   #pal .sw.on{border-color:var(--txt)}
+  #pal .sw.done{opacity:.32}
+  #pal .sw i{font-style:normal;color:rgba(0,0,0,.62);text-shadow:0 1px 0 rgba(255,255,255,.3)}
   #pal .sw b{position:absolute;bottom:-18px;left:0;right:0;text-align:center;
     font-size:11px;color:var(--dim);font-weight:400}
   #palwrap{padding-bottom:20px}
@@ -135,6 +151,18 @@
   #prMoves span.last{background:var(--acc);color:#fff;font-weight:700}
   #prMoves span.last i{color:rgba(255,255,255,.75)}
   #prMoves em{font-style:normal;color:#5b6577;font-size:12px}
+  #prSet{margin:10px 0 2px;background:#12161d;border:1px solid var(--line);
+    border-radius:10px;padding:8px 10px}
+  #prSetHd{display:flex;align-items:center;font-size:12px;color:var(--dim);cursor:pointer}
+  #prSetHd b{margin-left:auto;font-size:11px;color:var(--acc);font-weight:600}
+  #prSetBody{display:none;margin-top:4px}
+  #prSet.on #prSetBody{display:block}
+  .prSetRow{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:12.5px}
+  .prSetRow>span{flex:none;width:66px;color:var(--dim)}
+  .prSetRow .segs{display:flex;flex:1;gap:4px}
+  .prSetRow .segs button{flex:1;padding:6px 2px;min-width:0;font-size:12px;border-radius:7px}
+  .prSetRow .segs button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  #prSetNote{font-size:11px;color:#5b6577;line-height:1.5;margin-top:9px}
   #prKeys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
   #prKeys button{padding:11px 0;min-width:0;font-size:15px;font-weight:600;
     font-family:ui-monospace,Menlo,monospace}
@@ -180,14 +208,27 @@
   <h2>按 <b style="color:#f2f4f7">白色朝下</b>、<b style="color:#31a24c">绿色朝前</b> 拿好魔方</h2>
   <p class="muted" style="margin:0 0 14px">
     这样拿的时候，上面是黄、右面是橙、左面是红、后面是蓝。中心块不用填（它们固定了每个面）。
-    <b style="color:var(--txt)">照着闪烁的格子，点下面对应的颜色就行</b>，会自动跳到下一格；
-    点某个格子可以跳回去改。
+    <b style="color:var(--txt)">先点一个颜色，再把魔方上这个颜色的格子挨个点掉</b>，
+    一个色填完会自动换下一个。色块上的数字是这色还差几格。
+    点已经填过的格子可以清掉重填；<b style="color:var(--txt)">填错了会当场告诉你</b>，
+    不用等填满 48 格。
   </p>
 
-  <div id="net"></div>
+  <div id="inStage"><canvas id="inCv"></canvas>
+    <div id="inHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
+  <div class="row" style="margin-bottom:4px">
+    <button id="inFlip">翻到背面</button>
+    <button id="inHome">摆正视角</button>
+    <button id="inClearOne">清掉这格</button>
+  </div>
   <div id="palwrap"><div id="pal"></div></div>
   <div id="tally"></div>
   <div id="msg"></div>
+
+  <details id="netBox">
+    <summary>展开图总览（可以在这儿点，也可以检查填得对不对）</summary>
+    <div id="net"></div>
+  </details>
 
   <div class="row" id="algo" style="margin-bottom:10px">
     <button id="algoShort" class="seg on">最短解法<i>约 20 步</i></button>
@@ -209,10 +250,10 @@
 
 <!-- ============ 练习页 ============ -->
 <div id="pPr" class="page">
-  <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层 · 留白转视角 · 双指拧正</div></div>
+  <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层（能一口气拖 180°）· 留白拖=转视角、快划=整体翻一格 · 双指拧正</div></div>
 
   <div id="prBar">
-    <span><b id="prTime">0:00</b>用时</span>
+    <span id="prTimeWrap"><b id="prTime">0:00</b>用时</span>
     <span><b id="prCount">0</b>步</span>
   </div>
   <div id="prMsg"></div>
@@ -248,14 +289,26 @@
     <div id="prMoves"><em>还没转过</em></div>
   </div>
 
+  <div id="prSet">
+    <div id="prSetHd"><span>设置</span><b>展开</b></div>
+    <div id="prSetBody">
+      <div id="prSetRows"></div>
+      <div id="prSetNote">改完立刻生效，会一直记着。「转成的门槛」是拖过多少度才算转成一格：
+        调低更容易转成，调高更不容易误转。</div>
+    </div>
+  </div>
+
   <div class="legend">
     <b>拖魔方 = 转层。</b>按住往某个方向拖，那一层就<b>跟着手指转</b>，像真魔方一样。
-    <b>转过一半松手</b>才算一步，不到一半松手会弹回去。刚开始拖时层还能改，
-    方向不对接着拖就行。中间层也能拖。
+    <b>转过一格的一半松手</b>才算一步，不到就弹回去（这个门槛在设置里能改）。
+    接着往下拖能<b>一口气转 180°、270°</b>，不用松手重拖。刚开始拖时层还能改，
+    方向不对接着拖就行。中间层也能拖。按住一格不动，会告诉你这格能转哪两层。
     <div style="margin-top:6px">要转某一层，得在<b>它的侧面</b>拖 —— 比如想转右面(R)，
     在顶面或前面<b>靠右那一列</b>上拖；在右面自己上面怎么拖都转不到它。</div>
     <div style="margin-top:6px">手指离魔方远一点（四周留白处）拖，才是转视角，
-    <b>任意角度都能翻过去，而且不会越拖越歪</b>。
+    <b>任意角度都能翻过去，而且不会越拖越歪</b>。在留白处<b>快划一下</b>，
+    整个魔方会翻过一整格（x/y/z），像实体魔方随手一转 —— 想看背面比慢慢拖快得多，
+    嫌误触发可以在设置里关掉。
     <b>两根手指拧</b>可以把画面转正（连着平移也能调视角）。
     一键回到黄顶绿前橙右按<b>「摆正视角」</b> ——
     转过中间层之后也靠它把魔方整个转回来，屏幕上的层才跟记号对得上。</div>
@@ -898,6 +951,9 @@ let ctx = cv.getContext('2d');   // 参考姿势小图会临时把它指向另�
 // 和「白色朝下、绿色朝前」拿着魔方时眼睛看到的一致
 let W=0,H=0,yaw=-0.62,pitch=0.42;
 const CAM_D=9.4, GAP=1.045, STICK=0.90;
+// 标准持方视角：黄顶、绿前、橙右（pitch 取正才是从斜上方往下看）。
+// 输入页和练习页都拿它当初始视角，所以放在这儿 —— 定义得比两边都早
+const PR_CAM0 = mmul(rotM(0,0.42), rotM(1,-0.62));
 
 function resize(){
   const dpr = Math.min(window.devicePixelRatio||1, 2);
@@ -953,23 +1009,34 @@ function render(anim, V){
       const quad = k => [corner(.5,.5,k),corner(-.5,.5,k),corner(-.5,-.5,k),corner(.5,-.5,k)].map(proj);
       polys.push({z:ctr[2], base:quad(1), face:quad(STICK), c:cb.cols[i],
                   lit:0.74+0.26*Math.max(0, nv[1]*0.45+nv[2]*0.75), cb, fi:i,
-                  hot: !!(V.hl && cb.p[V.hl.axis]===V.hl.layer)});
+                  hot: !!(V.hl && cb.p[V.hl.axis]===V.hl.layer),
+                  // 朝外的那一面才是贴纸，朝里的六分之几是黑心。拾取只认外表面 ——
+                  // 不能拿「有没有颜色」当判据：输入页还没填色的格子也得点得到
+                  outer: cb.p[0]*nl[0] + cb.p[1]*nl[1] + cb.p[2]*nl[2] > 0.5,
+                  // 输入页要标出「该填哪一格」，那得知道这张贴纸是展开图上的第几格
+                  gi: V.mark == null ? -1 : geoFacelet(cb.p, nl.map(Math.round))});
     }
   }
   polys.sort((a,b)=>a.z-b.z);
-  if(V.collect) V.picks = polys.filter(p=>p.c);   // 已按由远及近排好，拾取时倒着找
+  if(V.collect) V.picks = polys.filter(p=>p.outer); // 已按由远及近排好，拾取时倒着找
+  const outline = q => { ctx.beginPath(); ctx.moveTo(q[0][0],q[0][1]);
+    for(let i=1;i<4;i++) ctx.lineTo(q[i][0],q[i][1]); ctx.closePath(); };
   for(const p of polys){
-    ctx.beginPath(); ctx.moveTo(p.base[0][0],p.base[0][1]);
-    for(let i=1;i<4;i++) ctx.lineTo(p.base[i][0],p.base[i][1]);
-    ctx.closePath(); ctx.fillStyle='#0a0c10'; ctx.fill();
-    if(!p.c) continue;
-    ctx.beginPath(); ctx.moveTo(p.face[0][0],p.face[0][1]);
-    for(let i=1;i<4;i++) ctx.lineTo(p.face[i][0],p.face[i][1]);
-    ctx.closePath();
-    ctx.fillStyle = shade(p.c, p.hot ? p.lit*1.45 : p.lit);
+    outline(p.base);
+    ctx.fillStyle='#0a0c10'; ctx.fill();
+    const marked = p.gi === V.mark;
+    if(!p.c){                                   // 还没填色的格子，只有黑底
+      if(marked){ ctx.strokeStyle=V.markCol||'rgba(255,255,255,.95)';
+                  ctx.lineWidth=2.5; ctx.stroke(); }
+      continue;
+    }
+    outline(p.face);
+    ctx.fillStyle = shade(p.c, (p.hot||marked) ? p.lit*1.45 : p.lit);
     ctx.fill();
-    if(p.hot){                                  // 待转的那一层描白边，一眼看清
-      ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=2.5; ctx.stroke();
+    if(p.hot || marked){                        // 待转的那一层／该填的那一格描白边
+      ctx.strokeStyle = marked ? (V.markCol||'rgba(255,255,255,.95)')
+                               : 'rgba(255,255,255,.95)';
+      ctx.lineWidth=2.5; ctx.stroke();
     }
   }
   if(V.arrow) drawArrow(ctx, polys, V.arrow, w => proj(vmul(cam, w)));
@@ -1050,57 +1117,243 @@ NET_FACES.forEach(([f,area,cn])=>{
     c.className = 'cell' + (i===4 ? ' center' : '');
     const gi = fidx(f,i);
     cellEls[gi] = c;
-    if(i!==4) c.onclick = () => { cursor = ORDER.indexOf(gi); paintNet(); };
+    if(i!==4) c.onclick = () => netPut(gi);
     d.appendChild(c);
   }
   w.appendChild(lab); w.appendChild(d); netEl.appendChild(w);
 });
 
+/* ---- 色板：先选一个颜色，再把魔方上这个色的格子挨个点掉 ----
+   比原来「跟着光标逐格填」快得多：拿着实体魔方，一面上同色的格子一眼就看到了，
+   挨个点比每格都回来重选颜色少一大半操作。色块上的数字是这色还差几格 */
+let curColor = 'U';
 const palEl = $('pal');
+const palEls = {};
 FACE_ORDER.forEach(f=>{
   const b = document.createElement('div');
   b.className = 'sw';
   b.style.background = COLORS[f];
-  b.innerHTML = '<b>'+FACE_CN[f].replace(/（.*/,'')+'</b>';
-  // 点颜色 = 填进当前光标格，然后自动跳到下一格
-  b.onclick = () => {
-    net[ORDER[cursor]] = f;
-    if(cursor < ORDER.length-1) cursor++;
-    paintNet(); invalidatePlan();
-  };
+  b.innerHTML = '<i></i><b>'+FACE_CN[f].replace(/（.*/,'')+'</b>';
+  b.onclick = () => { curColor = f; paintNet(); };
+  palEls[f] = b;
   palEl.appendChild(b);
 });
+
+// 往某一格填当前颜色；已经是这个色就清掉（点错了直接再点一下）
+function netPut(gi){
+  if(gi % 9 === 4) return;                     // 中心块定死了，不给改
+  net[gi] = (net[gi] === curColor) ? null : curColor;
+  // 这个色填满了就自动换到下一个还差格子的颜色，省得手动切
+  if(net[gi] && netLeft(curColor) === 0){
+    const nxt = FACE_ORDER.filter(f => netLeft(f) > 0);
+    if(nxt.length) curColor = nxt[0];
+  }
+  paintNet(); invalidatePlan();
+}
+const netLeft = f => 9 - net.filter(c => c === f).length;
+// 下一个还没填的格子，用来在 3D 上标出来当提示
+const netNext = () => { for(const gi of ORDER) if(!net[gi]) return gi; return -1; };
 
 function paintNet(){
   for(const gi in cellEls){
     const v = net[gi];
     cellEls[gi].style.background = v ? COLORS[v] : '#1b212b';
-    cellEls[gi].classList.remove('cursor');
+    cellEls[gi].classList.remove('cursor','bad');
   }
-  cellEls[ORDER[cursor]].classList.add('cursor');
-
-  const cnt = {};
-  for(const c of net) if(c) cnt[c]=(cnt[c]||0)+1;
+  for(const f of FACE_ORDER){
+    const n = netLeft(f);
+    palEls[f].querySelector('i').textContent = n || '';
+    palEls[f].classList.toggle('on', f === curColor);
+    palEls[f].classList.toggle('done', n === 0);
+  }
+  // 填错了当场标出来：能凑齐的角/棱立刻验，不用等 48 格填满
+  const bad = netTrouble(net);
+  for(const gi of (bad ? bad.gis : [])) if(cellEls[gi]) cellEls[gi].classList.add('bad');
   const left = net.filter(c=>!c).length;
-  $('tally').textContent = FACE_ORDER.map(f=>{
-    const n = cnt[f]||0;
-    return FACE_CN[f].replace(/.*（|）/g,'') + ' ' + n + (n===9?'':'/9');
-  }).join('　') + (left ? '　｜ 还差 '+left+' 格' : '');
-  $('msg').className = '';
+  $('tally').textContent = left ? '还差 ' + left + ' 格' : '48 格都填好了';
+  if(bad) showMsg(bad.msg, 'err');
+  else if(!left) showMsg('填满了，可以求解', 'ok');
+  else $('msg').className = '';
+
+  cursor = netNext();
+  IN.mark = bad ? bad.gis[0] : cursor;
+  IN.markCol = bad ? 'rgba(255,120,120,.98)' : 'rgba(255,255,255,.95)';
+  IN.cubies = buildGeo(net);
+  inRender();
 }
 $('btnReset').onclick = () => {
   net = new Array(54).fill(null);
   for(const f of FACE_ORDER) net[fidx(f,4)] = f;
-  cursor = 0; paintNet(); invalidatePlan();
+  curColor = 'U'; paintNet(); invalidatePlan();
 };
-$('btnBack').onclick = () => { if(cursor>0) cursor--; paintNet(); };
-$('btnSolved').onclick = () => { net = SOLVED_FACELET.slice(); cursor=0; paintNet(); invalidatePlan(); };
+$('btnBack').onclick = () => {                 // 退一格 = 把最后填的那格清掉
+  for(let i=ORDER.length-1;i>=0;i--) if(net[ORDER[i]]){ net[ORDER[i]] = null; break; }
+  paintNet(); invalidatePlan();
+};
+$('btnSolved').onclick = () => { net = SOLVED_FACELET.slice(); paintNet(); invalidatePlan(); };
 $('btnRandom').onclick = () => {
   let s = solvedState();
   const M = ['U','D','R','L','F','B'];
   for(let i=0;i<28;i++) s = applyMove(s, M[(Math.random()*6)|0]+['',"'",'2'][(Math.random()*3)|0]);
-  net = cubieToFacelet(s); cursor = 0; paintNet(); invalidatePlan();
+  net = cubieToFacelet(s); paintNet(); invalidatePlan();
 };
+
+/* ---- 边填边校验 ----
+   `faceletToCubie` 要 54 格填满才能查，填到第 20 格就填反了的话，
+   得等填完 48 格才发现、还不知道错在哪。这里只查「已经凑齐的」角和棱，
+   用的是同一套 CORNER_COLOR / EDGE_COLOR，判据完全一致 */
+function netTrouble(fc){
+  for(const f of FACE_ORDER){
+    const n = fc.filter(c => c === f).length;
+    if(n > 9) return {gis:[], msg:`${COLOR_CN[f]}色填了 ${n} 格 —— 一个魔方上每种颜色正好 9 格`};
+  }
+  const seenC = new Map(), seenE = new Map();
+  for(let i=0;i<8;i++){
+    const t = CORNER_FACELET[i].map(k => fc[k]);
+    if(t.some(c => !c)) continue;              // 这个角还没填齐，先不管
+    const say = t.map(x => COLOR_CN[x]).join('+');
+    const o = t.findIndex(c => c==='U' || c==='D');
+    if(o < 0) return {gis:CORNER_FACELET[i],
+      msg:`「${CORNER_CN[i]}」这个角是 ${say} —— 每个角必有黄或白，检查这三格`};
+    // 三色有手性：(白,绿,橙) 和 (白,橙,绿) 是不同的块，必须按绕的方向比
+    const j = CORNER_COLOR.findIndex(c =>
+      c[0]===t[o] && c[1]===t[(o+1)%3] && c[2]===t[(o+2)%3]);
+    if(j < 0) return {gis:CORNER_FACELET[i],
+      msg:`「${CORNER_CN[i]}」这个角是 ${say} —— 真实魔方上没有这样的角（三色绕的方向不对）`};
+    if(seenC.has(j)) return {gis:CORNER_FACELET[i].concat(CORNER_FACELET[seenC.get(j)]),
+      msg:`「${CORNER_CN[i]}」和「${CORNER_CN[seenC.get(j)]}」都填成了 ${say} —— 同一个角只有一个`};
+    seenC.set(j, i);
+  }
+  for(let i=0;i<12;i++){
+    const [a,b] = EDGE_FACELET[i].map(k => fc[k]);
+    if(!a || !b) continue;
+    const say = COLOR_CN[a]+'+'+COLOR_CN[b];
+    let j = EDGE_COLOR.findIndex(c => c[0]===a && c[1]===b);
+    if(j < 0) j = EDGE_COLOR.findIndex(c => c[0]===b && c[1]===a);
+    if(j < 0) return {gis:EDGE_FACELET[i],
+      msg:`「${EDGE_CN[i]}」这个棱是 ${say} —— 真实魔方上没有这样的棱`};
+    if(seenE.has(j)) return {gis:EDGE_FACELET[i].concat(EDGE_FACELET[seenE.get(j)]),
+      msg:`「${EDGE_CN[i]}」和「${EDGE_CN[seenE.get(j)]}」都填成了 ${say} —— 同一个棱只有一个`};
+    seenE.set(j, i);
+  }
+  return null;
+}
+
+/* ---- 输入页的 3D 魔方 ----
+   展开图上后面那一面左右是镜像的，照着实体魔方填必然填反 —— 这不是不细心，
+   是展开图本身的坑。3D 上转到哪面点哪面，没有这层映射，填错的机会少得多 */
+const inCv = $('inCv');
+const IN = {ctx:inCv.getContext('2d'), W:0, H:0,
+            R:PR_CAM0, G:[[1,0,0],[0,1,0],[0,0,1]], yawSign:1,
+            get cam(){ return mmul(this.R, this.G); },
+            cubies:[], collect:true, picks:[], hl:null, mark:-1};
+let inBusy = false;
+function inResize(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const r = inCv.getBoundingClientRect();
+  IN.W = Math.max(1, Math.round(r.width));
+  IN.H = Math.max(1, Math.round(r.height));
+  inCv.width = IN.W*dpr; inCv.height = IN.H*dpr;
+  IN.ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+const inRender = () => render(null, IN);
+
+// 整体翻一格。输入页填的是贴纸颜色、不是转动状态，所以几何一格都不能动 ——
+// 只把「魔方相对参照系转了多少」记进 G，跟练习页的 prWholeSpin 一个道理
+function inWhole(axis, rotSign, quarter){
+  if(inBusy) return;
+  inBusy = true;
+  const G0 = IN.G, total = rotSign*quarter*Math.PI/2;
+  const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+  const spd = prCfg('spd'), t0 = performance.now(), dur = 200*spd;
+  (function frame(now){
+    const t = dur ? Math.min(1,(now-t0)/dur) : 1;
+    IN.G = mmul(G0, rotM(axis, total*ease(t)));
+    inRender();
+    if(t<1){ requestAnimationFrame(frame); return; }
+    IN.G = mmul(G0, rotM(axis, total));
+    inBusy = false; buzz(8); inRender();
+  })(t0);
+}
+$('inFlip').onclick = () => inWhole(1, 1, 2);            // y2：转到背面
+$('inHome').onclick = () => { IN.R = PR_CAM0; IN.G = [[1,0,0],[0,1,0],[0,0,1]];
+                              IN.yawSign = 1; inRender(); };
+$('inClearOne').onclick = () => {                        // 清掉最近标出来的那一格
+  if(IN.mark >= 0 && IN.mark % 9 !== 4){ net[IN.mark] = null; paintNet(); invalidatePlan(); }
+};
+
+/* 手势：点一下=填色，拖=转视角，快划=翻一格，双指拧=转正 */
+const inStage = $('inStage');
+const inPts = new Map();
+let inDrag = null, inTwo = null;
+const inXY = e => { const r = inCv.getBoundingClientRect();
+                    return [e.clientX-r.left, e.clientY-r.top]; };
+inStage.addEventListener('pointerdown', e => {
+  if(inBusy) return;
+  const [x,y] = inXY(e);
+  inPts.set(e.pointerId, [x,y]);
+  inStage.setPointerCapture(e.pointerId);
+  if(inPts.size === 2){
+    inDrag = null;
+    const [a,b] = [...inPts.values()];
+    inTwo = {a:Math.atan2(b[1]-a[1], b[0]-a[0]), cx:(a[0]+b[0])/2, cy:(a[1]+b[1])/2};
+    return;
+  }
+  if(inPts.size > 2) return;
+  inDrag = {x0:x, y0:y, px:x, py:y, moved:0, vx:0, vy:0, t:performance.now()};
+});
+inStage.addEventListener('pointermove', e => {
+  if(!inPts.has(e.pointerId)) return;
+  const [x,y] = inXY(e);
+  inPts.set(e.pointerId, [x,y]);
+  if(inPts.size >= 2){
+    if(inPts.size > 2 || !inTwo) return;
+    const [a,b] = [...inPts.values()];
+    const n = {a:Math.atan2(b[1]-a[1], b[0]-a[0]), cx:(a[0]+b[0])/2, cy:(a[1]+b[1])/2};
+    let dA = n.a - inTwo.a;
+    while(dA >  Math.PI) dA -= 2*Math.PI;
+    while(dA < -Math.PI) dA += 2*Math.PI;
+    vRoll(IN, dA);
+    vOrbit(IN, n.cx-inTwo.cx, n.cy-inTwo.cy);
+    inTwo = n; inRender();
+    return;
+  }
+  if(!inDrag) return;
+  const now = performance.now(), dt = Math.max(4, now-inDrag.t);
+  inDrag.vx = inDrag.vx*0.4 + (x-inDrag.px)/dt*0.6;
+  inDrag.vy = inDrag.vy*0.4 + (y-inDrag.py)/dt*0.6;
+  inDrag.t = now;
+  inDrag.moved = Math.max(inDrag.moved, Math.hypot(x-inDrag.x0, y-inDrag.y0));
+  vOrbit(IN, x-inDrag.px, y-inDrag.py);
+  inDrag.px = x; inDrag.py = y;
+  inRender();
+});
+const inEnd = e => {
+  if(e && e.pointerId != null) inPts.delete(e.pointerId); else inPts.clear();
+  if(inPts.size < 2) inTwo = null;
+  if(inPts.size) return;
+  const d = inDrag;
+  inDrag = null;
+  if(!d) return;
+  if(d.moved < 8){                            // 基本没动 = 想点这一格填色
+    const p = pickAt(IN, d.x0, d.y0);
+    if(p){
+      const n = vmul(p.cb.r, NRM[p.fi]).map(Math.round);
+      netPut(geoFacelet(p.cb.p, n));
+      buzz(6);
+    }
+    return;
+  }
+  // 快划一下就翻过一整格，想看背面比慢慢拖快
+  if(prCfg('fling') && Math.hypot(d.vx, d.vy) > PR_FLING
+     && Math.hypot(d.px-d.x0, d.py-d.y0) > PR_FLING_D){
+    const horiz = Math.abs(d.vx) >= Math.abs(d.vy);
+    const a = vScreenAxis(IN, horiz ? [0,1,0] : [1,0,0]);
+    inWhole(a.axis, a.sign * ((horiz ? d.vx : d.vy) > 0 ? 1 : -1), 1);
+  }
+};
+inStage.addEventListener('pointerup', inEnd);
+inStage.addEventListener('pointercancel', inEnd);
 
 /* ==========================================================
    6. 播放
@@ -1188,6 +1441,7 @@ function goTab(i){
     $(p).classList.toggle('on', k===i);
   });
   if(i===1){ resize(); render(); }
+  if(i===0){ inResize(); inRender(); }
   if(i===2){ prResize(); prRender(); }
 }
 TABS.forEach(([t],i)=> $(t).onclick = () => goTab(i));
@@ -1290,13 +1544,11 @@ const prCv = $('prCv');
 // G 是「整个魔方相对中心块参照系转了多少」。转中间层会挪动中心块，
 // 而状态模型是以中心块为参照的、表示不了；于是把中间层转动拆成
 // 「两个外层反向转 + 整体转回来」，后者只累积到 G，不进状态模型。
-// 标准持方视角：黄顶、绿前、橙右（pitch 取正才是从斜上方往下看）
-const PR_CAM0 = mmul(rotM(0,0.42), rotM(1,-0.62));
 // 视角姿态直接存一个旋转矩阵，不用 yaw/pitch 两个欧拉角：拖动时绕
 // 「屏幕里垂直于手指方向」的那根轴转（左乘，作用在相机空间）。这样翻到
 // 哪个角度都不会有万向节锁 —— 以前限死俯角 ±66° 就是为了躲它，现在不用了
 const PR = {ctx:prCv.getContext('2d'), W:0, H:0,
-            R:PR_CAM0, G:[[1,0,0],[0,1,0],[0,0,1]],
+            R:PR_CAM0, G:[[1,0,0],[0,1,0],[0,0,1]], yawSign:1,
             get cam(){ return mmul(this.R, this.G); },
             cubies:[], collect:true, picks:[], hl:null};
 let prState = solvedState();     // 与几何模型同步，用来判定复原和求提示
@@ -1332,6 +1584,62 @@ function prStopClock(){
   prUpdate();
 }
 const prMsg = (t,win) => { $('prMsg').textContent = t; $('prMsg').className = win?'win':''; };
+/* ---- 练习页的偏好设置 ----
+   每项存一个 localStorage 键，存的是选中的档位下标，`vals` 是这档对应的实际数值。
+   箭头沿用早先就在用的 `cube_pr_arrow`（那时存的 '1'/'0' 正好也是下标，不用迁移）。
+   只放真有偏好差异的项：像锁定角度、掠射的 |v| 下限那种内部一致性参数不暴露，
+   调错了手感只会变坏，用户也没有判断依据 */
+const PRSET = {
+  vib:   {cn:'震动',   key:'cube_pr_vib',   def:1, opts:['关','轻','强'],            vals:[0, 1, 2.2]},
+  spd:   {cn:'转动动画', key:'cube_pr_spd', def:1, opts:['慢','正常','快','不要'],   vals:[1.7, 1, 0.55, 0]},
+  snap:  {cn:'转成的门槛', key:'cube_pr_snap', def:1, opts:['30°','45°','60°'],      vals:[30, 45, 60]},
+  fling: {cn:'快划翻面', key:'cube_pr_fling', def:1, opts:['关','开'],               vals:[0, 1]},
+  arrow: {cn:'箭头提示', key:'cube_pr_arrow', def:1, opts:['关','开'],               vals:[0, 1]},
+  timer: {cn:'计时器',  key:'cube_pr_timer', def:1, opts:['隐藏','显示'],            vals:[0, 1]},
+};
+const prSetIdx = {};
+for(const k in PRSET){
+  const s = PRSET[k], v = parseInt(localStorage.getItem(s.key), 10);
+  prSetIdx[k] = (v >= 0 && v < s.vals.length) ? v : s.def;
+}
+const prCfg = k => PRSET[k].vals[prSetIdx[k]];
+
+// 改一项设置：存下来、把受影响的界面刷一遍
+function prSetPut(k, i){
+  prSetIdx[k] = i;
+  localStorage.setItem(PRSET[k].key, i);
+  prSetRender();
+  $('prPlanTog').classList.toggle('on', !!prCfg('arrow'));
+  $('prTimeWrap').style.visibility = prCfg('timer') ? '' : 'hidden';
+  if(typeof prPlanRender === 'function') prPlanRender();
+  prRender();
+}
+function prSetRender(){
+  $('prSetRows').innerHTML = Object.keys(PRSET).map(k => {
+    const s = PRSET[k];
+    return `<div class="prSetRow"><span>${s.cn}</span><div class="segs" data-k="${k}">` +
+      s.opts.map((o,i) => `<button data-i="${i}"${i===prSetIdx[k]?' class="on"':''}>${o}</button>`)
+        .join('') + '</div></div>';
+  }).join('');
+}
+$('prSetRows').onclick = e => {
+  const b = e.target.closest('button[data-i]');
+  if(!b) return;
+  prSetPut(b.parentElement.dataset.k, +b.dataset.i);
+  buzz(6);                                    // 顺便让他听个响，知道震动调成什么样了
+};
+$('prSetHd').onclick = () => {
+  const on = $('prSet').classList.toggle('on');
+  $('prSetHd').querySelector('b').textContent = on ? '收起' : '展开';
+};
+
+// 实体魔方每转过一格有咔哒的卡位感，屏幕上拿短震动补一下。
+// 浏览器不支持、或者系统里关了震动，vibrate 直接返回 false，不用管
+const buzz = ms => {
+  const k = prCfg('vib');
+  if(!k) return;
+  try{ navigator.vibrate && navigator.vibrate(Math.round(ms*k)); }catch(e){}
+};
 
 /* ---- 执行一次转动 ----
    外层：直接一个记号。
@@ -1375,19 +1683,22 @@ function prSpin(turn, quarter, record, tag, from){
   const t0 = performance.now();
   const total = rotSign*quarter*Math.PI/2;
   from = from || 0;
-  // 时长按「还差多少角度」缩放：手指已经转过大半时只补最后一点，别再慢慢转一遍
-  const dur = Math.max(80, (quarter>1 ? 260 : 170)
-              * Math.abs(total-from) / (Math.abs(total) || Math.PI/2));
+  // 时长按「还差多少角度」缩放：手指已经转过大半时只补最后一点，别再慢慢转一遍。
+  // 设置里选「不要动画」时 spd 为 0，dur 也就是 0，第一帧直接落到位
+  const spd = prCfg('spd');
+  const dur = spd ? Math.max(80, (quarter>1 ? 260 : 170) * spd
+              * Math.abs(total-from) / (Math.abs(total) || Math.PI/2)) : 0;
   const label = tag || [layer===0 ? '中间层' : ''];
   (function frame(now){
-    const t = Math.min(1,(now-t0)/dur);
+    const t = dur ? Math.min(1,(now-t0)/dur) : 1;
     prRender({axis, layer, m:rotM(axis, from + (total-from)*ease(t))});
     if(t<1){ requestAnimationFrame(frame); return; }
     if(quarter){
       prBake(turn, quarter);
       if(record){
-        prHist.push({turn, quarter, label:turnLabel(turn) + (quarter>1 ? '2' : '')});
+        prHist.push({turn, quarter, label:moveLabel(turn, quarter)});
         prCount++; prLogRender();
+        buzz(10);                       // 转到位了，咔哒一下
       }
     }
     prBusy = false;
@@ -1414,8 +1725,9 @@ function pointInQuad(x,y,q){
   }
   return true;
 }
-function prPick(x,y){
-  const ps = PR.picks || [];
+const prPick = (x,y) => pickAt(PR, x, y);
+function pickAt(V,x,y){
+  const ps = V.picks || [];
   for(let i=ps.length-1;i>=0;i--)          // 由近及远
     if(pointInQuad(x,y,ps[i].base)) return ps[i];
   // 没直接命中就找最近的一格：手指落在缝里、黑边上、或者贴着魔方边缘，
@@ -1451,6 +1763,20 @@ function turnLabel(t){
   const c = MID_AXIS[t.axis];
   return t.rotSign === MID_SIGN[t.axis] ? c : c + "'";
 }
+// 带格数的记号。转三格写成反向的一格（R''' 没人这么写，那是 R'）
+function moveLabel(turn, quarter){
+  const q = ((quarter % 4) + 4) % 4;
+  if(q === 3) return turnLabel({axis:turn.axis, layer:turn.layer, rotSign:-turn.rotSign});
+  return turnLabel(turn) + (q === 2 ? '2' : '');
+}
+// 整体转的记号：x 跟 R 同向、y 跟 U 同向、z 跟 F 同向，三个的 sign 都是 -1
+const WHOLE_CH = ['x','y','z'], WHOLE_SIGN = [-1,-1,-1];
+function wholeLabel(axis, rotSign, quarter){
+  const q = ((quarter % 4) + 4) % 4;
+  const c = WHOLE_CH[axis];
+  const prime = (q === 3) !== (rotSign !== WHOLE_SIGN[axis]);   // 转三格 = 反向一格
+  return c + (prime ? "'" : '') + (q === 2 ? '2' : '');
+}
 
 // 返回 {axis, layer, rotSign, v}：转哪根轴、哪一层、朝哪个方向，
 // v 是「这一层每转 1 弧度，手指底下这张贴纸在屏幕上挪多少像素」，
@@ -1482,7 +1808,32 @@ function prDragTurn(pick, dx, dy){
   }
   // 面几乎侧对镜头被压成一条线时，四个候选得分都接近 0、符号不可靠。
   // 这种时候宁可不动 —— 转错了得让人撤销，没反应再拖一次就是了。
-  return bestScore > 0 ? best : null;
+  if(!(bestScore > 0)) return null;
+  // 掠射的贴纸每转 1 弧度在屏幕上只挪几个像素，直接拿去换算角度会灵敏得
+  // 没法控：手抖 20 像素就转过半格。给「每弧度多少像素」兜个底 ——
+  // 这么转是不如正面跟手，但至少停得住。下限约正对镜头时的四成
+  const vmin = Math.min(PR.W, PR.H) * 0.08;
+  const vn = Math.hypot(best.v[0], best.v[1]);
+  if(vn > 1e-6 && vn < vmin){
+    const k = vmin/vn;
+    best.v = [best.v[0]*k, best.v[1]*k];
+  }
+  return best;
+}
+
+/* 手指按住的这张贴纸能转哪两层。真魔方上按住 U 面正上方也转不动 U 层 ——
+   得抓侧面才行，这是物理规律不是 bug。新手常在这儿卡住，按住不动就提示一下 */
+function prPickLayers(pick){
+  const cb = pick.cb, i = pick.fi;
+  const n = vmul(cb.r, NRM[i]);
+  const out = [];
+  for(const tan of [vmul(cb.r,TANU[i]), vmul(cb.r,TANV[i])]){
+    const ax = cross(n, tan).map(Math.round);
+    let axis = 0;
+    for(let k=0;k<3;k++) if(Math.abs(ax[k]) > 0.5) axis = k;
+    out.push(turnLabel({axis, layer:cb.p[axis], rotSign:1}).replace("'",''));
+  }
+  return out;
 }
 
 /* ---- 视角：转台式拖动 + 双指转正 + 一键摆正 ---- */
@@ -1491,30 +1842,76 @@ function prDragTurn(pick, dx, dy){
 // 横一下竖一下会累积出绕屏幕法线的自转，来回几次画面就歪了。
 // 这两根轴组合起来不会自转，怎么拖都不歪；又没有欧拉角那种俯角死区，
 // 一路翻过去也不会卡住（翻过头会上下颠倒，那是转台式的正常表现）
-let prYawSign = 1;
-function prOrbit(dx, dy){
+function vOrbit(V, dx, dy){
   if(dx){
     // 黄轴在 R 眼里的方向要先过一遍 G，不然转过中间层之后绕的就不是它了
-    const up = vmul(PR.G, [0,1,0]);
+    const up = vmul(V.G, [0,1,0]);
     // 魔方翻过头、黄轴朝下时，绕它转在屏幕上就是反的（地球仪转到南极朝上一个道理），
     // 得跟着翻符号才跟手。黄轴快正对屏幕时 uy 在 0 附近抖，留个死区别让方向乱跳
-    const uy = vmul(PR.R, up)[1];
-    if(Math.abs(uy) > 0.15) prYawSign = uy >= 0 ? 1 : -1;
-    PR.R = mmul(PR.R, axisRotM(up, prYawSign*dx*0.008));
+    const uy = vmul(V.R, up)[1];
+    if(Math.abs(uy) > 0.15) V.yawSign = uy >= 0 ? 1 : -1;
+    V.R = mmul(V.R, axisRotM(up, V.yawSign*dx*0.008));
   }
-  if(dy) PR.R = mmul(axisRotM([1,0,0], dy*0.008), PR.R);
+  if(dy) V.R = mmul(axisRotM([1,0,0], dy*0.008), V.R);
 }
 // 双指拧 = 绕屏幕法线转（roll）。屏幕 y 朝下，两指顺时针拧 dA 变大，
 // 而绕相机 +Z 转正角在屏幕上是逆时针，所以要取负号才跟手
-function prRoll(dA){
-  if(dA) PR.R = mmul(axisRotM([0,0,1], -dA), PR.R);
+function vRoll(V, dA){
+  if(dA) V.R = mmul(axisRotM([0,0,1], -dA), V.R);
 }
+const prOrbit = (dx,dy) => vOrbit(PR, dx, dy);
+const prRoll  = dA => vRoll(PR, dA);
+/* ---- 整体转 x/y/z：像实体魔方那样随手把整个魔方翻一格 ----
+   状态模型以中心块为参照，整体转不改变它，几何 cubies 也不用动 ——
+   要变的只有「魔方相对参照系转了多少」，也就是 G。渲染是 cam·G·p，
+   动画期间直接插值 G 就行，不用给 render 加「转全部块」的分支。
+   不记进转动记录：它不改变魔方状态，记进去只会让步数虚增、退回也没意义 */
+function prWholeSpin(axis, rotSign, quarter){
+  if(prBusy) return;
+  prBusy = true;
+  const G0 = PR.G, total = rotSign*quarter*Math.PI/2;
+  const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+  const t0 = performance.now(), dur = 190*prCfg('spd');
+  prMsg('整体转 ' + wholeLabel(axis, rotSign, quarter));
+  (function frame(now){
+    const t = dur ? Math.min(1,(now-t0)/dur) : 1;
+    PR.G = mmul(G0, rotM(axis, total*ease(t)));
+    prRender();
+    if(t<1){ requestAnimationFrame(frame); return; }
+    PR.G = mmul(G0, rotM(axis, total));
+    prBusy = false; buzz(8); prRender();
+  })(t0);
+}
+// 屏幕上朝 camDir 的那根几何主轴。整体转要绕魔方自己的轴转（不然会转歪），
+// 但手指给的是屏幕方向，得先换算过去。cam = R·G，所以拿 cam 把六个候选轴各投一遍
+function vScreenAxis(V, camDir){
+  const cam = V.cam;
+  let axis = 0, sign = 1, best = -Infinity;
+  for(let k=0;k<3;k++) for(const s of [1,-1]){
+    const a = [0,0,0]; a[k] = s;
+    const v = vmul(cam, a);
+    const d = v[0]*camDir[0] + v[1]*camDir[1] + v[2]*camDir[2];
+    if(d > best){ best = d; axis = k; sign = s; }
+  }
+  return {axis, sign};
+}
+// 在留白处快划一下 = 整个魔方翻一格。慢慢拖还是自由看角度，
+// 快划就把这一下自由转撤销掉（R 回到按下时的样子），换成吸附到整格的 x/y/z
+function prWholeFling(d){
+  PR.R = d.R0;
+  const horiz = Math.abs(d.vx) >= Math.abs(d.vy);
+  // 横划绕屏幕竖直方向那根轴，竖划绕屏幕水平方向那根轴
+  const a = vScreenAxis(PR, horiz ? [0,1,0] : [1,0,0]);
+  const drive = horiz ? d.vx : d.vy;
+  prWholeSpin(a.axis, a.sign * (drive > 0 ? 1 : -1), 1);
+}
+
 let prHomeRAF = 0;
 // 摆回黄顶绿前橙右。cam = R·G，要让 cam 等于 PR_CAM0，就取 R = PR_CAM0·G⁻¹ ——
 // 转过中间层（G 不是单位阵）时这一步会把魔方整个转回来，屏幕上的层就又跟记号对上了
 function prRecenter(){
   const target = mmul(PR_CAM0, mtrans(PR.G)), R0 = PR.R;
-  prYawSign = 1;                          // 摆正了，黄轴又朝上
+  PR.yawSign = 1;                         // 摆正了，黄轴又朝上
 
   cancelAnimationFrame(prHomeRAF);
   // 从「还差这么多」这个旋转里取出轴和角，绕它转过去，别硬跳
@@ -1549,6 +1946,7 @@ const prTwoInfo = () => {
 // 第二根手指落下时放弃正在拖的那一层：转过的角度原路弹回，不记步
 function prDropDrag(){
   const d = prDrag;
+  if(d) clearTimeout(d.hintT);
   prDrag = null; PR.hl = null; prMsg('');
   if(d && d.turn && d.ang)
     prSpin({axis:d.turn.axis, layer:d.turn.layer, rotSign:d.ang>0?1:-1},
@@ -1564,11 +1962,35 @@ prStage.addEventListener('pointerdown', e => {
   if(prPts.size === 2){ prDropDrag(); prTwo = prTwoInfo(); return; }
   if(prPts.size > 2) return;
   prDrag = {x, y, px:x, py:y, x0:x, y0:y, pick:prPick(x,y),
-            turn:null, ang:0, locked:false, msg:''};
+            turn:null, ang:0, locked:false, msg:'', snap:0,
+            R0:PR.R, vx:0, vy:0, t:performance.now(), hintT:0};   // R0/v 给快划整体转用
+  // 按住一格不动，就告诉他这格能转哪两层
+  if(prDrag.pick) prDrag.hintT = setTimeout(() => {
+    if(prDrag && prDrag.pick && !prDrag.turn && !prDrag.msg)
+      prMsg('这格能转 ' + prPickLayers(prDrag.pick).join(' 或 ') + ' 层');
+  }, 340);
 });
 // 那一层跟着手指转，像真魔方。转过 45° 松手才算一步，不到就弹回去。
 // 刚开始拖时层还能改（方向判错了接着拖就是），转过约 15° 之后锁定
-const PR_LOCK = 0.26, PR_SNAP = Math.PI/4;
+const PR_LOCK = 0.26;      // 转过这么多弧度就锁定层，之后拖动只改角度不改层
+// 贴纸绕轴走圆弧，屏幕位移按 sin(角度) 走，所以前 64° 取 asin 才跟手。
+// 再往后 sin 就饱和了（导数发散），硬跟会几个像素窜出几十度 ——
+// 到 PR_SIN 这个点改成按当时的切线斜率线性延伸，导数接得上、还单调。
+// 切点定在 0.9 而不是更早，是为了让延伸段够陡：拖满 180° 约 1.8 个 |v|
+// （正对镜头时二百多像素，屏幕上够得着），定在 0.7 要 2.4 个，拖不到头。
+// 一口气最多 270°，再多没意义
+const PR_SIN = 0.9, PR_SIN_A = Math.asin(PR_SIN),
+      PR_SIN_K = 1/Math.sqrt(1-PR_SIN*PR_SIN), PR_MAXA = 3*Math.PI/2;
+// 拖过的角度算几个整格：每格里超过「转成的门槛」就进位。
+// 门槛正好 45° 时等价于四舍五入，调低更容易转成、调高更不容易误转
+function prQuarters(ang){
+  const a = Math.abs(ang), Q = Math.PI/2;
+  const whole = Math.floor(a/Q + 1e-9);
+  const rem = a - whole*Q;
+  return Math.min(3, whole + (rem > prCfg('snap')*Math.PI/180 ? 1 : 0));
+}
+// 快划判定：速度够快、且确实划出了一段距离
+const PR_FLING = 0.55, PR_FLING_D = 26;
 prStage.addEventListener('pointermove', e => {
   if(!prPts.has(e.pointerId)) return;
   const [x, y] = prXY(e);
@@ -1589,27 +2011,40 @@ prStage.addEventListener('pointermove', e => {
   prDrag.x = x; prDrag.y = y;
   if(prDrag.pick){
     const dx = x-prDrag.x0, dy = y-prDrag.y0;
+    // 已经开始拖了，就别再弹「这格能转什么」的提示
+    if(prDrag.hintT && dx*dx + dy*dy > 36){ clearTimeout(prDrag.hintT); prDrag.hintT = 0; }
     if(!prDrag.locked)
       prDrag.turn = (dx*dx + dy*dy < 10*10) ? null : prDragTurn(prDrag.pick, dx, dy);
     const t = prDrag.turn;
     let ang = 0;
     if(t){
-      // v 是「每 1 弧度挪多少像素」的线性化结果，可贴纸实际是绕轴走圆弧、
-      // 屏幕位移按 sin 走。直接除会越转越跟不上手（45° 时差两成半），
-      // 反过来取 asin 才跟手；顺带天然卡在 ±90°，不用再 clamp
+      // v 是「每 1 弧度挪多少像素」的线性化结果，手指沿 v 方向走了多远，
+      // 除以 |v| 就是这一层转过角度的 sin 值（见 PR_SIN 那段注释）
       const vn = Math.hypot(t.v[0], t.v[1]);
-      const u = vn ? (dx*t.v[0] + dy*t.v[1]) / vn : 0;
-      ang = Math.asin(Math.max(-1, Math.min(1, u/(vn||1))));
+      const u = vn ? (dx*t.v[0] + dy*t.v[1]) / (vn*vn) : 0;
+      const a = Math.abs(u);
+      ang = a <= PR_SIN ? Math.asin(a) : PR_SIN_A + (a-PR_SIN)*PR_SIN_K;
+      ang = (u < 0 ? -1 : 1) * Math.min(ang, PR_MAXA);
       if(Math.abs(ang) > PR_LOCK) prDrag.locked = true;   // 锁定后可以反着拖回来
     }
     prDrag.ang = ang;
     PR.hl = t ? {axis:t.axis, layer:t.layer} : null;
+    const q = t ? prQuarters(ang) : 0;
+    const turn = t && {axis:t.axis, layer:t.layer, rotSign: ang>0 ? 1 : -1};
     const msg = !t || !ang ? ''
-      : (Math.abs(ang) > PR_SNAP ? '松手就转 ' : '再多转一点：')
-        + turnLabel({axis:t.axis, layer:t.layer, rotSign: ang>0 ? 1 : -1});
+      : q ? '松手就转 ' + moveLabel(turn, q)
+          : '再多转一点：' + turnLabel(turn);
     if(msg !== prDrag.msg){ prDrag.msg = msg; prMsg(msg); }
+    // 每跨过一个整格的吸附点震一下，像转过一个卡位
+    if(q !== prDrag.snap){ if(q > prDrag.snap) buzz(6); prDrag.snap = q; }
     prRender(t ? {axis:t.axis, layer:t.layer, m:rotM(t.axis, ang)} : null);
   }else{
+    // 顺手记一下速度，松手时拿它判断是不是「快划一下翻整格」。
+    // 单帧的 dx/dt 抖得厉害，掺一点上一次的值平滑掉
+    const now = performance.now(), dt = Math.max(4, now-prDrag.t);
+    prDrag.vx = prDrag.vx*0.4 + (x-prDrag.px)/dt*0.6;
+    prDrag.vy = prDrag.vy*0.4 + (y-prDrag.py)/dt*0.6;
+    prDrag.t = now;
     prOrbit(x-prDrag.px, y-prDrag.py);
     if(!prBusy) prRender();
   }
@@ -1622,11 +2057,22 @@ const prEnd = e => {
   const d = prDrag;
   prDrag = null;
   PR.hl = null;
-  if(!d || !d.turn || !d.ang){ if(d) prRender(); return; }
+  if(!d) return;
+  clearTimeout(d.hintT);
+  if(!d.turn || !d.ang){
+    prMsg('');
+    // 没在转层：留白处快划一下就吸附成一格整体转，慢慢拖的就保持自由视角
+    if(!d.pick && prCfg('fling') && Math.hypot(d.vx, d.vy) > PR_FLING
+       && Math.hypot(d.x-d.x0, d.y-d.y0) > PR_FLING_D) prWholeFling(d);
+    else prRender();
+    return;
+  }
   prMsg('');
   const t = {axis:d.turn.axis, layer:d.turn.layer, rotSign: d.ang>0 ? 1 : -1};
-  // 过半就补成一整格并记一步，没过半就原路弹回（quarter 给 0）
-  prSpin(t, Math.abs(d.ang) > PR_SNAP ? 1 : 0, Math.abs(d.ang) > PR_SNAP, null, d.ang);
+  // 吸附到最近的整格：不到 45° 原路弹回（quarter 给 0），
+  // 拖过头了就一次记 2 格、3 格，跟实体魔方一口气拨到底一样
+  const q = prQuarters(d.ang);
+  prSpin(t, q, q > 0, null, d.ang);
 };
 prStage.addEventListener('pointerup', prEnd);
 prStage.addEventListener('pointercancel', prEnd);
@@ -1673,7 +2119,6 @@ $('prCopy').onclick = () => {
    练习页跟着解法转：解法就摆在魔方下面，转对了自动往下走
    ========================================================== */
 let prPlan = null;
-let prArrowOn = localStorage.getItem('cube_pr_arrow') !== '0';
 
 const stEq = (a,b) => {
   for(let i=0;i<8;i++)  if(a.cp[i]!==b.cp[i] || a.co[i]!==b.co[i]) return false;
@@ -1765,7 +2210,7 @@ function prPlanRender(){
     const mv = (i===0 || prPlan.atMove[i-1] !== mi) ? prPlan.moves[mi] : prPlan.qm[i];
     $('prPlanNow').textContent = mv;
     $('prPlanDesc').textContent = describe(mv) + `　还剩 ${n-i} 格`;
-    if(prArrowOn) PR.arrow = prMoveTurn(prPlan.qm[i]);
+    if(prCfg('arrow')) PR.arrow = prMoveTurn(prPlan.qm[i]);
   }
   const seq = $('prPlanSeq');
   seq.innerHTML = prPlan.moves.map((m,k) => {
@@ -1775,15 +2220,10 @@ function prPlanRender(){
   const cur = seq.querySelector('span.cur');
   if(cur && cur.offsetLeft != null) seq.scrollLeft = cur.offsetLeft - 70;
 }
-$('prPlanTog').onclick = () => {
-  prArrowOn = !prArrowOn;
-  localStorage.setItem('cube_pr_arrow', prArrowOn ? '1' : '0');
-  $('prPlanTog').classList.toggle('on', prArrowOn);
-  prPlanRender(); prRender();
-};
+// 「箭头」按钮和设置面板里的那一项是同一个偏好，点哪边都同步
+$('prPlanTog').onclick = () => prSetPut('arrow', prCfg('arrow') ? 0 : 1);
 $('prPlanX').onclick = () => { prPlan = null; prPlanRender(); prRender(); };
 $('prPlanAgain').onclick = prPlanStart;
-$('prPlanTog').classList.toggle('on', prArrowOn);
 
 /* ---- 按钮 ----
    正好是求解器会用到的那 18 个记号，一一对应。中间层不给按钮，拖着转就是 */
@@ -1801,7 +2241,7 @@ function prLoad(st, scram){
   prHist = []; prCount = 0; prElapsed = 0; prT0 = 0;
   prScramSeq = scram || '';
   PR.G = [[1,0,0],[0,1,0],[0,0,1]];
-  PR.R = PR_CAM0; prYawSign = 1;        // 新的一局从标准持方视角开始
+  PR.R = PR_CAM0; PR.yawSign = 1;       // 新的一局从标准持方视角开始
   cancelAnimationFrame(prHomeRAF);
   prPlan = null; prPlanRender();         // 换局了，旧解法作废
   clearInterval(prTick); prTick = 0;
@@ -2011,7 +2451,7 @@ $('camShot').onclick = () => {
   // 六面齐了，归类并回填展开图
   const guess = classifyAll();
   camStop();
-  net = guess; cursor = 0; paintNet(); invalidatePlan();
+  net = guess; paintNet(); invalidatePlan();
   const chk = faceletToCubie(net);
   showMsg(chk.error
     ? '识别完了，但有对不上的地方：' + chk.error + '　—— 在上面的展开图里改掉那几格再求解'
@@ -2056,10 +2496,13 @@ $('camInput').onchange = async e => {
 };
 
 /* ---- 启动 ---- */
+inResize();
 paintNet();
 cubies = buildGeo(SOLVED_FACELET);
 resize();
 renderStep();
 prLoad(solvedState());
-window.addEventListener('resize', () => { prResize(); prRender(); });
+// 把存下来的设置铺到界面上（箭头按钮的高亮、计时器显示与否都在这儿定）
+prSetPut('vib', prSetIdx.vib);
+window.addEventListener('resize', () => { inResize(); inRender(); prResize(); prRender(); });
 </script>
