@@ -2,8 +2,7 @@
 
 个人项目仓库，GitHub Pages 托管。项目之间互不依赖，**改任何文件前先确认改的是哪个项目**。
 
-大部分项目是单文件 HTML（数据放同目录的 `.js`），也有两个例外：
-`monster/` 是多文件模块化的，`api-relay/` 是 Cloudflare Worker 不走 Pages。
+都是单文件 HTML（数据放同目录的 `.js`）。
 
 根目录没有 `index.html`，`https://suitaw.github.io/` 是 404，各项目要用完整路径访问。
 
@@ -156,65 +155,8 @@
 
 ---
 
-## rubiks-cube.html
-
-魔方打乱→复原的循环动画，纯观赏用。**不是求解器**，"复原"就是把打乱序列倒放。
-内置 MediaRecorder 可以录成视频文件。配色是标准的（白顶绿前红右），和 cube-solver 不同。
-
----
-
 ## exam-quiz.html
 
 609 题题库应用，8 个章节。
 
 **硬性约定：只改 `exam-quiz.html`，永远不要动 `questions.js`。**
-
----
-
-## 够级记牌器（gouji-tracker.html）
-
-Android 悬浮窗 PWA，当前 v13（简化版，只记录对手出牌）。
-
-- 三人手牌追踪，够级阈值触发金色徽章闪烁 + 震动
-- 明暗主题，含出牌轮转逻辑
-
-**游戏背景**（改逻辑前必须理解）：
-够级是 6 人 6 副牌的老鹰变体。牌力：老鹰 > 大王 > 小王 > 2 > A > … > 5 > 4 > 3。
-3 每种 6 张，其他点数在牌池里各 24 张。
-机制包括：开点、打点、闷、憋四、烧牌、过牌、让牌、进供的各种变体、买三买四。
-
----
-
-## codepath.html
-
-40 课时的项目制 Python 课程，课程数据在 `lessons.js`。最终产物是 debug_agent。
-
----
-
-## ai-chat.html / chat-test.html
-
-两个独立的 AI 对话页面，别搞混：
-- `ai-chat.html`（699 行）日常用的聊天工具
-- `chat-test.html`（622 行）对话测试站，模型下拉选择、图片/文件上传、流式输出
-
----
-
-## delivery-income.html
-
-跑单收入统计，约 1500 行，数据存 `localStorage`。
-
-## money-track/
-
-记账应用，在子目录里（`money-track/index.html`），访问路径带斜杠。
-
-## monster/
-
-「怪兽冒险」宝可梦风格回合制 RPG，约 3400 行。
-**这个不是单文件**：`core / data / world / battle / sprites / audio` 六个模块。
-所有像素图、音乐、音效都由代码实时生成，零外部素材。
-
-## api-relay/
-
-Cloudflare Worker 写的多服务商 API 反向代理，**不走 GitHub Pages**。
-给仓库里那些直连 AI API 的页面解决 CORS 和域名访问问题。
-支持 `/anthropic/*`、`/openai/*` 等前缀转发。
