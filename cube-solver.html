@@ -320,6 +320,9 @@
     <button id="prTip">提示下一步</button>
     <button id="prSolveIt">跟着解法转</button>
   </div>
+  <div class="row" style="margin-top:8px">
+    <button id="prToIn" style="flex:1 1 100%">把这个魔方填进①输入页</button>
+  </div>
 
   <div id="prLog">
     <div id="prLogHd"><span>转动记录 · <b id="prLogN">0 步</b></span>
@@ -2398,6 +2401,13 @@ $('prUndo').onclick = () => {
   prSpin({axis:t.axis, layer:t.layer, rotSign:-t.rotSign}, last.quarter, false);
 };
 $('prHome').onclick = () => { if(!prBusy) prRecenter(); };
+// 状态本来就在手里，直接搬过去 —— 截图再走一遍识别纯属绕远路，还会认错
+$('prToIn').onclick = () => {
+  net = cubieToFacelet(prState);
+  paintNet(); invalidatePlan();
+  goTab(0);
+  showMsg('已经把第③页那个魔方原样填进来了，可以直接求解', 'ok');
+};
 $('prTip').onclick = () => {
   if(prBusy) return;
   if(isSolved(prState)){ prMsg('已经是复原状态了'); return; }
@@ -3009,6 +3019,19 @@ $('camClose').onclick = camStop;
 $('camBack').onclick = () => {
   if(camStep>0){ camStep--; camPicked.pop(); camStill=null; $('camErr').textContent=''; camRender(); }
 };
+/* 两个面的九格颜色几乎一样，多半是同一张图采了两遍（或者换面时忘了换图）。
+   随机打乱的魔方上两面雷同的概率极低，宁可误报也要提醒一句 */
+function camDupFaces(picked){
+  for(let a=0;a<6;a++) for(let b=a+1;b<6;b++){
+    let same = 0;
+    for(let i=0;i<9;i++){
+      const p=picked[a][i], q=picked[b][i];
+      if(Math.abs(p[0]-q[0])<18 && Math.abs(p[1]-q[1])<18 && Math.abs(p[2]-q[2])<18) same++;
+    }
+    if(same >= 8) return [a,b];
+  }
+  return null;
+}
 $('camBoxR').onclick = () => camBoxReset();
 $('camShot').onclick = () => {
   camPicked[camStep] = sampleGrid(camCtx);
@@ -3018,16 +3041,23 @@ $('camShot').onclick = () => {
   const guess = classifyAll();
   camStop();
   net = guess; paintNet(); invalidatePlan();
+  const dup = camDupFaces(camPicked);
   const chk = faceletToCubie(net);
   // 能指出具体哪几格的（角/棱配色不对）已经被 netTrouble 标红了，直接让他点那儿改。
   // 奇偶性、朝向这类整体约束 netTrouble 故意不查，那种情况一格都没标红，
   // 就别说「标红的格子」了 —— 得让他整体核对
   const bad = netTrouble(net);
+  const dupMsg = dup
+    ? `　另外：「${FACE_CN[CAM_STEPS[dup[0]].f]}」和「${FACE_CN[CAM_STEPS[dup[1]].f]}」`
+      + '这两面取到的颜色几乎一模一样 —— 多半是同一张图采了两遍，或者换面时忘了换图。'
+    : '';
   showMsg(chk.error
     ? '识别完了，但有对不上的地方：' + chk.error + '　—— '
       + (bad ? '标红的格子就是问题所在：先在色板选对的颜色，再点那一格改掉'
              : '这类问题看不出是哪一格错，多半是某个块的朝向认反了，转着魔方整体核对一遍')
-    : '识别完了，六个面都填好了。转着核对一遍，没问题就点求解。', chk.error ? 'err' : 'ok');
+      + dupMsg
+    : '识别完了，六个面都填好了。转着核对一遍，没问题就点求解。' + dupMsg,
+    (chk.error || dup) ? 'err' : 'ok');
   window.scrollTo(0,0);
 };
 
@@ -3084,7 +3114,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-07 21:52';
+const BUILD = '2026-08-07 22:04';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
