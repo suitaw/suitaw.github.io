@@ -134,9 +134,14 @@
     align-items:center;gap:8px}
   #prPlanOff.on{display:flex}
   #prPlanOff button{padding:4px 9px;font-size:12px;border-radius:7px}
+  #prPlanBar{display:flex;gap:6px;margin-top:7px}
+  #prPlanBar button{flex:1;padding:6px 4px;font-size:12px;border-radius:7px;white-space:nowrap}
+  #prPlanBar button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
   #prPlanSeq{display:flex;gap:4px;overflow-x:auto;margin-top:7px;padding-bottom:2px;
     font-family:ui-monospace,Menlo,monospace;font-size:13px}
-  #prPlanSeq span{padding:3px 7px;border-radius:6px;background:#1b212b;white-space:nowrap}
+  /* 每一手都点得到，所以留出手指够得着的padding */
+  #prPlanSeq span{padding:5px 9px;border-radius:6px;background:#1b212b;white-space:nowrap;
+    cursor:pointer;user-select:none}
   #prPlanSeq span.done{color:#3d4757}
   #prPlanSeq span.cur{background:var(--acc);color:#fff;font-weight:700}
   #prLog{margin:10px 0 2px;background:#12161d;border:1px solid var(--line);
@@ -308,6 +313,12 @@
       <button id="prPlanX">×</button>
     </div>
     <div id="prPlanOff"><span>跟解法对不上了</span><button id="prPlanAgain">重新算</button></div>
+    <div id="prPlanBar">
+      <button id="prPlanPlay">▶ 播放</button>
+      <button id="prPlanBack">◀ 退一步</button>
+      <button id="prPlanTop">⏮ 从头</button>
+      <button id="prPlanSpd">速度：正常</button>
+    </div>
     <div id="prPlanSeq"></div>
   </div>
 
@@ -1800,7 +1811,7 @@ function prBake(turn, quarter){
 // turn = {axis, layer, rotSign}；layer 为 0 就是中间层
 // from：这一层已经被手指转到的角度（弧度）。跟手拖到一半松手时从那儿接着补，
 // 不从 0 重放。quarter 为 0 表示「弹回原位」——只放动画，不落到模型上
-function prSpin(turn, quarter, record, tag, from){
+function prSpin(turn, quarter, record, tag, from, done){
   if(prBusy) return null;
   prBusy = true;
   if(record) prStartClock();
@@ -1810,8 +1821,9 @@ function prSpin(turn, quarter, record, tag, from){
   const total = rotSign*quarter*Math.PI/2;
   from = from || 0;
   // 时长按「还差多少角度」缩放：手指已经转过大半时只补最后一点，别再慢慢转一遍。
-  // 设置里选「不要动画」时 spd 为 0，dur 也就是 0，第一帧直接落到位
-  const spd = prCfg('spd');
+  // 设置里选「不要动画」时 spd 为 0，dur 也就是 0，第一帧直接落到位。
+  // 播放解法时用 prSpdOv 顶替：那会儿人是在看演示，跟平时自己转的手感是两回事
+  const spd = prSpdOv != null ? prSpdOv : prCfg('spd');
   const dur = spd ? Math.max(80, (quarter>1 ? 260 : 170) * spd
               * Math.abs(total-from) / (Math.abs(total) || Math.PI/2)) : 0;
   const label = tag || [layer===0 ? '中间层' : ''];
@@ -1842,6 +1854,7 @@ function prSpin(turn, quarter, record, tag, from){
         prMsg(`复原了！用时 ${fmtT(prElapsed)}，共 ${prCount} 步`, true);
       }
     }
+    if(done) done();
   })(t0);
   return label;
 }
@@ -2318,16 +2331,22 @@ function prPlanStart(){
     setTimeout(run, 60);
   }else run();
 }
+// 倒着播时的一次性提示：这一下是「退一格」，别按前进认。用完即清
+let prSyncBack = false;
 // 转完一步就拿当前状态回解法里找位置：找得到就是走到那儿了，找不到就是转岔了
 function prPlanSync(){
-  if(!prPlan) return;
+  if(!prPlan){ prSyncBack = false; return; }
   const S = prPlan.states, i = prPlan.i;
   // 同一个状态可能在解法里出现不止一次，所以先按「最可能发生的事」认：
   // 往下走一格 → 撤销一格 → 原地。都不是才去全局找最近的那个位置。
   // （不这么排的话，重复状态会让光标在两格之间来回跳，走不完）
+  // 倒着播的时候这个顺序要反过来：解法里出现相邻的 R R' 就会有 S[i-1]===S[i+1]，
+  // 按前进认的话每退一格又被认回去，永远退不到头
+  const a = prSyncBack ? i-1 : i+1, b = prSyncBack ? i+1 : i-1;
+  prSyncBack = false;
   let best = -1;
-  if(i+1 < S.length && stEq(S[i+1], prState)) best = i+1;
-  else if(i > 0 && stEq(S[i-1], prState)) best = i-1;
+  if(a >= 0 && a < S.length && stEq(S[a], prState)) best = a;
+  else if(b >= 0 && b < S.length && stEq(S[b], prState)) best = b;
   else if(stEq(S[i], prState)) best = i;
   else{
     let bd = Infinity;
@@ -2360,14 +2379,91 @@ function prPlanRender(){
     $('prPlanDesc').textContent = describe(mv) + `　还剩 ${n-i} 格`;
     if(prCfg('arrow')) PR.arrow = prMoveTurn(prPlan.qm[i]);
   }
+  const playing = prPlayTo >= 0;
+  $('prPlanPlay').textContent = playing ? '■ 停' : done ? '▶ 重播' : '▶ 播放';
+  $('prPlanPlay').classList.toggle('on', playing);
+  $('prPlanSpd').textContent = '速度：' + PR_PLAY_CN[prPlaySpd];
+  $('prPlanBack').disabled = playing || i === 0;
+  $('prPlanTop').disabled  = playing || i === 0;
+
   const seq = $('prPlanSeq');
   seq.innerHTML = prPlan.moves.map((m,k) => {
     const at = done ? prPlan.moves.length : prPlan.atMove[i];
-    return `<span class="${k<at?'done':k===at?'cur':''}">${m}</span>`;
+    return `<span data-k="${k}" class="${k<at?'done':k===at?'cur':''}">${m}</span>`;
   }).join('');
   const cur = seq.querySelector('span.cur');
   if(cur && cur.offsetLeft != null) seq.scrollLeft = cur.offsetLeft - 70;
 }
+/* ---- 播放解法 ----
+   一格一格地转过去，前进就转 qm[i]、后退就反着转 qm[i-1]。
+   每格转完 prSpin 里的 prPlanSync 会把 prPlan.i 挪好，所以循环只要盯着 i 和目标比 */
+const PR_PLAY = [2.6, 1.6, 1.0, 0.55];              // 倍率，越大越慢
+const PR_PLAY_CN = ['很慢', '慢', '正常', '快'];
+let prPlaySpd = +(localStorage.getItem('cube_pr_play') ?? 2);
+if(!(prPlaySpd >= 0 && prPlaySpd < PR_PLAY.length)) prPlaySpd = 2;
+let prSpdOv = null;        // 播放期间顶替设置里的动画速度
+let prPlayTo = -1;         // 播到第几格；-1 = 没在播
+
+function prPlayStop(){
+  prPlayTo = -1; prSpdOv = null;
+  if(prPlan) prPlanRender();
+}
+// 播放会打乱「自己转了几步」的账，所以先把这一局的记录清掉（问一声）
+function prPlayClear(){
+  if(!prHist.length) return true;
+  if(!confirm(`播放解法会把这一局已经转的 ${prHist.length} 步记录清掉，继续？`)) return false;
+  prHist = []; prCount = 0; prElapsed = 0; prT0 = 0;
+  clearInterval(prTick); prTick = 0;
+  prLogRender(); prUpdate();
+  return true;
+}
+function prPlayGo(target){
+  if(!prPlan || prBusy) return;
+  if(prPlan.off){ prMsg('现在的魔方跟解法对不上，先撤销回去或者重新算一份'); return; }
+  target = Math.max(0, Math.min(prPlan.qm.length, target));
+  if(target === prPlan.i){ prPlayStop(); return; }
+  if(!prPlayClear()){ return; }
+  prPlayTo = target; prSpdOv = PR_PLAY[prPlaySpd];
+  prPlanRender();
+  (function step(){
+    if(prPlayTo < 0 || !prPlan || prPlan.i === prPlayTo){ prPlayStop(); return; }
+    const fwd = prPlayTo > prPlan.i;
+    const t = prMoveTurn(prPlan.qm[fwd ? prPlan.i : prPlan.i - 1]);
+    if(!t){ prPlayStop(); return; }
+    prSyncBack = !fwd;
+    prSpin(fwd ? t : {axis:t.axis, layer:t.layer, rotSign:-t.rotSign},
+           1, false, null, 0, () => setTimeout(step, 80*PR_PLAY[prPlaySpd]));
+  })();
+}
+$('prPlanPlay').onclick = () => {
+  if(prPlayTo >= 0){ prPlayStop(); return; }        // 正在播 → 停
+  if(!prPlan) return;
+  prPlayGo(prPlan.i >= prPlan.qm.length ? 0 : prPlan.qm.length);
+};
+// 「退一步」退的是一手，不是一格：R2 转到一半时先退回这一手的开头
+function prPlanPrevQ(){
+  const {qm, atMove, moves, i} = prPlan;
+  const mi = i >= qm.length ? moves.length : atMove[i];
+  const head = atMove.indexOf(mi);                 // 当前这一手的第一格；走完了是 -1
+  if(head >= 0 && i > head) return head;
+  return mi > 0 ? atMove.indexOf(mi-1) : 0;
+}
+$('prPlanBack').onclick = () => { prPlayStop(); if(prPlan) prPlayGo(prPlanPrevQ()); };
+$('prPlanTop').onclick  = () => { prPlayStop(); prPlayGo(0); };
+$('prPlanSpd').onclick = () => {
+  prPlaySpd = (prPlaySpd + 1) % PR_PLAY.length;
+  localStorage.setItem('cube_pr_play', prPlaySpd);
+  if(prSpdOv != null) prSpdOv = PR_PLAY[prPlaySpd];   // 播到一半改速度，立刻生效
+  if(prPlan) prPlanRender();
+};
+// 点解法里的某一手 = 一路播到那一手之前，让人看清中间发生了什么
+$('prPlanSeq').onclick = e => {
+  const el = e.target.closest('span[data-k]');
+  if(!el || !prPlan) return;
+  prPlayStop();
+  const q = prPlan.atMove.indexOf(+el.dataset.k);
+  if(q >= 0) prPlayGo(q);
+};
 // 「箭头」按钮和设置面板里的那一项是同一个偏好，点哪边都同步
 $('prPlanTog').onclick = () => prSetPut('arrow', prCfg('arrow') ? 0 : 1);
 $('prPlanX').onclick = () => { prPlan = null; prPlanRender(); prRender(); };
@@ -3165,7 +3261,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-08 05:44';
+const BUILD = '2026-08-08 06:12';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
