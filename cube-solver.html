@@ -2455,6 +2455,14 @@ const focusPiece = (...fs) => {
 // 说明里讲「把已经翻正的那个角放在左前方」这种**方位**时必须用它 ——
 // 用 focusPiece 按颜色认块会出错：公式会轮换块的位置，那颗块未必还在那个方位
 const focusAt = (x,y,z) => cb => cb.p[0]===x && cb.p[1]===y && cb.p[2]===z;
+// 几个并起来。讲「棱的侧面色要和中心块同色」这种**对照**关系时，
+// 参照的那个中心块也得亮着 —— 压暗了就没法比了
+const focusAny = (...fs) => cb => fs.some(f => f(cb));
+const focusSideCenters = () => cb => cubieKind(cb)===1 && cb.p[1]===0;   // 四个侧面中心
+
+// 白十字做好了、上面两层还乱着 —— 这一课做完就长这样。
+// 全是「X Y X'」共轭宏，只搅动上面，D 层四个棱一格没动，所以白十字必然保住
+const SCR_CROSS_DONE = ["R","U","R'","F","U'","F'","L","U2","L'","B","U","B'"];
 // 只亮底面那四个棱（白十字）
 const focusCross = () => cb => cubieKind(cb) === 2 && cb.p[1] === -1;
 const focusD = () => cb => cb.p[1] === -1;
@@ -2515,15 +2523,17 @@ const TU_LESSONS = [
   {t:'就这些', d:'六个字母 + 撇 + 2，一共 18 种转法，所有公式都由它们拼出来。'},
 ]},
 { name:'2. 白十字', tip:'底面白色的四个棱，白面朝下、侧面颜色也要对上。', phase:0, steps:[
-  {t:'目标：底面一个白十字', d:'白色四个棱块归位。注意不是白面朝下就行 —— 它另一个颜色必须和那一面的中心块对上。',
-   scr:[], focus:focusCross(), view:TU_CAM_UP},
-  {t:'侧面必须对齐', d:'这就是做好的样子：白棱露在侧面的那个颜色，要和它上面的中心块同色。四面都对上了才算数。',
-   scr:[], focus:focusD(), view:TU_CAM_UP},
-  {t:'找一个白棱', d:'亮着的这颗就是白+绿棱，现在翻在顶层，绿色那面还没对着绿色中心 —— 先别急着往下塞。',
-   scr:rev(["U'",'F2']), focus:focusPiece('D','F')},
-  {t:'先对准，再翻下去', d:"转 U 层让它的绿色对准绿色中心（这里是 U'），然后前面转 180°（F2），它就下去了 —— 底下已经摆好的不会被碰到。",
-   scr:rev(["U'",'F2']), alg:["U'",'F2']},
-  {t:'四个棱都这么做', d:'白+绿、白+橙、白+蓝、白+红，一个一个来。这一课没有公式要背，全靠对准了再翻下去。'},
+  {t:'目标：底面一个白十字', d:'把白色的四个棱块归位，就长这样 —— 上面两层现在还乱着，这一课不用管它们。',
+   scr:SCR_CROSS_DONE, focus:focusCross(), view:TU_CAM_UP},
+  {t:'光白面朝下还不算', d:'亮着的四个中心块是参照：每个白棱露在侧面的那个颜色，必须和它上面的中心块同色。四面都对上了才算做好。',
+   scr:SCR_CROSS_DONE, focus:focusAny(focusCross(), focusSideCenters()), view:TU_CAM_UP},
+  {t:'找一个白棱', d:'亮着的这颗是白+绿棱，现在翻在顶层，白面朝上、绿面朝右。旁边亮着的是绿色中心 —— 它俩还没对上，先别急着往下塞。',
+   scr:rev(['U','F2']), focus:focusAny(focusPiece('D','F'), focusPiece('F'))},
+  {t:'先对准，再翻下去', d:"转 U 层让它的绿面对准绿色中心（这里是 U），然后前面转 180°（F2），它就翻下去了 —— 已经摆好的那几个白棱不会被碰到。",
+   scr:rev(['U','F2']), alg:['U','F2'],
+   focus:focusAny(focusPiece('D','F'), focusPiece('F'))},
+  {t:'四个棱都这么做', d:'白+绿、白+橙、白+蓝、白+红，一个一个来。这一课没有公式要背，全靠对准了再翻下去。',
+   scr:SCR_CROSS_DONE, focus:focusCross(), view:TU_CAM_UP},
 ]},
 { name:'3. 第一层角', tip:'底面四个角归位，第一层就整层做完了。', phase:1, steps:[
   {t:'目标：底面整层做完', d:'白十字的基础上，把四个白色角块也放进去。做完底面全白，而且侧面第一圈也都对上了。',
@@ -2586,7 +2596,7 @@ const TU_LESSONS = [
 { name:'8. 顶层棱归位', tip:'最后四个棱一挪，魔方就好了。', phase:6, steps:[
   {t:'最后一步', d:'角都到位了，只剩顶层四个棱还在错的地方。挪完就复原了。',
    scr:[], focus:cb => cubieKind(cb)===2 && cb.p[1]===1},
-  {t:'U-perm：转三个棱', d:"R2 U R U R' U' R' U' R' U R' —— 三个棱顺着轮换一圈。亮着的这颗是已经对上的，把它转到后面去，做完它不动。",
+  {t:'U-perm：转三个棱', d:"R2 U R U R' U' R' U' R' U R' —— 三个棱顺着轮换一圈。顶面后排亮着的那颗就是已经对上的（它的蓝面贴着后面，图上看不到）。做的时候把它摆在后面，公式不碰它。",
    scr:rev(UPERM_A), alg:UPERM_A, focus:focusPiece('U','B')},
   {t:'反方向的 U-perm', d:"R U' R U R U R U' R' U' R2 —— 要往另一个方向轮换时用这条。",
    scr:rev(UPERM_B), alg:UPERM_B},
@@ -2959,7 +2969,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-07 21:00';
+const BUILD = '2026-08-07 21:16';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
