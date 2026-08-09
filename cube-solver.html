@@ -413,6 +413,9 @@
   <div class="row" style="margin-top:8px">
     <button id="inToPr" class="sub" style="flex:1 1 100%">把这个魔方拿到③自己练</button>
   </div>
+  <div class="row" style="margin-top:8px">
+    <button id="inToPat" class="sub" style="flex:1 1 100%">拿这个魔方去⑤画花色</button>
+  </div>
 </div>
 
 <!-- ============ 花色页 ============ -->
@@ -454,6 +457,9 @@
   </div>
   <div class="row">
     <button id="patSolve" class="pri big" style="flex:1 1 100%">求解成这个花色</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="patToPr" class="sub" style="flex:1 1 100%">把这个花色拿去③自己练</button>
   </div>
 
   <details id="patNetBox">
@@ -514,6 +520,9 @@
   </div>
   <div class="row" style="margin-top:8px">
     <button id="prToIn" class="sub" style="flex:1 1 100%">把这个魔方填进①输入页</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="prToPat" class="sub" style="flex:1 1 100%">拿这个魔方去⑤画花色</button>
   </div>
 
   <div id="prLog">
@@ -2038,6 +2047,11 @@ FACE_ORDER.forEach(f=>{
 });
 function paintPatTplBtns(){
   for(const f of FACE_ORDER) patTplBtns[f].classList.toggle('on', f === patTplFace);
+  // 选的是哪一面在 3D 上亮出来——转过视角之后屏幕上"正对着你"的不一定是逻辑上的
+  // 那一面，光看色板文字容易选错，直接在魔方上标出来最不会认错（复用 PR 页拾取时
+  // 亮层用的同一个 V.hl 机制）
+  PAT.hl = GEO_MV[patTplFace];
+  patRender();
 }
 paintPatTplBtns();
 
@@ -2074,6 +2088,13 @@ $('patShowPairings').onclick = () => {
   for(let i=0;i<9;i++) cells.push(patNet[fidx(patTplFace, i)]);
   if(cells.some(c => !c)){ patMsg(`先把${FACE_CN[patTplFace]}这一面画满，再出方案`, 'err'); return; }
   const own = cells.map(c => c === patTplFace);
+  // own 全 true = 这一面还是原来的颜色，没画强调色——大概率是选错模板面了
+  // （转过视角后屏幕上「正对着你」的不一定是选中的那一面），不是真的想套一个空白面
+  if(own.every(v => v)){
+    patMsg(`${FACE_CN[patTplFace]}看起来还是原来的颜色，没有强调色——是不是选错模板面了？`
+      + '选中的那面会在魔方上亮出来，对一下', 'err');
+    return;
+  }
 
   const options = allPairings(FACE_ORDER).map(pairing => {
     const fc = new Array(54);
@@ -2132,6 +2153,15 @@ $('patSolve').onclick = () => {
   } else {
     doSolve(D);
   }
+};
+// 把目标花色本身（不是当前魔方）搬到③自己练——想上手摸一摸这个花色、
+// 或者不看②页的自动播放、自己试着转出来，都用得上
+$('patToPr').onclick = () => {
+  const rT = faceletToCubie(patNet);
+  if(rT.error){ patMsg(rT.error + '，可以点上面「自动修成合法」', 'err'); return; }
+  prLoad(rT.state);
+  goTab(2);
+  prMsg('已经把这个花色搬过来了，可以直接上手转');
 };
 
 /* ==========================================================
@@ -2221,6 +2251,13 @@ $('inToPr').onclick = () => {
   goTab(2);
   prMsg(isSolved(r.state) ? '搬过来了，不过这个魔方已经是复原态了'
                           : '已经把①输入页那个魔方原样搬过来了，可以直接练');
+};
+// 花色页本来就直接读 net（不用像自己练那样复制一份状态），这里只用负责切页 + 校验
+$('inToPat').onclick = () => {
+  const r = faceletToCubie(net);
+  if(r.error){ showMsg(r.error, 'err'); return; }
+  goTab(4);
+  patMsg('当前魔方就是①输入页那个，画好目标花色后点「求解成这个花色」', 'ok');
 };
 
 const TABS = [['tabIn','pIn'], ['tabGo','pGo'], ['tabPr','pPr'], ['tabTu','pTu'], ['tabPat','pPat']];
@@ -3223,6 +3260,12 @@ $('prToIn').onclick = () => {
   goTab(0);
   showMsg('已经把第③页那个魔方原样填进来了，可以直接求解', 'ok');
 };
+$('prToPat').onclick = () => {
+  net = cubieToFacelet(prState);
+  paintNet(); invalidatePlan();
+  goTab(4);
+  patMsg('已经把③自己练那个魔方原样填进①了，画好目标花色后点「求解成这个花色」', 'ok');
+};
 $('prTip').onclick = () => {
   if(prBusy) return;
   if(isSolved(prState)){ prMsg('已经是复原状态了'); return; }
@@ -3989,7 +4032,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-09 04:34';
+const BUILD = '2026-08-09 05:30';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
