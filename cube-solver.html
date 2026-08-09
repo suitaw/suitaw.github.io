@@ -142,6 +142,15 @@
   /* 展开图折叠框：和 details.help 一个样式，见下面 */
   #netBox #net,#patNetBox #patNetDiv{margin-top:10px}
 
+  /* ---- 花色页「出方案」：配对方案预览列表，每条一个迷你展开图 + 改动格数 ---- */
+  #patPairGallery{display:flex;flex-direction:column;gap:8px;margin-top:10px;
+    max-height:60vh;overflow-y:auto}
+  .patPairCard{display:flex;align-items:center;gap:10px;padding:8px;
+    background:var(--panel2);border:1px solid var(--line2);border-radius:var(--r3);cursor:pointer}
+  .patPairCard:active{background:var(--panel3)}
+  .patPairCard b{font-size:13px}
+  .patPairCard .best{color:var(--ok)}
+
   /* ---- 步骤 ---- */
   #now{text-align:center;margin:2px 0 6px}
   #nowMove{font-size:46px;font-weight:700;font-family:ui-monospace,Menlo,monospace;
@@ -427,12 +436,13 @@
   <div class="card">
     <div class="lbl">只画一面，自动套满六面</div>
     <p class="muted" style="margin:0 0 10px">先把其中一面画成「本色 + 一种强调色」的图案（形状随便，
-      十字、对角线、边框都行），选中那一面，点「套用」——本色的格子会用各面自己的颜色，
-      强调色的格子会用各面对面的颜色，六面同款。角块凑不合法时自动改几格，改了哪几格会告诉你。</p>
+      十字、对角线、边框都行），选中那一面，点「出方案」——强调色在其它面上配哪个颜色，
+      有好几种搭法，每种改动格数不一样，都给你列出来，点哪个用哪个。</p>
     <div id="patTplFace"></div>
     <div class="row" style="margin-top:8px">
-      <button id="patApplyAll" class="pri" style="flex:1 1 100%">套用到全部六面</button>
+      <button id="patShowPairings" class="pri" style="flex:1 1 100%">出方案</button>
     </div>
+    <div id="patPairGallery"></div>
   </div>
 
   <div class="row">
@@ -2008,11 +2018,12 @@ patStage.addEventListener('pointercancel', patEnd);
 /* ---- 只画一面，自动套满六面 ----
    模板面上「跟这面自己颜色一样」的格子记成本色角色，「不一样」的格子（不管画的是
    哪个颜色）统一记成强调色角色；套到每一面时本色格子填那一面自己的颜色，强调色格子
-   填那一面的对面颜色。六面同款是这么保证的，不是碰运气——但角块手性未必天然对得上
-   （棋盘格那种"角+中心同色、棱强调色"的形状零改动就合法，十字、对角线这类形状
-   需要 nearestLegalState 改几格才能凑合法，已经用脚本对几种典型形状测过）。
-   套完直接调用现成的 nearestLegalState 收尾，不用用户再多点一次「自动修成合法」 */
-const OPP_FACE = {U:'D', D:'U', R:'L', L:'R', F:'B', B:'F'};
+   填「这一面配对到的那个颜色」。六面同款是这么保证的，不是碰运气——但角块手性未必
+   天然对得上，需要 nearestLegalState 改几格才能凑合法。
+   强调色具体配对哪个颜色不是只有"对面"一种选择：6 种颜色配成 3 对，一共 15 种配法，
+   每种需要改的格数不一样（实测同一个十字形状，最好的配法能做到 0 改动，
+   而"对面配对"这个最直觉的选择反而要改 8 格）——所以不是随手指定一种规则，
+   是把 15 种全算一遍，按改动格数从低到高列出来，人自己挑一个 */
 let patTplFace = 'F';
 const patTplFaceEl = $('patTplFace');
 const patTplBtns = {};
@@ -2030,19 +2041,70 @@ function paintPatTplBtns(){
 }
 paintPatTplBtns();
 
-$('patApplyAll').onclick = () => {
+// 6 种颜色两两配对，一共 3 对的所有分法（15 种）——递归：固定第一个还没配的颜色，
+// 枚举它跟谁配，剩下的颜色递归处理
+function allPairings(colors){
+  if(!colors.length) return [{}];
+  const [a, ...rest] = colors;
+  const out = [];
+  for(let i=0;i<rest.length;i++){
+    const b = rest[i];
+    const remain = rest.slice(0,i).concat(rest.slice(i+1));
+    for(const sub of allPairings(remain)) out.push({...sub, [a]:b, [b]:a});
+  }
+  return out;
+}
+
+// 每个方案一张小 3D 快照，比平面展开图直观——直接复用现成的 render()/buildGeo()，
+// 拿 PR_CAM0（别处也在用的默认视角）单独起一块小 canvas 画一帧静态图，不用另起渲染逻辑
+function patMiniCube(fc){
+  const SIZE = 72;
+  const cv = document.createElement('canvas');
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  cv.width = SIZE*dpr; cv.height = SIZE*dpr;
+  cv.style.cssText = `width:${SIZE}px;height:${SIZE}px;border-radius:8px;flex:none`;
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  render(null, {ctx, W:SIZE, H:SIZE, cam:PR_CAM0, cubies:buildGeo(fc)});
+  return cv;
+}
+
+$('patShowPairings').onclick = () => {
   const cells = [];
   for(let i=0;i<9;i++) cells.push(patNet[fidx(patTplFace, i)]);
-  if(cells.some(c => !c)){ patMsg(`先把${FACE_CN[patTplFace]}这一面画满，再套用`, 'err'); return; }
+  if(cells.some(c => !c)){ patMsg(`先把${FACE_CN[patTplFace]}这一面画满，再出方案`, 'err'); return; }
   const own = cells.map(c => c === patTplFace);
-  const fc = new Array(54);
-  for(const f of FACE_ORDER)
-    for(let i=0;i<9;i++) fc[fidx(f, i)] = own[i] ? f : OPP_FACE[f];
-  const { state, diffCount } = nearestLegalState(fc);
-  patNet = cubieToFacelet(state);
-  paintPatNet(); invalidatePlan();
-  patMsg(`已经把${FACE_CN[patTplFace]}的图案套到六面了` +
-    (diffCount ? `，角块凑合法改了 ${diffCount} 格` : '，正好合法，一格没改'), 'ok');
+
+  const options = allPairings(FACE_ORDER).map(pairing => {
+    const fc = new Array(54);
+    for(const f of FACE_ORDER)
+      for(let i=0;i<9;i++) fc[fidx(f, i)] = own[i] ? f : pairing[f];
+    const { state, diffCount } = nearestLegalState(fc);
+    return { fc: cubieToFacelet(state), diffCount };
+  });
+  options.sort((a,b) => a.diffCount - b.diffCount);
+
+  const gal = $('patPairGallery');
+  gal.innerHTML = '';
+  options.forEach((opt, idx) => {
+    const card = document.createElement('div');
+    card.className = 'patPairCard';
+    card.appendChild(patMiniCube(opt.fc));
+    const label = document.createElement('b');
+    label.className = idx === 0 ? 'best' : '';
+    label.textContent = opt.diffCount ? `改 ${opt.diffCount} 格` : '零改动，天生合法';
+    card.appendChild(label);
+    card.onclick = () => {
+      patNet = opt.fc.slice();
+      paintPatNet(); invalidatePlan();
+      patMsg(`已经把${FACE_CN[patTplFace]}的图案套到六面了` +
+        (opt.diffCount ? `，改了 ${opt.diffCount} 格` : '，正好合法，一格没改'), 'ok');
+      gal.innerHTML = '';
+      window.scrollTo({top: patStage.getBoundingClientRect().top + window.scrollY - 8, behavior:'smooth'});
+    };
+    gal.appendChild(card);
+  });
+  patMsg(`算出了 ${options.length} 种配色方案，从改动最少的开始排——点哪个用哪个`, 'ok');
 };
 
 // 画的花色大概率不合法（角块手性、朝向和、角棱奇偶性一致这几条全局约束，
@@ -3927,7 +3989,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-09 04:10';
+const BUILD = '2026-08-09 04:34';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
