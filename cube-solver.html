@@ -438,9 +438,19 @@
 
   <div class="card">
     <div class="lbl">只画一面，自动套满六面</div>
-    <p class="muted" style="margin:0 0 10px">先把其中一面画成「本色 + 一种强调色」的图案（形状随便，
-      十字、对角线、边框都行），选中那一面，点「出方案」——强调色在其它面上配哪个颜色，
-      有好几种搭法，每种改动格数不一样，都给你列出来，点哪个用哪个。</p>
+    <p class="muted" style="margin:0 0 10px">先把其中一面画好，选中那一面，点「出方案」。
+      两种模式：<b>逐格</b>是把这一面 9 个格子原样复制到其它面（四个相邻面对应关系
+      唯一确定，正对面天生有两种走法，都给你列出来挑）；<b>角色</b>只认"中心/四角/四边"
+      三种身份，角、边各自的强调色能重新配色，更灵活但不保证逐格分毫不差。<br>
+      <b style="color:var(--txt)">怎么选</b>：四角（或四边）想统一用同一个颜色，选<b>角色</b>——
+      它会帮你重新搭配颜色，改动通常更少，多数"四角一色、四边一色"的图案能做到零改动。
+      只有四个角/边真的要各不相同（角色模式表达不了）才用<b>逐格</b>——它是原样照抄颜色，
+      抄到六面上同一个颜色很容易超过 9 格上限，通常要改不少格子，这是照抄本身的代价，
+      不是算法没找到更好的方案。</p>
+    <div class="row" id="patTplMode" style="margin-bottom:10px">
+      <button id="patModeExact" class="seg">逐格复制</button>
+      <button id="patModeRole" class="seg on">角色复制</button>
+    </div>
     <div id="patTplFace"></div>
     <div class="row" style="margin-top:8px">
       <button id="patShowPairings" class="pri" style="flex:1 1 100%">出方案</button>
@@ -2083,6 +2093,52 @@ function patMiniCube(fc){
   return cv;
 }
 
+/* ---- 逐格复制用的"面到面"格子对应表 ----
+   模板面第 i 格该填到目标面第几格，不是拍脑袋定的，是写脚本对 26 个 cubie
+   位置套 geoFacelet（1356行附近，几何模型转展开图下标，全站都在用的那个函数）
+   + 绕主轴转 90° 的旋转，反推每张贴纸转完之后下标怎么变，算出来的——
+   4 个相邻面各自唯一确定（脚本验证过是合法排列、且跟反方向的表互为逆置换，
+   几何上自洽）；正对面（比如 F↔B）没有单次 90° 能到，绕不同轴转两次会给出
+   2 种不同结果，两种都留着，交给后面的 nearestLegalState 挑改动最少的那个，
+   不需要用户自己纠结选哪个。verify_facemap.mjs 那次验证脚本用完就删了，
+   这张表是它的输出，不是手推的。 */
+const FACE_MAP = {"U":{"F":[0,1,2,3,4,5,6,7,8],"B":[8,7,6,5,4,3,2,1,0],"L":[6,3,0,7,4,1,8,5,2],"R":[2,5,8,1,4,7,0,3,6],"D":[[0,1,2,3,4,5,6,7,8],[8,7,6,5,4,3,2,1,0]]},"R":{"B":[0,1,2,3,4,5,6,7,8],"F":[0,1,2,3,4,5,6,7,8],"U":[6,3,0,7,4,1,8,5,2],"D":[2,5,8,1,4,7,0,3,6],"L":[[0,1,2,3,4,5,6,7,8],[8,7,6,5,4,3,2,1,0]]},"F":{"D":[0,1,2,3,4,5,6,7,8],"U":[0,1,2,3,4,5,6,7,8],"R":[0,1,2,3,4,5,6,7,8],"L":[0,1,2,3,4,5,6,7,8],"B":[[8,7,6,5,4,3,2,1,0],[0,1,2,3,4,5,6,7,8]]},"D":{"B":[8,7,6,5,4,3,2,1,0],"F":[0,1,2,3,4,5,6,7,8],"R":[6,3,0,7,4,1,8,5,2],"L":[2,5,8,1,4,7,0,3,6],"U":[[0,1,2,3,4,5,6,7,8],[8,7,6,5,4,3,2,1,0]]},"L":{"F":[0,1,2,3,4,5,6,7,8],"B":[0,1,2,3,4,5,6,7,8],"D":[6,3,0,7,4,1,8,5,2],"U":[2,5,8,1,4,7,0,3,6],"R":[[0,1,2,3,4,5,6,7,8],[8,7,6,5,4,3,2,1,0]]},"B":{"U":[8,7,6,5,4,3,2,1,0],"D":[8,7,6,5,4,3,2,1,0],"L":[0,1,2,3,4,5,6,7,8],"R":[0,1,2,3,4,5,6,7,8],"F":[[8,7,6,5,4,3,2,1,0],[0,1,2,3,4,5,6,7,8]]}};
+
+// 角块和棱块本来在合法性 DP 里就是分开算的（角是 8 槽位，棱是 12 槽位），
+// 所以"强调色配哪个颜色"不用逼着角、棱用同一个配对——各自独立选，能表达
+// "中心一色、四角一色、四边一色"这种三角色图案，比只有本色/强调色两种角色
+// 覆盖的花样更多。角/边各 15 种配对，组合起来最多 225 种，先各自把角、棱
+// 的 15 种配对分别算一遍（角块 DP、棱块 DP 本身很快），再把两边的结果两两拼、
+// 按角棱置换奇偶性一致挑最优——是"两个 15 选 1"而不是"一个 225 选 1 里各跑一遍
+// nearestLegalState"，225 种组合本身只是查表相加，不用重新跑 DP，算得动
+const PAIR_CORNER_I = [0,2,6,8], PAIR_EDGE_I = [1,3,5,7];
+
+// 默认角色模式：多数"四角一色、四边一色"的图案它能搜到更省改动的配色，
+// 逐格模式是原样照抄颜色，只有角色模式表达不了（四角/四边要各不相同）才需要它
+let patTplMode = 'role';
+$('patModeExact').onclick = () => { patTplMode='exact';
+  $('patModeExact').classList.add('on'); $('patModeRole').classList.remove('on'); };
+$('patModeRole').onclick = () => { patTplMode='role';
+  $('patModeRole').classList.add('on'); $('patModeExact').classList.remove('on'); };
+
+// 逐格模式：模板面 9 格原样按 FACE_MAP 铺到其它 5 面，正对面 2 种候选各铺一份，
+// 铺完丢给 nearestLegalState 找最近的合法态——不用搜配对，因为逐格复制根本没有
+// "强调色配哪个颜色"这个自由度，每一格该填什么已经被 FACE_MAP 唯一或二选一地定死了
+function buildExactOptions(cells){
+  const map = FACE_MAP[patTplFace];
+  const oppFace = Object.keys(map).find(f => Array.isArray(map[f][0]));
+  const oppCands = map[oppFace];
+  return oppCands.map(oppMap => {
+    const fc = new Array(54);
+    for(const f of FACE_ORDER){
+      const m = f === patTplFace ? [0,1,2,3,4,5,6,7,8] : (f === oppFace ? oppMap : map[f]);
+      for(let i=0;i<9;i++) fc[fidx(f, m[i])] = cells[i];
+    }
+    const { state, diffCount } = nearestLegalState(fc);
+    return { fc: cubieToFacelet(state), diffCount };
+  });
+}
+
 $('patShowPairings').onclick = () => {
   const cells = [];
   for(let i=0;i<9;i++) cells.push(patNet[fidx(patTplFace, i)]);
@@ -2095,19 +2151,92 @@ $('patShowPairings').onclick = () => {
       + '选中的那面会在魔方上亮出来，对一下', 'err');
     return;
   }
+  if(patTplMode === 'exact'){
+    const options = buildExactOptions(cells);
+    options.sort((a,b) => a.diffCount - b.diffCount);
+    renderPairGallery(options);
+    return;
+  }
+  const ownCorner = PAIR_CORNER_I.every(i => own[i]);
+  const ownEdge = PAIR_EDGE_I.every(i => own[i]);
 
-  const options = allPairings(FACE_ORDER).map(pairing => {
+  const pairings = allPairings(FACE_ORDER);
+  // ownCorner/ownEdge 为真时角/边本来就跟本面同色，不用搜配对——固定用"自己"这个
+  // 唯一配法（allPairings 里随便挑一个当占位，反正下面 buildFc 时 own 分支不会用到它）
+  const cornerPairings = ownCorner ? [pairings[0]] : pairings;
+  const edgePairings = ownEdge ? [pairings[0]] : pairings;
+
+  function buildCornerFc(pairing){
+    const fc = new Array(54);
+    for(const f of FACE_ORDER){
+      fc[fidx(f,4)] = f;
+      for(const i of PAIR_CORNER_I) fc[fidx(f,i)] = ownCorner ? f : pairing[f];
+    }
+    return fc;
+  }
+  function buildEdgeFc(pairing){
     const fc = new Array(54);
     for(const f of FACE_ORDER)
-      for(let i=0;i<9;i++) fc[fidx(f, i)] = own[i] ? f : pairing[f];
-    const { state, diffCount } = nearestLegalState(fc);
-    return { fc: cubieToFacelet(state), diffCount };
-  });
+      for(const i of PAIR_EDGE_I) fc[fidx(f,i)] = ownEdge ? f : pairing[f];
+    return fc;
+  }
+  const cornerScoreFn = fc => (slot,piece,o) => {
+    let s = 0;
+    for(let k=0;k<3;k++){
+      const cell = fc[CORNER_FACELET[slot][(k+o)%3]];
+      if(cell && cell === CORNER_COLOR[piece][k]) s++;
+    }
+    return s;
+  };
+  const edgeScoreFn = fc => (slot,piece,o) => {
+    let s = 0;
+    for(let k=0;k<2;k++){
+      const cell = fc[EDGE_FACELET[slot][(k+o)%2]];
+      if(cell && cell === EDGE_COLOR[piece][k]) s++;
+    }
+    return s;
+  };
+  const cResAll = cornerPairings.map(p => assignDP(8, 3, 3, cornerScoreFn(buildCornerFc(p))));
+  const eResAll = edgePairings.map(p => assignDP(12, 2, 2, edgeScoreFn(buildEdgeFc(p))));
+
+  const options = [];
+  for(let ci=0; ci<cornerPairings.length; ci++){
+    for(let ei=0; ei<edgePairings.length; ei++){
+      let best = null, bestScore = -Infinity;
+      for(const par of [0,1]){
+        const c = cResAll[ci][par], e = eResAll[ei][par];
+        if(!c || !e) continue;
+        const total = c.score + e.score;
+        if(total > bestScore){ bestScore = total; best = {c, e}; }
+      }
+      if(!best) continue;
+      const state = {cp:best.c.perm, co:best.c.ori, ep:best.e.perm, eo:best.e.ori};
+      const fixedFc = cubieToFacelet(state);
+      // 跟"理想图案"（这组角/边配对本该长的样子）比，数改了几格
+      const idealCorner = buildCornerFc(cornerPairings[ci]);
+      const idealEdge = buildEdgeFc(edgePairings[ei]);
+      let diffCount = 0;
+      for(let i=0;i<54;i++){
+        const ideal = idealCorner[i] ?? idealEdge[i] ?? null;
+        if(ideal && ideal !== fixedFc[i]) diffCount++;
+      }
+      options.push({ fc: fixedFc, diffCount });
+    }
+  }
   options.sort((a,b) => a.diffCount - b.diffCount);
+  renderPairGallery(options);
+};
+
+// 逐格/角色两种模式算出来的 options 都是 [{fc, diffCount}]，渲染逻辑共用一份
+function renderPairGallery(options){
+  // 225 种里画面基本重复（很多组合本来就没被"角/边都自由"这个例子用到），
+  // 只展示改动最少的一批，不然又慢又看不过来
+  const MAX_SHOW = 30;
+  const shown = options.slice(0, MAX_SHOW);
 
   const gal = $('patPairGallery');
   gal.innerHTML = '';
-  options.forEach((opt, idx) => {
+  shown.forEach((opt, idx) => {
     const card = document.createElement('div');
     card.className = 'patPairCard';
     card.appendChild(patMiniCube(opt.fc));
@@ -2125,8 +2254,9 @@ $('patShowPairings').onclick = () => {
     };
     gal.appendChild(card);
   });
-  patMsg(`算出了 ${options.length} 种配色方案，从改动最少的开始排——点哪个用哪个`, 'ok');
-};
+  patMsg(`算出了 ${options.length} 种配色方案` + (options.length > MAX_SHOW ? `，只列改动最少的 ${MAX_SHOW} 种` : '')
+    + '——点哪个用哪个', 'ok');
+}
 
 // 画的花色大概率不合法（角块手性、朝向和、角棱奇偶性一致这几条全局约束，
 // 随手画的图案几乎不会满足）——不用等用户自己摸索着改，直接搜一个离它最近、
@@ -4032,7 +4162,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-09 05:30';
+const BUILD = '2026-08-09 06:07';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
