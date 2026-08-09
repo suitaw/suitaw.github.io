@@ -84,8 +84,8 @@
   ol.steps b{color:var(--txt);font-weight:600}
   ol.steps::marker{color:var(--acc)}
 
-  /* ---- 展开图 ---- */
-  #net{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+  /* ---- 展开图（①输入页、⑤花色页共用）---- */
+  #net,#patNetDiv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
     max-width:340px;margin:0 auto 6px;
     grid-template-areas:". u . ." "l f r b" ". d . ."}
   .fwrap{display:flex;flex-direction:column;gap:3px}
@@ -102,44 +102,45 @@
     background:rgba(91,140,255,.35);animation:pulse 1.1s ease-in-out infinite}
   @keyframes pulse{50%{background:rgba(91,140,255,.05)}}
 
-  /* ---- 3D 舞台（输入 / 复原 / 练习 / 教程 四处同一套外观）---- */
-  #inStage,#stage,#prStage,#tuStage{position:relative;width:100%;overflow:hidden;
+  /* ---- 3D 舞台（输入 / 复原 / 练习 / 教程 / 花色 五处同一套外观）---- */
+  #inStage,#stage,#prStage,#tuStage,#patStage{position:relative;width:100%;overflow:hidden;
     background:radial-gradient(120% 100% at 50% 0%,#141b26,var(--stage) 70%);
     border:1px solid var(--line);border-radius:var(--r);touch-action:none}
   #inStage{aspect-ratio:1/.95;max-height:42vh}
   #stage{aspect-ratio:1/.92;max-height:46vh}
   #prStage{aspect-ratio:1/.95;max-height:44vh}
   #tuStage{aspect-ratio:1/.95;max-height:42vh}
-  #inCv,#cv,#prCv,#tuCv{display:block;width:100%;height:100%}
+  #patStage{aspect-ratio:1/.95;max-height:42vh}
+  #inCv,#cv,#prCv,#tuCv,#patCv{display:block;width:100%;height:100%}
   /* 舞台里的提示语压在底部一条渐变上，压着魔方的时候也读得清 */
-  #inHint,#hint,#prHint2{position:absolute;left:0;right:0;bottom:0;padding:16px 12px 7px;
+  #inHint,#hint,#prHint2,#patHint{position:absolute;left:0;right:0;bottom:0;padding:16px 12px 7px;
     font-size:11px;color:#7b8697;line-height:1.4;pointer-events:none;
     background:linear-gradient(0deg,rgba(8,11,16,.92),transparent)}
 
-  /* ---- 调色板 ---- */
-  #palwrap{padding-bottom:22px}
-  #pal{display:flex;gap:9px;justify-content:center;margin:16px 0 0}
-  #pal .sw{width:44px;height:44px;border-radius:12px;border:2px solid transparent;
+  /* ---- 调色板（①输入页、⑤花色页共用这套样式）---- */
+  #palwrap,#patPalwrap{padding-bottom:22px}
+  #pal,#patPal{display:flex;gap:9px;justify-content:center;margin:16px 0 0}
+  #pal .sw,#patPal .sw{width:44px;height:44px;border-radius:12px;border:2px solid transparent;
     cursor:pointer;position:relative;display:flex;align-items:center;
     justify-content:center;font-weight:700;font-size:17px;
     box-shadow:0 2px 8px -3px rgba(0,0,0,.8)}
-  #pal .sw.on{border-color:var(--txt);transform:scale(1.06)}
+  #pal .sw.on,#patPal .sw.on{border-color:var(--txt);transform:scale(1.06)}
   /* 填完的色要弱下去，但不能用 opacity —— 那会把上面的数字和下面的名字一起吃掉，
      六个色全填完时整排就成了看不清的灰块。用 inset 阴影只压背景，字照旧清楚 */
-  #pal .sw.done{box-shadow:inset 0 0 0 99px rgba(13,16,21,.68)}
-  #pal .sw i{font-style:normal;color:rgba(0,0,0,.62);text-shadow:0 1px 0 rgba(255,255,255,.3)}
-  #pal .sw.done i{color:var(--ok);text-shadow:none;font-size:19px}
-  #pal .sw b{position:absolute;bottom:-19px;left:-4px;right:-4px;text-align:center;
+  #pal .sw.done,#patPal .sw.done{box-shadow:inset 0 0 0 99px rgba(13,16,21,.68)}
+  #pal .sw i,#patPal .sw i{font-style:normal;color:rgba(0,0,0,.62);text-shadow:0 1px 0 rgba(255,255,255,.3)}
+  #pal .sw.done i,#patPal .sw.done i{color:var(--ok);text-shadow:none;font-size:19px}
+  #pal .sw b,#patPal .sw b{position:absolute;bottom:-19px;left:-4px;right:-4px;text-align:center;
     font-size:11px;color:var(--dim);font-weight:400}
-  #pal .sw.on b{color:var(--txt)}
-  #tally{text-align:center;font-size:12px;color:var(--dim);margin:8px 0 0;
+  #pal .sw.on b,#patPal .sw.on b{color:var(--txt)}
+  #tally,#patTally{text-align:center;font-size:12px;color:var(--dim);margin:8px 0 0;
     font-family:ui-monospace,Menlo,monospace}
-  #msg{margin:12px 0 0;padding:11px 13px;border-radius:var(--r2);font-size:13.5px;display:none}
-  #msg.err{display:block;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.4);color:#ffb3b3}
-  #msg.ok{display:block;background:rgba(53,194,106,.12);border:1px solid rgba(53,194,106,.4);color:#8fe6ab}
+  #msg,#patMsgEl{margin:12px 0 0;padding:11px 13px;border-radius:var(--r2);font-size:13.5px;display:none}
+  #msg.err,#patMsgEl.err{display:block;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.4);color:#ffb3b3}
+  #msg.ok,#patMsgEl.ok{display:block;background:rgba(53,194,106,.12);border:1px solid rgba(53,194,106,.4);color:#8fe6ab}
 
   /* 展开图折叠框：和 details.help 一个样式，见下面 */
-  #netBox #net{margin-top:10px}
+  #netBox #net,#patNetBox #patNetDiv{margin-top:10px}
 
   /* ---- 步骤 ---- */
   #now{text-align:center;margin:2px 0 6px}
@@ -345,6 +346,7 @@
   <button id="tabGo">② 跟着复原</button>
   <button id="tabPr">③ 自己练</button>
   <button id="tabTu">④ 学</button>
+  <button id="tabPat">⑤ 花色</button>
 </div>
 
 <!-- ============ 输入页 ============ -->
@@ -401,6 +403,41 @@
   </div>
   <div class="row" style="margin-top:8px">
     <button id="inToPr" class="sub" style="flex:1 1 100%">把这个魔方拿到③自己练</button>
+  </div>
+</div>
+
+<!-- ============ 花色页 ============ -->
+<div id="pPat" class="page">
+  <h2>把①输入页那个魔方，转成你自己画的花色</h2>
+  <p class="muted">当前魔方直接用①输入页填好的那个，这里只画<b>目标</b>花色——
+    棋盘格、方块中的方块，或者随便画一个图案都行。求解会用①页选的那种解法。</p>
+
+  <div id="patStage"><canvas id="patCv"></canvas>
+    <div id="patHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
+  <div class="row tight" style="margin-top:10px">
+    <button id="patFlip">翻到背面</button>
+    <button id="patHome">摆正视角</button>
+    <button id="patClearOne">清掉这格</button>
+    <button id="patBack">退一格</button>
+  </div>
+  <div id="patPalwrap"><div id="patPal"></div></div>
+  <div id="patTally"></div>
+  <div id="patMsgEl"></div>
+
+  <div class="row">
+    <button id="patSolve" class="pri big" style="flex:1 1 100%">求解成这个花色</button>
+  </div>
+
+  <details id="patNetBox">
+    <summary>展开图总览（可以在这儿点，也可以检查填得对不对）</summary>
+    <div id="patNetDiv"></div>
+  </details>
+
+  <div class="lbl" style="margin-top:16px">其它</div>
+  <div class="row">
+    <button id="patReset" class="sub">全部清空</button>
+    <button id="patSolvedBtn" class="sub">填复原态</button>
+    <button id="patRandom" class="sub">随便来一个花色</button>
   </div>
 </div>
 
@@ -649,6 +686,18 @@ function applyMove(s, mv){
   return r;
 }
 const applySeq = (s, seq) => seq.reduce(applyMove, s);
+// 状态 s 的逆：cp/ep 数组求逆置换，co 取负模 3，eo 模 2 下取负等于不变。
+// 花色页用它把"转到任意目标 T"转化成"转到复原态"，D=applyDef(invertState(T),A)，
+// solve(D)/kSolve(D) 的步骤原样应用在 A 上就是 A→T 的解法（公式已用 vm 沙箱脚本验证过）
+function invertState(s){
+  const cp = new Array(8), ep = new Array(12);
+  for(let i=0;i<8;i++) cp[s.cp[i]] = i;
+  for(let i=0;i<12;i++) ep[s.ep[i]] = i;
+  const co = new Array(8), eo = new Array(12);
+  for(let j=0;j<8;j++) co[j] = (3 - s.co[cp[j]]) % 3;
+  for(let j=0;j<12;j++) eo[j] = s.eo[ep[j]];
+  return {cp, co, ep, eo};
+}
 const eqState = (a,b) => a.cp.join()===b.cp.join() && a.co.join()===b.co.join() &&
                          a.ep.join()===b.ep.join() && a.eo.join()===b.eo.join();
 const isSolved = s => eqState(s, solvedState());
@@ -1628,6 +1677,238 @@ inStage.addEventListener('pointerup', inEnd);
 inStage.addEventListener('pointercancel', inEnd);
 
 /* ==========================================================
+   5.5 花色页：目标花色是自己画的，不是拍出来的，所以不接摄像头。
+   3D 渲染/拾取/转视角这些都是通用函数（render/pickAt/vOrbit/vRoll/vScreenAxis/
+   buildGeo/geoFacelet/slerpR/rotM/mmul/buzz/prCfg），跟①输入页一样直接复用，
+   只是另开一份状态（patNet/PAT）——照抄①输入页对应逻辑，把 net/IN/in 前缀换成
+   patNet/PAT/pat，逐行对得上，方便以后①页改了手势顺手把这边也改一遍。
+   ========================================================== */
+let patNet = SOLVED_FACELET.slice();   // 目标展开图 54 格，初始状态跟 net 一样（复原态）
+
+const patNetEl = $('patNetDiv');
+const patCellEls = {};
+NET_FACES.forEach(([f,area,cn])=>{
+  const w = document.createElement('div');
+  w.className = 'fwrap'; w.style.gridArea = area;
+  const lab = document.createElement('span');
+  lab.textContent = cn;
+  const d = document.createElement('div');
+  d.className = 'face';
+  for(let i=0;i<9;i++){
+    const c = document.createElement('div');
+    c.className = 'cell' + (i===4 ? ' center' : '');
+    const gi = fidx(f,i);
+    patCellEls[gi] = c;
+    if(i!==4) c.onclick = () => patPut(gi);
+    d.appendChild(c);
+  }
+  w.appendChild(lab); w.appendChild(d); patNetEl.appendChild(w);
+});
+
+let curPatColor = 'U';
+const patPalEl = $('patPal');
+const patPalEls = {};
+FACE_ORDER.forEach(f=>{
+  const b = document.createElement('div');
+  b.className = 'sw';
+  b.style.background = COLORS[f];
+  b.innerHTML = '<i></i><b>'+FACE_CN[f].replace(/（.*/,'')+'</b>';
+  b.onclick = () => { curPatColor = f; paintPatNet(); };
+  patPalEls[f] = b;
+  patPalEl.appendChild(b);
+});
+
+function patPut(gi){
+  if(gi % 9 === 4) return;
+  patNet[gi] = (patNet[gi] === curPatColor) ? null : curPatColor;
+  if(patNet[gi] && patLeft(curPatColor) === 0){
+    const nxt = FACE_ORDER.filter(f => patLeft(f) > 0);
+    if(nxt.length) curPatColor = nxt[0];
+  }
+  paintPatNet(); invalidatePlan();
+}
+const patLeft = f => 9 - patNet.filter(c => c === f).length;
+const patNext = () => { for(const gi of ORDER) if(!patNet[gi]) return gi; return -1; };
+
+function patMsg(text, kind){
+  const m = $('patMsgEl'); m.textContent = text; m.className = kind;
+}
+
+function paintPatNet(){
+  for(const gi in patCellEls){
+    const v = patNet[gi];
+    patCellEls[gi].style.background = v ? COLORS[v] : 'var(--panel2)';
+    patCellEls[gi].classList.remove('cursor','bad');
+  }
+  for(const f of FACE_ORDER){
+    const n = patLeft(f);
+    patPalEls[f].querySelector('i').textContent = n || '✓';
+    patPalEls[f].classList.toggle('on', f === curPatColor);
+    patPalEls[f].classList.toggle('done', n === 0);
+  }
+  const bad = netTrouble(patNet);   // 校验逻辑跟①页共用一套，不用重写
+  for(const gi of (bad ? bad.gis : [])) if(patCellEls[gi]) patCellEls[gi].classList.add('bad');
+  const left = patNet.filter(c=>!c).length;
+  $('patTally').textContent = left ? '还差 ' + left + ' 格' : '48 格都填好了';
+  if(bad) patMsg(bad.msg, 'err');
+  else patMsg('', '');
+
+  PAT.mark = bad ? bad.gis[0] : patNext();
+  PAT.markCol = bad ? 'rgba(255,120,120,.98)' : 'rgba(255,255,255,.95)';
+  PAT.cubies = buildGeo(patNet);
+  patRender();
+}
+$('patReset').onclick = () => {
+  patNet = new Array(54).fill(null);
+  for(const f of FACE_ORDER) patNet[fidx(f,4)] = f;
+  curPatColor = 'U'; paintPatNet(); invalidatePlan();
+};
+$('patBack').onclick = () => {
+  for(let i=ORDER.length-1;i>=0;i--) if(patNet[ORDER[i]]){ patNet[ORDER[i]] = null; break; }
+  paintPatNet(); invalidatePlan();
+};
+$('patSolvedBtn').onclick = () => { patNet = SOLVED_FACELET.slice(); paintPatNet(); invalidatePlan(); };
+$('patRandom').onclick = () => {
+  let s = solvedState();
+  const M = ['U','D','R','L','F','B'];
+  for(let i=0;i<28;i++) s = applyMove(s, M[(Math.random()*6)|0]+['',"'",'2'][(Math.random()*3)|0]);
+  patNet = cubieToFacelet(s); paintPatNet(); invalidatePlan();
+};
+
+const patCv = $('patCv');
+const PAT = {ctx:patCv.getContext('2d'), W:0, H:0,
+            R:PR_CAM0, G:[[1,0,0],[0,1,0],[0,0,1]], yawSign:1,
+            get cam(){ return mmul(this.R, this.G); },
+            cubies:[], collect:true, picks:[], hl:null, mark:-1};
+let patBusy = false;
+function patResize(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const r = patCv.getBoundingClientRect();
+  PAT.W = Math.max(1, Math.round(r.width));
+  PAT.H = Math.max(1, Math.round(r.height));
+  patCv.width = PAT.W*dpr; patCv.height = PAT.H*dpr;
+  PAT.ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+const patRender = () => render(null, PAT);
+
+function patWhole(axis, rotSign, quarter, toR){
+  if(patBusy) return;
+  patBusy = true;
+  const G0 = PAT.G, total = rotSign*quarter*Math.PI/2;
+  const lerp = toR ? slerpR(PAT.R, toR) : null;
+  const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+  const spd = prCfg('spd'), t0 = performance.now(), dur = 200*spd;
+  (function frame(now){
+    const t = dur ? Math.min(1,(now-t0)/dur) : 1;
+    const e = ease(t);
+    if(lerp) PAT.R = lerp(e);
+    PAT.G = mmul(G0, rotM(axis, total*e));
+    patRender();
+    if(t<1){ requestAnimationFrame(frame); return; }
+    if(lerp) PAT.R = toR;
+    PAT.G = mmul(G0, rotM(axis, total));
+    patBusy = false; buzz(8); patRender();
+  })(t0);
+}
+$('patFlip').onclick = () => patWhole(1, 1, 2);
+$('patHome').onclick = () => { PAT.R = PR_CAM0; PAT.G = [[1,0,0],[0,1,0],[0,0,1]];
+                              PAT.yawSign = 1; patRender(); };
+$('patClearOne').onclick = () => {
+  if(PAT.mark >= 0 && PAT.mark % 9 !== 4){ patNet[PAT.mark] = null; paintPatNet(); invalidatePlan(); }
+};
+
+const patStage = $('patStage');
+const patPts = new Map();
+let patDrag = null, patTwo = null;
+const patXY = e => { const r = patCv.getBoundingClientRect();
+                    return [e.clientX-r.left, e.clientY-r.top]; };
+patStage.addEventListener('pointerdown', e => {
+  if(patBusy) return;
+  const [x,y] = patXY(e);
+  patPts.set(e.pointerId, [x,y]);
+  patStage.setPointerCapture(e.pointerId);
+  if(patPts.size === 2){
+    patDrag = null;
+    const [a,b] = [...patPts.values()];
+    patTwo = {a:Math.atan2(b[1]-a[1], b[0]-a[0]), cx:(a[0]+b[0])/2, cy:(a[1]+b[1])/2};
+    return;
+  }
+  if(patPts.size > 2) return;
+  patDrag = {x0:x, y0:y, px:x, py:y, moved:0, vx:0, vy:0, t:performance.now(), R0:PAT.R};
+});
+patStage.addEventListener('pointermove', e => {
+  if(!patPts.has(e.pointerId)) return;
+  const [x,y] = patXY(e);
+  patPts.set(e.pointerId, [x,y]);
+  if(patPts.size >= 2){
+    if(patPts.size > 2 || !patTwo) return;
+    const [a,b] = [...patPts.values()];
+    const n = {a:Math.atan2(b[1]-a[1], b[0]-a[0]), cx:(a[0]+b[0])/2, cy:(a[1]+b[1])/2};
+    let dA = n.a - patTwo.a;
+    while(dA >  Math.PI) dA -= 2*Math.PI;
+    while(dA < -Math.PI) dA += 2*Math.PI;
+    vRoll(PAT, dA);
+    vOrbit(PAT, n.cx-patTwo.cx, n.cy-patTwo.cy);
+    patTwo = n; patRender();
+    return;
+  }
+  if(!patDrag) return;
+  const now = performance.now(), dt = Math.max(4, now-patDrag.t);
+  patDrag.vx = patDrag.vx*0.4 + (x-patDrag.px)/dt*0.6;
+  patDrag.vy = patDrag.vy*0.4 + (y-patDrag.py)/dt*0.6;
+  patDrag.t = now;
+  patDrag.moved = Math.max(patDrag.moved, Math.hypot(x-patDrag.x0, y-patDrag.y0));
+  vOrbit(PAT, x-patDrag.px, y-patDrag.py);
+  patDrag.px = x; patDrag.py = y;
+  patRender();
+});
+const patEnd = e => {
+  if(e && e.pointerId != null) patPts.delete(e.pointerId); else patPts.clear();
+  if(patPts.size < 2) patTwo = null;
+  if(patPts.size) return;
+  const d = patDrag;
+  patDrag = null;
+  if(!d) return;
+  if(d.moved < 8){
+    const p = pickAt(PAT, d.x0, d.y0);
+    if(p){
+      const n = vmul(p.cb.r, NRM[p.fi]).map(Math.round);
+      patPut(geoFacelet(p.cb.p, n));
+      buzz(6);
+    }
+    return;
+  }
+  if(prCfg('fling') && Math.hypot(d.vx, d.vy) > PR_FLING
+     && Math.hypot(d.px-d.x0, d.py-d.y0) > PR_FLING_D){
+    const horiz = Math.abs(d.vx) >= Math.abs(d.vy);
+    const R1 = PAT.R;
+    PAT.R = d.R0;
+    const a = vScreenAxis(PAT, horiz ? [0,1,0] : [1,0,0]);
+    PAT.R = R1;
+    patWhole(a.axis, a.sign * ((horiz ? d.vx : d.vy) > 0 ? 1 : -1), 1, d.R0);
+  }
+};
+patStage.addEventListener('pointerup', patEnd);
+patStage.addEventListener('pointercancel', patEnd);
+
+// 花色页的「求解」：把「当前 A 转成目标 T」化成「转到复原态」，
+// 复用现成的 doSolve（层先法/最短解法都走同一套，跟①页选的算法一致），
+// 公式已经用 vm 沙箱脚本验证过，见 invertState 定义处的注释
+$('patSolve').onclick = () => {
+  const rA = faceletToCubie(net);
+  if(rA.error){ patMsg('先去①输入页填好当前魔方', 'err'); return; }
+  const rT = faceletToCubie(patNet);
+  if(rT.error){ patMsg(rT.error, 'err'); return; }
+  const D = applyDef(invertState(rT.state), rA.state);
+  if(algo === 'short' && !kTables){
+    patMsg('第一次求最短解法要先建搜索表，等几秒…', 'ok');
+    setTimeout(() => doSolve(D), 60);
+  } else {
+    doSolve(D);
+  }
+};
+
+/* ==========================================================
    6. 播放
    ========================================================== */
 let plan = [];        // [{move, phase}]
@@ -1716,7 +1997,7 @@ $('inToPr').onclick = () => {
                           : '已经把①输入页那个魔方原样搬过来了，可以直接练');
 };
 
-const TABS = [['tabIn','pIn'], ['tabGo','pGo'], ['tabPr','pPr'], ['tabTu','pTu']];
+const TABS = [['tabIn','pIn'], ['tabGo','pGo'], ['tabPr','pPr'], ['tabTu','pTu'], ['tabPat','pPat']];
 function goTab(i){
   TABS.forEach(([t,p],k)=>{
     $(t).classList.toggle('on', k===i);
@@ -1726,6 +2007,7 @@ function goTab(i){
   if(i===0){ inResize(); inRender(); }
   if(i===2){ prResize(); prRender(); }
   if(i===3){ tuResize(); tuRender(); }
+  if(i===4){ patResize(); patRender(); }
 }
 TABS.forEach(([t],i)=> $(t).onclick = () => goTab(i));
 $('goToIn').onclick = () => goTab(0);            // 第②页空着的时候那颗引路按钮
@@ -3406,6 +3688,8 @@ $('camInput').onchange = async e => {
 /* ---- 启动 ---- */
 inResize();
 paintNet();
+patResize();
+paintPatNet();
 cubies = buildGeo(SOLVED_FACELET);
 resize();
 renderStep();
@@ -3414,13 +3698,13 @@ prLoad(solvedState());
 prSetPut('vib', prSetIdx.vib);
 tuListRender();
 window.addEventListener('resize', () => {
-  inResize(); inRender(); prResize(); prRender(); tuResize(); tuRender();
+  inResize(); inRender(); prResize(); prRender(); tuResize(); tuRender(); patResize(); patRender();
 });
 
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-08 14:49';
+const BUILD = '2026-08-09 02:30';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
