@@ -425,6 +425,13 @@
   <div id="patMsgEl"></div>
 
   <div class="row">
+    <button id="patCam" style="flex:1 1 100%">📷 拍照/传图识别花色（六张图，一面一张）</button>
+  </div>
+
+  <div class="row">
+    <button id="patFix" class="sub" style="flex:1 1 100%">✨ 自动修成合法（画的不合法也没关系）</button>
+  </div>
+  <div class="row">
     <button id="patSolve" class="pri big" style="flex:1 1 100%">求解成这个花色</button>
   </div>
 
@@ -791,6 +798,102 @@ function faceletToCubie(fc){
   const par = p => { let c=0; for(let i=0;i<p.length;i++) for(let j=i+1;j<p.length;j++) if(p[i]>p[j]) c++; return c%2; };
   if(par(cp) !== par(ep)) return {error:'有两个块被对调了 —— 这个状态真实魔方拼不出来，请再核对一遍'};
   return {state:{cp,co,ep,eo}};
+}
+
+/* ==========================================================
+   自动修成合法：把任意（哪怕不合法的）54 格目标，改成最接近它、但保证合法的花色。
+   角块/棱块各自当成「槽位配块+朝向」的指派问题，用带约束的 DP 精确求解——
+   8/12 个块规模很小，做得到精确最优，没必要退而求其次用局部搜索。
+   DP 状态 (usedMask, 朝向和 mod, 当前排列奇偶性)：按槽位顺序把块一个个塞进去，
+   置换奇偶性能在填的过程中增量算——塞入块 p 时新增的逆序数等于「已经用掉的块里
+   比 p 大的个数」，这是插入排序数逆序数的标准算法，只看当前 usedMask 和 p，
+   跟以前是按什么顺序塞进去的无关。朝向和整除 mod、角棱奇偶性一致这两条全局约束
+   在 DP 构造时就保证满足，不用事后再修——最终答案是分别求角/棱在两种排列奇偶性
+   下「朝向和整除」的最优解，取 角[偶]+棱[偶] 和 角[奇]+棱[奇] 里更高的那个
+   （合法状态要求角棱奇偶性一致，跟 faceletToCubie 里 par(cp)!==par(ep) 那条
+   校验是同一件事）。这套 DP 已经用暴力枚举交叉验证过：角块按真实的 8! 全排列，
+   棱块因为 12! 太大穷举不了，缩小规模到 6 个块验证了同一套转移逻辑，都完全一致。
+   ========================================================== */
+function popcount(x){ let c=0; while(x){ c+=x&1; x>>=1; } return c; }
+// N 个槽位/块，朝向和模 mod，每块 oriCount 种朝向，scoreFn(slot,piece,o) 是
+// 这个槽位放这块转这个朝向能对上目标几格。返回 {0:{...}, 1:{...}}——
+// 分别是排列为偶/奇置换时，朝向和整除 mod 的前提下能拿到的最高分方案
+function assignDP(N, mod, oriCount, scoreFn){
+  const dp = new Map(), parent = new Map();
+  const key = (mask,s,p) => (mask*mod+s)*2+p;
+  dp.set(key(0,0,0), 0);
+  for(let mask=0; mask<(1<<N); mask++){
+    const slot = popcount(mask);
+    if(slot >= N) continue;
+    for(let s=0;s<mod;s++) for(let p=0;p<2;p++){
+      const cur = dp.get(key(mask,s,p));
+      if(cur === undefined) continue;
+      for(let piece=0; piece<N; piece++){
+        if(mask & (1<<piece)) continue;
+        const np = p ^ (popcount(mask >> (piece+1)) % 2);
+        for(let o=0;o<oriCount;o++){
+          const ns = (s+o)%mod;
+          const val = cur + scoreFn(slot, piece, o);
+          const nk = key(mask|(1<<piece), ns, np);
+          if(dp.get(nk) === undefined || dp.get(nk) < val){
+            dp.set(nk, val);
+            parent.set(nk, {mask, s, p, piece, o});
+          }
+        }
+      }
+    }
+  }
+  const full = (1<<N)-1;
+  const results = {};
+  for(const par of [0,1]){
+    const k = key(full, 0, par);
+    const v = dp.get(k);
+    if(v === undefined){ results[par] = null; continue; }
+    const perm = new Array(N), ori = new Array(N);
+    let cur = k;
+    while(true){
+      const pr = parent.get(cur);
+      if(!pr) break;
+      const slotIdx = popcount(pr.mask);
+      perm[slotIdx] = pr.piece; ori[slotIdx] = pr.o;
+      cur = key(pr.mask, pr.s, pr.p);
+    }
+    results[par] = { score: v, perm, ori };
+  }
+  return results;
+}
+// 返回 {state, diffCount}：diffCount 是跟原始 fc 相比改动了几个「已经填了颜色」
+// 的格子（fc 里空着的格子不算，也不会被硬凑，只是被 DP 自然填上）
+function nearestLegalState(fc){
+  const cornerScore = (slot,piece,o) => {
+    let s = 0;
+    for(let k=0;k<3;k++){
+      const cell = fc[CORNER_FACELET[slot][(k+o)%3]];
+      if(cell && cell === CORNER_COLOR[piece][k]) s++;
+    }
+    return s;
+  };
+  const edgeScore = (slot,piece,o) => {
+    let s = 0;
+    for(let k=0;k<2;k++){
+      const cell = fc[EDGE_FACELET[slot][(k+o)%2]];
+      if(cell && cell === EDGE_COLOR[piece][k]) s++;
+    }
+    return s;
+  };
+  const cRes = assignDP(8, 3, 3, cornerScore);
+  const eRes = assignDP(12, 2, 2, edgeScore);
+  let best = null, bestScore = -Infinity;
+  for(const par of [0,1]){
+    if(!cRes[par] || !eRes[par]) continue;
+    const total = cRes[par].score + eRes[par].score;
+    if(total > bestScore){ bestScore = total; best = {c:cRes[par], e:eRes[par]}; }
+  }
+  const state = {cp:best.c.perm, co:best.c.ori, ep:best.e.perm, eo:best.e.ori};
+  const newFc = cubieToFacelet(state);
+  let diffCount = 0;
+  for(let i=0;i<54;i++) if(fc[i] && fc[i] !== newFc[i]) diffCount++;
+  return {state, diffCount};
 }
 
 /* ==========================================================
@@ -1891,6 +1994,16 @@ const patEnd = e => {
 patStage.addEventListener('pointerup', patEnd);
 patStage.addEventListener('pointercancel', patEnd);
 
+// 画的花色大概率不合法（角块手性、朝向和、角棱奇偶性一致这几条全局约束，
+// 随手画的图案几乎不会满足）——不用等用户自己摸索着改，直接搜一个离它最近、
+// 但保证合法的方案（nearestLegalState，定义处有完整算法说明）
+$('patFix').onclick = () => {
+  const { state, diffCount } = nearestLegalState(patNet);
+  patNet = cubieToFacelet(state);
+  paintPatNet(); invalidatePlan();
+  patMsg(diffCount ? `改了 ${diffCount} 格，现在是合法花色了` : '本来就是合法的，没有改动', 'ok');
+};
+
 // 花色页的「求解」：把「当前 A 转成目标 T」化成「转到复原态」，
 // 复用现成的 doSolve（层先法/最短解法都走同一套，跟①页选的算法一致），
 // 公式已经用 vm 沙箱脚本验证过，见 invertState 定义处的注释
@@ -1898,7 +2011,7 @@ $('patSolve').onclick = () => {
   const rA = faceletToCubie(net);
   if(rA.error){ patMsg('先去①输入页填好当前魔方', 'err'); return; }
   const rT = faceletToCubie(patNet);
-  if(rT.error){ patMsg(rT.error, 'err'); return; }
+  if(rT.error){ patMsg(rT.error + '，可以点上面「自动修成合法」', 'err'); return; }
   const D = applyDef(invertState(rT.state), rA.state);
   if(algo === 'short' && !kTables){
     patMsg('第一次求最短解法要先建搜索表，等几秒…', 'ok');
@@ -2051,7 +2164,7 @@ function renderStep(){
     d.title = p.label;
     if(cur >= p.from + p.len) d.classList.add('done');
     else if(cur >= p.from) d.classList.add('cur');
-    d.onclick = () => { if(!playing) seekTo(p.from); };
+    d.onclick = () => goPlayGo(p.from);
     ph.appendChild(d);
   });
 
@@ -2060,7 +2173,7 @@ function renderStep(){
     const s = document.createElement('span');
     s.textContent = m.move;
     s.className = i<cur ? 'past' : i===cur ? 'cur' : '';
-    s.onclick = () => { if(!playing) seekTo(i); };
+    s.onclick = () => goPlayGo(i);
     sq.appendChild(s); sq.appendChild(document.createTextNode(' '));
   });
   const c = sq.querySelector('.cur');
@@ -2073,12 +2186,13 @@ function renderStep(){
   render();
 }
 
-// 播放一步动画
-function animateStep(cb){
+// 播放一步动画。spd 缩放时长——手动点「下一步」用 1（跟原来一样慢慢看清），
+// goPlayGo 连续跳好几步时用更快的倍率，不然跳远一点要等十几秒
+function animateStep(cb, spd=1){
   const mv = plan[cur].move;
   const d = GEO_MV[mv[0]];
   const turns = mv.endsWith("'") ? -1 : mv.endsWith('2') ? 2 : 1;
-  const dur = Math.abs(turns)>1 ? 420 : 300;
+  const dur = (Math.abs(turns)>1 ? 420 : 300) * spd;
   const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
   const t0 = performance.now();
   playing = true;
@@ -2091,11 +2205,52 @@ function animateStep(cb){
   })(t0);
 }
 
+// 倒退一步的动画：把 cur-1 那一手的逆操作转一遍，再用逆操作 bakeGeo，
+// 几何就回到了那一手转之前的样子——跟 animateStep 是同一件事反过来做
+const invMoveStr = mv => mv.endsWith('2') ? mv : mv.endsWith("'") ? mv[0] : mv + "'";
+function animateStepBack(cb, spd=1){
+  const inv = invMoveStr(plan[cur-1].move);
+  const d = GEO_MV[inv[0]];
+  const turns = inv.endsWith("'") ? -1 : inv.endsWith('2') ? 2 : 1;
+  const dur = (Math.abs(turns)>1 ? 420 : 300) * spd;
+  const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+  const t0 = performance.now();
+  playing = true;
+  $('btnPrev').disabled = $('btnNext').disabled = true;
+  (function frame(now){
+    const t = Math.min(1, (now-t0)/dur);
+    render({axis:d.axis, layer:d.layer, m: rotM(d.axis, d.sign*turns*Math.PI/2*ease(t))});
+    if(t < 1) requestAnimationFrame(frame);
+    else { bakeGeo(inv, cubies); cur--; playing=false; renderStep(); if(cb) cb(); }
+  })(t0);
+}
+
+// 点某一步／某个阶段 = 一路播到那里，让人看清中间发生了什么（跟③自己练页的
+// prPlayGo 一个道理）。goPlayTo 是"想到哪"，goPlaying 只挡"别同时起两条循环"——
+// 播放中途再点别的目标，直接改 goPlayTo，正在跑的循环下一tick 自己会改道
+const GO_PLAY_SPD = 0.6;   // 连续跳步用的倍率，比手动单步(1)快，比自动播放的间隔感受接近③页默认播放速度
+let goPlayTo = -1, goPlaying = false;
+function goPlayStop(){ goPlayTo = -1; }
+function goPlayGo(target){
+  auto = false;
+  target = Math.max(0, Math.min(plan.length, target));
+  if(target === cur){ goPlayStop(); return; }
+  goPlayTo = target;
+  if(goPlaying) return;
+  goPlaying = true;
+  (function step(){
+    if(goPlayTo < 0 || cur === goPlayTo){ goPlaying = false; goPlayTo = -1; return; }
+    const fwd = goPlayTo > cur;
+    (fwd ? animateStep : animateStepBack)(() => setTimeout(step, 50), GO_PLAY_SPD);
+  })();
+}
+
 $('btnNext').onclick = () => { if(!playing && cur<plan.length) animateStep(); };
 $('btnPrev').onclick = () => { if(!playing && cur>0) seekTo(cur-1); };
-$('btnRestart').onclick = () => { if(!playing){ auto=false; seekTo(0); } };
+$('btnRestart').onclick = () => { if(!playing){ auto=false; goPlayStop(); seekTo(0); } };
 $('btnAuto').onclick = () => {
   if(auto){ auto=false; renderStep(); return; }
+  goPlayStop();
   if(cur >= plan.length) seekTo(0);
   auto = true; renderStep();
   (function step(){
@@ -3540,7 +3695,12 @@ function drawRef(){
 function camRender(){
   const st=CAM_STEPS[camStep];
   $('camTitle').textContent = `第 ${camStep+1} / 6 面：${FACE_CN[st.f]}`;
-  $('camTip').innerHTML = st.tip +
+  // 花色页不是在拍一个实物魔方，"绿色对着镜头"这类持方提示没有意义——
+  // 换成"这张图对应哪一面"，跟 patNet 里 fidx(st.f,...) 回填的格子对上就行
+  const tip = camDest === 'pat'
+    ? `第 ${camStep+1} 张图，对应 <b>${FACE_CN[st.f]}</b> 那一面 —— 传一张你想让这一面呈现的图`
+    : st.tip;
+  $('camTip').innerHTML = tip +
     '<br><span style="font-size:11.5px;color:#5b6577">框对不上就拖它，两指捏合缩放；' +
     '白点就是取色的位置，让每个白点落在对应色块中间</span>';
   [...$('camProg').children].forEach((el,i)=>{
@@ -3563,10 +3723,10 @@ function camLoop(){
   camRAF=requestAnimationFrame(camLoop);
 }
 
-// 识别完了往哪儿送：'in' 回填①输入页，'pr' 直接装进③自己练
+// 识别完了往哪儿送：'in' 回填①输入页，'pr' 直接装进③自己练，'pat' 送到④花色页当目标
 let camDest = 'in';
 async function camOpen(dest){
-  camDest = dest === 'pr' ? 'pr' : 'in';
+  camDest = dest === 'pr' ? 'pr' : dest === 'pat' ? 'pat' : 'in';
   camStep=0; camPicked=[]; camStill=null; $('camErr').textContent='';
   camPrev.width=camPrev.height=CAM_SIZE;
   camBoxReset();
@@ -3592,6 +3752,7 @@ function camStop(){
 
 $('btnCam').onclick = () => camOpen('in');
 $('prCam').onclick  = () => camOpen('pr');
+$('patCam').onclick = () => camOpen('pat');
 $('camClose').onclick = camStop;
 $('camBack').onclick = () => {
   if(camStep>0){ camStep--; camPicked.pop(); camStill=null; $('camErr').textContent=''; camRender(); }
@@ -3623,6 +3784,17 @@ $('camShot').onclick = () => {
       + '这两面取到的颜色几乎一模一样 —— 多半是同一张图采了两遍，或者换面时忘了换图。'
     : '';
   const chk = faceletToCubie(guess);
+
+  // 送去花色页当目标花色。这六张图本来就不是同一个实物魔方拍出来的，
+  // 拼不成合法状态是常态、不是识别错误，不用像①③页那样退回去"改对"——
+  // 直接留在这页，让他点"自动修成合法"收尾
+  if(camDest === 'pat'){
+    patNet = guess; paintPatNet(); invalidatePlan();
+    patMsg('识别完了。' + (chk.error
+      ? '这几张图拼不出一个合法魔方（正常，毕竟不是同一个实物）—— 点上面「自动修成合法」就行'
+      : '巧了，直接就是合法花色') + dupMsg, 'ok');
+    return;
+  }
 
   // 送去练习页。练习页装不下不合法的魔方，认错了就退回输入页去改
   if(camDest === 'pr' && !chk.error){
@@ -3704,7 +3876,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-09 02:30';
+const BUILD = '2026-08-09 03:19';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
