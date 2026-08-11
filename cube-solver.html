@@ -203,6 +203,18 @@
   /* 展开图折叠框：和 details.help 一个样式，见下面 */
   #netBox #net,#patNetBox #patNetDiv{margin-top:10px}
 
+  /* ---- 花色库：现成花色的 3D 缩略图网格 ---- */
+  #patLib{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 0}
+  .patLibCard{display:flex;flex-direction:column;align-items:center;gap:6px;
+    padding:9px 3px 8px;background:var(--panel2);border:1px solid var(--line2);
+    border-radius:var(--r2);cursor:pointer;box-shadow:var(--sheen);min-width:0}
+  .patLibCard b{font-size:10.5px;font-weight:600;color:var(--dim);line-height:1.25;
+    text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    max-width:100%}
+  .patLibCard:active{background:var(--panel3);transform:translateY(1px);box-shadow:none}
+  .patLibCard.on{border-color:var(--acc)}
+  .patLibCard.on b{color:var(--accL)}
+
   /* ---- 花色页「出方案」：配对方案预览列表，每条一个迷你展开图 + 改动格数 ---- */
   #patPairGallery{display:flex;flex-direction:column;gap:8px;margin-top:10px;
     max-height:60vh;overflow-y:auto}
@@ -504,7 +516,12 @@
   <div id="patMsgEl"></div>
 
   <div class="card">
-    <div class="lbl">只画一面，自动套满六面</div>
+    <div class="lbl">现成花色（点一下换上去，再点下面「求解成这个花色」）</div>
+    <div id="patLib"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">或者自己画：只画一面，自动套满六面</div>
     <!-- 一句话够用的留在外面，两种模式怎么挑是读一次的东西，收起来。
          原来这十行常驻，把下面的模式按钮和「出方案」整个压到屏幕外 -->
     <p class="muted" style="margin:0 0 8px">先把其中一面画好，选中那一面，点「出方案」。</p>
@@ -527,9 +544,7 @@
       6n 格，加自己那个中心格共 6n+1，要等于 9 得 n=4/3，不是整数。所以它必然全盘皆输，
       只会退回复原态、告诉你「改了 45 格」。做过这个模式，删了。</div></div>
     </details>
-    <div class="lbl" style="margin:12px 0 7px">常用花色（点一下直接出方案）</div>
-    <div class="row tight" id="patPresets" style="margin-bottom:12px"></div>
-    <div class="lbl" style="margin:0 0 7px">或者自己在上面的魔方上画一面</div>
+
     <div id="patTplFace"></div>
     <div class="row" style="margin-top:8px">
       <button id="patShowPairings" class="pri2" style="flex:1 1 100%">出方案</button>
@@ -1606,6 +1621,12 @@ function render(anim, V){
   g.addColorStop(0,'#20252e'); g.addColorStop(1,'#0a0b0e');
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
   if(!cubies.length) return;
+  /* 描边一律用圆接合。默认的 miter（尖角接合）在掠射时会射出长刺：
+     面快侧对镜头时投影成细条，细条上的夹角能尖到 1° 以下，
+     miter 接合的尖端长度是 lineWidth/sin(θ/2)，θ→0 就飞出去
+     （miterLimit 默认 10，所以最长 10 倍线宽 —— 在高 dpr 屏上就是几十像素的刺）。
+     圆接合没有这个尖端，从根上不会长刺 */
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
 
   const cam = V.cam || mmul(rotM(0,pitch), rotM(1,yaw));
   const f = Math.min(W,H)*1.5;
@@ -1661,7 +1682,12 @@ function render(anim, V){
   ctx.fillStyle=sh; ctx.fillRect(cs[0]-sc*2, cs[1]+sc*1.72-sc*2, sc*4, sc*4);
   ctx.restore();
 
+  // 投影面积（鞋带公式）。掠射到几乎没有面积的面，画出来只有描边那一圈，
+  // 看不出是块贴纸，却正好是各种描边/圆角退化的重灾区 —— 直接不画
+  const areaOf = q => Math.abs((q[0][0]-q[2][0])*(q[1][1]-q[3][1]) -
+                               (q[1][0]-q[3][0])*(q[0][1]-q[2][1])) / 2;
   for(const p of polys){
+    if(areaOf(p.base) < 2) continue;
     const marked = p.gi === V.mark;
     const dim = p.c && V.focus && !V.focus(p.cb, p.fi);
     // 块体本身也跟着光走，不再是一律死黑。整颗魔方的黑塑料有了体积，
@@ -2465,8 +2491,8 @@ function buildShapeOptions(cells, T){
 
 // 每个方案一张小 3D 快照，比平面展开图直观——直接复用现成的 render()/buildGeo()，
 // 拿 PR_CAM0（别处也在用的默认视角）单独起一块小 canvas 画一帧静态图，不用另起渲染逻辑
-function patMiniCube(fc){
-  const SIZE = 72;
+function patMiniCube(fc, SIZE){
+  SIZE = SIZE || 72;
   const cv = document.createElement('canvas');
   const dpr = Math.min(window.devicePixelRatio||1, 2);
   cv.width = SIZE*dpr; cv.height = SIZE*dpr;
@@ -2495,32 +2521,47 @@ const FACE_MAP = {"U":{"F":[0,1,2,3,4,5,6,7,8],"B":[8,7,6,5,4,3,2,1,0],"L":[6,3,
 // 的 15 种配对分别算一遍（角块 DP、棱块 DP 本身很快），再把两边的结果两两拼、
 // 按角棱置换奇偶性一致挑最优——是"两个 15 选 1"而不是"一个 225 选 1 里各跑一遍
 // nearestLegalState"，225 种组合本身只是查表相加，不用重新跑 DP，算得动
-/* 常用花色。这几个模板都是脚本验过「六面全对」做得到的，
-   A=本色、B/C=强调色，下标 0..8（4 是中心，画了也会被忽略）。
-   括号里是保持形状的配色有几种 —— 全枚举出来的，不是估的 */
-const PAT_PRESETS = [
-  ['六点',     'BBBBABBBB'],   // 中心一点、周围一圈异色（2 种配色）
-  ['棋盘',     'BABAAABAB'],   // 四个角异色（12 种）
-  ['十字',     'ABABABABA'],   // 四条棱异色（12 种）
-  ['角边三色', 'BCBCACBCB'],   // 角一色、棱另一色（12 种）
-  ['上下带',   'BBBAAABBB'],   // 上下两行异色（34 种）
-  ['两点',     'ABAAAAABA'],   // 上下两个棱异色（34 种）
+/* ---- 现成花色库 ----
+   一律用「从复原态执行一串外层公式」来定义，不是画出来的 54 格 ——
+   这样每一个都**天生合法**，不用搜、不会出现「拼不出来」。
+   不用 M/E/S 中间层：那些会挪中心块，而状态模型以中心块为参照，表示不了
+   （CLAUDE.md 里记着这条）。所以像经典「六点」那种要挪中心的做不了。
+   名字是渲染出来一个个看过之后定的，不是照公式名直译 */
+const PAT_LIB = [
+  // 每个名字都是把六个面打成文字图、一个个核对过才定的。
+  // 原来照公式名直译错了一大片，还混进了三条给出同一个图案的公式
+  // （U2D2F2B2L2R2 / F2B2U2D2L2R2 / R2L2U2D2F2B2 完全一样），已经去重
+  ['十字',       "U2 D2 F2 B2 L2 R2"],                    // 六面都是十字（四条棱变对面色）
+  ['四角',       "U F B' L2 U2 L2 F' B U2 L2 U"],         // 六面都是四个角变色
+  ['六面回字',   "U D' R L' F B' U D'"],                  // 六面都是「回」：中心本色、外圈一色
+  ['四面回字',   "F2 B2 U D' R2 L2 U D'"],                // 上下两面不动，四周一圈回字
+  ['上下杠',     "U2 F2 U2 F2 B2 U2 B2 U2"],              // 四个面各两条横杠，前后不动
+  ['杠加回字',   "F2 R2 U2 D2 L2 B2"],                    // 左右两条杠、前后回字，上下不动
+  ['斜角回字',   "R L U2 F2 D2 F2 R L F2 D2 B2 D2"],      // 上下回字，四周对角两点
+  ['方块中方块', "F L F U' R U F2 L2 U' L' B D' B' L2 U"],// 每面一个 L 形角，像小方块嵌在大方块里
+  ['蛇形',       "L U B' U' R L' B R' F B' D R D' F'"],   // 绕着魔方走一圈的带子
+  ['超级翻转',   "U R2 F B R B2 R U2 L B2 R U' D' R2 F R' L B2 U2 F2"], // 12 条棱原地全翻
 ];
-// 把模板拍到当前选中的那一面上。强调色随便挑两个非本色的 ——
-// 反正「套形状」只看分组，具体用哪个颜色它会自己重新搭配
-function patApplyPreset(pat){
-  const others = FACE_ORDER.filter(f => f !== patTplFace);
-  const col = {A: patTplFace, B: others[0], C: others[1]};
-  for(let i=0;i<9;i++) patNet[fidx(patTplFace, i)] = col[pat[i]];
-  patNet[fidx(patTplFace, 4)] = patTplFace;      // 中心永远本色
-  paintPatNet(); invalidatePlan();
-  $('patShowPairings').click();                  // 直接出方案，少点一下
-}
-PAT_PRESETS.forEach(([name, pat]) => {
-  const b = document.createElement('button');
+const patLibFc = seq => cubieToFacelet(applySeq(solvedState(), seq.trim().split(/\s+/)));
+PAT_LIB.forEach(([name, seq]) => {
+  const fc = patLibFc(seq);
+  const card = document.createElement('div');
+  card.className = 'patLibCard';
+  card.appendChild(patMiniCube(fc, 62));
+  const b = document.createElement('b');
   b.textContent = name;
-  b.onclick = () => patApplyPreset(pat);
-  $('patPresets').appendChild(b);
+  card.appendChild(b);
+  card.onclick = () => {
+    patNet = fc.slice();
+    paintPatNet(); invalidatePlan();
+    for(const el of $('patLib').children) el.classList.remove('on');
+    card.classList.add('on');
+    $('patPairGallery').innerHTML = '';
+    patMsg(`换成「${name}」了 —— 点下面「求解成这个花色」出解法`, 'ok');
+    window.scrollTo({top: patStage.getBoundingClientRect().top + window.scrollY - 8,
+                     behavior:'smooth'});
+  };
+  $('patLib').appendChild(card);
 });
 
 
@@ -4499,7 +4540,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 08:00';
+const BUILD = '2026-08-11 08:14';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
