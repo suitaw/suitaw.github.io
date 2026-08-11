@@ -553,21 +553,28 @@
 
   <div id="inStage"><canvas id="inCv"></canvas>
     <div id="inHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
-  <div class="row tight" style="margin-top:10px">
+  <!-- 摄像头是"另一种输入方式"，而且是更省事的那条 —— 这页就是干输入的，
+       它得在一进来就看得见的地方。用 pri2（淡黄）：比灰按钮重，
+       又明显轻于吸底那颗实心黄的「求解」 -->
+  <div class="row" style="margin-top:10px">
+    <button id="btnCam" class="pri2" style="flex:1 1 100%">📷 拍照 / 摄像头识别（不用一格格点）</button>
+  </div>
+
+  <!-- 挨着模型放，填色时手不用跑远。分两排是因为这两组事不一样：
+       上排换个角度看，下排改填错的地方。挤在一排 6 个字都放不下 -->
+  <div class="row tight" style="margin-top:8px">
     <button id="inFlip">翻到背面</button>
+    <button id="inBottom">看底面</button>
     <button id="inHome">摆正视角</button>
+  </div>
+  <div class="row tight" style="margin-top:6px">
     <button id="inClearOne">清掉这格</button>
     <button id="btnBack">退一格</button>
+    <button id="btnSolved">填复原态</button>
   </div>
   <div id="palwrap"><div id="pal"></div></div>
   <div id="tally"></div>
   <div id="msg"></div>
-
-  <!-- 摄像头是"另一种输入方式"，不是求解之后的事。原来排在求解卡片下面，
-       等于把输入手段放到了终点动作后头。挪上来，和上面的手工填色并列 -->
-  <div class="row" style="margin-top:14px">
-    <button id="btnCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别（不用一格格点）</button>
-  </div>
 
   <!-- 解法二选一是"读一次就定下来"的设置，留在流里；
        求解是终点动作，挪到底下的 dock 去（见 .dock 那段注释） -->
@@ -584,22 +591,9 @@
     <div id="net"></div>
   </details>
 
-  <!-- 这五个都是一次性的：清空/填样例是调试时才用，两个跳页整个流程按一次。
-       原来平铺在下面，和「求解」抢注意力 -->
-  <details class="more">
-    <summary>其它（清空、填样例、拿去别的页）</summary>
-    <div class="row">
-      <button id="btnReset" class="sub">全部清空</button>
-      <button id="btnSolved" class="sub">填复原态</button>
-      <button id="btnRandom" class="sub">随便打乱</button>
-    </div>
-    <div class="row">
-      <button id="inToPr" class="sub" style="flex:1 1 100%">把这个魔方拿到③自己练</button>
-    </div>
-    <div class="row">
-      <button id="inToPat" class="sub" style="flex:1 1 100%">拿这个魔方去⑤画花色</button>
-    </div>
-  </details>
+  <!-- 「其它」那个折叠整块删了：「全部清空」用不着 —— 点已经有颜色的格子就把它清掉了，
+       直接改就行，不用先清空；两个「拿去别的页」也没了 —— ③自己练和⑤花色现在自己能输入。
+       只剩「填复原态」，挪到上面模型旁边那排去了 -->
 
   <div class="dock" id="inDock"><button id="btnSolve" class="pri big">求解</button></div>
 </div>
@@ -1999,25 +1993,22 @@ function paintNet(){
   IN.cubies = buildGeo(net);
   inRender();
 }
-$('btnReset').onclick = () => {
+/* 清空成"只剩六个中心块"。「全部清空」那颗按钮已经删了 —— 点已经有颜色的格子
+   就能把它清掉、直接改，用不着先清空一遍。但首页「解开我手上这个」还要用这段：
+   那儿是从复原态起步，得先腾空。所以逻辑留着，只是不再挂按钮 */
+function inClearAll(){
   net = new Array(54).fill(null);
   for(const f of FACE_ORDER) net[fidx(f,4)] = f;
   curColor = 'U'; paintNet(); invalidatePlan();
   // 清空就是「我要开始手工填了」，这时候才把三条填法说明放出来。
   // 要放在 paintNet 之后：那里面填满时会去关它
   stepsFolded = false; $('inSteps').open = true;
-};
+}
 $('btnBack').onclick = () => {                 // 退一格 = 把最后填的那格清掉
   for(let i=ORDER.length-1;i>=0;i--) if(net[ORDER[i]]){ net[ORDER[i]] = null; break; }
   paintNet(); invalidatePlan();
 };
 $('btnSolved').onclick = () => { net = SOLVED_FACELET.slice(); paintNet(); invalidatePlan(); };
-$('btnRandom').onclick = () => {
-  let s = solvedState();
-  const M = ['U','D','R','L','F','B'];
-  for(let i=0;i<28;i++) s = applyMove(s, M[(Math.random()*6)|0]+['',"'",'2'][(Math.random()*3)|0]);
-  net = cubieToFacelet(s); paintNet(); invalidatePlan();
-};
 
 /* ---- 边填边校验 ----
    `faceletToCubie` 要 54 格填满才能查，填到第 20 格就填反了的话，
@@ -2104,6 +2095,11 @@ function inWhole(axis, rotSign, quarter, toR){
 $('inFlip').onclick = () => inWhole(1, 1, 2);            // y2：转到背面
 $('inHome').onclick = () => { IN.R = PR_CAM0; IN.G = [[1,0,0],[0,1,0],[0,0,1]];
                               IN.yawSign = 1; inRender(); };
+/* 底面在默认俯视角下一格都看不见，可白色那 9 格恰恰是必须填的。
+   TU_CAM_UP 是教程里讲底层用的同一个仰视角，直接借过来。
+   G 一并归位：转过中间层之后光设 R 是不够的（跟「摆正视角」同一个道理） */
+$('inBottom').onclick = () => { IN.R = TU_CAM_UP; IN.G = [[1,0,0],[0,1,0],[0,0,1]];
+                                IN.yawSign = 1; inRender(); };
 $('inClearOne').onclick = () => {                        // 清掉最近标出来的那一格
   if(IN.mark >= 0 && IN.mark % 9 !== 4){ net[IN.mark] = null; paintNet(); invalidatePlan(); }
 };
@@ -2888,22 +2884,8 @@ $('btnSolve').onclick = () => {
   }
 };
 
-// prToIn 的反方向。同样是直接搬状态，不走截图识别
-$('inToPr').onclick = () => {
-  const r = faceletToCubie(net);
-  if(r.error){ showMsg(r.error, 'err'); return; }
-  prLoad(r.state);
-  goTab(2);
-  prMsg(isSolved(r.state) ? '搬过来了，不过这个魔方已经是复原态了'
-                          : '已经把①输入页那个魔方原样搬过来了，可以直接练');
-};
-// 花色页本来就直接读 net（不用像自己练那样复制一份状态），这里只用负责切页 + 校验
-$('inToPat').onclick = () => {
-  const r = faceletToCubie(net);
-  if(r.error){ showMsg(r.error, 'err'); return; }
-  goTab(4);
-  patMsg('当前魔方就是①输入页那个，画好目标花色后点「求解成这个花色」', 'ok');
-};
+// 「拿到③自己练」「拿去⑤画花色」两颗按钮删了 —— 那两页现在自己能输入，
+// 不用再绕回①页填一遍。prToIn（③→①那个方向）还在，是另一回事
 
 const TABS = [['tabIn','pIn'], ['tabGo','pGo'], ['tabPr','pPr'], ['tabTu','pTu'], ['tabPat','pPat']];
 function goTab(i){
@@ -2939,7 +2921,7 @@ $('hSolve').onclick = () => {
   // 还是复原态就说明他一格都没填过，顺手清空、把填法说明放出来，
   // 省得对着一个复原的魔方发愣（这正是原来那个假引导）。
   // 已经填了一半的别动 —— 去首页转一圈回来不该把人家的活儿冲掉
-  if(net.every((v,i)=> v === SOLVED_FACELET[i])) $('btnReset').click();
+  if(net.every((v,i)=> v === SOLVED_FACELET[i])) inClearAll();
 };
 goHome();                                        // 一进来先落在首页
 
@@ -4736,7 +4718,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 10:42';
+const BUILD = '2026-08-11 11:17';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
