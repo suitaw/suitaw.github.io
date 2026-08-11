@@ -2015,6 +2015,16 @@ function netPut(gi){
     const nxt = FACE_ORDER.filter(f => netLeft(f) > 0);
     if(nxt.length) curColor = nxt[0];
   }
+  // 刚好把第五个面填完了 —— 最后一面能算多少替他算多少。
+  // 只在「填」的时候试，清格子不试：不然刚清掉一格又被立刻补回去，改都改不动
+  if(net[gi]){
+    const inf = inferFace(net);
+    if(inf){
+      net = inf.fc;
+      inferMsg = inf.left ? `最后一面替你算好了，还剩 ${inf.left} 格算不准（棱块有多种可能），自己点一下`
+                          : '最后一面整个替你算好了 —— 核对一遍没问题就能求解';
+    }
+  }
   paintNet(); invalidatePlan();
 }
 const netLeft = f => 9 - net.filter(c => c === f).length;
@@ -2028,6 +2038,9 @@ $('inGripBtn').onclick = () => {
 
 // 三条填法说明只收一次：用户手动点开之后就别再跟他抢
 let stepsFolded = false;
+// inferFace 刚补完一面时要说的话。存起来是因为 paintNet 末尾会按填错/填满
+// 统一决定 msg 显示什么，得让它插得进去
+let inferMsg = '';
 function paintNet(){
   for(const gi in cellEls){
     const v = net[gi];
@@ -2048,8 +2061,10 @@ function paintNet(){
   // 是上下两行说同一件事，同屏重复播报
   $('tally').textContent = left ? '还差 ' + left + ' 格' : '';
   if(bad) showMsg(bad.msg, 'err');
+  else if(inferMsg) showMsg(inferMsg, 'ok');    // 刚替他补完一面，这句优先说
   else if(!left) showMsg('48 格都填好了', 'ok');
   else $('msg').className = '';
+  inferMsg = '';                                 // 只说一次，下一次点格子就该翻篇了
   // 填满且没填错，「求解」才从底下浮出来 —— 早于这一刻按它只会报错
   $('inDock').classList.toggle('on', !left && !bad);
   // 填法说明只在「正在手工填」的时候才配占首屏：填满了就收起来。
@@ -2079,6 +2094,67 @@ $('btnBack').onclick = () => {                 // 退一格 = 把最后填的那
   paintNet(); invalidatePlan();
 };
 $('btnSolved').onclick = () => { net = SOLVED_FACELET.slice(); paintNet(); invalidatePlan(); };
+
+/* ---- 填满五个面之后，第六面能算多少算多少 ----
+   角格一定算得出来：**角块的三色有手性**（CLAUDE.md 里那条，这儿正好反过来用）。
+   已知另外两面的颜色 + 这一格在哪个角位置，(角块,朝向) 唯一，第三色跟着唯一。
+
+   棱格不保证。棱块只有两色，已知一面时另一面有 4 种候选。真会撞上的例子：
+   剩下四个棱块是 {白绿,白红,黄绿,黄红}、四个位置的已知色是 绿红绿红 ——
+   2×2 四种配法都满足「每色 9 格」，靠朝向和、奇偶性筛完仍可能剩两种。
+   所以做法是：枚举候选组合，跑 faceletToCubie 留下合法的，
+   **所有合法解都同色的格子才填**，剩下的留空让人自己点 —— 猜错比留空糟得多。 */
+function inferFace(fc){
+  const blank = [];
+  for(let i=0;i<54;i++) if(i%9!==4 && !fc[i]) blank.push(i);
+  // 只在「正好差一个面（中心不算）」时出手
+  if(blank.length !== 8) return null;
+  const f0 = Math.floor(blank[0]/9);
+  if(!blank.every(i => Math.floor(i/9) === f0)) return null;
+
+  const out = fc.slice();
+  // 角：位置 ci 的第 m 格颜色 = CORNER_COLOR[j][(m-o+3)%3]（cubieToFacelet 的逆）
+  for(const t of CORNER_FACELET){
+    const m = t.findIndex(i => !out[i]);
+    if(m < 0) continue;
+    const sol = new Set();
+    for(let j=0;j<8;j++) for(let o=0;o<3;o++){
+      let ok = true;
+      for(let k=0;k<3;k++)
+        if(k !== m && CORNER_COLOR[j][(k-o+3)%3] !== out[t[k]]){ ok = false; break; }
+      if(ok) sol.add(CORNER_COLOR[j][(m-o+3)%3]);
+    }
+    if(sol.size === 1) out[t[m]] = [...sol][0];   // 手性保证走到这儿一定是 1
+  }
+  // 棱：同样的逆映射，但候选可能不止一个，先收着
+  const slots = [];
+  for(const t of EDGE_FACELET){
+    const m = t.findIndex(i => !out[i]);
+    if(m < 0) continue;
+    const cand = new Set();
+    for(let j=0;j<12;j++) for(let o=0;o<2;o++)
+      if(EDGE_COLOR[j][(1-m-o+2)%2] === out[t[1-m]]) cand.add(EDGE_COLOR[j][(m-o+2)%2]);
+    slots.push({gi:t[m], cand:[...cand]});
+  }
+  // 笛卡尔积最多 4^4=256 种，每种跑一次完整校验，留下合法的
+  const good = [];
+  (function walk(k, cur){
+    if(good.length > 64) return;                 // 兜底，正常远到不了
+    if(k === slots.length){
+      if(!faceletToCubie(cur).error) good.push(cur.slice());
+      return;
+    }
+    for(const c of slots[k].cand){ cur[slots[k].gi] = c; walk(k+1, cur); }
+    cur[slots[k].gi] = null;
+  })(0, out.slice());
+
+  if(!good.length) return null;                  // 前五面本身就填错了，交给 netTrouble 报
+  // 所有合法解一致的格子才敢填
+  for(const s of slots)
+    if(good.every(g => g[s.gi] === good[0][s.gi])) out[s.gi] = good[0][s.gi];
+  const left = slots.filter(s => !out[s.gi]).length;
+  return {fc:out, left};
+}
 
 /* ---- 边填边校验 ----
    `faceletToCubie` 要 54 格填满才能查，填到第 20 格就填反了的话，
@@ -4874,7 +4950,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 12:28';
+const BUILD = '2026-08-11 12:48';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
