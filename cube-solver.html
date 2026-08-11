@@ -389,11 +389,12 @@
   #prMoves span.last{background:var(--acc);color:var(--accTxt);font-weight:700}
   #prMoves span.last i{color:rgba(25,21,6,.6)}
   #prMoves em{font-style:normal;color:var(--dim2);font-size:12px}
-  /* ---- 练习页的两步：先问练哪个，选完才把一大堆按钮放出来 ---- */
-  #prStart{display:none;margin-top:14px}
-  #prStart.on{display:block}
-  #prMain{display:none}
-  #prMain.on{display:block}
+  /* ---- 两步式：先问一句，选完才把一大堆东西放出来（③自己练、⑤花色各一套）---- */
+  #prStart,#patStart{display:none;margin-top:14px}
+  #prStart.on,#patStart.on{display:block}
+  #prMain,#patMain{display:none}
+  #prMain.on,#patMain.on{display:block}
+  #patStart .card{margin-top:0}
 
   /* ---- 手工填当前魔方（全局覆盖层，装的是搬过来的 inpBox）---- */
   /* z-index 90：要比 camOv(100) 低 —— 覆盖层里那颗「拍照识别」唤起的摄像头界面
@@ -624,11 +625,27 @@
 
 <!-- ============ 花色页 ============ -->
 <div id="pPat" class="page">
-  <h2>把手上的魔方，转成你自己画的花色</h2>
-  <!-- 原来这里有三行：「当前魔方用①页那个」h2 已经说了；
-       「棋盘格、方块中的方块…」下面就是现成花色画廊，看得见，不用讲 -->
-  <p class="muted">魔方上画的是<b>目标</b>花色。<b>当前</b>魔方长什么样，用下面那两颗按钮告诉我
-    —— 拍照或者一格一格填都行。求解用①页选的那种解法。</p>
+  <!-- 第一步：先挑花色。这页原来一进来就是三个输入口 + 10 个花色缩略图 +
+       自画区 + 两个求解按钮，堆在 1700px 里。
+       第一步只问「摆什么」—— 这是这页的主线；「你手上那个现在什么样」是次要的，
+       而且有个合理默认（复原态），不该拿它挡在最前面 -->
+  <div id="patStart">
+    <h2 style="margin:2px 0 12px">想摆什么花色？</h2>
+    <div class="card">
+      <div class="lbl">现成的（点一下就选中）</div>
+      <div id="patLib"></div>
+    </div>
+    <button class="hCard" id="patDraw"><em>✏️</em><div>
+      <b>自己画一面</b><i>其余五面自动套满 —— 形状照着你画的来，颜色重新搭</i></div></button>
+  </div>
+
+  <div id="patMain">
+  <div class="pgHd">
+    <h2>把手上的魔方，转成这个花色</h2>
+    <button id="patAgain" class="sub" style="flex:none;padding:7px 11px;font-size:12px">换个花色</button>
+  </div>
+  <p class="muted">魔方上画的是<b>目标</b>花色，可以接着改。<b>当前</b>魔方长什么样，
+    用下面那两颗按钮告诉我 —— 不说的话就按复原态算。求解用①页选的那种解法。</p>
 
   <div id="patStage"><canvas id="patCv"></canvas>
     <div id="patHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
@@ -657,13 +674,7 @@
   <div id="patMsgEl"></div>
 
   <div class="card">
-    <!-- 求解现在吸在屏幕底下，「点下面」这个指路就不准了 -->
-    <div class="lbl">现成花色（点一下换上去，再按底下的「求解成这个花色」）</div>
-    <div id="patLib"></div>
-  </div>
-
-  <div class="card">
-    <div class="lbl">或者自己画：只画一面，自动套满六面</div>
+    <div class="lbl">自己画：只画一面，自动套满六面</div>
     <!-- 一句话够用的留在外面，两种模式怎么挑是读一次的东西，收起来。
          原来这十行常驻，把下面的模式按钮和「出方案」整个压到屏幕外 -->
     <p class="muted" style="margin:0 0 8px">先把其中一面画好，选中那一面，点「出方案」。</p>
@@ -704,6 +715,10 @@
   <div class="row" style="margin-top:8px">
     <button id="patToPr" class="sub" style="flex:1 1 100%">把这个花色拿去③自己练</button>
   </div>
+  <!-- 摆完了想还原回去，不用换页 —— 拿当前魔方去求解，跟①页那颗「求解」同一条路 -->
+  <div class="row" style="margin-top:8px">
+    <button id="patUndoAll" class="sub" style="flex:1 1 100%">↩ 不摆了，把手上的魔方复原</button>
+  </div>
 
   <details id="patNetBox">
     <summary>展开图总览（可以在这儿点，也可以检查填得对不对）</summary>
@@ -715,6 +730,7 @@
        「填复原态」挪到模型旁边那排去了 -->
 
   <div class="dock" id="patDock"><button id="patSolve" class="pri big">求解成这个花色</button></div>
+  </div><!-- /patMain -->
 </div>
 
 <!-- ============ 练习页 ============ -->
@@ -2735,12 +2751,31 @@ PAT_LIB.forEach(([name, seq]) => {
     for(const el of $('patLib').children) el.classList.remove('on');
     card.classList.add('on');
     $('patPairGallery').innerHTML = '';
-    patMsg(`换成「${name}」了 —— 点下面「求解成这个花色」出解法`, 'ok');
-    window.scrollTo({top: patStage.getBoundingClientRect().top + window.scrollY - 8,
-                     behavior:'smooth'});
+    patSetPicked(true);                    // 挑好了，进第二步
+    patMsg(`选的是「${name}」—— 按底下的「求解成这个花色」出解法`, 'ok');
+    scrollTo(0,0);
   };
   $('patLib').appendChild(card);
 });
+
+/* 花色页的两步。跟练习页同一个套路，区别是这页的第一步问的是「摆什么」
+   而不是「当前魔方什么样」—— 当前魔方有个合理默认（复原态），
+   拿它挡在最前面等于给「从复原的魔方摆个花色」这个最常见的用法加一道坎 */
+let patPicked = false;
+function patSetPicked(v){
+  patPicked = v;
+  $('patStart').classList.toggle('on', !v);
+  $('patMain').classList.toggle('on', v);
+  if(v){ patResize(); patRender(); }
+}
+$('patAgain').onclick = () => patSetPicked(false);
+// 「自己画」：不动 patNet，就从当前这个（默认复原态）在 3D 上接着改
+$('patDraw').onclick = () => {
+  for(const el of $('patLib').children) el.classList.remove('on');
+  patSetPicked(true);
+  patMsg('在魔方上点格子画一面，选中那一面，再点「出方案」', 'ok');
+  scrollTo(0,0);
+};
 
 
 $('patShowPairings').onclick = () => {
@@ -4686,6 +4721,18 @@ $('btnCam').onclick = () => camOpen('in');
 $('prCam').onclick  = () => camOpen('pr');
 $('patCam').onclick = () => camOpen('pat');
 $('patCurCam').onclick = () => camOpen('patCur');
+/* 「不摆了，把手上的魔方复原」：目标换成复原态就行 —— 求解算的是
+   「当前 → 目标」的差，目标是复原态时算出来的正好是复原解法。
+   不用另走一条求解路径 */
+$('patUndoAll').onclick = () => {
+  const rA = faceletToCubie(net);
+  if(rA.error){ patMsg('还不知道你手上的魔方现在什么样 —— 用上面那两颗按钮'
+                     + '（拍照识别 / 一格一格填）先告诉我', 'err'); return; }
+  patNet = SOLVED_FACELET.slice();
+  paintPatNet(); invalidatePlan();
+  for(const el of $('patLib').children) el.classList.remove('on');
+  patMsg('目标换成复原态了 —— 按底下那颗，出的就是复原解法', 'ok');
+};
 $('prFill').onclick     = () => inpOpen('pr');
 $('patCurFill').onclick = () => inpOpen('pat');
 $('camClose').onclick = camStop;
@@ -4815,6 +4862,7 @@ prLoad(solvedState());
 // 必须排在 prLoad 后面：prLoad 会把「已经选好练哪个」置上，
 // 而这一句就是页面初始化那次调用 —— 得把它按回第一步
 prSetStarted(false);
+patSetPicked(false);            // ⑤页同样停在第一步「想摆什么花色？」
 // 把存下来的设置铺到界面上（箭头按钮的高亮、计时器显示与否都在这儿定）
 prSetPut('vib', prSetIdx.vib);
 tuListRender();
@@ -4825,7 +4873,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 12:07';
+const BUILD = '2026-08-11 12:21';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
