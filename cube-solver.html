@@ -34,10 +34,24 @@
   body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);
     font:15px/1.55 -apple-system,"PingFang SC","Noto Sans CJK SC",system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}
-  /* 顶部一层很淡的辉光。纯装饰、不占布局，fixed 所以滚动时不动。
-     跟着主色走成暖黄，浓度压到 .09：黄比蓝亮，同样浓度会显脏 */
-  body::before{content:'';position:fixed;left:0;right:0;top:0;height:320px;pointer-events:none;
-    background:radial-gradient(120% 100% at 50% -25%,rgba(247,209,20,.09),transparent 72%)}
+  /* 背景的氛围层。纯装饰、不占布局，fixed 所以滚动时不动。
+     内容靠下面那条 position:relative 浮在它上面，所以这里不用管 z-index。
+
+     三层，色相是挑过的，不是随手配的：
+     - 顶部暖黄：跟着主色走，浓度压到 .085（黄比别的色亮，同样浓度会显脏）
+     - 底部靛紫：**魔方六个面色里没有紫**，所以它不会跟任何一面撞。
+       换成蓝青（那个 App 的做法）就会跟 --cB 的蓝糊在一起 ——
+       CLAUDE.md 里那条「蓝黑底会把蓝面吃掉」说的就是这个
+     - 中间一层极淡的暖灰把上下两头接起来，不然中段会塌成一块死黑
+
+     浓度是这里唯一该调的东西（三个 rgba 的最后一位）：这是识别工具，
+     六面色得一眼分清，背景只负责"不单调"、不参与抢色。
+     嫌淡就往上加、嫌花就往下压，加之前先看一眼输入页的魔方还分不分得清 */
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;
+    background:
+      radial-gradient(125% 55% at 50% -12%, rgba(247,209,20,.10), transparent 68%),
+      radial-gradient(115% 55% at 50% 112%, rgba(122,96,240,.20), transparent 72%),
+      radial-gradient(140% 65% at 50% 48%, rgba(150,140,125,.055), transparent 72%)}
   #tabs,.page,#ver{position:relative}
 
   h2{font-size:16.5px;margin:0 0 8px;font-weight:600;letter-spacing:.01em}
@@ -166,7 +180,11 @@
   .hCard::after{content:'›';color:var(--dim2);font-size:21px;flex:none;line-height:1}
   /* ⌂ 只占一点点宽，剩下的留给五个页签 —— 五个在 390px 上本来就是压到 12px
      才不折行的（见上面 #tabs 那段），再匀走 60px 就该参差不齐了 */
-  #tabs button#tabHome,#tabs button#tabSet{flex:0 0 24px;font-size:15px;padding:9px 0 11px}
+  /* ⚙ ⌂ 比页签大一号：它俩是图形、页签是文字，同字号时图形看着更小。
+     再拿一条竖线跟页签隔开 —— 不隔的话它俩像两个没名字的页签，
+     扫一眼分不出哪个是回首页 */
+  #tabs button#tabHome,#tabs button#tabSet{flex:0 0 26px;font-size:18px;padding:6px 0 9px}
+  .tabSep{flex:0 0 1px;background:var(--line2);margin:7px 5px 9px;border-radius:1px}
   /* 首页那颗 ⚙ 单独定位：首页藏了页签栏，但 ⚙ 得跟页签栏上那颗在同一个位置，
      不然从首页进内页 ⚙ 会跳一下 */
   #homeSet{position:absolute;left:14px;top:14px}
@@ -520,6 +538,7 @@
 <div id="tabs">
   <button id="tabSet" title="设置">⚙</button>
   <button id="tabHome" title="回首页">⌂</button>
+  <i class="tabSep"></i>
   <button id="tabIn" class="on">① 输入</button>
   <button id="tabGo">② 跟着复原</button>
   <button id="tabPr">③ 自己练</button>
@@ -4983,7 +5002,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 13:07';
+const BUILD = '2026-08-11 13:22';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
