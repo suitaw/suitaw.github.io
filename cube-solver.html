@@ -4717,6 +4717,28 @@ function classifyAll(){
   return out;
 }
 
+/* 六个面都拍了、可拼不出一个合法魔方 —— 多半是某一面拍砸了（底面最常见：
+   得把魔方整个翻过来，手挡光、角度也别扭）。挨个试「擦掉这一面，
+   用另外五面把它算回来」，算得出合法结果就采用。
+   靠的是 inferFace 那套：角格由角块手性唯一确定，棱格枚举后跑合法性筛，
+   要求 left===0（整面都算得准）才认 —— 半吊子的修复还不如不修。
+
+   为什么不干脆只拍五面：classifyAll 拿六个中心当参照色（整体偏色能自动抵消），
+   还靠「每色恰好 9 格」做二次两两交换（那轮把准确率从 75% 拉到 95%）。
+   少一面就少一个参照色、约束也退化成「每色 ≤ 9 格」，前 45 格跟着一起变不准。
+   省一次拍摄不值这个价。 */
+function camRepair(guess){
+  const hits = [];
+  for(const f of FACE_ORDER){
+    const fc = guess.slice();
+    for(let n=0;n<9;n++) if(n!==4) fc[fidx(f,n)] = null;
+    const r = inferFace(fc);
+    if(r && !r.left && !faceletToCubie(r.fc).error) hits.push({fc:r.fc, f});
+    if(hits.length > 1) return null;      // 两面都能"修"就说不准是哪面错了，不猜
+  }
+  return hits[0] || null;
+}
+
 /* ---- 参考姿势的 3D 小图 ---- */
 function drawRef(){
   const cs = buildGeo(SOLVED_FACELET);
@@ -4835,8 +4857,19 @@ $('camShot').onclick = () => {
   camStill=null;
   if(camStep < 5){ camStep++; $('camErr').textContent=''; camRender(); return; }
   // 六面齐了，归类
-  const guess = classifyAll();
+  let guess = classifyAll();
   camStop();
+  // 拼不出合法魔方就试着找出是哪一面拍砸了，用另外五面把它算回来。
+  // 花色页的【目标花色】除外：那六张图本来就不是同一个实物拍的，
+  // 拼不成合法状态是常态，"修"它等于把人家要的花色改掉
+  let fixedFace = '';
+  if(camDest !== 'pat' && faceletToCubie(guess).error){
+    const rep = camRepair(guess);
+    if(rep){ guess = rep.fc; fixedFace = FACE_CN[rep.f]; }
+  }
+  const fixMsg = fixedFace
+    ? `　另外：「${fixedFace}」那面拍得不太准，已经用另外五面把它算回来了 —— 重点核对这一面。`
+    : '';
   const dup = camDupFaces(camPicked);
   const dupMsg = dup
     ? `　另外：「${FACE_CN[CAM_STEPS[dup[0]].f]}」和「${FACE_CN[CAM_STEPS[dup[1]].f]}」`
@@ -4859,7 +4892,7 @@ $('camShot').onclick = () => {
   // 认岔了就照旧退回①页改（下面那段兜底），不然求解时才报错更晚
   if(camDest === 'patCur' && !chk.error){
     net = guess; paintNet(); invalidatePlan();
-    patMsg('当前魔方识别好了。画好目标花色，再按底下的「求解成这个花色」' + dupMsg, 'ok');
+    patMsg('当前魔方识别好了。画好目标花色，再按底下的「求解成这个花色」' + fixMsg + dupMsg, 'ok');
     return;
   }
 
@@ -4867,7 +4900,7 @@ $('camShot').onclick = () => {
   if(camDest === 'pr' && !chk.error){
     prLoad(chk.state);
     goTab(2);
-    prMsg('识别完了，已经搬过来了。开转之前先转着核对一遍。' + dupMsg, false);
+    prMsg('识别完了，已经搬过来了。开转之前先转着核对一遍。' + fixMsg + dupMsg, false);
     return;
   }
 
@@ -4883,7 +4916,7 @@ $('camShot').onclick = () => {
       + (bad ? '标红的格子就是问题所在：先在色板选对的颜色，再点那一格改掉'
              : '这类问题看不出是哪一格错，多半是某个块的朝向认反了，转着魔方整体核对一遍')
       + dupMsg
-    : '识别完了，六个面都填好了。转着核对一遍，没问题就点求解。' + dupMsg,
+    : '识别完了，六个面都填好了。转着核对一遍，没问题就点求解。' + fixMsg + dupMsg,
     (chk.error || dup) ? 'err' : 'ok');
   // 手工填的覆盖层开着的时候，填色 UI 就在那儿 —— 别把人踢回①页，
   // 他还得回覆盖层点「填好了」才算数
@@ -4950,7 +4983,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 12:48';
+const BUILD = '2026-08-11 13:07';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
