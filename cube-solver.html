@@ -509,30 +509,27 @@
          原来这十行常驻，把下面的模式按钮和「出方案」整个压到屏幕外 -->
     <p class="muted" style="margin:0 0 8px">先把其中一面画好，选中那一面，点「出方案」。</p>
     <details class="help" style="margin:0 0 10px;background:transparent;border:none;padding:0">
-      <summary>套形状和套颜色，该选哪个？</summary>
-      <div class="muted"><b style="color:var(--txt)">套形状</b>（默认）：
-      我从你画的那一面读出<b>分组</b> —— 颜色一样的格子算同一组。这个分组就是「图案」，
-      六个面都长这个形状。每一组在每一面上填什么颜色是可以变的，
-      模板面上一定还是你画的那个颜色，别的面会重新搭配。
-      <b>形状是硬的，颜色是软的</b>：任意形状都表达得了，不再限于「四角/四边」那三档。
-      但<b>表达得了不等于拼得出来</b> —— 魔方的合法性（角块手性、朝向和、角棱奇偶）
-      卡得很死，脚本把保持形状不变的配色全枚举过：四角、十字、棋盘各有 12 种解，
-      而<b>对角线、单个角这类实测一种解都没有</b>。
-      这种时候会自动退一步找「<b>尽量多的面</b>」—— 保持形状和套满六面是两件事，
-      放弃一两个面往往能让剩下的面完整保住你的图案（实测 L 形：不放弃只保得住 2 面，
-      放弃一面之后能保住 4 面）。结果按保住的面数排。
-      <div style="margin-top:6px"><b style="color:var(--txt)">套颜色</b>：把这一面 9 格的
-      <b>具体颜色</b>原样抄到其它面。抄完通常不合法，得靠「自动修成合法」去凑 ——
-      而那个只管改动格数最少，<b>会为了合法把你的图案改坏</b>。
-      只有「就是要这几个具体颜色」时才用它。</div>
+      <summary>这是怎么算的？为什么有的花色做不出来？</summary>
+      <div class="muted">我从你画的那一面读出<b>分组</b> —— 颜色一样的格子算同一组。
+      这个分组就是「图案」，六个面都长这个形状。每一组在每一面上填什么颜色是可以变的，
+      模板面上一定还是你画的那个颜色，别的面会重新搭配。<b>形状是硬的，颜色是软的</b>。
       <div style="margin-top:6px"><b style="color:var(--txt)">中心格换不了</b>：
       魔方的中心块是固定的，六个中心永远是各自的本色。你在中心画了别的颜色会被忽略，
-      它不参与分组。</div></div>
+      它不参与分组。</div>
+      <div style="margin-top:6px"><b style="color:var(--txt)">有的形状真的做不出来</b>：
+      魔方的合法性（角块手性、朝向和、角棱奇偶）卡得很死。脚本把保持形状的配色全枚举过 ——
+      四角/十字/棋盘各有 12 种解，上下带、两点各 34 种；而<b>对角线、单个角、L 形、
+      左右两条这类，六面全对一种解都没有</b>。
+      这种时候会自动退一步找「<b>尽量多的面</b>」（放弃一两个面，剩下的面就能完整保住），
+      结果按保住的面数排。</div>
+      <div style="margin-top:6px"><b style="color:var(--txt)">为什么没有「原样照抄颜色」这个选项</b>：
+      照抄过去是<b>数学上永远不成立</b>的 —— 一个颜色你在模板面用了 n 格，抄到六个面就是
+      6n 格，加自己那个中心格共 6n+1，要等于 9 得 n=4/3，不是整数。所以它必然全盘皆输，
+      只会退回复原态、告诉你「改了 45 格」。做过这个模式，删了。</div></div>
     </details>
-    <div class="row" id="patTplMode" style="margin-bottom:10px">
-      <button id="patModeExact" class="seg">套颜色<i>原样照抄</i></button>
-      <button id="patModeRole" class="seg on">套形状<i>颜色可换</i></button>
-    </div>
+    <div class="lbl" style="margin:12px 0 7px">常用花色（点一下直接出方案）</div>
+    <div class="row tight" id="patPresets" style="margin-bottom:12px"></div>
+    <div class="lbl" style="margin:0 0 7px">或者自己在上面的魔方上画一面</div>
     <div id="patTplFace"></div>
     <div class="row" style="margin-top:8px">
       <button id="patShowPairings" class="pri2" style="flex:1 1 100%">出方案</button>
@@ -2475,30 +2472,34 @@ const FACE_MAP = {"U":{"F":[0,1,2,3,4,5,6,7,8],"B":[8,7,6,5,4,3,2,1,0],"L":[6,3,
 // 的 15 种配对分别算一遍（角块 DP、棱块 DP 本身很快），再把两边的结果两两拼、
 // 按角棱置换奇偶性一致挑最优——是"两个 15 选 1"而不是"一个 225 选 1 里各跑一遍
 // nearestLegalState"，225 种组合本身只是查表相加，不用重新跑 DP，算得动
-// 默认套形状。套颜色是原样照抄，只有「就是要这几个具体颜色」时才用
-let patTplMode = 'shape';
-$('patModeExact').onclick = () => { patTplMode='exact';
-  $('patModeExact').classList.add('on'); $('patModeRole').classList.remove('on'); };
-$('patModeRole').onclick = () => { patTplMode='shape';
-  $('patModeRole').classList.add('on'); $('patModeExact').classList.remove('on'); };
-
-// 逐格模式：模板面 9 格原样按 FACE_MAP 铺到其它 5 面，正对面 2 种候选各铺一份，
-// 铺完丢给 nearestLegalState 找最近的合法态——不用搜配对，因为逐格复制根本没有
-// "强调色配哪个颜色"这个自由度，每一格该填什么已经被 FACE_MAP 唯一或二选一地定死了
-function buildExactOptions(cells){
-  const map = FACE_MAP[patTplFace];
-  const oppFace = Object.keys(map).find(f => Array.isArray(map[f][0]));
-  const oppCands = map[oppFace];
-  return oppCands.map(oppMap => {
-    const fc = new Array(54);
-    for(const f of FACE_ORDER){
-      const m = f === patTplFace ? [0,1,2,3,4,5,6,7,8] : (f === oppFace ? oppMap : map[f]);
-      for(let i=0;i<9;i++) fc[fidx(f, m[i])] = cells[i];
-    }
-    const { state, diffCount } = nearestLegalState(fc);
-    return { fc: cubieToFacelet(state), diffCount };
-  });
+/* 常用花色。这几个模板都是脚本验过「六面全对」做得到的，
+   A=本色、B/C=强调色，下标 0..8（4 是中心，画了也会被忽略）。
+   括号里是保持形状的配色有几种 —— 全枚举出来的，不是估的 */
+const PAT_PRESETS = [
+  ['六点',     'BBBBABBBB'],   // 中心一点、周围一圈异色（2 种配色）
+  ['棋盘',     'BABAAABAB'],   // 四个角异色（12 种）
+  ['十字',     'ABABABABA'],   // 四条棱异色（12 种）
+  ['角边三色', 'BCBCACBCB'],   // 角一色、棱另一色（12 种）
+  ['上下带',   'BBBAAABBB'],   // 上下两行异色（34 种）
+  ['两点',     'ABAAAAABA'],   // 上下两个棱异色（34 种）
+];
+// 把模板拍到当前选中的那一面上。强调色随便挑两个非本色的 ——
+// 反正「套形状」只看分组，具体用哪个颜色它会自己重新搭配
+function patApplyPreset(pat){
+  const others = FACE_ORDER.filter(f => f !== patTplFace);
+  const col = {A: patTplFace, B: others[0], C: others[1]};
+  for(let i=0;i<9;i++) patNet[fidx(patTplFace, i)] = col[pat[i]];
+  patNet[fidx(patTplFace, 4)] = patTplFace;      // 中心永远本色
+  paintPatNet(); invalidatePlan();
+  $('patShowPairings').click();                  // 直接出方案，少点一下
 }
+PAT_PRESETS.forEach(([name, pat]) => {
+  const b = document.createElement('button');
+  b.textContent = name;
+  b.onclick = () => patApplyPreset(pat);
+  $('patPresets').appendChild(b);
+});
+
 
 $('patShowPairings').onclick = () => {
   const cells = [];
@@ -2510,12 +2511,6 @@ $('patShowPairings').onclick = () => {
   if(own.every(v => v)){
     patMsg(`${FACE_CN[patTplFace]}整面都是本色，没画出图案——是不是选错模板面了？`
       + '选中的那面会在魔方上亮出来，对一下', 'err');
-    return;
-  }
-  if(patTplMode === 'exact'){
-    const options = buildExactOptions(cells);
-    options.sort((a,b) => a.diffCount - b.diffCount);
-    renderPairGallery(options);
     return;
   }
   // 六面全对那条路很快（0.2 秒），退化到「尽量多的面」要跑十几次精确 DP，
@@ -4481,7 +4476,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 07:26';
+const BUILD = '2026-08-11 07:53';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
