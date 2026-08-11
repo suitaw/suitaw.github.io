@@ -174,7 +174,17 @@
   /* 六个胶囊 + 三条说明原来占掉 200px 上下，把真正要动手的 3D 魔方顶到了首屏外。
      压紧到一半：胶囊改两行三列的紧排、说明缩一号，魔方就能露在首屏里。
      色点改成方块小圆角 —— 它代表的就是一张贴纸，圆点不是 */
-  #grip{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:0 0 10px}
+  /* 页面标题栏：标题占满、右边一颗「?」。借鉴计客那个 App 填色页的顶栏 ——
+     他们顶上只有「× 标题 ?」一行，说明全收在 ? 里，魔方能占到半屏 */
+  .pgHd{display:flex;align-items:flex-start;gap:10px}
+  .pgHd h2{flex:1}
+  button.hlp{flex:none;width:26px;height:26px;padding:0;border-radius:50%;
+    font-size:13px;font-weight:700;color:var(--dim);background:var(--panel2);
+    border-color:var(--line2);line-height:1}
+  button.hlp.on{background:var(--acc);border-color:var(--acc);color:var(--accTxt)}
+  /* 默认收起，点 ? 才放出来 */
+  #grip{display:none;grid-template-columns:repeat(3,1fr);gap:5px;margin:0 0 10px}
+  #grip.on{display:grid}
   #grip span{display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;
     color:var(--dim);background:var(--panel);border:1px solid var(--line);
     border-radius:var(--r3);padding:4px 6px}
@@ -498,7 +508,13 @@
 
 <!-- ============ 输入页 ============ -->
 <div id="pIn" class="page">
-  <h2>按 <b style="color:#f2f4f7">白色朝下</b>、<b style="color:var(--cF)">绿色朝前</b> 拿好魔方</h2>
+  <!-- 六个持方胶囊原来常驻，占掉 62px 把魔方往下推。它是"拿不准时查一眼"的东西，
+       不是每秒都要看的 —— 收进标题右边那颗「?」里。
+       标题本身留着：直接点页签进来的人没经过首页，持方还是得说一次 -->
+  <div class="pgHd">
+    <h2>按 <b style="color:#f2f4f7">白色朝下</b>、<b style="color:var(--cF)">绿色朝前</b> 拿好魔方</h2>
+    <button id="inGripBtn" class="hlp" title="六个面各是什么颜色">?</button>
+  </div>
   <div id="grip">
     <span style="--c:var(--cU)"><i></i>上 黄</span><span style="--c:var(--cD)"><i></i>下 白</span>
     <span style="--c:var(--cF)"><i></i>前 绿</span><span style="--c:var(--cB)"><i></i>后 蓝</span>
@@ -1918,6 +1934,11 @@ function netPut(gi){
 const netLeft = f => 9 - net.filter(c => c === f).length;
 // 下一个还没填的格子，用来在 3D 上标出来当提示
 const netNext = () => { for(const gi of ORDER) if(!net[gi]) return gi; return -1; };
+
+$('inGripBtn').onclick = () => {
+  const g = $('grip').classList.toggle('on');
+  $('inGripBtn').classList.toggle('on', g);
+};
 
 // 三条填法说明只收一次：用户手动点开之后就别再跟他抢
 let stepsFolded = false;
@@ -4679,7 +4700,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 10:29';
+const BUILD = '2026-08-11 10:31';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
