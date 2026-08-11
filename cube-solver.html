@@ -509,19 +509,27 @@
          原来这十行常驻，把下面的模式按钮和「出方案」整个压到屏幕外 -->
     <p class="muted" style="margin:0 0 8px">先把其中一面画好，选中那一面，点「出方案」。</p>
     <details class="help" style="margin:0 0 10px;background:transparent;border:none;padding:0">
-      <summary>逐格和角色，该选哪个？</summary>
-      <div class="muted">两种模式：<b>逐格</b>是把这一面 9 个格子原样复制到其它面（四个相邻面对应关系
-      唯一确定，正对面天生有两种走法，都给你列出来挑）；<b>角色</b>只认"中心/四角/四边"
-      三种身份，角、边各自的强调色能重新配色，更灵活但不保证逐格分毫不差。<br>
-      <b style="color:var(--txt)">怎么选</b>：四角（或四边）想统一用同一个颜色，选<b>角色</b>——
-      它会帮你重新搭配颜色，改动通常更少，多数"四角一色、四边一色"的图案能做到零改动。
-      只有四个角/边真的要各不相同（角色模式表达不了）才用<b>逐格</b>——它是原样照抄颜色，
-      抄到六面上同一个颜色很容易超过 9 格上限，通常要改不少格子，这是照抄本身的代价，
-      不是算法没找到更好的方案。</div>
+      <summary>套形状和套颜色，该选哪个？</summary>
+      <div class="muted"><b style="color:var(--txt)">套形状</b>（默认）：
+      我从你画的那一面读出<b>分组</b> —— 颜色一样的格子算同一组。这个分组就是「图案」，
+      六个面都长这个形状。每一组在每一面上填什么颜色是可以变的，
+      模板面上一定还是你画的那个颜色，别的面会重新搭配。
+      <b>形状是硬的，颜色是软的</b>：任意形状都表达得了，不再限于「四角/四边」那三档。
+      但<b>表达得了不等于拼得出来</b> —— 魔方的合法性（角块手性、朝向和、角棱奇偶）
+      卡得很死，脚本把保持形状不变的配色全枚举过：四角、十字、棋盘各有 12 种解，
+      而<b>对角线、单个角这类实测一种解都没有</b>。这种时候会明说「真的拼不出来」，
+      再给最接近的几种，并标出图案被改坏了几格。
+      <div style="margin-top:6px"><b style="color:var(--txt)">套颜色</b>：把这一面 9 格的
+      <b>具体颜色</b>原样抄到其它面。抄完通常不合法，得靠「自动修成合法」去凑 ——
+      而那个只管改动格数最少，<b>会为了合法把你的图案改坏</b>。
+      只有「就是要这几个具体颜色」时才用它。</div>
+      <div style="margin-top:6px"><b style="color:var(--txt)">中心格换不了</b>：
+      魔方的中心块是固定的，六个中心永远是各自的本色。你在中心画了别的颜色会被忽略，
+      它不参与分组。</div></div>
     </details>
     <div class="row" id="patTplMode" style="margin-bottom:10px">
-      <button id="patModeExact" class="seg">逐格复制</button>
-      <button id="patModeRole" class="seg on">角色复制</button>
+      <button id="patModeExact" class="seg">套颜色<i>原样照抄</i></button>
+      <button id="patModeRole" class="seg on">套形状<i>颜色可换</i></button>
     </div>
     <div id="patTplFace"></div>
     <div class="row" style="margin-top:8px">
@@ -2245,18 +2253,122 @@ function paintPatTplBtns(){
 }
 paintPatTplBtns();
 
-// 6 种颜色两两配对，一共 3 对的所有分法（15 种）——递归：固定第一个还没配的颜色，
-// 枚举它跟谁配，剩下的颜色递归处理
-function allPairings(colors){
-  if(!colors.length) return [{}];
-  const [a, ...rest] = colors;
-  const out = [];
-  for(let i=0;i<rest.length;i++){
-    const b = rest[i];
-    const remain = rest.slice(0,i).concat(rest.slice(i+1));
-    for(const sub of allPairings(remain)) out.push({...sub, [a]:b, [b]:a});
+/* ---- 从模板面读「形状」----
+   同色即同组。你画的颜色有两个作用：分组（哪些格子是一伙的）和偏好（这一组想是什么色）。
+   分组是硬的、六面必须一样；颜色是软的，拼不出来就让它换。
+
+   中心格（下标 4）不参与分组：中心块在魔方上是固定的，六个中心永远是各自的本色，
+   这是物理事实不是设计取舍。你在中心画了别的颜色也只能忽略。 */
+function readGroups(cells){
+  const byColor = new Map();
+  for(let i=0;i<9;i++){
+    if(i===4) continue;
+    if(!byColor.has(cells[i])) byColor.set(cells[i], []);
+    byColor.get(cells[i]).push(i);
   }
+  return [...byColor].map(([color, idx]) => ({color, idx}));
+}
+
+/* 一个组的候选「面 → 颜色」映射。
+   每个组在每一面上取一个颜色，这个映射必须是六个颜色的一一对应 ——
+   这样「每色恰好 9 格」就自动成立：一个 s 格的组，在每一面贡献 s 格，
+   一一对应保证每种颜色恰好被一个面用到，∑各组 s = 8，加上中心那 1 格正好 9。
+   不是碰巧凑出来的，是这个构造自带的。
+
+   关键简化：模板面 T 上这一组你画的是 color，所以 map[T]=color 已经被你钉死了 ——
+   这保证了模板面出来就是你画的样子。剩下 5 个面随便排，每组 5! = 120 种。
+
+   曾经只搜「两两配对」那 3 种，是错的：写脚本把 14400 种去重后的配色全枚举过一遍，
+   十字有 16 种解，只搜配对一种都找不到，会被误判成「形状保不住」。竖条和 L 形
+   各只有 1 种解，也全在配对之外。所以这里必须放开成全部双射。 */
+function groupMaps(T, color){
+  const restF = FACE_ORDER.filter(f => f !== T);
+  const restC = FACE_ORDER.filter(c => c !== color);
+  const out = [];
+  // 两两配对（自反的那些）排在最前面：它们最常出解，预算不够被截断时先保住这批
+  const isPairing = m => FACE_ORDER.every(f => m[m[f]] === f);
+  (function perm(left, acc){
+    if(!left.length){
+      const m = {}; m[T] = color;
+      restF.forEach((f,i) => m[f] = acc[i]);
+      out.push(m); return;
+    }
+    for(let i=0;i<left.length;i++)
+      perm(left.slice(0,i).concat(left.slice(i+1)), acc.concat([left[i]]));
+  })(restC, []);
+  out.sort((a,b) => (isPairing(b)?1:0) - (isPairing(a)?1:0));
   return out;
+}
+
+// 按一组「面→色」映射把分组铺满六面。中心强制本色，其余格子按 FACE_MAP 找到
+// 自己在目标面上的位置，填这一组在那一面的颜色
+function buildShapeFc(T, groups, maps, oppFace, oppMap){
+  const fmap = FACE_MAP[T];
+  const fc = new Array(54);
+  for(const f of FACE_ORDER){
+    const m = f === T ? [0,1,2,3,4,5,6,7,8] : (f === oppFace ? oppMap : fmap[f]);
+    fc[fidx(f,4)] = f;
+    groups.forEach((g, gi) => {
+      const col = maps[gi][f];
+      for(const i of g.idx) fc[fidx(f, m[i])] = col;
+    });
+  }
+  return fc;
+}
+
+/* 套形状：把所有「形状完全不变」的配色枚举一遍，挑出其中天生合法的。
+   跟旧角色模式最大的不同是「谁让步」——旧的是拿 nearestLegalState 去凑合法，
+   那东西只管改动格数最少，会为了合法把你的图案改坏；这里形状是硬约束，
+   只在颜色上找出路。找不到才退回去改形状，并且明说改了几格 */
+/* 一次搜索最多走多少个组合。卡的是「实际走到的」而不是「名义组合数」——
+   撞色剪枝砍得很狠（实测 3 组名义 345 万、实走 25 万，只剩 7%），
+   按名义数卡会把候选提前砍掉，等于白丢解。
+   实测：2 组走 12720 个、node 上 229ms，手机上按 3 倍算也就 0.7 秒，能完整搜完；
+   3 组要 25 万、4 组要 157 万，那才需要截断（而那两种实测本来也无解） */
+const SHAPE_NODE_CAP = 60000;
+function buildShapeOptions(cells, T){
+  const groups = readGroups(cells);
+  const cand = groups.map(g => groupMaps(T, g.color));
+  let nodes = 0, complete = true;
+  const fmap = FACE_MAP[T];
+  const oppFace = Object.keys(fmap).find(f => Array.isArray(fmap[f][0]));
+  const legal = [], seen = new Set(), near = [];
+  const pick = new Array(groups.length);
+  // 两个组在同一面上撞到同一个颜色，这两组在那一面就并成一块了，形状当场就变。
+  // 所以各组的映射必须「处处不同」。这条不光是为了对，剪枝之后搜索也快得多
+  const clash = (m, gi) => {
+    for(let j=0;j<gi;j++) for(const f of FACE_ORDER) if(pick[j][f] === m[f]) return true;
+    return false;
+  };
+  (function rec(gi){
+    if(nodes >= SHAPE_NODE_CAP){ complete = false; return; }
+    if(gi === groups.length){
+      for(const oppMap of fmap[oppFace]){
+        nodes++;
+        const fc = buildShapeFc(T, groups, pick, oppFace, oppMap);
+        const k = fc.join('');
+        if(seen.has(k)) continue;        // 不同配法可能给出同一张图，去重
+        seen.add(k);
+        if(faceletToCubie(fc).state) legal.push({fc, diffCount:0});
+        else if(near.length < 24) near.push(fc);   // 兜底要跑重 DP，留一小把就够
+      }
+      return;
+    }
+    for(const m of cand[gi]){
+      if(nodes >= SHAPE_NODE_CAP){ complete = false; return; }
+      if(clash(m, gi)) continue;
+      pick[gi] = m; rec(gi+1);
+    }
+  })(0);
+  if(legal.length) return {options: legal, kept: true, groups: groups.length, complete};
+  // 一个形状完全不变的合法配色都没有 —— 退而求其次，拿这些「形状对但不合法」的
+  // 去找最近的合法态，此时形状会被改坏，diffCount 就是被改坏的格数
+  const opts = near.slice(0, 12).map(fc => {
+    const { state, diffCount } = nearestLegalState(fc);
+    return { fc: cubieToFacelet(state), diffCount };
+  });
+  opts.sort((a,b) => a.diffCount - b.diffCount);
+  return {options: opts, kept: false, groups: groups.length, complete};
 }
 
 // 每个方案一张小 3D 快照，比平面展开图直观——直接复用现成的 render()/buildGeo()，
@@ -2291,14 +2403,11 @@ const FACE_MAP = {"U":{"F":[0,1,2,3,4,5,6,7,8],"B":[8,7,6,5,4,3,2,1,0],"L":[6,3,
 // 的 15 种配对分别算一遍（角块 DP、棱块 DP 本身很快），再把两边的结果两两拼、
 // 按角棱置换奇偶性一致挑最优——是"两个 15 选 1"而不是"一个 225 选 1 里各跑一遍
 // nearestLegalState"，225 种组合本身只是查表相加，不用重新跑 DP，算得动
-const PAIR_CORNER_I = [0,2,6,8], PAIR_EDGE_I = [1,3,5,7];
-
-// 默认角色模式：多数"四角一色、四边一色"的图案它能搜到更省改动的配色，
-// 逐格模式是原样照抄颜色，只有角色模式表达不了（四角/四边要各不相同）才需要它
-let patTplMode = 'role';
+// 默认套形状。套颜色是原样照抄，只有「就是要这几个具体颜色」时才用
+let patTplMode = 'shape';
 $('patModeExact').onclick = () => { patTplMode='exact';
   $('patModeExact').classList.add('on'); $('patModeRole').classList.remove('on'); };
-$('patModeRole').onclick = () => { patTplMode='role';
+$('patModeRole').onclick = () => { patTplMode='shape';
   $('patModeRole').classList.add('on'); $('patModeExact').classList.remove('on'); };
 
 // 逐格模式：模板面 9 格原样按 FACE_MAP 铺到其它 5 面，正对面 2 种候选各铺一份，
@@ -2327,7 +2436,7 @@ $('patShowPairings').onclick = () => {
   // own 全 true = 这一面还是原来的颜色，没画强调色——大概率是选错模板面了
   // （转过视角后屏幕上「正对着你」的不一定是选中的那一面），不是真的想套一个空白面
   if(own.every(v => v)){
-    patMsg(`${FACE_CN[patTplFace]}看起来还是原来的颜色，没有强调色——是不是选错模板面了？`
+    patMsg(`${FACE_CN[patTplFace]}整面都是本色，没画出图案——是不是选错模板面了？`
       + '选中的那面会在魔方上亮出来，对一下', 'err');
     return;
   }
@@ -2337,82 +2446,19 @@ $('patShowPairings').onclick = () => {
     renderPairGallery(options);
     return;
   }
-  const ownCorner = PAIR_CORNER_I.every(i => own[i]);
-  const ownEdge = PAIR_EDGE_I.every(i => own[i]);
-
-  const pairings = allPairings(FACE_ORDER);
-  // ownCorner/ownEdge 为真时角/边本来就跟本面同色，不用搜配对——固定用"自己"这个
-  // 唯一配法（allPairings 里随便挑一个当占位，反正下面 buildFc 时 own 分支不会用到它）
-  const cornerPairings = ownCorner ? [pairings[0]] : pairings;
-  const edgePairings = ownEdge ? [pairings[0]] : pairings;
-
-  function buildCornerFc(pairing){
-    const fc = new Array(54);
-    for(const f of FACE_ORDER){
-      fc[fidx(f,4)] = f;
-      for(const i of PAIR_CORNER_I) fc[fidx(f,i)] = ownCorner ? f : pairing[f];
-    }
-    return fc;
-  }
-  function buildEdgeFc(pairing){
-    const fc = new Array(54);
-    for(const f of FACE_ORDER)
-      for(const i of PAIR_EDGE_I) fc[fidx(f,i)] = ownEdge ? f : pairing[f];
-    return fc;
-  }
-  const cornerScoreFn = fc => (slot,piece,o) => {
-    let s = 0;
-    for(let k=0;k<3;k++){
-      const cell = fc[CORNER_FACELET[slot][(k+o)%3]];
-      if(cell && cell === CORNER_COLOR[piece][k]) s++;
-    }
-    return s;
-  };
-  const edgeScoreFn = fc => (slot,piece,o) => {
-    let s = 0;
-    for(let k=0;k<2;k++){
-      const cell = fc[EDGE_FACELET[slot][(k+o)%2]];
-      if(cell && cell === EDGE_COLOR[piece][k]) s++;
-    }
-    return s;
-  };
-  const cResAll = cornerPairings.map(p => assignDP(8, 3, 3, cornerScoreFn(buildCornerFc(p))));
-  const eResAll = edgePairings.map(p => assignDP(12, 2, 2, edgeScoreFn(buildEdgeFc(p))));
-
-  const options = [];
-  for(let ci=0; ci<cornerPairings.length; ci++){
-    for(let ei=0; ei<edgePairings.length; ei++){
-      let best = null, bestScore = -Infinity;
-      for(const par of [0,1]){
-        const c = cResAll[ci][par], e = eResAll[ei][par];
-        if(!c || !e) continue;
-        const total = c.score + e.score;
-        if(total > bestScore){ bestScore = total; best = {c, e}; }
-      }
-      if(!best) continue;
-      const state = {cp:best.c.perm, co:best.c.ori, ep:best.e.perm, eo:best.e.ori};
-      const fixedFc = cubieToFacelet(state);
-      // 跟"理想图案"（这组角/边配对本该长的样子）比，数改了几格
-      const idealCorner = buildCornerFc(cornerPairings[ci]);
-      const idealEdge = buildEdgeFc(edgePairings[ei]);
-      let diffCount = 0;
-      for(let i=0;i<54;i++){
-        const ideal = idealCorner[i] ?? idealEdge[i] ?? null;
-        if(ideal && ideal !== fixedFc[i]) diffCount++;
-      }
-      options.push({ fc: fixedFc, diffCount });
-    }
-  }
-  options.sort((a,b) => a.diffCount - b.diffCount);
-  renderPairGallery(options);
+  const { options, kept, groups, complete } = buildShapeOptions(cells, patTplFace);
+  if(!options.length){ patMsg('这个形状没搜出任何方案 —— 换一面或者改改图案再试', 'err'); return; }
+  renderPairGallery(options, {kept, groups, complete});
 };
 
 // 逐格/角色两种模式算出来的 options 都是 [{fc, diffCount}]，渲染逻辑共用一份
-function renderPairGallery(options){
-  // 225 种里画面基本重复（很多组合本来就没被"角/边都自由"这个例子用到），
-  // 只展示改动最少的一批，不然又慢又看不过来
+function renderPairGallery(options, meta){
+  // 方案多起来画面基本重复，只列前一批，不然又慢又看不过来
   const MAX_SHOW = 30;
   const shown = options.slice(0, MAX_SHOW);
+  // 套形状且形状保住了：每一种都是「图案分毫不差」，差别只在配色，
+  // 标「改 N 格」会让人以为图案被改了。这时候标的是配色的编号
+  const shapeKept = meta && meta.kept;
 
   const gal = $('patPairGallery');
   gal.innerHTML = '';
@@ -2421,21 +2467,33 @@ function renderPairGallery(options){
     card.className = 'patPairCard';
     card.appendChild(patMiniCube(opt.fc));
     const label = document.createElement('b');
-    label.className = idx === 0 ? 'best' : '';
-    label.textContent = opt.diffCount ? `改 ${opt.diffCount} 格` : '零改动，天生合法';
+    label.className = (shapeKept || idx === 0) ? 'best' : '';
+    label.textContent = shapeKept ? `配色 ${idx+1} · 图案分毫不差`
+                      : opt.diffCount ? `改 ${opt.diffCount} 格` : '零改动，天生合法';
     card.appendChild(label);
     card.onclick = () => {
       patNet = opt.fc.slice();
       paintPatNet(); invalidatePlan();
-      patMsg(`已经把${FACE_CN[patTplFace]}的图案套到六面了` +
-        (opt.diffCount ? `，改了 ${opt.diffCount} 格` : '，正好合法，一格没改'), 'ok');
+      patMsg(shapeKept ? `已经把${FACE_CN[patTplFace]}的图案原样套到六面了，一格没走样`
+           : `已经把${FACE_CN[patTplFace]}的图案套到六面了` +
+             (opt.diffCount ? `，为了拼得出来改了 ${opt.diffCount} 格` : '，正好合法，一格没改'), 'ok');
       gal.innerHTML = '';
       window.scrollTo({top: patStage.getBoundingClientRect().top + window.scrollY - 8, behavior:'smooth'});
     };
     gal.appendChild(card);
   });
-  patMsg(`算出了 ${options.length} 种配色方案` + (options.length > MAX_SHOW ? `，只列改动最少的 ${MAX_SHOW} 种` : '')
-    + '——点哪个用哪个', 'ok');
+  patMsg(shapeKept
+      ? `${meta.groups} 组的图案，找到 ${options.length} 种配色`
+        + (meta.complete ? '' : '（配色太多，只搜了一部分）')
+        + `，每一种的图案都跟你画的一模一样，只是六个面的颜色搭配不同 —— 点哪个用哪个`
+      : meta ? (meta.complete
+          ? `这个形状真的拼不出来 —— 保持形状不变的配色我全试过了，没有一种是合法魔方。`
+            + `下面是最接近的 ${options.length} 种，标的是图案被改坏了几格 —— 点哪个用哪个`
+          : `这个形状的配色太多，只搜了一部分，没找到能原样拼出来的。`
+            + `下面是最接近的 ${options.length} 种，标的是图案被改坏了几格 —— 点哪个用哪个`)
+      : `算出了 ${options.length} 种配色方案`
+        + (options.length > MAX_SHOW ? `，只列改动最少的 ${MAX_SHOW} 种` : '') + '——点哪个用哪个',
+    'ok');
 }
 
 // 画的花色大概率不合法（角块手性、朝向和、角棱奇偶性一致这几条全局约束，
@@ -4342,7 +4400,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 06:43';
+const BUILD = '2026-08-11 07:10';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
