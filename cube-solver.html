@@ -78,6 +78,18 @@
      反而像是在引导你按它。蓝色时代这条不明显，换成黄就露出来了 */
   button.pri:disabled{background:var(--panel2);border-color:var(--line2);color:var(--txt);
     opacity:.32;font-weight:400}
+  /* ---- 按使用频率分档 ----
+     原来所有按钮一个大小平铺：每局要按十几次的「撤销」，
+     和整个生命周期按一次的「拿这个魔方去⑤画花色」长得一模一样，
+     找哪个全靠一个字一个字读。现在分三档：
+       .row.hi  高频 —— 每局按好几次，做大，放在拇指够得着的地方
+       常规      中频 —— 偶尔按
+       details.more 低频 —— 一次性的、跳转别的页的，收起来
+     判断依据是"一局里按几次"，不是"功能重不重要" */
+  .row.hi{gap:8px}
+  .row.hi>button{padding:15px 8px;font-size:15.5px;font-weight:600}
+  details.more>.row{margin-top:0}
+  details.more>.row+.row{margin-top:8px}
   .row{display:flex;gap:8px;flex-wrap:wrap}
   /* 横向 padding 只留 10px：三列一行时每格约 104px，14px 会让「随便打乱」这种
      五六个字的标签折行，一个按钮占两行、旁边的占一行，一排就参差不齐了 */
@@ -238,15 +250,15 @@
   .legend{font-size:12.3px;color:var(--dim);line-height:1.75}
   .legend b{color:var(--txt);font-weight:600}
   /* 长说明收起来。手机上这几段常驻要占大半屏，真正要看的是上面的魔方和按钮 */
-  details.help,#netBox{background:var(--panel);border:1px solid var(--line);
+  details.help,details.more,#netBox{background:var(--panel);border:1px solid var(--line);
     border-radius:var(--r);padding:10px 13px;margin:12px 0}
-  details.help>summary,#netBox>summary{font-size:12.5px;color:var(--dim);cursor:pointer;
+  details.help>summary,details.more>summary,#netBox>summary{font-size:12.5px;color:var(--dim);cursor:pointer;
     list-style:none;line-height:1.4}
-  details.help>summary::-webkit-details-marker,
+  details.help>summary::-webkit-details-marker,details.more>summary::-webkit-details-marker,
   #netBox>summary::-webkit-details-marker{display:none}
-  details.help>summary::before,#netBox>summary::before{content:'▸ ';color:var(--acc)}
-  details.help[open]>summary{margin-bottom:9px;color:var(--txt)}
-  details.help[open]>summary::before,#netBox[open]>summary::before{content:'▾ '}
+  details.help>summary::before,details.more>summary::before,#netBox>summary::before{content:'▸ ';color:var(--acc)}
+  details.help[open]>summary,details.more[open]>summary{margin-bottom:9px;color:var(--txt)}
+  details.help[open]>summary::before,details.more[open]>summary::before,#netBox[open]>summary::before{content:'▾ '}
 
   /* ---- 练习 ---- */
   #prBar{display:flex;justify-content:space-between;align-items:baseline;
@@ -433,6 +445,12 @@
   <div id="tally"></div>
   <div id="msg"></div>
 
+  <!-- 摄像头是"另一种输入方式"，不是求解之后的事。原来排在求解卡片下面，
+       等于把输入手段放到了终点动作后头。挪上来，和上面的手工填色并列 -->
+  <div class="row" style="margin-top:14px">
+    <button id="btnCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别（不用一格格点）</button>
+  </div>
+
   <div class="card">
     <div class="lbl">用哪种解法</div>
     <div class="row" id="algo" style="margin-bottom:10px">
@@ -444,27 +462,27 @@
     </div>
   </div>
 
-  <div class="row">
-    <button id="btnCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别</button>
-  </div>
-
   <details id="netBox">
     <summary>展开图总览（可以在这儿点，也可以检查填得对不对）</summary>
     <div id="net"></div>
   </details>
 
-  <div class="lbl" style="margin-top:16px">其它</div>
-  <div class="row">
-    <button id="btnReset" class="sub">全部清空</button>
-    <button id="btnSolved" class="sub">填复原态</button>
-    <button id="btnRandom" class="sub">随便打乱</button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <button id="inToPr" class="sub" style="flex:1 1 100%">把这个魔方拿到③自己练</button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <button id="inToPat" class="sub" style="flex:1 1 100%">拿这个魔方去⑤画花色</button>
-  </div>
+  <!-- 这五个都是一次性的：清空/填样例是调试时才用，两个跳页整个流程按一次。
+       原来平铺在下面，和「求解」抢注意力 -->
+  <details class="more">
+    <summary>其它（清空、填样例、拿去别的页）</summary>
+    <div class="row">
+      <button id="btnReset" class="sub">全部清空</button>
+      <button id="btnSolved" class="sub">填复原态</button>
+      <button id="btnRandom" class="sub">随便打乱</button>
+    </div>
+    <div class="row">
+      <button id="inToPr" class="sub" style="flex:1 1 100%">把这个魔方拿到③自己练</button>
+    </div>
+    <div class="row">
+      <button id="inToPat" class="sub" style="flex:1 1 100%">拿这个魔方去⑤画花色</button>
+    </div>
+  </details>
 </div>
 
 <!-- ============ 花色页 ============ -->
@@ -487,15 +505,20 @@
 
   <div class="card">
     <div class="lbl">只画一面，自动套满六面</div>
-    <p class="muted" style="margin:0 0 10px">先把其中一面画好，选中那一面，点「出方案」。
-      两种模式：<b>逐格</b>是把这一面 9 个格子原样复制到其它面（四个相邻面对应关系
+    <!-- 一句话够用的留在外面，两种模式怎么挑是读一次的东西，收起来。
+         原来这十行常驻，把下面的模式按钮和「出方案」整个压到屏幕外 -->
+    <p class="muted" style="margin:0 0 8px">先把其中一面画好，选中那一面，点「出方案」。</p>
+    <details class="help" style="margin:0 0 10px;background:transparent;border:none;padding:0">
+      <summary>逐格和角色，该选哪个？</summary>
+      <div class="muted">两种模式：<b>逐格</b>是把这一面 9 个格子原样复制到其它面（四个相邻面对应关系
       唯一确定，正对面天生有两种走法，都给你列出来挑）；<b>角色</b>只认"中心/四角/四边"
       三种身份，角、边各自的强调色能重新配色，更灵活但不保证逐格分毫不差。<br>
       <b style="color:var(--txt)">怎么选</b>：四角（或四边）想统一用同一个颜色，选<b>角色</b>——
       它会帮你重新搭配颜色，改动通常更少，多数"四角一色、四边一色"的图案能做到零改动。
       只有四个角/边真的要各不相同（角色模式表达不了）才用<b>逐格</b>——它是原样照抄颜色，
       抄到六面上同一个颜色很容易超过 9 格上限，通常要改不少格子，这是照抄本身的代价，
-      不是算法没找到更好的方案。</p>
+      不是算法没找到更好的方案。</div>
+    </details>
     <div class="row" id="patTplMode" style="margin-bottom:10px">
       <button id="patModeExact" class="seg">逐格复制</button>
       <button id="patModeRole" class="seg on">角色复制</button>
@@ -526,12 +549,14 @@
     <div id="patNetDiv"></div>
   </details>
 
-  <div class="lbl" style="margin-top:16px">其它</div>
-  <div class="row">
-    <button id="patReset" class="sub">全部清空</button>
-    <button id="patSolvedBtn" class="sub">填复原态</button>
-    <button id="patRandom" class="sub">随便来一个花色</button>
-  </div>
+  <details class="more">
+    <summary>其它（清空、填样例）</summary>
+    <div class="row">
+      <button id="patReset" class="sub">全部清空</button>
+      <button id="patSolvedBtn" class="sub">填复原态</button>
+      <button id="patRandom" class="sub">随便来一个花色</button>
+    </div>
+  </details>
 </div>
 
 <!-- ============ 练习页 ============ -->
@@ -564,25 +589,34 @@
   <div class="lbl" style="margin-top:16px">转一层 · 带 2 的是 180°</div>
   <div id="prKeys" style="margin-top:0"></div>
 
-  <div class="row" style="margin-top:14px">
+  <!-- 一局练习的实际动线：打乱 → 自己转 → 卡住 → 提示／跟着解法 → 撤销。
+       这四个是每局都要按好几次的，做大放前面；摆正视角和回到复原态一局按一两次；
+       摄像头和两个跳页整个生命周期按一次，收进「更多」 -->
+  <div class="row hi" style="margin-top:14px">
     <button id="prScram" class="pri">打乱</button>
     <button id="prUndo">撤销</button>
-    <button id="prReset" class="sub">回到复原态</button>
   </div>
-  <div class="row" style="margin-top:8px">
-    <button id="prHome">摆正视角</button>
+  <div class="row hi" style="margin-top:8px">
     <button id="prTip">提示下一步</button>
     <button id="prSolveIt">跟着解法转</button>
   </div>
   <div class="row" style="margin-top:8px">
-    <button id="prCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别一个魔方来练</button>
+    <button id="prHome" class="sub">摆正视角</button>
+    <button id="prReset" class="sub">回到复原态</button>
   </div>
-  <div class="row" style="margin-top:8px">
-    <button id="prToIn" class="sub" style="flex:1 1 100%">把这个魔方填进①输入页</button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <button id="prToPat" class="sub" style="flex:1 1 100%">拿这个魔方去⑤画花色</button>
-  </div>
+
+  <details class="more">
+    <summary>更多（换个魔方来练、拿去别的页）</summary>
+    <div class="row">
+      <button id="prCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别一个魔方来练</button>
+    </div>
+    <div class="row">
+      <button id="prToIn" class="sub" style="flex:1 1 100%">把这个魔方填进①输入页</button>
+    </div>
+    <div class="row">
+      <button id="prToPat" class="sub" style="flex:1 1 100%">拿这个魔方去⑤画花色</button>
+    </div>
+  </details>
 
   <div id="prLog">
     <div id="prLogHd"><span>转动记录 · <b id="prLogN">0 步</b></span>
@@ -709,13 +743,15 @@
     <div id="seq"></div>
   </div>
 
-  <div class="row">
-    <button id="btnPrev">← 上一步</button>
-    <button id="btnNext" class="pri">下一步 →</button>
+  <!-- 「下一步」是全站按得最多的一个键：走完一套解法要按 20~120 次。
+       给它比「上一步」宽一半，退回是偶尔才用的。这两个和下面那排不是一个量级 -->
+  <div class="row hi">
+    <button id="btnPrev" style="flex:1 1 0">← 上一步</button>
+    <button id="btnNext" class="pri" style="flex:1.6 1 0">下一步 →</button>
   </div>
   <div class="row" style="margin-top:8px">
-    <button id="btnAuto">自动播放</button>
-    <button id="btnRestart">回到开头</button>
+    <button id="btnAuto" class="sub">自动播放</button>
+    <button id="btnRestart" class="sub">回到开头</button>
   </div>
 
   <details class="legend help">
@@ -1451,7 +1487,7 @@ let ctx = cv.getContext('2d');   // 参考姿势小图会临时把它指向另�
 // pitch 取正值才是从斜上方往下看：黄顶 + 绿前 + 橙右，
 // 和「白色朝下、绿色朝前」拿着魔方时眼睛看到的一致
 let W=0,H=0,yaw=-0.62,pitch=0.42;
-const CAM_D=9.4, GAP=1.045, STICK=0.90;
+const CAM_D=9.4, GAP=1.045, STICK=0.93;
 // 标准持方视角：黄顶、绿前、橙右（pitch 取正才是从斜上方往下看）。
 // 输入页和练习页都拿它当初始视角，所以放在这儿 —— 定义得比两边都早
 const PR_CAM0 = mmul(rotM(0,0.42), rotM(1,-0.62));
@@ -1469,6 +1505,58 @@ function shade(hex,k){
   const n = parseInt(hex.slice(1),16);
   return 'rgb('+[16,8,0].map(sh=>Math.min(255,((n>>sh)&255)*k)|0).join(',')+')';
 }
+/* 带高光的着色：k 是漫反射系数，sp 是镜面高光（直接往上加白）。
+   高光走加法而不是往白色插值 —— 插值会把色相一起冲淡，
+   橙和红本来就主要差在亮度上（见 CLAUDE.md），冲淡了就分不出来 */
+function shadeLit(hex,k,sp){
+  const n = parseInt(hex.slice(1),16), a = sp*255;
+  return 'rgb('+[16,8,0].map(sh=>Math.min(255,((n>>sh)&255)*k+a)|0).join(',')+')';
+}
+
+/* ---- 光照 ----
+   在「相机空间」里定义光，所以魔方怎么转，光都固定在观众这一侧，
+   像摄影棚里布好的灯 —— 不会出现转着转着整个魔方陷进黑里。
+   相机在 +z 往 -z 看（投影用的是 CAM_D - z），所以视线方向就是 (0,0,1)。
+
+   环境光给到 0.62 是刻意的：这是个识别工具，六个面色必须一眼分得清。
+   把环境压到 0.3 那种电影级明暗当然更"厚"，可暗面上的橙和红、黄和白就糊了。
+   质感改从倒角、圆角贴纸、高光、接触阴影上要 —— 那些不吃颜色的辨识度 */
+const L_KEY=[-0.3865,0.7537,0.5314];   // 主光：左上前
+const L_FILL=[0.7126,-0.4023,0.5747];  // 补光：右下前，弱，专门把暗面提起来
+const L_HALF=[-0.2209,0.4307,0.8751];  // 主光和视线的半角向量，算高光用
+const AMB=0.62, K_KEY=0.34, K_FILL=0.12;
+function litOf(n){
+  const d1 = n[0]*L_KEY[0]+n[1]*L_KEY[1]+n[2]*L_KEY[2];
+  const d2 = n[0]*L_FILL[0]+n[1]*L_FILL[1]+n[2]*L_FILL[2];
+  return AMB + K_KEY*Math.max(0,d1) + K_FILL*Math.max(0,d2);
+}
+function specOf(n){
+  const h = n[0]*L_HALF[0]+n[1]*L_HALF[1]+n[2]*L_HALF[2];
+  if(h<=0) return 0;
+  const h2=h*h, h4=h2*h2, h8=h4*h4;      // h^16，比 Math.pow 快，每帧几十次也省一点
+  return h8*h8*0.34;
+}
+
+/* 圆角四边形。真魔方的贴纸是圆角方块，画成尖角就是一片色块，
+   圆角是这一版"像实物"最省事也最管用的一招。
+   半径按贴纸在屏幕上的实际大小算 —— 掠射时贴纸被压扁，
+   固定半径会把窄边整个啃掉，变成一颗胶囊 */
+function roundQuad(ctx,q,rf){
+  const mid=(a,b)=>[(a[0]+b[0])*0.5,(a[1]+b[1])*0.5];
+  let mn=1e9;
+  for(let i=0;i<4;i++){
+    const a=q[i], b=q[(i+1)&3], dx=b[0]-a[0], dy=b[1]-a[1];
+    const l=Math.sqrt(dx*dx+dy*dy); if(l<mn) mn=l;
+  }
+  const r=Math.min(mn*rf, 4.5);
+  const s=mid(q[0],q[1]);
+  ctx.beginPath(); ctx.moveTo(s[0],s[1]);
+  for(let i=1;i<=4;i++){
+    const c=q[i&3], nx=mid(q[i&3],q[(i+1)&3]);
+    ctx.arcTo(c[0],c[1],nx[0],nx[1],r);
+  }
+  ctx.closePath();
+}
 
 // 主视图。用 getter 包住原有的全局变量，这样渲染器能同时驱动别的画布
 // （参考姿势小图、练习页），而已有代码不用改。
@@ -1482,8 +1570,10 @@ function render(anim, V){
   V = V || MAIN;
   const {ctx, W, H, yaw, pitch, cubies} = V;
   if(!W) return;
-  const g = ctx.createRadialGradient(W/2,H*0.42,10,W/2,H*0.42,Math.max(W,H)*0.8);
-  g.addColorStop(0,'#182030'); g.addColorStop(1,'#0b0f16');   // 和 CSS 里舞台的底色对齐
+  // 底色和 CSS 里 #inStage 那一档对齐。收得比以前紧（0.62 而不是 0.8）：
+  // 亮区小一点，四角暗下去，魔方就被这圈渐晕托起来了
+  const g = ctx.createRadialGradient(W/2,H*0.38,8,W/2,H*0.38,Math.max(W,H)*0.62);
+  g.addColorStop(0,'#20252e'); g.addColorStop(1,'#0a0b0e');
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
   if(!cubies.length) return;
 
@@ -1508,8 +1598,13 @@ function render(anim, V){
       const corner = (su,sv,k) => toView([
         cl[0]+(ul[0]*su+vl[0]*sv)*k, cl[1]+(ul[1]*su+vl[1]*sv)*k, cl[2]+(ul[2]*su+vl[2]*sv)*k]);
       const quad = k => [corner(.5,.5,k),corner(-.5,.5,k),corner(-.5,-.5,k),corner(.5,-.5,k)].map(proj);
+      // nv 是这张面在相机空间里的法向，光就是拿它算的。
+      // 归一化一下：cb.r 是整数旋转矩阵、cam 是正交阵，理论上长度就是 1，
+      // 但动画插值中的 extra 不保证，不归一化会让转动过程里明暗忽亮忽暗
+      const nlen = Math.hypot(nv[0],nv[1],nv[2]) || 1;
+      const nu = [nv[0]/nlen, nv[1]/nlen, nv[2]/nlen];
       polys.push({z:ctr[2], base:quad(1), face:quad(STICK), c:cb.cols[i],
-                  lit:0.74+0.26*Math.max(0, nv[1]*0.45+nv[2]*0.75), cb, fi:i,
+                  lit:litOf(nu), spec:specOf(nu), cb, fi:i,
                   hot: !!(V.hl && cb.p[V.hl.axis]===V.hl.layer),
                   // 朝外的那一面才是贴纸，朝里的六分之几是黑心。拾取只认外表面 ——
                   // 不能拿「有没有颜色」当判据：输入页还没填色的格子也得点得到
@@ -1522,22 +1617,58 @@ function render(anim, V){
   if(V.collect) V.picks = polys.filter(p=>p.outer); // 已按由远及近排好，拾取时倒着找
   const outline = q => { ctx.beginPath(); ctx.moveTo(q[0][0],q[0][1]);
     for(let i=1;i<4;i++) ctx.lineTo(q[i][0],q[i][1]); ctx.closePath(); };
+
+  // 接触阴影：魔方底下垫一团糊开的暗影。这一下最能把"贴在背景上的图"
+  // 变成"摆在那儿的东西"。用屏幕空间的椭圆，不做真正的地面 ——
+  // 魔方可以被转到任意姿态，本来就没有一个稳定的地平面
+  const cs = proj(vmul(cam,[0,0,0])), sc = f/CAM_D;
+  const sh = ctx.createRadialGradient(cs[0], cs[1]+sc*1.72, sc*0.12,
+                                      cs[0], cs[1]+sc*1.72, sc*1.62);
+  sh.addColorStop(0,'rgba(0,0,0,.78)'); sh.addColorStop(.55,'rgba(0,0,0,.34)');
+  sh.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.save(); ctx.translate(cs[0], cs[1]+sc*1.72); ctx.scale(1,0.30);
+  ctx.translate(-cs[0], -(cs[1]+sc*1.72));
+  ctx.fillStyle=sh; ctx.fillRect(cs[0]-sc*2, cs[1]+sc*1.72-sc*2, sc*4, sc*4);
+  ctx.restore();
+
   for(const p of polys){
-    outline(p.base);
-    ctx.fillStyle='#0a0c10'; ctx.fill();
     const marked = p.gi === V.mark;
+    const dim = p.c && V.focus && !V.focus(p.cb, p.fi);
+    // 块体本身也跟着光走，不再是一律死黑。整颗魔方的黑塑料有了体积，
+    // 贴纸之间的缝就成了"倒角"而不是"黑线"
+    roundQuad(ctx, p.base, 0.07);
+    ctx.fillStyle = shade('#14181f', dim ? p.lit*0.45 : p.lit*0.95); ctx.fill();
+    // 倒角高光：迎光的块沿边缘描一道很淡的亮边，塑料的转折就出来了
+    if(!dim && p.lit>0.80){
+      ctx.strokeStyle='rgba(255,255,255,'+((p.lit-0.80)*0.62).toFixed(3)+')';
+      ctx.lineWidth=1; ctx.stroke();
+    }
     if(!p.c){                                   // 还没填色的格子，只有黑底
       if(marked){ ctx.strokeStyle=V.markCol||'rgba(255,255,255,.95)';
                   ctx.lineWidth=2.5; ctx.stroke(); }
       continue;
     }
-    outline(p.face);
     // 教程要「讲哪个块就亮哪个」：focus 说不中的压暗下去，重点自己就跳出来了
-    const dim = V.focus && !V.focus(p.cb, p.fi);
-    ctx.fillStyle = shade(p.c, dim ? p.lit*0.26
-                                   : (p.hot||marked) ? p.lit*1.45 : p.lit);
-    ctx.fill();
-    if(dim) continue;
+    roundQuad(ctx, p.face, 0.10);
+    if(dim){ ctx.fillStyle = shade(p.c, p.lit*0.26); ctx.fill(); continue; }
+    // 每张贴纸自己带一道渐变。纯平色填出来是矢量图，
+    // 有了这道从亮角到暗角的过渡才像一块反光的塑料贴片。
+    // 方向统一取屏幕左上→右下（和主光的方向一致），不逐面算光在屏幕上的投影 ——
+    // 统一方向反而更像"同一盏灯照着"，逐面算在掠射的面上会翻方向
+    let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(const v of p.face){ if(v[0]<x0)x0=v[0]; if(v[1]<y0)y0=v[1];
+                            if(v[0]>x1)x1=v[0]; if(v[1]>y1)y1=v[1]; }
+    const k = (p.hot||marked) ? p.lit*1.30 : p.lit;
+    const gr = ctx.createLinearGradient(x0,y0,x1,y1);
+    gr.addColorStop(0, shadeLit(p.c, k*1.16, p.spec));
+    gr.addColorStop(0.55, shadeLit(p.c, k, p.spec*0.35));
+    gr.addColorStop(1, shadeLit(p.c, k*0.86, 0));
+    ctx.fillStyle = gr; ctx.fill();
+    // 贴纸上沿一道细高光 —— 乙烯贴片边缘那种"湿"的反光
+    if(p.lit>0.78){
+      ctx.strokeStyle='rgba(255,255,255,'+((p.lit-0.78)*0.30).toFixed(3)+')';
+      ctx.lineWidth=1; ctx.stroke();
+    }
     if(p.hot || marked){                        // 待转的那一层／该填的那一格描白边
       ctx.strokeStyle = marked ? (V.markCol||'rgba(255,255,255,.95)')
                                : 'rgba(255,255,255,.95)';
@@ -4211,7 +4342,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 06:27';
+const BUILD = '2026-08-11 06:43';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
