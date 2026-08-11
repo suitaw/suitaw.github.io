@@ -389,6 +389,12 @@
   #prMoves span.last{background:var(--acc);color:var(--accTxt);font-weight:700}
   #prMoves span.last i{color:rgba(25,21,6,.6)}
   #prMoves em{font-style:normal;color:var(--dim2);font-size:12px}
+  /* ---- 练习页的两步：先问练哪个，选完才把一大堆按钮放出来 ---- */
+  #prStart{display:none;margin-top:14px}
+  #prStart.on{display:block}
+  #prMain{display:none}
+  #prMain.on{display:block}
+
   /* ---- 手工填当前魔方（全局覆盖层，装的是搬过来的 inpBox）---- */
   /* z-index 90：要比 camOv(100) 低 —— 覆盖层里那颗「拍照识别」唤起的摄像头界面
      得盖在它上面，反过来的话摄像头就被自己盖住了。setOv(120) 照旧最高 */
@@ -715,16 +721,21 @@
 <div id="pPr" class="page">
   <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层（能一口气拖 180°）· 留白拖=转视角、快划=整体翻一格 · 双指拧正</div></div>
 
-  <!-- 想练手上那个实物魔方，拍一下就进来了（camOpen('pr')，认不准会退回①页改）。
-       这颗按钮本来就有，可是藏在页面最底下「更多」折叠里 —— 它是这一页的输入口，
-       该和模型待在一起 -->
-  <div class="row" style="margin-top:10px">
-    <button id="prCam" class="pri2" style="flex:1 1 100%">📷 拍照识别我手上的魔方，直接练</button>
-  </div>
-  <div class="row" style="margin-top:6px">
-    <button id="prFill" style="flex:1 1 100%">✏️ 一格一格填我手上的魔方</button>
+  <!-- 第一步：先问「练哪个」。原来一上来就是 18 个记号键加六颗操作按钮，
+       一屏全是按钮、不知道从哪按起。
+       注意第一项是「随便打乱」不是「输入」—— 这页最常见的用法就是打乱了练手，
+       真要把手上那个实物输进来反而是少数。第一步要是逼着人先输入，主路就堵死了 -->
+  <div id="prStart">
+    <h2 style="margin:2px 0 12px">练哪个魔方？</h2>
+    <button class="hCard" id="prScramNew"><em>🎲</em><div>
+      <b>随便打乱一个</b><i>打乱了自己转，卡住能提示下一步</i></div></button>
+    <button class="hCard" id="prCam"><em>📷</em><div>
+      <b>拍照识别我手上的</b><i>对着实物魔方拍六个面</i></div></button>
+    <button class="hCard" id="prFill"><em>✏️</em><div>
+      <b>一格一格填</b><i>在 3D 魔方上点格子填色，跟①输入页是同一套</i></div></button>
   </div>
 
+  <div id="prMain">
   <div id="prBar">
     <span id="prTimeWrap"><b id="prTime">0:00</b>用时</span>
     <span><b id="prCount">0</b>步</span>
@@ -765,6 +776,7 @@
   <div class="row" style="margin-top:8px">
     <button id="prHome" class="sub">摆正视角</button>
     <button id="prReset" class="sub">回到复原态</button>
+    <button id="prAgain" class="sub">换一个魔方</button>
   </div>
 
   <!-- 「更多」折叠删了：拍照识别提到模型底下去了（它是这页的输入口，不该藏），
@@ -807,6 +819,7 @@
     黄色箭头，照着箭头方向拧就行（开关状态记住，下次还是这样）。
     解法用第①页选的算法：最短解法约 20 步、分步教学约 120 步。</div>
   </details>
+  </div><!-- /prMain -->
 </div>
 
 <!-- ============ 教程页 ============ -->
@@ -3952,7 +3965,17 @@ $('prPlanAgain').onclick = prPlanStart;
   $('prKeys').appendChild(b);
 });
 
+/* 练哪个魔方选过了没。用显式标志而不是 isSolved(prState)：
+   练成功的那一刻魔方正好是复原态，拿它判会把庆祝界面顶掉，换成「练哪个魔方？」 */
+let prStarted = false;
+function prSetStarted(v){
+  prStarted = v;
+  $('prStart').classList.toggle('on', !v);
+  $('prMain').classList.toggle('on', v);
+  if(v){ prResize(); prRender(); }
+}
 function prLoad(st, scram){
+  prSetStarted(true);          // 打乱 / 拍照 / 手工填 / 回到复原态都走这儿
   prState = st; prGoal = null;
   PR.cubies = buildGeo(cubieToFacelet(st));
   prHist = []; prCount = 0; prElapsed = 0; prT0 = 0;
@@ -3964,6 +3987,9 @@ function prLoad(st, scram){
   clearInterval(prTick); prTick = 0;
   prUpdate(); prLogRender(); prRender();
 }
+// 「换一个魔方」= 退回第一步。魔方本身不动，只是把选择重新摆出来
+$('prAgain').onclick = () => { if(!prBusy) prSetStarted(false); };
+$('prScramNew').onclick = () => $('prScram').click();   // 第一步那颗，和主界面的「打乱」同一个动作
 $('prScram').onclick = () => {
   if(prBusy) return;
   const M = ['U','D','R','L','F','B'];
@@ -4786,6 +4812,9 @@ cubies = buildGeo(SOLVED_FACELET);
 resize();
 renderStep();
 prLoad(solvedState());
+// 必须排在 prLoad 后面：prLoad 会把「已经选好练哪个」置上，
+// 而这一句就是页面初始化那次调用 —— 得把它按回第一步
+prSetStarted(false);
 // 把存下来的设置铺到界面上（箭头按钮的高亮、计时器显示与否都在这儿定）
 prSetPut('vib', prSetIdx.vib);
 tuListRender();
@@ -4796,7 +4825,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 11:45';
+const BUILD = '2026-08-11 12:07';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
