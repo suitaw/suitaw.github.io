@@ -104,6 +104,27 @@
     padding:12px 13px;margin:12px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
   .card.flat{background:#14171c;box-shadow:none}
 
+  /* ---- 主行动吸底 ----
+     「求解」是整页唯一的终点动作，原来排在内容末尾：输入页要滚 1050px 才够得着，
+     花色页 1600px。而这两处偏偏是来回跑的操作 —— 花色页那句
+     「点一下换上去，再点下面『求解成这个花色』」就是在用文案给距离打补丁。
+     改成填满之后从底下浮出来。填满之前不显示：那时候按了只会报错，
+     常驻一个黄块既占屏又误导。
+     用 fixed 不用 sticky：sticky 得元素本身滚进视口才粘得住，
+     放在页面末尾的话，只有快滚到底才看得见，等于没吸。
+     放在 .page 内部（而不是 body 下），父页 display:none 时它跟着消失，
+     不用在 go() 里手动管哪一页该显示哪个 dock */
+  .dock{position:fixed;left:0;right:0;bottom:0;z-index:20;display:none;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    background:linear-gradient(0deg,var(--bg) 62%,rgba(16,18,22,.88));
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-top:1px solid var(--line)}
+  .dock.on{display:block}
+  /* 和 .page 的 max-width:620px 减去左右 padding 对齐，宽屏上不会拉成一条横贯全屏的黄带 */
+  .dock>button{display:block;width:100%;max-width:592px;margin:0 auto}
+  /* 给吸底条让位，不然它盖住最后一块内容。只有这两页有 dock */
+  #pIn,#pPat{padding-bottom:78px}
+
   /* ---- 顶部页签 ---- */
   #tabs{display:flex;gap:4px;padding:8px 8px;background:rgba(16,18,22,.86);
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
@@ -439,11 +460,17 @@
     <span style="--c:var(--cF)"><i></i>前 绿</span><span style="--c:var(--cB)"><i></i>后 蓝</span>
     <span style="--c:var(--cR)"><i></i>右 橙</span><span style="--c:var(--cL)"><i></i>左 红</span>
   </div>
-  <ol class="steps">
-    <li><b>先点一个颜色</b>，再把魔方上这个颜色的格子挨个点掉，填完自动换下一色。</li>
-    <li>色块上的数字是<b>这色还差几格</b>；中心块不用填。</li>
-    <li>点填过的格子可以清掉重填，<b>填错了会当场告诉你</b>，不用等填满 48 格。</li>
-  </ol>
+  <!-- 读一次就够的东西，开始填色后自动收起（见 paintNet）。
+       去掉 details.help 那圈框：这在首屏上，加个卡片反而比裸列表更重 -->
+  <details class="help" id="inSteps"
+           style="margin:0 0 11px;background:transparent;border:none;padding:0">
+    <summary>怎么填（三步）</summary>
+    <ol class="steps" style="margin-bottom:0">
+      <li><b>先点一个颜色</b>，再把魔方上这个颜色的格子挨个点掉，填完自动换下一色。</li>
+      <li>色块上的数字是<b>这色还差几格</b>；中心块不用填。</li>
+      <li>点填过的格子可以清掉重填，<b>填错了会当场告诉你</b>，不用等填满 48 格。</li>
+    </ol>
+  </details>
 
   <div id="inStage"><canvas id="inCv"></canvas>
     <div id="inHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
@@ -463,14 +490,13 @@
     <button id="btnCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别（不用一格格点）</button>
   </div>
 
+  <!-- 解法二选一是"读一次就定下来"的设置，留在流里；
+       求解是终点动作，挪到底下的 dock 去（见 .dock 那段注释） -->
   <div class="card">
     <div class="lbl">用哪种解法</div>
-    <div class="row" id="algo" style="margin-bottom:10px">
+    <div class="row" id="algo">
       <button id="algoShort" class="seg on">最短解法<i>约 20 步</i></button>
       <button id="algoTeach" class="seg">分步教学<i>约 120 步</i></button>
-    </div>
-    <div class="row">
-      <button id="btnSolve" class="pri big" style="flex:1 1 100%">求解</button>
     </div>
   </div>
 
@@ -495,13 +521,16 @@
       <button id="inToPat" class="sub" style="flex:1 1 100%">拿这个魔方去⑤画花色</button>
     </div>
   </details>
+
+  <div class="dock" id="inDock"><button id="btnSolve" class="pri big">求解</button></div>
 </div>
 
 <!-- ============ 花色页 ============ -->
 <div id="pPat" class="page">
   <h2>把①输入页那个魔方，转成你自己画的花色</h2>
-  <p class="muted">当前魔方直接用①输入页填好的那个，这里只画<b>目标</b>花色——
-    棋盘格、方块中的方块，或者随便画一个图案都行。求解会用①页选的那种解法。</p>
+  <!-- 原来这里有三行：「当前魔方用①页那个」h2 已经说了；
+       「棋盘格、方块中的方块…」下面就是现成花色画廊，看得见，不用讲 -->
+  <p class="muted">这里画的是<b>目标</b>花色，不是当前状态。求解会用①页选的那种解法。</p>
 
   <div id="patStage"><canvas id="patCv"></canvas>
     <div id="patHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
@@ -516,7 +545,8 @@
   <div id="patMsgEl"></div>
 
   <div class="card">
-    <div class="lbl">现成花色（点一下换上去，再点下面「求解成这个花色」）</div>
+    <!-- 求解现在吸在屏幕底下，「点下面」这个指路就不准了 -->
+    <div class="lbl">现成花色（点一下换上去，再按底下的「求解成这个花色」）</div>
     <div id="patLib"></div>
   </div>
 
@@ -559,9 +589,6 @@
   <div class="row">
     <button id="patFix" class="sub" style="flex:1 1 100%">✨ 自动修成合法（画的不合法也没关系）</button>
   </div>
-  <div class="row">
-    <button id="patSolve" class="pri big" style="flex:1 1 100%">求解成这个花色</button>
-  </div>
   <div class="row" style="margin-top:8px">
     <button id="patToPr" class="sub" style="flex:1 1 100%">把这个花色拿去③自己练</button>
   </div>
@@ -579,6 +606,8 @@
       <button id="patRandom" class="sub">随便来一个花色</button>
     </div>
   </details>
+
+  <div class="dock" id="patDock"><button id="patSolve" class="pri big">求解成这个花色</button></div>
 </div>
 
 <!-- ============ 练习页 ============ -->
@@ -1846,6 +1875,8 @@ const netLeft = f => 9 - net.filter(c => c === f).length;
 // 下一个还没填的格子，用来在 3D 上标出来当提示
 const netNext = () => { for(const gi of ORDER) if(!net[gi]) return gi; return -1; };
 
+// 三条填法说明只收一次：用户手动点开之后就别再跟他抢
+let stepsFolded = false;
 function paintNet(){
   for(const gi in cellEls){
     const v = net[gi];
@@ -1862,10 +1893,18 @@ function paintNet(){
   const bad = netTrouble(net);
   for(const gi of (bad ? bad.gis : [])) if(cellEls[gi]) cellEls[gi].classList.add('bad');
   const left = net.filter(c=>!c).length;
-  $('tally').textContent = left ? '还差 ' + left + ' 格' : '48 格都填好了';
+  // 填满时 tally 让位给 msg。原来「48 格都填好了」和「填满了，可以求解」
+  // 是上下两行说同一件事，同屏重复播报
+  $('tally').textContent = left ? '还差 ' + left + ' 格' : '';
   if(bad) showMsg(bad.msg, 'err');
-  else if(!left) showMsg('填满了，可以求解', 'ok');
+  else if(!left) showMsg('48 格都填好了', 'ok');
   else $('msg').className = '';
+  // 填满且没填错，「求解」才从底下浮出来 —— 早于这一刻按它只会报错
+  $('inDock').classList.toggle('on', !left && !bad);
+  // 填法说明只在「正在手工填」的时候才配占首屏：填满了就收起来。
+  // 注意页面初始就是复原态（net = SOLVED_FACELET），所以首次 paintNet 走的就是这条，
+  // 一进来是收着的 —— 展开的时机在「全部清空」那儿，那才是"我要开始填了"
+  if(!left && !stepsFolded){ stepsFolded = true; $('inSteps').open = false; }
 
   cursor = netNext();
   IN.mark = bad ? bad.gis[0] : cursor;
@@ -1877,6 +1916,9 @@ $('btnReset').onclick = () => {
   net = new Array(54).fill(null);
   for(const f of FACE_ORDER) net[fidx(f,4)] = f;
   curColor = 'U'; paintNet(); invalidatePlan();
+  // 清空就是「我要开始手工填了」，这时候才把三条填法说明放出来。
+  // 要放在 paintNet 之后：那里面填满时会去关它
+  stepsFolded = false; $('inSteps').open = true;
 };
 $('btnBack').onclick = () => {                 // 退一格 = 把最后填的那格清掉
   for(let i=ORDER.length-1;i>=0;i--) if(net[ORDER[i]]){ net[ORDER[i]] = null; break; }
@@ -2131,6 +2173,9 @@ function paintPatNet(){
   $('patTally').textContent = left ? '还差 ' + left + ' 格' : '48 格都填好了';
   if(bad) patMsg(bad.msg, 'err');
   else patMsg('', '');
+  // 这页填满就浮出来，不像①页要求同时没填错：
+  // 画的花色本来就可能不合法，「自动修成合法」正是为这种情况准备的
+  $('patDock').classList.toggle('on', !left);
 
   PAT.mark = bad ? bad.gis[0] : patNext();
   PAT.markCol = bad ? 'rgba(255,120,120,.98)' : 'rgba(255,255,255,.95)';
@@ -4540,7 +4585,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 08:14';
+const BUILD = '2026-08-11 10:05';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
