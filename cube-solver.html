@@ -144,6 +144,31 @@
   .page{display:none;padding:16px 14px 0;max-width:620px;margin:0 auto}
   .page.on{display:block}
 
+  /* ---- 首页：先问「你要干嘛」，再分流 ----
+     原来一进来就是①输入页 —— 一个复原态的魔方加一颗亮着的「求解」，
+     而"求解一个已经复原的魔方"是个假引导。五个平铺页签也读不出主次：
+     ①②③④⑤ 看着像要从头走到尾，其实④学和⑤花色各自是独立入口，
+     ②跟着复原则是①的下游，根本不该和它们平级。
+     首页显示时把页签栏藏掉：这一屏本身就是导航，两套并排只会互相干扰。
+     进了任意一页页签栏才出来，第一项 ⌂ 回来 —— 熟了的人照旧在页签里横跳 */
+  #pHome{padding-top:30px}
+  #homeTitle{font-size:23px;font-weight:700;letter-spacing:.01em;margin:0 0 7px}
+  #homeSub{font-size:13px;color:var(--dim);margin:0 0 24px;line-height:1.75}
+  .hCard{display:flex;align-items:center;gap:13px;width:100%;text-align:left;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:15px 14px;margin-bottom:10px;font-size:14px}
+  .hCard:active{background:var(--panel2)}
+  .hCard em{font-style:normal;font-size:25px;flex:none;width:32px;text-align:center;
+    line-height:1}
+  .hCard>div{flex:1;min-width:0}
+  .hCard b{display:block;font-size:15.5px;font-weight:600;color:var(--txt);margin-bottom:3px}
+  .hCard i{font-style:normal;font-size:12px;color:var(--dim);line-height:1.5}
+  .hCard::after{content:'›';color:var(--dim2);font-size:21px;flex:none;line-height:1}
+  /* ⌂ 只占一点点宽，剩下的留给五个页签 —— 五个在 390px 上本来就是压到 12px
+     才不折行的（见上面 #tabs 那段），再匀走 60px 就该参差不齐了 */
+  #tabs button#tabHome{flex:0 0 26px;font-size:16px;padding:9px 0 11px}
+  body.home #tabs{display:none}
+
   /* 持方速查：六个面各是什么颜色，一排小胶囊比一句话好认 */
   /* 六个一排在 390px 上会折成 5+1，用三列两行才齐 */
   /* 六个胶囊 + 三条说明原来占掉 200px 上下，把真正要动手的 3D 魔方顶到了首屏外。
@@ -445,6 +470,7 @@
 </style>
 
 <div id="tabs">
+  <button id="tabHome" title="回首页">⌂</button>
   <button id="tabIn" class="on">① 输入</button>
   <button id="tabGo">② 跟着复原</button>
   <button id="tabPr">③ 自己练</button>
@@ -452,8 +478,24 @@
   <button id="tabPat">⑤ 花色</button>
 </div>
 
+<!-- ============ 首页（分流）============ -->
+<div id="pHome" class="page on">
+  <h1 id="homeTitle">魔方复原助手</h1>
+  <p id="homeSub">拿着魔方，<b style="color:#f2f4f7">白色朝下</b>、<b style="color:var(--cF)">绿色朝前</b>
+    —— 这一页所有的说法都按这个持方来。<br>你想干什么？</p>
+
+  <button class="hCard" id="hSolve"><em>🎯</em><div>
+    <b>解开我手上这个</b><i>填色或者拍张照告诉我它现在什么样，我给你一步步的转法</i></div></button>
+  <button class="hCard" id="hLearn"><em>📚</em><div>
+    <b>学会自己复原</b><i>八课，一课一个阶段，每步都能当场出题练</i></div></button>
+  <button class="hCard" id="hPractice"><em>🎲</em><div>
+    <b>自己练一练</b><i>打乱了自己转，卡住了能提示下一步</i></div></button>
+  <button class="hCard" id="hPat"><em>✨</em><div>
+    <b>摆个花色</b><i>棋盘、六点这些图案，也可以自己画一面</i></div></button>
+</div>
+
 <!-- ============ 输入页 ============ -->
-<div id="pIn" class="page on">
+<div id="pIn" class="page">
   <h2>按 <b style="color:#f2f4f7">白色朝下</b>、<b style="color:var(--cF)">绿色朝前</b> 拿好魔方</h2>
   <div id="grip">
     <span style="--c:var(--cU)"><i></i>上 黄</span><span style="--c:var(--cD)"><i></i>下 白</span>
@@ -2819,6 +2861,8 @@ function goTab(i){
     $(t).classList.toggle('on', k===i);
     $(p).classList.toggle('on', k===i);
   });
+  $('pHome').classList.remove('on');
+  document.body.classList.remove('home');
   if(i===1){ resize(); render(); }
   if(i===0){ inResize(); inRender(); }
   if(i===2){ prResize(); prRender(); }
@@ -2827,6 +2871,27 @@ function goTab(i){
 }
 TABS.forEach(([t],i)=> $(t).onclick = () => goTab(i));
 $('goToIn').onclick = () => goTab(0);            // 第②页空着的时候那颗引路按钮
+
+// 首页刻意不进 TABS：进去的话每个 goTab(i) 的 i 都得挪一位，
+// 而 goTab(0)/goTab(2)/goTab(4) 这种硬编码全篇有十来处，改一处漏一处就跳错页
+function goHome(){
+  TABS.forEach(([t,p])=>{ $(t).classList.remove('on'); $(p).classList.remove('on'); });
+  $('pHome').classList.add('on');
+  document.body.classList.add('home');
+  scrollTo(0,0);
+}
+$('tabHome').onclick = goHome;
+$('hLearn').onclick    = () => goTab(3);
+$('hPractice').onclick = () => goTab(2);
+$('hPat').onclick      = () => goTab(4);
+$('hSolve').onclick = () => {
+  goTab(0);
+  // 还是复原态就说明他一格都没填过，顺手清空、把填法说明放出来，
+  // 省得对着一个复原的魔方发愣（这正是原来那个假引导）。
+  // 已经填了一半的别动 —— 去首页转一圈回来不该把人家的活儿冲掉
+  if(net.every((v,i)=> v === SOLVED_FACELET[i])) $('btnReset').click();
+};
+goHome();                                        // 一进来先落在首页
 
 // 重放到第 n 步（用于回退和跳转）
 function seekTo(n){
@@ -4585,7 +4650,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 10:05';
+const BUILD = '2026-08-11 10:21';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
