@@ -787,7 +787,8 @@
   </div>
   <div class="row hi" style="margin-top:8px">
     <button id="prTip">提示下一步</button>
-    <button id="prSolveIt">跟着解法转</button>
+    <!-- 原来叫「跟着解法转」，没说出"这会把你的魔方复原" —— 它就是这页的复原入口 -->
+    <button id="prSolveIt">复原它 · 跟着转</button>
   </div>
   <div class="row" style="margin-top:8px">
     <button id="prHome" class="sub">摆正视角</button>
@@ -827,7 +828,7 @@
     <div style="margin-top:6px"><b>转动记录</b>把你转过的每一步按顺序记下来，
     最后一步是蓝的。<b>点某一步</b>就退回到转它之前，用来找是哪一步转错的。
     「复制」把打乱序列和你的转动一起拷走。</div>
-    <div style="margin-top:6px"><b>「跟着解法转」</b>就在这一页把整套解法摆出来：
+    <div style="margin-top:6px"><b>「复原它 · 跟着转」</b>就在这一页把整套解法摆出来：
     大字是当前该转的记号，旁边一句中文说明哪一面往哪转，下面是整条序列。
     <b>转对了自动往下走</b>，不用来回切页。<b>R2</b> 这种分两次转也认得出来。
     转岔了会提示，撤销回去就接着走。</div>
@@ -4873,7 +4874,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 12:21';
+const BUILD = '2026-08-11 12:28';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
