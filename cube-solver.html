@@ -600,18 +600,30 @@
 
 <!-- ============ 花色页 ============ -->
 <div id="pPat" class="page">
-  <h2>把①输入页那个魔方，转成你自己画的花色</h2>
+  <h2>把手上的魔方，转成你自己画的花色</h2>
   <!-- 原来这里有三行：「当前魔方用①页那个」h2 已经说了；
        「棋盘格、方块中的方块…」下面就是现成花色画廊，看得见，不用讲 -->
-  <p class="muted">这里画的是<b>目标</b>花色，不是当前状态。求解会用①页选的那种解法。</p>
+  <p class="muted">这里画的是<b>目标</b>花色，不是当前状态。当前魔方拍一下就有了（下面那颗按钮），
+    也可以去①页填。求解用①页选的那种解法。</p>
 
   <div id="patStage"><canvas id="patCv"></canvas>
     <div id="patHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
-  <div class="row tight" style="margin-top:10px">
+  <!-- 这页画的是「目标」，可求解还得知道「当前」是什么样 —— 那个原来只能去①页填。
+       拍一下就有了，不用离开这页 -->
+  <div class="row" style="margin-top:10px">
+    <button id="patCurCam" class="pri2" style="flex:1 1 100%">📷 拍照识别我手上的魔方（当前状态）</button>
+  </div>
+
+  <!-- 跟①页一样分两排：上排换角度看，下排改填错的地方 -->
+  <div class="row tight" style="margin-top:8px">
     <button id="patFlip">翻到背面</button>
+    <button id="patBottom">看底面</button>
     <button id="patHome">摆正视角</button>
+  </div>
+  <div class="row tight" style="margin-top:6px">
     <button id="patClearOne">清掉这格</button>
     <button id="patBack">退一格</button>
+    <button id="patSolvedBtn">填复原态</button>
   </div>
   <div id="patPalwrap"><div id="patPal"></div></div>
   <div id="patTally"></div>
@@ -671,14 +683,9 @@
     <div id="patNetDiv"></div>
   </details>
 
-  <details class="more">
-    <summary>其它（清空、填样例）</summary>
-    <div class="row">
-      <button id="patReset" class="sub">全部清空</button>
-      <button id="patSolvedBtn" class="sub">填复原态</button>
-      <button id="patRandom" class="sub">随便来一个花色</button>
-    </div>
-  </details>
+  <!-- 「其它」折叠跟①页一起删了：清空用不着（点有颜色的格子就清掉了），
+       「随便来一个花色」上面那排现成花色里挑一个更直接。
+       「填复原态」挪到模型旁边那排去了 -->
 
   <div class="dock" id="patDock"><button id="patSolve" class="pri big">求解成这个花色</button></div>
 </div>
@@ -686,6 +693,13 @@
 <!-- ============ 练习页 ============ -->
 <div id="pPr" class="page">
   <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层（能一口气拖 180°）· 留白拖=转视角、快划=整体翻一格 · 双指拧正</div></div>
+
+  <!-- 想练手上那个实物魔方，拍一下就进来了（camOpen('pr')，认不准会退回①页改）。
+       这颗按钮本来就有，可是藏在页面最底下「更多」折叠里 —— 它是这一页的输入口，
+       该和模型待在一起 -->
+  <div class="row" style="margin-top:10px">
+    <button id="prCam" class="pri2" style="flex:1 1 100%">📷 拍照识别我手上的魔方，直接练</button>
+  </div>
 
   <div id="prBar">
     <span id="prTimeWrap"><b id="prTime">0:00</b>用时</span>
@@ -729,18 +743,8 @@
     <button id="prReset" class="sub">回到复原态</button>
   </div>
 
-  <details class="more">
-    <summary>更多（换个魔方来练、拿去别的页）</summary>
-    <div class="row">
-      <button id="prCam" style="flex:1 1 100%">📷 用摄像头 / 照片识别一个魔方来练</button>
-    </div>
-    <div class="row">
-      <button id="prToIn" class="sub" style="flex:1 1 100%">把这个魔方填进①输入页</button>
-    </div>
-    <div class="row">
-      <button id="prToPat" class="sub" style="flex:1 1 100%">拿这个魔方去⑤画花色</button>
-    </div>
-  </details>
+  <!-- 「更多」折叠删了：拍照识别提到模型底下去了（它是这页的输入口，不该藏），
+       两个「拿去别的页」也没了 —— ①⑤两页现在自己都能输入，不用从这儿中转 -->
 
   <div id="prLog">
     <div id="prLogHd"><span>转动记录 · <b id="prLogN">0 步</b></span>
@@ -2265,22 +2269,11 @@ function paintPatNet(){
   PAT.cubies = buildGeo(patNet);
   patRender();
 }
-$('patReset').onclick = () => {
-  patNet = new Array(54).fill(null);
-  for(const f of FACE_ORDER) patNet[fidx(f,4)] = f;
-  curPatColor = 'U'; paintPatNet(); invalidatePlan();
-};
 $('patBack').onclick = () => {
   for(let i=ORDER.length-1;i>=0;i--) if(patNet[ORDER[i]]){ patNet[ORDER[i]] = null; break; }
   paintPatNet(); invalidatePlan();
 };
 $('patSolvedBtn').onclick = () => { patNet = SOLVED_FACELET.slice(); paintPatNet(); invalidatePlan(); };
-$('patRandom').onclick = () => {
-  let s = solvedState();
-  const M = ['U','D','R','L','F','B'];
-  for(let i=0;i<28;i++) s = applyMove(s, M[(Math.random()*6)|0]+['',"'",'2'][(Math.random()*3)|0]);
-  patNet = cubieToFacelet(s); paintPatNet(); invalidatePlan();
-};
 
 const patCv = $('patCv');
 const PAT = {ctx:patCv.getContext('2d'), W:0, H:0,
@@ -2318,6 +2311,9 @@ function patWhole(axis, rotSign, quarter, toR){
   })(t0);
 }
 $('patFlip').onclick = () => patWhole(1, 1, 2);
+// 跟①页的「看底面」同一回事：底面在默认俯视角下一格都看不见
+$('patBottom').onclick = () => { PAT.R = TU_CAM_UP; PAT.G = [[1,0,0],[0,1,0],[0,0,1]];
+                                 PAT.yawSign = 1; patRender(); };
 $('patHome').onclick = () => { PAT.R = PR_CAM0; PAT.G = [[1,0,0],[0,1,0],[0,0,1]];
                               PAT.yawSign = 1; patRender(); };
 $('patClearOne').onclick = () => {
@@ -2784,7 +2780,8 @@ $('patFix').onclick = () => {
 // 公式已经用 vm 沙箱脚本验证过，见 invertState 定义处的注释
 $('patSolve').onclick = () => {
   const rA = faceletToCubie(net);
-  if(rA.error){ patMsg('先去①输入页填好当前魔方', 'err'); return; }
+  if(rA.error){ patMsg('还不知道你手上的魔方现在什么样 —— 点上面「拍照识别我手上的魔方」，'
+                     + '或者去①页填', 'err'); return; }
   const rT = faceletToCubie(patNet);
   if(rT.error){ patMsg(rT.error + '，可以点上面「自动修成合法」', 'err'); return; }
   const D = applyDef(invertState(rT.state), rA.state);
@@ -3917,19 +3914,8 @@ $('prUndo').onclick = () => {
   prSpin({axis:t.axis, layer:t.layer, rotSign:-t.rotSign}, last.quarter, false);
 };
 $('prHome').onclick = () => { if(!prBusy) prRecenter(); };
-// 状态本来就在手里，直接搬过去 —— 截图再走一遍识别纯属绕远路，还会认错
-$('prToIn').onclick = () => {
-  net = cubieToFacelet(prState);
-  paintNet(); invalidatePlan();
-  goTab(0);
-  showMsg('已经把第③页那个魔方原样填进来了，可以直接求解', 'ok');
-};
-$('prToPat').onclick = () => {
-  net = cubieToFacelet(prState);
-  paintNet(); invalidatePlan();
-  goTab(4);
-  patMsg('已经把③自己练那个魔方原样填进①了，画好目标花色后点「求解成这个花色」', 'ok');
-};
+// 「把这个魔方填进①输入页」「拿去⑤画花色」两颗按钮删了 ——
+// 三页现在各自都能输入，不用互相中转
 $('prTip').onclick = () => {
   if(prBusy) return;
   if(isSolved(prState)){ prMsg('已经是复原状态了'); return; }
@@ -4565,10 +4551,16 @@ function camLoop(){
   camRAF=requestAnimationFrame(camLoop);
 }
 
-// 识别完了往哪儿送：'in' 回填①输入页，'pr' 直接装进③自己练，'pat' 送到④花色页当目标
+/* 识别完了往哪儿送：
+     'in'     回填①输入页
+     'pr'     直接装进③自己练
+     'pat'    送到⑤花色页当【目标花色】
+     'patCur' 送到⑤花色页当【当前魔方】—— 写的是 net 不是 patNet。
+              求解花色要「当前」和「目标」两个状态，这条管前者，
+              有了它就不用先绕回①页填一遍 */
 let camDest = 'in';
 async function camOpen(dest){
-  camDest = dest === 'pr' ? 'pr' : dest === 'pat' ? 'pat' : 'in';
+  camDest = ['pr','pat','patCur'].includes(dest) ? dest : 'in';
   camStep=0; camPicked=[]; camStill=null; $('camErr').textContent='';
   camPrev.width=camPrev.height=CAM_SIZE;
   camBoxReset();
@@ -4595,6 +4587,7 @@ function camStop(){
 $('btnCam').onclick = () => camOpen('in');
 $('prCam').onclick  = () => camOpen('pr');
 $('patCam').onclick = () => camOpen('pat');
+$('patCurCam').onclick = () => camOpen('patCur');
 $('camClose').onclick = camStop;
 $('camBack').onclick = () => {
   if(camStep>0){ camStep--; camPicked.pop(); camStill=null; $('camErr').textContent=''; camRender(); }
@@ -4638,6 +4631,14 @@ $('camShot').onclick = () => {
     return;
   }
 
+  // 送去花色页当「当前魔方」。这六张图是同一个实物拍的，所以该是合法的；
+  // 认岔了就照旧退回①页改（下面那段兜底），不然求解时才报错更晚
+  if(camDest === 'patCur' && !chk.error){
+    net = guess; paintNet(); invalidatePlan();
+    patMsg('当前魔方识别好了。画好目标花色，再按底下的「求解成这个花色」' + dupMsg, 'ok');
+    return;
+  }
+
   // 送去练习页。练习页装不下不合法的魔方，认错了就退回输入页去改
   if(camDest === 'pr' && !chk.error){
     prLoad(chk.state);
@@ -4651,7 +4652,8 @@ $('camShot').onclick = () => {
   // 奇偶性、朝向这类整体约束 netTrouble 故意不查，那种情况一格都没标红，
   // 就别说「标红的格子」了 —— 得让他整体核对
   const bad = netTrouble(guess);
-  const backMsg = camDest === 'pr' ? '（识别的结果还不能直接拿去练，先在这一页改对）' : '';
+  const backMsg = camDest === 'pr'     ? '（识别的结果还不能直接拿去练，先在这一页改对）'
+                : camDest === 'patCur' ? '（还不能拿去算花色，先在这一页改对）' : '';
   showMsg(chk.error
     ? '识别完了，但有对不上的地方' + backMsg + '：' + chk.error + '　—— '
       + (bad ? '标红的格子就是问题所在：先在色板选对的颜色，再点那一格改掉'
@@ -4718,7 +4720,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 11:17';
+const BUILD = '2026-08-11 11:30';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
