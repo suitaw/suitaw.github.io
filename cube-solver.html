@@ -166,7 +166,11 @@
   .hCard::after{content:'›';color:var(--dim2);font-size:21px;flex:none;line-height:1}
   /* ⌂ 只占一点点宽，剩下的留给五个页签 —— 五个在 390px 上本来就是压到 12px
      才不折行的（见上面 #tabs 那段），再匀走 60px 就该参差不齐了 */
-  #tabs button#tabHome{flex:0 0 26px;font-size:16px;padding:9px 0 11px}
+  #tabs button#tabHome,#tabs button#tabSet{flex:0 0 24px;font-size:15px;padding:9px 0 11px}
+  /* 首页那颗 ⚙ 单独定位：首页藏了页签栏，但 ⚙ 得跟页签栏上那颗在同一个位置，
+     不然从首页进内页 ⚙ 会跳一下 */
+  #homeSet{position:absolute;left:14px;top:14px}
+  #pHome{position:relative}
   body.home #tabs{display:none}
 
   /* 持方速查：六个面各是什么颜色，一排小胶囊比一句话好认 */
@@ -385,10 +389,21 @@
   #prMoves span.last{background:var(--acc);color:var(--accTxt);font-weight:700}
   #prMoves span.last i{color:rgba(25,21,6,.6)}
   #prMoves em{font-style:normal;color:var(--dim2);font-size:12px}
-  #prSetHd{display:flex;align-items:center;font-size:12px;color:var(--dim);cursor:pointer}
-  #prSetHd b{margin-left:auto;font-size:11px;color:var(--acc);font-weight:600}
-  #prSetBody{display:none;margin-top:4px}
-  #prSet.on #prSetBody{display:block}
+  /* ---- 设置弹窗（全局）---- */
+  #setOv{position:fixed;inset:0;z-index:120;display:none;align-items:center;
+    justify-content:center;padding:18px;background:rgba(6,8,11,.72);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  #setOv.on{display:flex}
+  #setCard{width:100%;max-width:400px;max-height:86vh;overflow-y:auto;
+    background:var(--panel);border:1px solid var(--line2);border-radius:var(--r);
+    padding:14px 15px 16px;box-shadow:0 24px 60px -20px rgba(0,0,0,.9),var(--sheen)}
+  #setHd{display:flex;align-items:center;margin-bottom:4px}
+  #setHd b{flex:1;font-size:16px;font-weight:600}
+  /* 分组小标题：哪几项管全局、哪几项只管练习和教程，得当面说清楚，
+     不然「箭头提示」看着像在输入页也有 */
+  .setGrp{font-size:11px;letter-spacing:.06em;color:#828b99;font-weight:600;
+    margin:14px 0 2px;padding-top:11px;border-top:1px solid var(--line)}
+  .setGrp:first-child{border-top:none;padding-top:0;margin-top:10px}
   .prSetRow{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12.5px}
   .prSetRow>span{flex:none;width:66px;color:var(--dim)}
   .prSetRow .segs{display:flex;flex:1;gap:3px;background:#0e1014;border-radius:var(--r3);padding:3px}
@@ -482,6 +497,7 @@
 </style>
 
 <div id="tabs">
+  <button id="tabSet" title="设置">⚙</button>
   <button id="tabHome" title="回首页">⌂</button>
   <button id="tabIn" class="on">① 输入</button>
   <button id="tabGo">② 跟着复原</button>
@@ -492,6 +508,9 @@
 
 <!-- ============ 首页（分流）============ -->
 <div id="pHome" class="page on">
+  <!-- 首页把页签栏藏了，所以设置得自己有一颗。位置和页签栏上那颗对齐，
+       都在最左上角 —— 不管在哪一页，⚙ 永远在同一个地方 -->
+  <button id="homeSet" class="hlp" title="设置">⚙</button>
   <h1 id="homeTitle">魔方复原助手</h1>
   <p id="homeSub">拿着魔方，<b style="color:#f2f4f7">白色朝下</b>、<b style="color:var(--cF)">绿色朝前</b>
     —— 这一页所有的说法都按这个持方来。<br>你想干什么？</p>
@@ -736,15 +755,6 @@
     <div id="prMoves"><em>还没转过</em></div>
   </div>
 
-  <div id="prSet">
-    <div id="prSetHd"><span>设置</span><b>展开</b></div>
-    <div id="prSetBody">
-      <div id="prSetRows"></div>
-      <div id="prSetNote">改完立刻生效，会一直记着。「转成的门槛」是拖过多少度才算转成一格：
-        调低更容易转成，调高更不容易误转。</div>
-    </div>
-  </div>
-
   <details class="legend help">
     <summary>怎么玩（手势、按钮、转动记录）</summary>
     <b>拖魔方 = 转层。</b>按住往某个方向拖，那一层就<b>跟着手指转</b>，像真魔方一样。
@@ -884,6 +894,18 @@
       </div>
     </div>
   </details>
+</div>
+
+<!-- 设置：原来是练习页里的一块可展开区域，可是里面有一半的项
+     （震动、转动动画、快划翻面）在输入页和花色页照样生效 ——
+     放在练习页里等于藏起来了。挪成全局弹窗，⚙ 在每一页的左上角同一个位置 -->
+<div id="setOv">
+  <div id="setCard">
+    <div id="setHd"><b>设置</b><button id="setClose" class="sub">完成</button></div>
+    <div id="prSetRows"></div>
+    <div id="prSetNote">改完立刻生效，会一直记着。「转成的门槛」是拖过多少度才算转成一格：
+      调低更容易转成，调高更不容易误转。</div>
+  </div>
 </div>
 
 <!-- 版本行要排在所有 .page 后面。放在 pGo 前面的话，第②页的版本会跑到内容上方去 -->
@@ -3110,14 +3132,23 @@ const prMsg = (t,win) => { $('prMsg').textContent = t; $('prMsg').className = wi
    箭头沿用早先就在用的 `cube_pr_arrow`（那时存的 '1'/'0' 正好也是下标，不用迁移）。
    只放真有偏好差异的项：像锁定角度、掠射的 |v| 下限那种内部一致性参数不暴露，
    调错了手感只会变坏，用户也没有判断依据 */
+/* grp 是分组，不是随手标的 —— 查过每一项到底在哪些页面被读：
+     vib   buzz 全站 8 处都调
+     spd   inWhole(输入) / patWhole(花色) / prWholeSpin(练习) / tuPlaySeq(教程)
+     fling 输入页和花色页的手势里也读，不只练习页
+     arrow 练习页 prPlan + 教程 tuPlaySeq
+     snap  prQuarters，只有练习页拖着转层用得上
+     timer 只有练习页那行计时
+   所以前三项是真全局，后三项只影响「自己练」和「学」*/
 const PRSET = {
-  vib:   {cn:'震动',   key:'cube_pr_vib',   def:1, opts:['关','轻','强'],            vals:[0, 1, 2.2]},
-  spd:   {cn:'转动动画', key:'cube_pr_spd', def:1, opts:['慢','正常','快','不要'],   vals:[1.7, 1, 0.55, 0]},
-  snap:  {cn:'转成的门槛', key:'cube_pr_snap', def:1, opts:['30°','45°','60°'],      vals:[30, 45, 60]},
-  fling: {cn:'快划翻面', key:'cube_pr_fling', def:1, opts:['关','开'],               vals:[0, 1]},
-  arrow: {cn:'箭头提示', key:'cube_pr_arrow', def:1, opts:['关','开'],               vals:[0, 1]},
-  timer: {cn:'计时器',  key:'cube_pr_timer', def:1, opts:['隐藏','显示'],            vals:[0, 1]},
+  vib:   {cn:'震动',   key:'cube_pr_vib',   def:1, opts:['关','轻','强'],            vals:[0, 1, 2.2],  grp:0},
+  spd:   {cn:'转动动画', key:'cube_pr_spd', def:1, opts:['慢','正常','快','不要'],   vals:[1.7, 1, 0.55, 0], grp:0},
+  fling: {cn:'快划翻面', key:'cube_pr_fling', def:1, opts:['关','开'],               vals:[0, 1],       grp:0},
+  arrow: {cn:'箭头提示', key:'cube_pr_arrow', def:1, opts:['关','开'],               vals:[0, 1],       grp:1},
+  snap:  {cn:'转成的门槛', key:'cube_pr_snap', def:1, opts:['30°','45°','60°'],      vals:[30, 45, 60], grp:1},
+  timer: {cn:'计时器',  key:'cube_pr_timer', def:1, opts:['隐藏','显示'],            vals:[0, 1],       grp:1},
 };
+const SET_GRP = ['所有带魔方的页面', '只影响「自己练」和「学」'];
 const prSetIdx = {};
 for(const k in PRSET){
   const s = PRSET[k], v = parseInt(localStorage.getItem(s.key), 10);
@@ -3136,9 +3167,11 @@ function prSetPut(k, i){
   prRender();
 }
 function prSetRender(){
+  let last = -1;
   $('prSetRows').innerHTML = Object.keys(PRSET).map(k => {
     const s = PRSET[k];
-    return `<div class="prSetRow"><span>${s.cn}</span><div class="segs" data-k="${k}">` +
+    const hd = s.grp !== last ? `<div class="setGrp">${SET_GRP[last = s.grp]}</div>` : '';
+    return hd + `<div class="prSetRow"><span>${s.cn}</span><div class="segs" data-k="${k}">` +
       s.opts.map((o,i) => `<button data-i="${i}"${i===prSetIdx[k]?' class="on"':''}>${o}</button>`)
         .join('') + '</div></div>';
   }).join('');
@@ -3149,10 +3182,13 @@ $('prSetRows').onclick = e => {
   prSetPut(b.parentElement.dataset.k, +b.dataset.i);
   buzz(6);                                    // 顺便让他听个响，知道震动调成什么样了
 };
-$('prSetHd').onclick = () => {
-  const on = $('prSet').classList.toggle('on');
-  $('prSetHd').querySelector('b').textContent = on ? '收起' : '展开';
-};
+const setOpen = v => $('setOv').classList.toggle('on', v);
+$('tabSet').onclick  = () => setOpen(true);
+$('homeSet').onclick = () => setOpen(true);
+$('setClose').onclick = () => setOpen(false);
+// 点卡片外面的暗背景也关掉。判 e.target 是遮罩本身，
+// 不然点卡片内部会冒泡上来把面板关了
+$('setOv').onclick = e => { if(e.target === $('setOv')) setOpen(false); };
 
 // 实体魔方每转过一格有咔哒的卡位感，屏幕上拿短震动补一下。
 // 浏览器不支持、或者系统里关了震动，vibrate 直接返回 false，不用管
@@ -4700,7 +4736,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-11 10:31';
+const BUILD = '2026-08-11 10:42';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
