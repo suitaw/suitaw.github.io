@@ -18,6 +18,9 @@
   --green-soft:#eef3ec; --green-border:#cfe0c4; --green-active:#e6efe0; --card-soft:#f5f1ea;
   --az-bg:rgba(255,253,247,.55);
   --shadow:0 1px 3px rgba(43,38,32,.08),0 8px 24px rgba(43,38,32,.06);
+  /* 底部导航实际高度。所有吸底元素（正文留白/toast/撤回条/＋词/翻页箭头）都按它算偏移，
+     改导航热区时只动这一个数，不用去五个地方对齐 */
+  --nav-h:88px;
 }
 @media(prefers-color-scheme:dark){
   :root{
@@ -29,22 +32,24 @@
   }
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.6;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.6;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom))}
 .wrap{max-width:640px;margin:0 auto;padding:16px}
 h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.01em}
 .sub{color:var(--ink-dim);font-size:.78rem;margin-top:2px}
 .topbar{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0 16px}
-.gear{background:none;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:.78rem;color:var(--ink-dim);cursor:pointer}
+.gear{background:none;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:.78rem;color:var(--ink-dim);cursor:pointer;min-height:44px}
 .gear:active{background:var(--paper2)}
 
 /* 设置面板 */
 .panel{display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
 .panel.open{display:block}
-.panel label{display:block;font-size:.72rem;color:var(--ink-dim);margin:10px 0 4px;font-weight:500}
-.panel input,.panel select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-size:.85rem;color:var(--ink);font-family:inherit}
-.panel .hint{font-size:.68rem;color:var(--ink-dim);margin-top:6px;line-height:1.5}
+.panel label{display:block;font-size:.8rem;color:var(--ink-dim);margin:10px 0 4px;font-weight:500}
+.panel input,.panel select{width:100%;padding:12px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-size:.85rem;color:var(--ink);font-family:inherit;min-height:44px}
+/* 滑杆原来只有 16px 高，手指按不准。撑到 44px 但轨道视觉不变 */
+.panel input[type=range]{min-height:44px;padding:0;border:none;background:none}
+.panel .hint{font-size:.75rem;color:var(--ink-dim);margin-top:6px;line-height:1.5}
 .set-group{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
-.set-group>summary{cursor:pointer;font-size:.82rem;font-weight:600;color:var(--ink);list-style:none;display:flex;align-items:center;gap:6px;user-select:none}
+.set-group>summary{cursor:pointer;font-size:.82rem;font-weight:600;color:var(--ink);list-style:none;display:flex;align-items:center;gap:6px;user-select:none;min-height:44px;padding:6px 0}
 .set-group>summary::before{content:"▸";display:inline-block;transition:transform .15s;color:var(--ink-dim)}
 .set-group[open]>summary::before{transform:rotate(90deg)}
 .set-group>summary::-webkit-details-marker{display:none}
@@ -52,16 +57,19 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 
 /* 闪卡 */
 .stage{text-align:center;padding:8px 0}
-.progress{font-size:.72rem;color:var(--ink-dim);margin-bottom:14px}
+.progress{font-size:.8rem;color:var(--ink-dim);margin-bottom:14px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:32px 22px;box-shadow:var(--shadow);min-height:200px;display:flex;flex-direction:column;justify-content:center;cursor:pointer;position:relative;overflow:hidden;touch-action:pan-y}
 .card.swiping{transition:none}
 .card.snap{transition:transform .2s ease,opacity .2s ease}
-.cat-tag{position:absolute;top:12px;right:14px;font-size:.6rem;color:var(--ink-dim);border:1px solid var(--line);border-radius:20px;padding:2px 8px}
+.cat-tag{position:absolute;top:12px;right:14px;font-size:.75rem;color:var(--ink-dim);border:1px solid var(--line);border-radius:20px;padding:3px 9px}
+/* 角标要点得到，但放大到 44px 会在闪卡上跟单词抢戏。所以视觉维持小胶囊，
+   热区用伪元素往外撑——手指按得到，眼睛看着还是个角标 */
+.cat-tag::after{content:"";position:absolute;inset:-10px -9px;border-radius:24px}
 .word{font-family:Fraunces,serif;font-size:2.4rem;font-weight:600;letter-spacing:-.02em}
 .phonetic{color:var(--accent);font-size:1rem;margin-top:6px;font-family:Fraunces,serif}
-.speak{background:none;border:1px solid var(--line);border-radius:20px;padding:5px 14px;font-size:.78rem;color:var(--ink-dim);cursor:pointer;margin-top:14px;align-self:center;transition:transform .1s,border-color .1s}
+.speak{background:none;border:1px solid var(--line);border-radius:22px;padding:11px 18px;font-size:.78rem;color:var(--ink-dim);cursor:pointer;margin-top:14px;align-self:center;transition:transform .1s,border-color .1s;min-height:44px}
 .speak.playing{border-color:var(--green);color:var(--green);transform:scale(1.08)}
-.flip-hint{font-size:.68rem;color:var(--ink-dim);margin-top:18px}
+.flip-hint{font-size:.75rem;color:var(--ink-dim);margin-top:18px}
 .back{border-top:1px dashed var(--line);margin-top:18px;padding-top:16px;text-align:left}
 .cn{font-size:1.15rem;font-weight:600;margin-bottom:8px}
 .tip{font-size:.8rem;color:var(--ink-dim);background:var(--paper2);border-radius:8px;padding:8px 11px;margin-bottom:10px}
@@ -71,7 +79,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 /* 评分按钮 */
 .grades{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px}
 .grade{padding:11px 4px;border:1px solid var(--line);border-radius:11px;background:var(--card);font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;color:var(--ink)}
-.grade small{display:block;font-size:.6rem;font-weight:400;color:var(--ink-dim);margin-top:2px}
+.grade small{display:block;font-size:.75rem;font-weight:400;color:var(--ink-dim);margin-top:2px}
 .grade:active{transform:scale(.96)}
 .g-again{border-color:var(--accent-soft)} .g-again:active{background:var(--accent-soft)}
 .g-good{border-color:var(--green-border)} .g-good:active{background:var(--green-active)}
@@ -79,7 +87,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 /* AI 造句区 */
 .ai-box{margin-top:16px;text-align:left}
 .ai-box textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;resize:vertical;min-height:64px;background:var(--paper)}
-.ai-btn{margin-top:8px;width:100%;padding:10px;border:none;border-radius:10px;background:var(--ink);color:var(--paper);font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit}
+.ai-btn{margin-top:8px;width:100%;padding:13px 10px;border:none;border-radius:10px;background:var(--ink);color:var(--paper);font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px}
 .ai-btn:disabled{opacity:.5}
 .ai-thread{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .ai-msg{font-size:.84rem;line-height:1.65;white-space:pre-wrap;padding:8px 11px;border-radius:12px;border:1px solid var(--line);word-break:break-word}
@@ -92,7 +100,8 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 
 /* 底部导航 */
 .nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
-.nav button{background:none;border:none;font-size:.72rem;color:var(--ink-dim);cursor:pointer;font-family:inherit;padding:4px 16px;border-radius:8px}
+/* 热区 44px 起：这是全站按得最多的东西，原来只有 23px 高，挨着的两项很容易点错 */
+.nav button{background:none;border:none;font-size:.8rem;color:var(--ink-dim);cursor:pointer;font-family:inherit;padding:12px 16px;border-radius:8px;min-height:44px}
 .nav button.active{color:var(--accent);font-weight:600}
 
 /* 复习本 */
@@ -102,7 +111,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 
 /* 字母索引侧边栏 */
 .az-index{position:fixed;right:2px;top:50%;transform:translateY(-50%);z-index:60;display:flex;flex-direction:column;align-items:center;padding:4px 3px;border-radius:10px;background:var(--az-bg);touch-action:none}
-.az-index .az-item{font-size:.6rem;line-height:1;color:var(--ink-dim);padding:1.5px 4px;cursor:pointer;font-weight:600;border-radius:3px}
+.az-index .az-item{font-size:.75rem;line-height:1;color:var(--ink-dim);padding:1.5px 4px;cursor:pointer;font-weight:600;border-radius:3px}
 .az-index .az-item.dim{opacity:.32;cursor:default}
 .az-index .az-item.hit{background:var(--accent);color:#fff}
 .az-bubble{position:fixed;right:34px;top:50%;transform:translateY(-50%);z-index:61;background:var(--ink);color:var(--paper);width:44px;height:44px;border-radius:50%;display:none;align-items:center;justify-content:center;font-family:Fraunces,serif;font-size:1.3rem;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.28)}
@@ -110,18 +119,18 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .cat-row{position:relative;transition:transform .18s ease}
 .cat-row.dragging{opacity:.9;box-shadow:0 8px 24px rgba(43,38,32,.25);z-index:50;transition:none;cursor:grabbing}
 .cat-row.drag-placeholder{opacity:.3;background:var(--paper2);border-style:dashed}
-.cat-row .drag-handle{color:var(--ink-dim);font-size:1rem;padding:0 4px;cursor:grab;touch-action:none;align-self:center}
+.cat-row .drag-handle{color:var(--ink-dim);font-size:1rem;padding:0 10px;cursor:grab;touch-action:none;align-self:center;min-height:44px;display:flex;align-items:center}
 .az-bubble.show{display:flex}
-.toast{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:20px;font-size:.78rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
+.toast{position:fixed;bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:20px;font-size:.78rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
 .import-overlay{display:none;position:fixed;inset:0;background:rgba(43,38,32,.4);z-index:200;overflow-y:auto;padding:20px 12px}
 .import-overlay.open{display:block}
-#quick-add-fab{position:fixed;right:16px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:150;width:52px;height:52px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:.92rem;font-weight:700;font-family:inherit;box-shadow:0 4px 14px rgba(43,38,32,.28);cursor:pointer}
+#quick-add-fab{position:fixed;right:16px;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));z-index:150;width:52px;height:52px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:.92rem;font-weight:700;font-family:inherit;box-shadow:0 4px 14px rgba(43,38,32,.28);cursor:pointer}
 #quick-add-fab:active{transform:scale(.94)}
 .scroll-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:1.1rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18);display:none}
 .scroll-btn:active{transform:scale(.92)}
 .import-box{max-width:560px;margin:20px auto;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 40px rgba(43,38,32,.2)}
 .toast.show{opacity:1}
-.undobar{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:12px;font-size:.8rem;display:none;align-items:center;gap:12px;z-index:100;box-shadow:0 6px 20px rgba(0,0,0,.28);max-width:92vw}
+.undobar{position:fixed;bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:12px;font-size:.8rem;display:none;align-items:center;gap:12px;z-index:100;box-shadow:0 6px 20px rgba(0,0,0,.28);max-width:92vw}
 .undobar.show{display:flex}
 .undobar button{background:transparent;border:1px solid rgba(255,255,255,.4);color:var(--paper);border-radius:8px;padding:5px 12px;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -138,12 +147,12 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .aip-bar.indet .aip-fill{width:40%;transition:none;animation:aip-flow 2.4s linear infinite,aip-slide 1.4s ease-in-out infinite}
 @keyframes aip-flow{to{background-position:200% 0}}
 @keyframes aip-slide{from{transform:translateX(-105%)}to{transform:translateX(255%)}}
-.aip-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.72rem;color:var(--ink-dim);margin-top:7px}
+.aip-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.8rem;color:var(--ink-dim);margin-top:7px}
 .aip-count{font-family:Fraunces,serif;font-weight:700;color:var(--accent);font-size:.95rem}
 .aip-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);animation:aip-pulse 1s ease-in-out infinite;vertical-align:middle}
 @keyframes aip-pulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
 .aip-chips{margin-top:8px;max-height:104px;overflow-y:auto}
-.aip-chip{display:inline-block;padding:3px 9px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font-size:.72rem;margin:0 4px 4px 0;animation:aip-pop .34s cubic-bezier(.34,1.56,.64,1)}
+.aip-chip{display:inline-block;padding:3px 9px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font-size:.8rem;margin:0 4px 4px 0;animation:aip-pop .34s cubic-bezier(.34,1.56,.64,1)}
 @keyframes aip-pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 @media(prefers-reduced-motion:reduce){.aip-fill,.aip-dot,.aip-chip{animation:none!important}.aip-bar.indet .aip-fill{width:100%}}
 /* ===== AI 智能体（能直接动手改东西，不只是聊天）===== */
@@ -157,7 +166,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .agent-log{flex:1;overflow-y:auto;padding:12px 13px;-webkit-overflow-scrolling:touch}
 .agent-foot{padding:9px 11px;border-top:1px solid var(--line);background:var(--card)}
 .agent-foot .row{display:flex;gap:8px;align-items:flex-end}
-.agent-foot textarea{flex:1;border:1px solid var(--line);border-radius:10px;padding:9px;font-family:inherit;font-size:.85rem;background:var(--paper);color:var(--ink);resize:none;min-height:40px;max-height:96px}
+.agent-foot textarea{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px;font-family:inherit;font-size:.85rem;background:var(--paper);color:var(--ink);resize:none;min-height:44px;max-height:96px}
 .agent-msg{margin-bottom:9px;font-size:.85rem;line-height:1.6}
 .agent-msg.me{text-align:right}
 .agent-msg.me>span{display:inline-block;background:var(--accent-soft);color:var(--accent);padding:7px 11px;border-radius:12px;max-width:88%;text-align:left}
@@ -171,9 +180,15 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .agent-confirm{margin:8px 0;padding:10px;border-radius:12px;border:1px solid var(--gold);background:var(--card)}
 .agent-confirm .t{font-size:.78rem;color:var(--gold);font-weight:600;margin-bottom:6px}
 .agent-confirm .btns{display:flex;gap:8px;margin-top:9px}
-.agent-confirm .btns button{flex:1;padding:8px;border-radius:9px;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--paper);color:var(--ink-dim)}
+.agent-confirm .btns button{flex:1;padding:12px 8px;min-height:44px;border-radius:9px;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--paper);color:var(--ink-dim)}
 .agent-confirm .btns button.go{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.agent-chip{display:inline-block;padding:4px 10px;margin:0 5px 5px 0;border-radius:13px;border:1px solid var(--line);background:var(--card);color:var(--ink-dim);font-size:.74rem;cursor:pointer}
+.agent-chip{display:inline-flex;align-items:center;min-height:44px;padding:8px 14px;margin:0 6px 6px 0;border-radius:22px;border:1px solid var(--line);background:var(--card);color:var(--ink-dim);font-size:.8rem;cursor:pointer}
+/* 收起后的悬浮条。z-index 低于面板(211)、高于＋词 FAB(150)：
+   收起时它是唯一的入口，不能被 FAB 压住 */
+.agent-bar{display:none;position:fixed;left:10px;right:10px;bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));z-index:205;background:var(--ink);color:var(--paper);border-radius:14px;padding:10px 12px;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.32);cursor:pointer;font-size:.8rem;min-height:48px}
+.agent-bar.show{display:flex}
+.agent-bar .aip-dot{background:var(--paper);flex:none}
+.agent-bar button{background:transparent;border:1px solid rgba(255,255,255,.42);color:var(--paper);border-radius:9px;padding:8px 13px;min-height:40px;font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;flex:none}
 @media(prefers-reduced-motion:reduce){.agent-panel.open,.agent-act{animation:none!important}}
 </style>
 </head>
@@ -209,10 +224,15 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
     <label>每次学习上限（张卡）</label>
     <input type="number" id="daily-limit" min="5" max="200" step="5" placeholder="20">
     <div class="hint">每次进入背卡，最多出现多少张（新词+到期复习合计）。默认 20，词多想多背可调大。</div>
+    <label>智能体自动执行轮数上限</label>
+    <select id="agent-turns"></select>
+    <div class="hint">1 轮 = 智能体做一批动作 → 看执行结果 → 再决定下一步。任务做完它会自己停，这个上限只是防它绕圈白烧 Token。默认 8 轮，够用；调大主要是浪费。跑的时候「发送」会变成「停止」，随时能喊停。</div>
     <label>目标保留率 <b id="ret-val" style="color:var(--accent)">90%</b></label>
     <input type="range" id="retention" min="0.8" max="0.95" step="0.01" value="0.9" style="padding:0;border:none;background:none">
     <div class="hint">希望复习时还记得住的比例，FSRS 按它反推间隔。调高 → 间隔变短、复习更勤、记得更牢但更费时；调低 → 间隔拉长、省时间但忘得多。默认 90%，拿不准别动。</div>
-    <div class="hint" style="margin-top:10px">当前版本 <b id="build-stamp"></b> · 想确认线上有没有更新到最新，看这个日期就行</div>
+    <div class="hint" style="margin-top:10px">当前正在跑 <b id="build-stamp"></b></div>
+    <button class="gear" style="width:100%;margin-top:8px" id="update-btn" onclick="checkUpdate()">🔄 检查线上有没有新版</button>
+    <div class="hint" id="update-msg" style="margin-top:8px">手机浏览器缓存 HTML 很凶，改完部署了却还打开着旧版是常事。这颗按钮直接去线上抓一份比对。</div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="ai-btn" style="flex:1" onclick="saveCfg()">保存设置</button>
       <button class="gear" onclick="clearKey()">清空 Key</button>
@@ -253,7 +273,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 <div class="undobar" id="undobar"><span id="undobar-msg"></span><button onclick="undoLast()">↩ 撤回</button></div>
 <div class="import-overlay" id="import-overlay"></div>
 <button id="quick-add-fab" onclick="openQuickAdd()" title="快速加词">＋词</button>
-<div id="scroll-nav" style="position:fixed;right:16px;bottom:calc(134px + env(safe-area-inset-bottom));z-index:140;display:none;flex-direction:column;gap:8px">
+<div id="scroll-nav" style="position:fixed;right:16px;bottom:calc(var(--nav-h) + 62px + env(safe-area-inset-bottom));z-index:140;display:none;flex-direction:column;gap:8px">
   <button id="scroll-up" class="scroll-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到顶部">↑</button>
   <button id="scroll-down" class="scroll-btn" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})" title="到底部">↓</button>
 </div>
@@ -276,6 +296,12 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
     </div>
   </div>
 </div>
+<!-- 智能体收起后的悬浮条：面板让开了，但循环还在跑，进度和「停止」得留在屏幕上 -->
+<div class="agent-bar" id="agent-bar" onclick="agentRestore()">
+  <span class="aip-dot"></span>
+  <span id="agent-bar-txt" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">…</span>
+  <button id="agent-bar-stop" onclick="event.stopPropagation();agentAbort()">停止</button>
+</div>
 
 <script src="words.js?v=20260805"></script>
 <script src="nce.js?v=20260628"></script>
@@ -286,6 +312,12 @@ const CFG_KEY="vocab_v5_cfg";
 let srs=load(SRS_KEY,{});          // {id:{ef,interval,reps,due}}
 let cfg=load(CFG_KEY,{provider:"deepseek",apikey:"",scope:"all",models:{},thinkOn:false,dailyLimit:20});
 if(!cfg.dailyLimit)cfg.dailyLimit=20;  // 老用户补默认
+// 智能体一次对话最多自动循环几轮。动作集只有十几个、且都是一步到位的本地操作，
+// 不存在终端那种"读输出→再试一条"的长链条，8 轮够用；调大只会在模型绕圈时多烧钱。
+// **必须声明在这儿**：bindCfg() 在初始化时就会读它，而智能体那一节在文件最末尾，
+// 放那儿就是 const 的暂时性死区，整个页面初始化会当场中断（栽过一次）
+const AGENT_TURNS=[4,8,16,30];
+function agentMaxTurns(){return AGENT_TURNS[cfg.agentTurns??1]??8}
 if(!cfg.models)cfg.models={};
 if(typeof cfg.thinkOn!=="boolean")cfg.thinkOn=false;
 // Key 按 provider 分开存（修复切换 provider 后 Key 没跟着切）。迁移旧的单一 apikey
@@ -523,6 +555,12 @@ function bindCfg(){
   const mRow=document.getElementById("model-row"),mSel=document.getElementById("model");
   p.value=cfg.provider;k.value=cfg.apikey;
   const dl=document.getElementById("daily-limit");if(dl)dl.value=cfg.dailyLimit||20;
+  const at=document.getElementById("agent-turns");
+  if(at){
+    at.innerHTML=AGENT_TURNS.map((n,i)=>`<option value="${i}">${n} 轮</option>`).join("");
+    at.value=String(cfg.agentTurns??1);
+    at.onchange=()=>{cfg.agentTurns=parseInt(at.value,10);save(CFG_KEY,cfg)};
+  }
   const rt=document.getElementById("retention"),rv=document.getElementById("ret-val");
   if(rt){
     rt.value=desiredRetention();
@@ -878,18 +916,18 @@ function renderCatManager(){
   const ov=document.getElementById("import-overlay");if(!ov)return;
   const cats=allCatsWithCount();
   const rows=cats.map(c=>{
-    const tag=c.isFixed?'<span style="font-size:.66rem;color:var(--ink-dim)">固定</span>':
-      c.isArt?'<span style="font-size:.66rem;color:var(--ink-dim)">文章</span>':
-      c.isSys?'<span style="font-size:.66rem;color:var(--ink-dim)">系统</span>':
-      '<span style="font-size:.66rem;color:var(--accent)">自定义</span>';
+    const tag=c.isFixed?'<span style="font-size:.75rem;color:var(--ink-dim)">固定</span>':
+      c.isArt?'<span style="font-size:.75rem;color:var(--ink-dim)">文章</span>':
+      c.isSys?'<span style="font-size:.75rem;color:var(--ink-dim)">系统</span>':
+      '<span style="font-size:.75rem;color:var(--accent)">自定义</span>';
     // 自定义分类可重命名；非收藏类可合并；文章类不在这里动（去"我的文章"删）
     const canRename=!c.isFixed&&!c.isArt&&c.cat!=="import";
     const canMerge=c.cat!=="import";
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
       <div style="flex:1"><div style="font-weight:600;font-size:.86rem">${escapeHtml(c.name)} ${tag}</div>
-        <div style="font-size:.72rem;color:var(--ink-dim)">${c.n} 词</div></div>
-      ${canRename?`<button class="gear" style="font-size:.72rem;padding:4px 8px" onclick="renameCat('${c.cat}')">改名</button>`:""}
-      ${canMerge?`<button class="gear" style="font-size:.72rem;padding:4px 8px" onclick="mergeCat('${c.cat}')">合并</button>`:""}
+        <div style="font-size:.8rem;color:var(--ink-dim)">${c.n} 词</div></div>
+      ${canRename?`<button class="gear" style="font-size:.8rem;padding:4px 8px" onclick="renameCat('${c.cat}')">改名</button>`:""}
+      ${canMerge?`<button class="gear" style="font-size:.8rem;padding:4px 8px" onclick="mergeCat('${c.cat}')">合并</button>`:""}
     </div>`;
   }).join("");
   ov.innerHTML=`<div class="import-box">
@@ -897,7 +935,7 @@ function renderCatManager(){
       <h2 style="font-family:Fraunces,serif;font-size:1.3rem">⚙ 管理分类</h2>
       <button class="gear" onclick="closeImport()">✕ 关闭</button>
     </div>
-    <p style="font-size:.74rem;color:var(--ink-dim);margin-bottom:10px">改名：给自定义分类换名字。合并：把这个分类的词并入另一个分类。文章分类请去「我的文章」里删整篇。</p>
+    <p style="font-size:.8rem;color:var(--ink-dim);margin-bottom:10px">改名：给自定义分类换名字。合并：把这个分类的词并入另一个分类。文章分类请去「我的文章」里删整篇。</p>
     ${rows||'<div style="color:var(--ink-dim);font-size:.8rem">还没有分类</div>'}
   </div>`;
 }
@@ -971,10 +1009,10 @@ function runSearch(q){
   ).slice(0,50);
   if(!hits.length){box.innerHTML=`<div style="font-size:.78rem;color:var(--ink-dim)">没找到「${escapeHtml(q)}」</div>`;return}
   box.innerHTML=hits.map(w=>`<div class="mistake-item" style="cursor:pointer" onclick="reviewWord('${w.id}')">
-    <div style="flex:1"><div class="w" style="font-size:.95rem">${escapeHtml(w.word)}${w.phonetic?`<span style="font-size:.7rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${escapeHtml(w.phonetic)}</span>`:""}</div>
+    <div style="flex:1"><div class="w" style="font-size:.95rem">${escapeHtml(w.word)}${w.phonetic?`<span style="font-size:.8rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${escapeHtml(w.phonetic)}</span>`:""}</div>
       <div class="c">${escapeHtml(w.cn||"")}</div></div>
-    <span style="font-size:.64rem;color:var(--ink-dim);white-space:nowrap">${escapeHtml(catName(w.cat))}</span>
-  </div>`).join("")+(hits.length>=50?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:8px">只显示前 50 个，再输入细化</div>`:"");
+    <span style="font-size:.75rem;color:var(--ink-dim);white-space:nowrap">${escapeHtml(catName(w.cat))}</span>
+  </div>`).join("")+(hits.length>=50?`<div style="font-size:.8rem;color:var(--ink-dim);margin-top:8px">只显示前 50 个，再输入细化</div>`:"");
 }
 function catName(c){
   const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",__fav__:"我的收藏",codepath:"Codepath 编程",__phrase__:"短语复习"};
@@ -1090,17 +1128,17 @@ function renderHome(v){
   const todayPanel=`
     <div style="background:linear-gradient(135deg,var(--accent),#a0563a);border-radius:16px;padding:18px;margin-bottom:16px;color:#fff">
       <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:600;margin-bottom:2px">今天学什么</div>
-      <div style="font-size:.74rem;opacity:.85;margin-bottom:14px">跟着下面走就行，不用自己想</div>
+      <div style="font-size:.8rem;opacity:.85;margin-bottom:14px">跟着下面走就行，不用自己想</div>
       <div onclick="${dueNow?`startStudy('__due__')`:''}" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;margin-bottom:8px;${dueNow?'cursor:pointer':'opacity:.6'}">
-        <div><div style="font-weight:600">📚 复习到期</div><div style="font-size:.72rem;opacity:.85">${dueNow?`记忆该巩固了${duePhraseCount?`（含 ${duePhraseCount} 短语）`:''}`:'今天没有到期的，太棒了'}</div></div>
+        <div><div style="font-weight:600">📚 复习到期</div><div style="font-size:.8rem;opacity:.85">${dueNow?`记忆该巩固了${duePhraseCount?`（含 ${duePhraseCount} 短语）`:''}`:'今天没有到期的，太棒了'}</div></div>
         <div style="font-family:Fraunces,serif;font-weight:700;font-size:1.5rem">${dueNow}</div>
       </div>
       <div onclick="${newCount?`startStudy('__new__')`:''}" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;${dueGrammar?'margin-bottom:8px;':''}${newCount?'cursor:pointer':'opacity:.6'}">
-        <div><div style="font-weight:600">✨ 背几个新词</div><div style="font-size:.72rem;opacity:.85">${newCount?'从所有分类里挑新词':'新词都学过啦'}</div></div>
+        <div><div style="font-weight:600">✨ 背几个新词</div><div style="font-size:.8rem;opacity:.85">${newCount?'从所有分类里挑新词':'新词都学过啦'}</div></div>
         <div style="font-family:Fraunces,serif;font-weight:700;font-size:1.5rem">${newCount}</div>
       </div>
       ${dueGrammar?`<div onclick="gotoGrammarReview()" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;cursor:pointer">
-        <div><div style="font-weight:600">📖 语法该回顾了</div><div style="font-size:.72rem;opacity:.85">点开看 AI 详解，回顾一遍就顺延</div></div>
+        <div><div style="font-weight:600">📖 语法该回顾了</div><div style="font-size:.8rem;opacity:.85">点开看 AI 详解，回顾一遍就顺延</div></div>
         <div style="font-family:Fraunces,serif;font-weight:700;font-size:1.5rem">${dueGrammar}</div>
       </div>`:""}
     </div>`;
@@ -1417,7 +1455,7 @@ function renderCatSuggest(v){
     </div>
     <div style="font-size:.76rem;color:var(--ink-dim);margin-bottom:10px">AI 已按词义建议分类，下拉可改，确认后写入。共 ${catSuggestItems.length} 词。</div>
     ${rows}
-    <button class="ai-btn" style="position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyCatSuggest()">✓ 确认归类这 ${catSuggestItems.length} 个词</button>
+    <button class="ai-btn" style="position:sticky;bottom:calc(var(--nav-h) - 8px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyCatSuggest()">✓ 确认归类这 ${catSuggestItems.length} 个词</button>
   </div>`;
 }
 function cancelCatSuggest(){catSuggestItems=null;catSuggestLoading=false;reclassifyProgress=null;render()}
@@ -1484,7 +1522,7 @@ function renderDedup(v){
     </div>
     <div style="font-size:.76rem;color:var(--ink-dim);margin-bottom:10px">全库找到 ${dedupGroups.length} 组拼写重复的词。每组保留 1 个（优先保留有复习进度/内置的），其余进回收站可恢复。点行可排除该组。</div>
     ${rows}
-    ${totalRemove?`<button class="ai-btn" style="position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyDedup()">🗑 删除选中的 ${totalRemove} 个重复词（可恢复）</button>`:`<div style="font-size:.76rem;color:var(--ink-dim);margin-top:14px">未选中任何组。</div>`}
+    ${totalRemove?`<button class="ai-btn" style="position:sticky;bottom:calc(var(--nav-h) - 8px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="applyDedup()">🗑 删除选中的 ${totalRemove} 个重复词（可恢复）</button>`:`<div style="font-size:.76rem;color:var(--ink-dim);margin-top:14px">未选中任何组。</div>`}
   </div>`;
 }
 
@@ -1601,7 +1639,7 @@ function renderPreview(v){
   };
   const rows=list.map(w=>{
     const st=wordStatus(w.id);
-    const ph=w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${escapeHtml(w.phonetic)}</span>`:"";
+    const ph=w.phonetic?`<span style="font-size:.8rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${escapeHtml(w.phonetic)}</span>`:"";
     // 英文行（含音标）：遮英文模式下遮住，露音标保留提示性可选——这里整块遮，点开露英文+音标
     const enReal=`${escapeHtml(w.word)}${ph}`;
     const enBlock=`<div class="w" style="font-size:1rem">${cell(enReal,maskMode==="en","••• 点击显示单词")}</div>`;
@@ -1609,7 +1647,7 @@ function renderPreview(v){
     const cnBlock=`<div class="c">${cell(cnReal,maskMode==="cn","••• 点击显示意思")}</div>`;
     return `<div class="mistake-item" id="pv-row-${w.id}" style="cursor:pointer" onclick="startStudyAt('${cat}','${w.id}')">
       <div style="flex:1">${enBlock}${cnBlock}</div>
-      <span style="font-size:.66rem;color:${st.col};border:1px solid ${st.col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st.t}</span>
+      <span style="font-size:.75rem;color:${st.col};border:1px solid ${st.col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st.t}</span>
       <button class="gear" style="margin-left:6px;padding:2px 8px" onclick="event.stopPropagation();moveWordTo('${w.id}')" title="移到某一课">↪</button>
       <button class="gear" style="margin-left:4px;padding:2px 8px" onclick="event.stopPropagation();delArticleWord('${w.id}')">🗑</button>
     </div>`;
@@ -1624,7 +1662,7 @@ function renderPreview(v){
       <div style="font-family:Fraunces,serif;font-size:1.15rem;font-weight:700">${escapeHtml(catName(cat))}</div>
       ${hasSession()?`<button class="gear" style="margin-left:auto;border-color:var(--accent);color:var(--accent);white-space:nowrap" onclick="resumeStudy()">↩ 回到背词</button>`:""}
     </div>
-    <div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:10px">共 ${list.length} 词 · 新词 ${newN} · 待复习 ${dueN}</div>
+    <div style="font-size:.8rem;color:var(--ink-dim);margin-bottom:10px">共 ${list.length} 词 · 新词 ${newN} · 待复习 ${dueN}</div>
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${sortBtns}</div>
     <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${maskBtns}</div>
     ${cat==="__fav__"&&list.length?`<button class="gear" style="margin-bottom:12px;border-color:var(--accent);color:var(--accent)" onclick="aiClassifyFav()">🤖 AI 一键归类这 ${list.length} 个零散词</button>`:""}
@@ -1632,7 +1670,7 @@ function renderPreview(v){
     ${list.length?`<button class="gear" style="margin-bottom:12px" onclick="openEnrichPhonetic()">🔤 批量补音标（扫全部分类）</button>`:""}
     ${imported.length?`<button class="gear" style="margin-bottom:12px" onclick="aiReclassifyAll()">🗂 AI重新分类我导入的 ${imported.length} 个词</button>`:""}
     ${list.length?`<div style="padding-right:16px">${rows}</div>`:`<div class="done"><p>这个分类还没有词。</p></div>`}
-    ${list.length?`<button class="ai-btn" style="position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
+    ${list.length?`<button class="ai-btn" style="position:sticky;bottom:calc(var(--nav-h) - 8px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${cat}')">▶ 开始背这 ${list.length} 个词</button>`:""}
   </div>
   ${list.length?`<div class="az-index" id="az-index">${azLetters}</div><div class="az-bubble" id="az-bubble"></div>`:""}`;
   scrollToLastWord();
@@ -1731,9 +1769,9 @@ function renderArticleDetail(v){
     const st=!c?"新词":due?"待复习":"复习中";
     const col=!c?"var(--ink-dim)":due?"var(--accent)":"var(--green)";
     return `<div class="mistake-item" id="pv-row-${w.id}" style="cursor:pointer" onclick="startStudyAt('${artCatKey(a.id)}','${w.id}')">
-      <div style="flex:1"><div class="w" style="font-size:1rem">${escapeHtml(w.word)}${w.pos==="phrase"?'<span style="font-size:.62rem;color:var(--ink-dim);border:1px solid var(--line);border-radius:8px;padding:0 5px;margin-left:6px">短语</span>':""}${w.phonetic?`<span style="font-size:.72rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${escapeHtml(w.phonetic)}</span>`:""}</div>
+      <div style="flex:1"><div class="w" style="font-size:1rem">${escapeHtml(w.word)}${w.pos==="phrase"?'<span style="font-size:.75rem;color:var(--ink-dim);border:1px solid var(--line);border-radius:8px;padding:0 5px;margin-left:6px">短语</span>':""}${w.phonetic?`<span style="font-size:.8rem;color:var(--ink-dim);font-weight:400;margin-left:6px">${escapeHtml(w.phonetic)}</span>`:""}</div>
         <div class="c">${escapeHtml(w.cn||"")}</div></div>
-      <span style="font-size:.66rem;color:${col};border:1px solid ${col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st}</span>
+      <span style="font-size:.75rem;color:${col};border:1px solid ${col};border-radius:10px;padding:1px 7px;white-space:nowrap">${st}</span>
       <button class="gear" style="margin-left:6px;padding:2px 8px" onclick="event.stopPropagation();delArticleWord('${w.id}')">🗑</button>
     </div>`;
   }).join("");
@@ -1753,7 +1791,7 @@ function renderArticleDetail(v){
     <div id="lesson-exp-${a.id}" style="margin-bottom:12px">${lessonOpen[a.id]&&lessonExplain[a.id]?lessonDetailHtml(lessonExplain[a.id]):""}</div>
     <div style="font-weight:600;font-size:.88rem;margin:14px 0 8px">生词短语（${words.length}）</div>
     ${words.length?wordRows:`<div style="font-size:.78rem;color:var(--ink-dim)">这篇没有入库的生词。</div>`}
-    ${words.length?`<button class="ai-btn" style="position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${artCatKey(a.id)}')">▶ 背这篇的 ${words.length} 个词</button>`:""}
+    ${words.length?`<button class="ai-btn" style="position:sticky;bottom:calc(var(--nav-h) - 8px + env(safe-area-inset-bottom));margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="startStudy('${artCatKey(a.id)}')">▶ 背这篇的 ${words.length} 个词</button>`:""}
   </div>`;
   scrollToLastWord();
 }
@@ -1997,12 +2035,12 @@ function openArticleReader(){
       <h2 style="font-family:Fraunces,serif;font-size:1.3rem">📄 精读文章</h2>
       <button class="gear" onclick="closeImport()">✕ 关闭</button>
     </div>
-    <p style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">粘贴文章，或上传 .txt。AI 会讲解并挑出生词短语，可一键入库。</p>
+    <p style="font-size:.8rem;color:var(--ink-dim);margin-bottom:8px">粘贴文章，或上传 .txt。AI 会讲解并挑出生词短语，可一键入库。</p>
     <input id="art-title" placeholder="给这篇起个名（可留空，自动取开头）" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px;font-family:inherit;font-size:.82rem;background:var(--paper)">
     <textarea id="art-text" placeholder="把文章粘贴到这里…" style="width:100%;min-height:140px;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:inherit;font-size:.85rem;background:var(--paper);resize:vertical"></textarea>
     <label class="gear" style="display:inline-block;cursor:pointer;margin:8px 0">📎 上传 .txt<input type="file" accept=".txt,text/plain" style="display:none" onchange="onPickArticleFile(this)"></label>
     <button class="gear" id="art-punct" style="margin:8px 0 8px 8px" onclick="punctuateArticle()">✨ AI 断句加标点（转写稿先用这个）</button>
-    <div id="art-punct-hint" style="font-size:.72rem;color:var(--ink-dim);margin-bottom:8px">没有标点的语音转写稿，先点上面按钮断句，再开始精读效果更好。只加标点不改原词。</div>
+    <div id="art-punct-hint" style="font-size:.8rem;color:var(--ink-dim);margin-bottom:8px">没有标点的语音转写稿，先点上面按钮断句，再开始精读效果更好。只加标点不改原词。</div>
     <div style="display:flex;gap:8px;margin:8px 0">
       <button class="gear" id="art-mode-deep" style="flex:1;background:var(--accent-soft);border-color:var(--accent);color:var(--accent)" onclick="setArtMode('deep')">精读（逐段讲透）</button>
       <button class="gear" id="art-mode-gist" style="flex:1" onclick="setArtMode('gist')">大意（概括）</button>
@@ -2122,7 +2160,7 @@ function resumeArtProgress(prog){
     const total=artChunks.length;
     const stepEl=document.getElementById("art-step");
     // 正在讲的那段被中断过，从当前段重新讲（已讲完的段在 explain 里保留）
-    if(stepEl)stepEl.innerHTML=`<div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">已恢复 · 已收录 ${artStat.w} 词 / ${artStat.p} 短语 / ${artStat.g} 语法。点继续接着讲第 ${Math.min(artChunkIdx+1,total)}/${total} 段。</div>
+    if(stepEl)stepEl.innerHTML=`<div style="font-size:.8rem;color:var(--ink-dim);margin-bottom:8px">已恢复 · 已收录 ${artStat.w} 词 / ${artStat.p} 短语 / ${artStat.g} 语法。点继续接着讲第 ${Math.min(artChunkIdx+1,total)}/${total} 段。</div>
       <button class="ai-btn" onclick="runArticleChunk()">继续精读（第 ${Math.min(artChunkIdx+1,total)}/${total} 段）</button>`;
   },80);
 }
@@ -2186,7 +2224,7 @@ async function runArticleChunk(){
   // 本段处理完，推进进度并存盘
   if(idx<total-1){
     artChunkIdx=idx+1;saveArtProgress();
-    if(stepEl)stepEl.innerHTML=`<div style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">已讲完 ${idx+1}/${total} 段 · 已收录 ${artStat.w} 词 / ${artStat.p} 短语 / ${artStat.g} 语法。读完点继续。</div>
+    if(stepEl)stepEl.innerHTML=`<div style="font-size:.8rem;color:var(--ink-dim);margin-bottom:8px">已讲完 ${idx+1}/${total} 段 · 已收录 ${artStat.w} 词 / ${artStat.p} 短语 / ${artStat.g} 语法。读完点继续。</div>
       <button class="ai-btn" onclick="runArticleChunk()">继续下一段（${idx+2}/${total}）</button>`;
   }else{
     clearArtProgress();  // 全部讲完，清掉恢复点
@@ -2232,7 +2270,7 @@ function renderArticleDone(){
     <div style="font-size:.84rem;line-height:1.8">📘 单词 ${artStat.w} 个（进「我的文章」词库，可背）<br>
     🔗 短语 ${artStat.p} 个（进「我的文章」词库，与单词一起背）<br>
     📖 语法 ${artStat.g} 个（进语法库，已加入回顾）</div>
-    <div style="font-size:.74rem;color:var(--ink-dim);margin-top:10px">文章和精讲已保存，可在学习页「我的文章」重看。</div>
+    <div style="font-size:.8rem;color:var(--ink-dim);margin-top:10px">文章和精讲已保存，可在学习页「我的文章」重看。</div>
     <button class="gear" style="margin-top:10px" onclick="closeImport()">完成</button>
   </div>`;
 }
@@ -2365,7 +2403,7 @@ function renderTrash(v){
       <button class="gear" onclick="go('home')">← 返回</button>
       <div style="font-family:Fraunces,serif;font-size:1.15rem;font-weight:700">🗑 回收站</div>
     </div>
-    <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:12px">删除的单词/短语/语法/复习本/文章会在这里保留最多 ${TRASH_DAYS} 天，可随时恢复（含复习进度）。</p>
+    <p style="color:var(--ink-dim);font-size:.8rem;margin-bottom:12px">删除的单词/短语/语法/复习本/文章会在这里保留最多 ${TRASH_DAYS} 天，可随时恢复（含复习进度）。</p>
     ${trash.length?`<button class="gear" style="width:100%;margin-bottom:12px" onclick="clearTrash()">清空回收站</button>${rows}`:`<div class="done"><p>回收站是空的。删错了东西可以来这里找回。</p></div>`}
   </div>`;
 }
@@ -2474,7 +2512,7 @@ function tagResultHtml(txt){
   const lines=String(txt).split("\n").filter(l=>l.trim());
   return `<div style="background:var(--card-soft,#f5f1ea);border-radius:10px;padding:10px 12px;font-size:.82rem;line-height:1.7">${
     lines.map(l=>`<div>${escapeHtml(l.replace(/[*#`]/g,""))}</div>`).join("")}
-    <button class="gear" style="margin-top:8px;font-size:.72rem;padding:2px 9px" onclick="event.stopPropagation();regenTag()">🔄 重新生成</button></div>`;
+    <button class="gear" style="margin-top:8px;font-size:.8rem;padding:2px 9px" onclick="event.stopPropagation();regenTag()">🔄 重新生成</button></div>`;
 }
 // 重新生成当前展开标签的内容：清掉缓存，重新调 AI
 function regenTag(){
@@ -2543,7 +2581,7 @@ function renderDissect(box,o){
     return `<div style="background:var(--paper2);border-radius:8px;padding:8px 10px;margin-bottom:6px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="flex:1"><b>${escapeHtml(p.phrase)}</b> <span style="color:var(--ink-dim)">${escapeHtml(p.cn||"")}</span>
-          ${p.tip?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:2px">${escapeHtml(p.tip)}</div>`:""}</div>
+          ${p.tip?`<div style="font-size:.8rem;color:var(--ink-dim);margin-top:2px">${escapeHtml(p.tip)}</div>`:""}</div>
         <div style="display:flex;flex-direction:column;gap:4px">
           <button class="gear" style="white-space:nowrap" onclick="savePhraseFromDissect(${i},this)" ${exists?"disabled":""}>${exists?"已在短语库":"+短语库"}</button>
           <button class="gear" style="white-space:nowrap" onclick="savePhraseToVocab(${i},this)" ${inVocab?"disabled":""}>${inVocab?"已在词库":"+词库"}</button>
@@ -2553,14 +2591,14 @@ function renderDissect(box,o){
   const grammarRows=(o.grammar||[]).map((g,i)=>{
     return `<div style="background:var(--paper2);border-radius:8px;padding:8px 10px;margin-bottom:6px">
         <div style="flex:1"><b>${escapeHtml(g.point)}</b><div style="font-size:.76rem;margin-top:2px">${escapeHtml(g.cn||"")}</div>
-          ${g.example?`<div style="font-size:.72rem;color:var(--ink-dim);margin-top:2px">例：${escapeHtml(g.example)}</div>`:""}</div>
+          ${g.example?`<div style="font-size:.8rem;color:var(--ink-dim);margin-top:2px">例：${escapeHtml(g.example)}</div>`:""}</div>
       </div>`;
   }).join("");
   box.innerHTML=`
     <div style="font-size:.82rem;line-height:1.6;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px">
-      ${o.structure?`<div style="margin-bottom:8px"><span style="color:var(--ink-dim);font-size:.72rem">句子主干</span><br>${escapeHtml(o.structure)}</div>`:""}
-      ${phraseRows?`<div style="color:var(--ink-dim);font-size:.72rem;margin:8px 0 4px">短语 / 搭配</div>${phraseRows}`:""}
-      ${grammarRows?`<div style="color:var(--ink-dim);font-size:.72rem;margin:8px 0 4px">语法点</div>${grammarRows}<div style="font-size:.72rem;color:var(--ink-dim);margin-top:4px">想系统学这个语法？去「AI 助手」直接问，它给你讲整块 →</div>`:""}
+      ${o.structure?`<div style="margin-bottom:8px"><span style="color:var(--ink-dim);font-size:.8rem">句子主干</span><br>${escapeHtml(o.structure)}</div>`:""}
+      ${phraseRows?`<div style="color:var(--ink-dim);font-size:.8rem;margin:8px 0 4px">短语 / 搭配</div>${phraseRows}`:""}
+      ${grammarRows?`<div style="color:var(--ink-dim);font-size:.8rem;margin:8px 0 4px">语法点</div>${grammarRows}<div style="font-size:.8rem;color:var(--ink-dim);margin-top:4px">想系统学这个语法？去「AI 助手」直接问，它给你讲整块 →</div>`:""}
       ${o.memory?`<div style="margin-top:8px;background:var(--green-soft);border-left:3px solid var(--green);border-radius:6px;padding:8px 10px">🧠 ${escapeHtml(o.memory)}</div>`:""}
     </div>`;
 }
@@ -2824,13 +2862,13 @@ function renderPhraseTab(v,tabBar){
     const list=phrases.filter(p=>(p.type||"other")===key);
     if(!list.length)return;
     const open=!collapsed["ph_"+key];
-    body+=`<div class="grp-header" onclick="toggleGroup('ph_${key}')" style="display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600;cursor:pointer;user-select:none"><span style="display:inline-block;width:12px;transition:transform .15s;transform:rotate(${open?90:0}deg)">▸</span>${name}（${list.length}）</div>`;
+    body+=`<div class="grp-header" onclick="toggleGroup('ph_${key}')" style="display:flex;align-items:center;gap:5px;font-size:.8rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600;cursor:pointer;user-select:none"><span style="display:inline-block;width:12px;transition:transform .15s;transform:rotate(${open?90:0}deg)">▸</span>${name}（${list.length}）</div>`;
     if(!open)return;
     body+=list.map(p=>{
       const c=p.inReview?srs[p.id]:null;
       const due=c&&c.due&&c.due<=now;
       const status=!p.inReview?"加复习":due?"待复习":"复习中";
-      const stHint=p.inReview?(due?`<span style="color:var(--accent);font-weight:600;font-size:.7rem">· 到期待复习</span>`:`<span style="opacity:.7;font-size:.7rem">· 下次 ${fmtDue(c&&c.due)}</span>`):"";
+      const stHint=p.inReview?(due?`<span style="color:var(--accent);font-weight:600;font-size:.8rem">· 到期待复习</span>`:`<span style="opacity:.7;font-size:.8rem">· 下次 ${fmtDue(c&&c.due)}</span>`):"";
       return `<div class="mistake-item">
       <div style="flex:1"><div class="w" style="font-size:1rem">${escapeHtml(p.phrase)}</div><div class="c">${escapeHtml(p.cn)}${p.tip?` · ${escapeHtml(p.tip)}`:""} ${stHint}</div></div>
       <div style="display:flex;gap:6px">
@@ -2841,7 +2879,7 @@ function renderPhraseTab(v,tabBar){
     </div>`}).join("");
   });
   v.innerHTML=`<div style="padding-top:8px">${tabBar}
-    <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:4px">点“加复习”让短语进记忆曲线，到期会在首页“复习到期”里提醒你，像单词一样翻卡考。</p>
+    <p style="color:var(--ink-dim);font-size:.8rem;margin-bottom:4px">点“加复习”让短语进记忆曲线，到期会在首页“复习到期”里提醒你，像单词一样翻卡考。</p>
     ${body}</div>`;
 }
 // 短语加入/移出复习曲线（原地 SRS，不再复制成词条）
@@ -2865,7 +2903,7 @@ function renderGrammarTab(v,tabBar){
   let body="";
   // 到期待回顾置顶高亮
   if(due.length){
-    body+=`<div style="font-size:.72rem;color:var(--accent);margin:6px 0;font-weight:600">📖 该回顾了（${due.length}）— 点开详解看一遍就顺延</div>`;
+    body+=`<div style="font-size:.8rem;color:var(--accent);margin:6px 0;font-weight:600">📖 该回顾了（${due.length}）— 点开详解看一遍就顺延</div>`;
     body+=due.map(g=>grammarItem(g,true)).join("");
   }
   // 分组列出未到期的（避免与置顶重复）
@@ -2873,12 +2911,12 @@ function renderGrammarTab(v,tabBar){
     const list=grammar.filter(g=>(g.topic||"other")===key&&!(g.due&&g.due<=now));
     if(!list.length)return;
     const open=!collapsed["gr_"+key];
-    body+=`<div class="grp-header" onclick="toggleGroup('gr_${key}')" style="display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600;cursor:pointer;user-select:none"><span style="display:inline-block;width:12px;transition:transform .15s;transform:rotate(${open?90:0}deg)">▸</span>${name}（${list.length}）</div>`;
+    body+=`<div class="grp-header" onclick="toggleGroup('gr_${key}')" style="display:flex;align-items:center;gap:5px;font-size:.8rem;color:var(--ink-dim);margin:14px 0 6px;font-weight:600;cursor:pointer;user-select:none"><span style="display:inline-block;width:12px;transition:transform .15s;transform:rotate(${open?90:0}deg)">▸</span>${name}（${list.length}）</div>`;
     if(!open)return;
     body+=list.map(g=>grammarItem(g,false)).join("");
   });
   v.innerHTML=`<div style="padding-top:8px">${tabBar}
-    <p style="color:var(--ink-dim);font-size:.74rem;margin-bottom:4px">按主题分组。语法重在理解——点“展开详解”让 AI 讲透，不做闪卡考试；看一遍即算回顾，${GRAMMAR_REVIEW_DAYS}天后再提醒。</p>
+    <p style="color:var(--ink-dim);font-size:.8rem;margin-bottom:4px">按主题分组。语法重在理解——点“展开详解”让 AI 讲透，不做闪卡考试；看一遍即算回顾，${GRAMMAR_REVIEW_DAYS}天后再提醒。</p>
     ${body}</div>`;
 }
 // 单个语法条目（hot=到期高亮）
@@ -3004,7 +3042,7 @@ function accuracyRecent(days){
 function statTile(value,label,color){
   return `<div style="flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 6px;text-align:center">
     <div style="font-family:Fraunces,serif;font-size:1.55rem;font-weight:700;line-height:1.15;color:${color||"var(--accent)"}">${value}</div>
-    <div style="font-size:.67rem;color:var(--ink-dim);margin-top:3px">${label}</div>
+    <div style="font-size:.75rem;color:var(--ink-dim);margin-top:3px">${label}</div>
   </div>`;
 }
 // 单序列柱状图。手机没有 hover，tooltip 不可靠，所以数值直接标在柱顶——
@@ -3013,9 +3051,9 @@ function barChart(items,color){
   const max=Math.max(1,...items.map(x=>x.n));
   return `<div style="display:flex;align-items:flex-end;justify-content:space-between;height:88px;gap:6px">
     ${items.map(x=>`<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
-      <div style="font-size:.62rem;color:var(--ink-dim);line-height:1;margin-bottom:3px">${x.n||""}</div>
+      <div style="font-size:.75rem;color:var(--ink-dim);line-height:1;margin-bottom:3px">${x.n||""}</div>
       <div style="width:100%;height:${Math.round(x.n/max*54)}px;min-height:${x.n?"4px":"2px"};background:${color};border-radius:4px 4px 0 0;opacity:${x.n?"1":".18"}"></div>
-      <div style="font-size:.62rem;color:var(--ink-dim);line-height:1;margin-top:5px;white-space:nowrap">${escapeHtml(x.label)}</div>
+      <div style="font-size:.75rem;color:var(--ink-dim);line-height:1;margin-top:5px;white-space:nowrap">${escapeHtml(x.label)}</div>
     </div>`).join("")}
   </div>`;
 }
@@ -3068,7 +3106,7 @@ function renderStats(v){
       ${statTile(ret?pctText(ret.avg):"—","此刻平均记得","var(--green)")}
       ${statTile(pctText(acc.rate),"近 7 天正确率","var(--green)")}
     </div>
-    <div style="font-size:.68rem;color:var(--ink-dim);margin:-8px 2px 14px;line-height:1.55">
+    <div style="font-size:.75rem;color:var(--ink-dim);margin:-8px 2px 14px;line-height:1.55">
       ${ret?`按 FSRS 估算，此刻从 ${ret.n} 张学过的卡里随便抽一张，你能想起来的概率是 ${pctText(ret.avg)}。`:"还没有学过的卡，背几个词就有数据了。"}
       ${acc.total?`目标保留率设的是 ${target}%，实测正确率 ${pctText(acc.rate)}（${acc.ok}/${acc.total}）——两者该在同一水平，差太多就去设置里调。`:"正确率从今天开始累计。"}
     </div>
@@ -3081,7 +3119,7 @@ function renderStats(v){
     <div style="${CARD_BOX}">
       <div style="${CARD_TITLE}">未来 7 天要复习</div>
       ${barChart(next7,"var(--accent)")}
-      <div style="font-size:.68rem;color:var(--ink-dim);margin-top:10px;line-height:1.55">
+      <div style="font-size:.75rem;color:var(--ink-dim);margin-top:10px;line-height:1.55">
         “今天”这格含逾期没复习的。未来 30 天共 ${fc30} 张到期。
         ${peak>limit?`<br><span style="color:var(--gold)">⚠ 最高一天 ${peak} 张，超过你设的每次上限 ${limit} 张，那天背不完会顺延堆积。</span>`:""}
       </div>
@@ -3093,7 +3131,7 @@ function renderStats(v){
     </div>
 
     <div style="${CARD_BOX}">
-      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleLearned()">
+      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;min-height:44px" onclick="toggleLearned()">
         <div style="font-size:.8rem;font-weight:600">已学过的词（${seen}）</div>
         <span id="learned-arrow" style="font-size:.8rem;color:var(--ink-dim)">展开 ▸</span>
       </div>
@@ -3404,7 +3442,7 @@ function renderAssistant(v){
     <button class="gear" style="width:100%;margin-bottom:12px;padding:10px" onclick="openArticleReader()">📄 精读一篇文章（AI 讲解 + 自动挑生词入库）</button>
     <div id="chat-log" style="margin-bottom:12px">${chatHistory.map(m=>chatBubble(m)).join("")}</div>
     ${chatHistory.length?"":`<div style="margin-bottom:14px">
-      <p style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">不知道问什么？点一个系统话题，让 AI 给你讲整块：</p>
+      <p style="font-size:.8rem;color:var(--ink-dim);margin-bottom:8px">不知道问什么？点一个系统话题，让 AI 给你讲整块：</p>
       ${[
         ["英语时态体系","用简单中文系统讲一遍英语的时态体系：一共哪几种、怎么归类（时间×状态）、每种什么时候用、配例句。条理清楚，从最常用的讲起。"],
         ["英语从句怎么分","系统讲一讲英语的从句：主要分哪几类（名词性/定语/状语从句），各自什么作用，怎么识别，每类给1-2个简单例句。"],
@@ -3414,17 +3452,17 @@ function renderAssistant(v){
       ].map(([t,q])=>`<button class="gear" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:10px 12px" onclick="askTopic(${JSON.stringify(q).replace(/"/g,'&quot;')})">📖 ${t}</button>`).join("")}
     </div>`}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px">
-      <select onchange="switchProvider(this.value)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-family:inherit;font-size:.74rem;background:var(--card);color:var(--ink)">
+      <select onchange="switchProvider(this.value)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:11px 10px;min-height:44px;font-family:inherit;font-size:.8rem;background:var(--card);color:var(--ink)">
         ${[["deepseek","DeepSeek"],["kimi","Kimi"],["anthropic","Claude"],["openrouter","OpenRouter"],["openai","ChatGPT"]].map(([k,name])=>{
           const hasKey=cfg.keys&&cfg.keys[k];
           return `<option value="${k}" ${cfg.provider===k?"selected":""}>${name}${hasKey?"":"（未填Key）"}${VISION_PROVIDERS.includes(k)?" · 可看图":""}</option>`;
         }).join("")}
       </select>
-      <button onclick="toggleThink()" style="padding:7px 12px;border:1px solid ${on?'var(--accent)':'var(--line)'};background:${on?'var(--accent-soft)':'var(--card)'};color:${on?'var(--accent)':'var(--ink-dim)'};border-radius:14px;font-size:.72rem;font-family:inherit;font-weight:${on?'600':'400'};white-space:nowrap">${on?'🧠 思考开':'思考关'}</button>
+      <button onclick="toggleThink()" style="padding:11px 14px;min-height:44px;border:1px solid ${on?'var(--accent)':'var(--line)'};background:${on?'var(--accent-soft)':'var(--card)'};color:${on?'var(--accent)':'var(--ink-dim)'};border-radius:14px;font-size:.8rem;font-family:inherit;font-weight:${on?'600':'400'};white-space:nowrap">${on?'🧠 思考开':'思考关'}</button>
     </div>
-    ${MODELS[cfg.provider]?`<select onchange="switchModel(this.value)" style="width:100%;margin-bottom:8px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-family:inherit;font-size:.74rem;background:var(--card);color:var(--ink)">
+    ${MODELS[cfg.provider]?`<select onchange="switchModel(this.value)" style="width:100%;margin-bottom:8px;border:1px solid var(--line);border-radius:10px;padding:11px 10px;min-height:44px;font-family:inherit;font-size:.8rem;background:var(--card);color:var(--ink)">
       ${MODELS[cfg.provider].map(m=>`<option value="${m[0]}" ${currentModel()===m[0]?"selected":""}>${m[1]}</option>`).join("")}
-    </select>`:`<div style="font-size:.68rem;color:var(--ink-dim);margin-bottom:8px">当前：${currentModelLabel()}</div>`}
+    </select>`:`<div style="font-size:.75rem;color:var(--ink-dim);margin-bottom:8px">当前：${currentModelLabel()}</div>`}
     <div id="chat-img-preview" style="margin-bottom:6px"></div>
     <div style="display:flex;gap:8px;align-items:flex-end">
       <textarea id="chat-input" placeholder="问任何问题，或传张图片问（截图/拍照）" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;resize:vertical;min-height:48px;background:var(--paper)"></textarea>
@@ -3734,7 +3772,7 @@ function openQuickAdd(){
     </div>
     <div style="margin-bottom:8px">
       <label style="font-size:.76rem;color:var(--ink-dim);display:block;margin-bottom:4px">归入分类</label>
-      <select id="qa-target" onchange="onQaTargetChange()" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px;font-family:inherit;font-size:.86rem;background:var(--paper);color:var(--ink)">
+      <select id="qa-target" onchange="onQaTargetChange()" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 10px;min-height:44px;font-family:inherit;font-size:.86rem;background:var(--paper);color:var(--ink)">
         <option value="__auto__">自动（AI 按主题归类）</option>
         ${articles.map(a=>`<option value="${artCatKey(a.id)}">📄 ${escapeHtml(a.title)}</option>`).join("")}
         <option value="__new__">➕ 新建一课…</option>
@@ -3743,9 +3781,9 @@ function openQuickAdd(){
     <p style="font-size:.76rem;color:var(--ink-dim);margin-bottom:8px">三种用法：①贴一串词→秒补全全要 ②贴一段英文/传图片（可多选）→AI 挑生词 ③传文本文件</p>
     <textarea id="qa-input" placeholder="贴词（一行一个或逗号隔开）：&#10;resilient, ubiquitous&#10;&#10;或贴一段英文文章，让 AI 挑生词" style="width:100%;min-height:100px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.88rem;background:var(--paper);resize:vertical"></textarea>
     <div style="display:flex;gap:8px;margin-top:8px">
-      <label style="flex:1;border:1px dashed var(--line);border-radius:10px;padding:9px;text-align:center;font-size:.76rem;color:var(--ink-dim);cursor:pointer">
+      <label style="flex:1;border:1px dashed var(--line);border-radius:10px;padding:12px 9px;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:.76rem;color:var(--ink-dim);cursor:pointer">
         📷 图片<input type="file" accept="image/*" multiple style="display:none" onchange="onPickQaImage(this)"></label>
-      <label style="flex:1;border:1px dashed var(--line);border-radius:10px;padding:9px;text-align:center;font-size:.76rem;color:var(--ink-dim);cursor:pointer">
+      <label style="flex:1;border:1px dashed var(--line);border-radius:10px;padding:12px 9px;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:.76rem;color:var(--ink-dim);cursor:pointer">
         📄 文本文件<input type="file" accept=".txt,.md,text/*" style="display:none" onchange="onPickQaText(this)"></label>
     </div>
     <div id="qa-img-preview" style="margin-top:6px"></div>
@@ -3780,7 +3818,7 @@ function renderQaImagePreview(){
   const thumbs=qaImages.map((img,i)=>
     `<span style="position:relative;display:inline-block">
       <img src="data:${img.mime};base64,${img.b64}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">
-      <button onclick="removeQaImage(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--paper);border:none;font-size:.6rem;line-height:1;cursor:pointer">✕</button>
+      <button onclick="removeQaImage(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--paper);border:none;font-size:.75rem;line-height:1;cursor:pointer">✕</button>
     </span>`
   ).join("");
   p.innerHTML=`<div style="font-size:.76rem;color:var(--green);margin-bottom:6px">✓ 已选 ${qaImages.length} 张图片，点「AI 挑生词」提取 <button class="gear" onclick="clearQaImage()">全部移除</button></div>
@@ -3945,14 +3983,14 @@ function showQuickAddPreview(arr,valid){
       <h2 style="font-family:Fraunces,serif;font-size:1.2rem">确认加入（${qaCandidates.length} 个）</h2>
       <button class="gear" onclick="closeQuickAdd()">✕</button>
     </div>
-    <p style="font-size:.74rem;color:var(--ink-dim);margin-bottom:8px">勾选要加入的词，取消不想要的。灰色是已在库里的。</p>
+    <p style="font-size:.8rem;color:var(--ink-dim);margin-bottom:8px">勾选要加入的词，取消不想要的。灰色是已在库里的。</p>
     <div style="max-height:48vh;overflow-y:auto;margin-bottom:10px">
       ${qaCandidates.map((c,i)=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:8px;background:${c.dup?'var(--paper2)':'var(--card)'};border:1px solid var(--line);margin-bottom:6px;${c.dup?'opacity:.6':''}">
         <input type="checkbox" ${c.checked?"checked":""} onchange="qaCandidates[${i}].checked=this.checked" style="margin-top:3px">
         <div style="flex:1">
-          <div><b>${escapeHtml(c.word)}</b> <span style="font-size:.72rem;color:var(--ink-dim)">${escapeHtml(c.phonetic)} ${escapeHtml(c.pos)}</span>${c.dup?' <span style="font-size:.7rem;color:var(--accent)">已在库</span>':''}</div>
+          <div><b>${escapeHtml(c.word)}</b> <span style="font-size:.8rem;color:var(--ink-dim)">${escapeHtml(c.phonetic)} ${escapeHtml(c.pos)}</span>${c.dup?' <span style="font-size:.8rem;color:var(--accent)">已在库</span>':''}</div>
           <div style="font-size:.8rem">${escapeHtml(c.cn)}</div>
-          <div style="font-size:.7rem;color:var(--ink-dim)">→ ${escapeHtml(catName(c.cat))}</div>
+          <div style="font-size:.8rem;color:var(--ink-dim)">→ ${escapeHtml(catName(c.cat))}</div>
         </div>
       </label>`).join("")}
     </div>
@@ -3989,10 +4027,10 @@ function showJustAddedConfirm(list,byCat){
       <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
         <span style="font-family:Fraunces,serif;font-size:1.05rem;font-weight:600">${escapeHtml(w.word)}</span>
         ${w.phonetic?`<span style="color:var(--accent);font-size:.8rem">${escapeHtml(w.phonetic)}</span>`:""}
-        ${w.pos?`<span style="font-size:.72rem;color:var(--ink-dim)">${escapeHtml(w.pos)}</span>`:""}
+        ${w.pos?`<span style="font-size:.8rem;color:var(--ink-dim)">${escapeHtml(w.pos)}</span>`:""}
       </div>
       <div style="font-size:.82rem;color:var(--ink-dim);margin-top:2px">${escapeHtml(w.cn||"")}</div>
-      <div style="font-size:.7rem;color:var(--ink-dim);margin-top:2px">→ ${escapeHtml(catName(w.cat))}</div>
+      <div style="font-size:.8rem;color:var(--ink-dim);margin-top:2px">→ ${escapeHtml(catName(w.cat))}</div>
     </div>`).join("");
   ov.innerHTML=`<div class="import-box">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -4063,15 +4101,15 @@ const AGENT_ACTIONS={
       if(!hit.length)return `库里没有「${a.q}」`;
       return hit.map(w=>`${w.word}${w.phonetic||""} ${w.cn||""}（${catName(w.cat)}）`).join("\n");
     }},
-  goTab:{safe:1,desc:"切底部标签",args:'tab=home(学习)|assistant(AI助手)|mistake(复习/库)|stats(统计)',
+  goTab:{safe:1,ui:1,desc:"切底部标签",args:'tab=home(学习)|assistant(AI助手)|mistake(复习/库)|stats(统计)',
     run:a=>{
       const t={home:"学习",assistant:"AI 助手",mistake:"复习/库",stats:"统计"};
       if(!t[a.tab])return "没有这个标签";
       go(a.tab);return "已切到"+t[a.tab];
     }},
-  openCat:{safe:1,desc:"打开某分类的词表",args:'cat=分类key（用 cats 查）',
+  openCat:{safe:1,ui:1,desc:"打开某分类的词表",args:'cat=分类key（用 cats 查）',
     run:a=>{openCatPreview(a.cat);return "已打开"+catName(a.cat)}},
-  study:{safe:1,desc:"开始背某个分类",args:'cat=分类key，全部用 all',
+  study:{safe:1,ui:1,desc:"开始背某个分类",args:'cat=分类key，全部用 all',
     run:a=>{startStudy(a.cat||"all");return "开始背"+catName(a.cat||"all")}},
   setDaily:{safe:1,desc:"改每次进入背卡的数量上限",args:'n=数字',
     run:a=>{
@@ -4095,7 +4133,7 @@ const AGENT_ACTIONS={
   backup:{safe:1,desc:"导出全部数据备份文件（清浏览器数据前务必做一次）",args:"",
     run:()=>{exportAll();return "备份文件已导出"}},
   // --- 下面这些会写数据或花钱，一律要确认 ---
-  addWords:{desc:"加词进库（会先让你勾选确认）",args:'words=["词1","词2"]',
+  addWords:{ui:1,desc:"加词进库（会先让你勾选确认）",args:'words=["词1","词2"]',
     run:a=>{
       const ws=(Array.isArray(a.words)?a.words:String(a.words||"").split(/[,，\n]+/)).map(s=>String(s).trim()).filter(Boolean);
       if(!ws.length)return "没给要加的词";
@@ -4120,11 +4158,11 @@ const AGENT_ACTIONS={
       removeWordById(w.id);render();
       return `「${w.word}」已删除，在回收站里可以找回`;
     }},
-  enrichPhonetics:{desc:"批量给缺音标的词补音标（逐个调 AI，费时费钱）",args:"",
+  enrichPhonetics:{ui:1,desc:"批量给缺音标的词补音标（逐个调 AI，费时费钱）",args:"",
     run:()=>{closeAgent();openEnrichPhonetic();return "已开始批量补音标"}},
-  reclassify:{desc:"让 AI 把你加的词全部重新分类（调 AI，费时费钱）",args:"",
+  reclassify:{ui:1,desc:"让 AI 把你加的词全部重新分类（调 AI，费时费钱）",args:"",
     run:()=>{closeAgent();aiReclassifyAll();return "已开始全库重新分类"}},
-  dedupe:{desc:"全库查重复词",args:"",
+  dedupe:{ui:1,desc:"全库查重复词",args:"",
     run:()=>{closeAgent();openDedup();return "已打开查重"}},
 };
 function agentSysPrompt(){
@@ -4142,16 +4180,30 @@ ${lines}
 只返回一个 JSON 对象，不要代码块标记，不要多余的话：
 {"reply":"用中文一句话说你要做什么","actions":[{"do":"动作名","参数名":"值"}]}
 
+**这是多轮的**：你给的动作执行完，结果会作为下一条消息发回给你，你再决定还要不要接着做。
+最多 ${agentMaxTurns()} 轮，到顶会被强制停下。
+
 规则：
 - 能用动作解决的就给 actions；纯粹问知识、问单词意思的，actions 给空数组，把答案写在 reply 里
 - 用户一句话要做多件事，就按顺序放多个 action
 - 拿不准用户指的哪个分类/词，别猜，actions 给空数组，在 reply 里问清楚
-- 删除、批量补音标、全库重分类这类，照常给出 action，App 会自己弹确认，你不用再问一遍`;
+- 删除、批量补音标、全库重分类这类，照常给出 action，App 会自己弹确认，你不用再问一遍
+- **任务做完了就 actions 给空数组、在 reply 里说结果**。这是唯一的结束方式；
+  只要你还给 actions，循环就会继续，白烧钱
+- 收到执行结果后别复述一遍就完事：**看结果决定下一步**。
+  比如查到词不在库里，就接着去加；某个动作报错了，换个参数再试一次或者说清楚卡在哪
+- 参数拿不准就先用只读动作查（cats 查分类 key、find 查词在不在），别瞎猜 key`;
 }
 let agentLog=[];       // [{role:'me'|'ai'|'act', text, cls}]
 let agentHistory=[];   // 给模型的对话历史
 let agentPending=null; // 待确认的动作队列
 let agentImages=[];    // 本次要发的图 [{b64,mime}]，不进 agentHistory（避免膨胀，且只对当前这轮有效）
+let agentBusy=false;   // 循环正在跑（防重入：跑着的时候再点发送会开出第二个循环，两个都在改同一份 agentHistory）
+let agentStop=false;   // 用户按了停止。循环每轮开头查一次
+let agentTurn=0;       // 当前第几轮，用于显示和卡上限
+let agentMini=false;   // 面板已收起成悬浮条（执行了会改界面的动作，得让开让用户看见）
+let agentResolveConfirm=null;  // 确认框的 resolve：循环在这儿 await，点执行/取消才继续
+let agentAllowAll=false;       // 本次任务内后续写操作不再逐个确认（用户在确认框上选的，任务结束即失效）
 const AGENT_MAX_IMAGES=6;
 function onPickAgentImage(input){
   const files=input.files?Array.from(input.files):[];
@@ -4175,10 +4227,10 @@ function renderAgentImagePreview(){
   const thumbs=agentImages.map((img,i)=>
     `<span style="position:relative;display:inline-block">
       <img src="data:${img.mime};base64,${img.b64}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">
-      <button onclick="removeAgentImage(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--paper);border:none;font-size:.6rem;line-height:1;cursor:pointer">✕</button>
+      <button onclick="removeAgentImage(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--paper);border:none;font-size:.75rem;line-height:1;cursor:pointer">✕</button>
     </span>`
   ).join("");
-  p.innerHTML=`<div style="font-size:.72rem;color:var(--green);margin-bottom:5px">✓ 已附 ${agentImages.length} 张图 <button class="gear" onclick="clearAgentImages()">全部移除</button></div>
+  p.innerHTML=`<div style="font-size:.8rem;color:var(--green);margin-bottom:5px">✓ 已附 ${agentImages.length} 张图 <button class="gear" onclick="clearAgentImages()">全部移除</button></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">${thumbs}</div>`;
 }
 function removeAgentImage(i){agentImages.splice(i,1);renderAgentImagePreview()}
@@ -4192,25 +4244,71 @@ function onPickAgentText(input){
   input.value="";
 }
 function openAgent(){
+  agentMini=false;
+  const b=document.getElementById("agent-bar");if(b)b.classList.remove("show");
   document.getElementById("agent-mask").classList.add("open");
   document.getElementById("agent-panel").classList.add("open");
-  renderAgent();
-  const i=document.getElementById("agent-input");if(i)setTimeout(()=>i.focus(),80);
+  renderAgent();agentSetBusyUI(agentBusy);
+  const i=document.getElementById("agent-input");if(i&&!agentBusy)setTimeout(()=>i.focus(),80);
 }
+// 关掉面板。循环还在跑的话不是结束它，而是收成悬浮条继续跑
 function closeAgent(){
   document.getElementById("agent-mask").classList.remove("open");
   document.getElementById("agent-panel").classList.remove("open");
+  if(agentBusy){agentMini=true;const b=document.getElementById("agent-bar");if(b)b.classList.add("show")}
 }
-function clearAgent(){agentLog=[];agentHistory=[];agentPending=null;renderAgent()}
+// 让开：执行了会改界面的动作之后收起面板，否则用户看不到刚做的那一下
+// （原来单轮版就栽在这儿：说"去背职场商务"，study 执行了，面板照旧盖着，屏幕上什么都没变）
+function agentMinimize(){
+  agentMini=true;
+  document.getElementById("agent-mask").classList.remove("open");
+  document.getElementById("agent-panel").classList.remove("open");
+  const b=document.getElementById("agent-bar");if(b)b.classList.add("show");
+}
+function agentRestore(){openAgent()}
+function agentSetBar(t){
+  const x=document.getElementById("agent-bar-txt");if(x)x.textContent=t;
+}
+function agentBarDismiss(){const b=document.getElementById("agent-bar");if(b)b.classList.remove("show")}
+// 循环收尾：还收着就把最后一句结论留在条上，点一下能展开看全过程
+function agentFinishBar(){
+  const btn=document.getElementById("agent-bar-stop");
+  if(!agentMini){agentBarDismiss();if(btn)btn.textContent="停止";return}
+  const last=[...agentLog].reverse().find(m=>m.role==="ai");
+  agentSetBar(last?"✓ "+String(last.text).slice(0,28):"✓ 做完了");
+  if(btn){btn.textContent="✕";btn.onclick=e=>{e.stopPropagation();agentBarDismiss()}}
+}
+// 跑起来的时候「发送」变「停止」——多轮循环必须随时能喊停，不然只能干等它烧完轮数
+function agentSetBusyUI(b){
+  const btn=document.getElementById("agent-send");if(!btn)return;
+  btn.textContent=b?"停止":"发送";
+  btn.onclick=b?agentAbort:agentSend;
+  btn.style.background=b?"var(--accent)":"";
+  const bs=document.getElementById("agent-bar-stop");
+  if(bs&&b){bs.textContent="停止";bs.onclick=e=>{e.stopPropagation();agentAbort()}}
+}
+function agentAbort(){
+  agentStop=true;agentSetBar("正在停…");
+  if(agentResolveConfirm)agentConfirmDone(false,false);   // 卡在确认框上时也要能停
+}
+function clearAgent(){
+  if(agentBusy){toast("还在跑，先按停止");return}
+  agentLog=[];agentHistory=[];agentPending=null;agentMini=false;agentBarDismiss();renderAgent();
+}
 function agentPush(role,text,cls){agentLog.push({role,text,cls});renderAgent()}
 function renderAgent(){
   const box=document.getElementById("agent-log");if(!box)return;
   if(!agentLog.length){
-    const eg=["我还有多少词没背","把每次上限改成 30","去背职场商务","导出一份备份","加两个词：resilient, ubiquitous","把 curb 归到新闻时事"];
+    const chip=t=>`<span class="agent-chip" onclick="agentQuick(${JSON.stringify(t).replace(/"/g,"&quot;")})">${escapeHtml(t)}</span>`;
     box.innerHTML=`<div style="font-size:.82rem;color:var(--ink-dim);line-height:1.7">
       <p style="margin-bottom:6px">跟它说人话，它直接动手改这个 App——不像「AI 助手」只会聊天。</p>
-      <p style="margin-bottom:8px;font-size:.76rem">删词、批量补音标这类动作会先问你一遍再执行。</p>
-      <div>${eg.map(t=>`<span class="agent-chip" onclick="agentQuick(${JSON.stringify(t).replace(/"/g,"&quot;")})">${escapeHtml(t)}</span>`).join("")}</div>
+      <p style="margin-bottom:10px;font-size:.78rem">它会一轮轮做下去：做一批动作 → 看结果 → 再决定下一步，
+      做完自己停（最多 ${agentMaxTurns()} 轮，可在设置里改）。跑的时候「发送」会变成「停止」。</p>
+      <div style="font-size:.78rem;color:var(--ink);font-weight:600;margin-bottom:6px">让它动手：</div>
+      <div style="margin-bottom:10px">${["去背职场商务","加两个词：resilient, ubiquitous","把每次上限改成 30","导出一份备份"].map(chip).join("")}</div>
+      <div style="font-size:.78rem;color:var(--ink);font-weight:600;margin-bottom:6px">让它查：</div>
+      <div style="margin-bottom:10px">${["我还有多少词没背","库里有 curb 吗","哪个分类剩得最多"].map(chip).join("")}</div>
+      <p style="font-size:.78rem">删词、批量补音标这类会先问你一遍再执行。</p>
     </div>`;
     return;
   }
@@ -4229,65 +4327,152 @@ function agentConfirmHtml(){
   return `<div class="agent-confirm">
     <div class="t">⚠ 这些动作会改数据或调用 AI，确认执行？</div>
     ${items}
-    <div class="btns"><button onclick="agentCancel()">取消</button><button class="go" onclick="agentRunPending()">执行</button></div>
+    <div class="btns"><button onclick="agentConfirmDone(false,false)">取消</button><button class="go" onclick="agentConfirmDone(true,false)">执行</button></div>
+    <button style="width:100%;margin-top:7px;padding:10px;min-height:44px;border-radius:9px;border:1px dashed var(--line);background:none;color:var(--ink-dim);font-family:inherit;font-size:.78rem;cursor:pointer" onclick="agentConfirmDone(true,true)">执行，且本次任务内不再问我</button>
   </div>`;
 }
 function agentQuick(t){const i=document.getElementById("agent-input");if(i){i.value=t;agentSend()}}
-function agentCancel(){agentPending=null;agentPush("act","已取消，什么都没动","");}
-function agentRunPending(){
-  const list=agentPending||[];agentPending=null;
-  list.forEach(a=>agentExec(a));
-  renderAgent();
+// 确认框做成 Promise：循环在 agentAskConfirm 里 await 住，点了按钮才往下走。
+// 原来是"攒起来等用户点执行"的单向流程，多轮循环里没法用——循环得停在这儿等结果
+function agentAskConfirm(list){
+  return new Promise(res=>{
+    agentPending=list;agentResolveConfirm=res;
+    if(agentMini)agentRestore();          // 要用户拍板，必须先让他看见
+    else renderAgent();
+  });
 }
-// 执行单个动作。动作自己返回一句结果文字；抛错就标红，不让它把整串带崩
+function agentConfirmDone(ok,all){
+  agentPending=null;
+  if(ok&&all)agentAllowAll=true;
+  const r=agentResolveConfirm;agentResolveConfirm=null;
+  renderAgent();
+  if(r)r(ok);
+}
+// 执行单个动作，返回一句结果文字（**要回喂给模型**，所以失败也得返回而不是吞掉）。
+// 抛错标红但不中断整串：一个动作参数给错，后面的还能做
 function agentExec(a){
   const def=AGENT_ACTIONS[a.do];
-  if(!def){agentLog.push({role:"act",text:`没有「${escapeHtml(a.do)}」这个动作`,cls:"bad"});return}
+  if(!def){
+    const m=`没有「${a.do}」这个动作`;
+    agentLog.push({role:"act",text:escapeHtml(m),cls:"bad"});return m;
+  }
   try{
-    const r=def.run(a);
-    agentLog.push({role:"act",text:`<b>${escapeHtml(a.do)}</b> · ${escapeHtml(String(r))}`,cls:"ok"});
+    const r=String(def.run(a));
+    agentLog.push({role:"act",text:`<b>${escapeHtml(a.do)}</b> · ${escapeHtml(r)}`,cls:"ok"});
+    return r;
   }catch(e){
-    agentLog.push({role:"act",text:`<b>${escapeHtml(a.do)}</b> 失败：${escapeHtml(e.message||"未知错误")}`,cls:"bad"});
+    const m="失败："+(e.message||"未知错误");
+    agentLog.push({role:"act",text:`<b>${escapeHtml(a.do)}</b> ${escapeHtml(m)}`,cls:"bad"});
+    return m;
   }
 }
-async function agentSend(){
-  const inp=document.getElementById("agent-input"),btn=document.getElementById("agent-send");
+function agentSend(){
+  if(agentBusy){toast("还在跑，先按停止");return}
+  const inp=document.getElementById("agent-input");
   const q=(inp.value||"").trim();
   const imgs=agentImages;   // 本次要发的图，发完即清
   if(!q&&!imgs.length)return;
   if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider])){toast("先在设置里填 API Key");return}
   if(imgs.length&&!VISION_PROVIDERS.includes(cfg.provider)){toast("传图需切到 Kimi/Claude/ChatGPT");return}
   inp.value="";agentPending=null;clearAgentImages();
-  const shown=(imgs.length?`🖼️×${imgs.length} `:"")+q;
-  agentPush("me",shown);
-  btn.disabled=true;btn.textContent="…";
-  // 带图这轮不进历史（避免 base64 把 agentHistory 撑大），只用当前这条问
+  agentPush("me",(imgs.length?`🖼️×${imgs.length} `:"")+q);
   agentHistory.push({role:"user",content:q||"看这些图片，按内容执行合适的动作或回答"});
+  agentRunLoop(imgs);
+}
+// 多轮工具循环：做一批动作 → 把执行结果回喂给模型 → 它再决定下一步。
+// 和原来单轮版的本质区别就在"回喂"：单轮时模型永远不知道自己那条动作干成了什么，
+// 也就没机会补下一步（截图里 study 执行完面板还盖着，就是没有下一轮去收拾）
+async function agentRunLoop(imgs){
+  agentBusy=true;agentStop=false;agentTurn=0;agentAllowAll=false;
+  agentSetBusyUI(true);
   try{
-    const raw=await callAI(agentHistory.slice(-8),agentSysPrompt(),1200,imgs.length?imgs:null);
-    let obj=null;
-    try{
-      const m=raw.match(/\{[\s\S]*\}/);      // 模型偶尔会包一层代码块或加句客套话
-      obj=JSON.parse(m?m[0]:raw);
-    }catch(e){}
-    if(!obj){agentPush("ai",stripMd(raw));agentHistory.push({role:"assistant",content:raw});return}
-    agentHistory.push({role:"assistant",content:JSON.stringify(obj)});
-    if(obj.reply)agentPush("ai",obj.reply);
-    const acts=Array.isArray(obj.actions)?obj.actions:[];
-    const risky=acts.filter(a=>AGENT_ACTIONS[a.do]&&!AGENT_ACTIONS[a.do].safe);
-    acts.filter(a=>!AGENT_ACTIONS[a.do]||AGENT_ACTIONS[a.do].safe).forEach(a=>agentExec(a));
-    agentPending=risky.length?risky:null;   // 危险动作攒起来一起确认
-    renderAgent();
-  }catch(e){
-    agentPush("act","调用失败："+(e.message||"检查 Key"),"bad");
+    while(agentTurn<agentMaxTurns()){
+      if(agentStop){agentPush("act","已停止","");break}
+      agentTurn++;
+      agentSetBar(`第 ${agentTurn} 轮 · 思考中…`);
+      let raw;
+      try{
+        // 图只在第一轮带（base64 每轮重发会把 token 烧光，而且后面几轮问的是执行结果不是图）
+        raw=await callAI(agentHistory.slice(-14),agentSysPrompt(),1200,
+                         agentTurn===1&&imgs&&imgs.length?imgs:null);
+      }catch(e){agentPush("act","调用失败："+(e.message||"检查 Key"),"bad");break}
+      if(agentStop){agentPush("act","已停止","");break}
+      let obj=null;
+      try{
+        const m=raw.match(/\{[\s\S]*\}/);      // 模型偶尔会包一层代码块或加句客套话
+        obj=JSON.parse(m?m[0]:raw);
+      }catch(e){}
+      // 没按格式回：当成普通回答收尾，不硬撑着再来一轮（撑下去多半还是不合格式）
+      if(!obj){agentPush("ai",stripMd(raw));agentHistory.push({role:"assistant",content:raw});break}
+      agentHistory.push({role:"assistant",content:JSON.stringify(obj)});
+      if(obj.reply)agentPush("ai",obj.reply);
+      const acts=Array.isArray(obj.actions)?obj.actions:[];
+      if(!acts.length)break;                   // 空 actions = 模型说做完了，唯一的正常出口
+      // 有要确认的就停在这儿等用户拍板（await），别绕过去
+      const risky=acts.filter(a=>AGENT_ACTIONS[a.do]&&!AGENT_ACTIONS[a.do].safe);
+      if(risky.length&&!agentAllowAll){
+        const ok=await agentAskConfirm(risky);
+        if(!ok){
+          agentPush("act","已取消，什么都没动","");
+          // 取消也要告诉模型，否则它下一轮原样再提一遍，用户得一直点取消
+          agentHistory.push({role:"user",content:"用户取消了这批动作，一个都没执行。别再提交同样的动作，问清楚他想怎么做。"});
+          continue;
+        }
+      }
+      // **按模型给的原序执行**：顺序是它排的（比如先 find 再 setCat），
+      // 拆成"先 safe 后 risky"会把因果颠倒
+      const results=[];let touchedUI=false;
+      for(const a of acts){
+        if(agentStop)break;
+        results.push(`${a.do}: ${agentExec(a)}`);
+        if(AGENT_ACTIONS[a.do]&&AGENT_ACTIONS[a.do].ui)touchedUI=true;
+      }
+      renderAgent();
+      if(touchedUI&&!agentMini)agentMinimize();   // 让开，让他看见刚做的那一下
+      agentHistory.push({role:"user",content:"动作执行结果：\n"+results.join("\n")+
+        "\n\n据此决定下一步。做完了就 actions 给空数组、在 reply 里说结果。"});
+    }
+    if(agentTurn>=agentMaxTurns()&&!agentStop)
+      agentPush("act",`到 ${agentMaxTurns()} 轮上限自动停了。没做完就再说一声，或去设置里调高上限`,"bad");
   }finally{
-    btn.disabled=false;btn.textContent="发送";
+    agentBusy=false;agentAllowAll=false;
+    agentSetBusyUI(false);agentFinishBar();
   }
 }
 
-// 构建标记：线上到底更新到哪一版，看设置页这一行即可，不用靠"某个按钮在不在"去猜
-const BUILD_STAMP="2026-08-06 · 智能体传图传文件";
+// 构建标记：当前这份代码是哪一版。设置页显示它，checkUpdate() 拿它跟线上比
+const BUILD_STAMP="v5.4.0 · 2026-08-12 · 手机端适配 + 智能体多轮";
 (function(){const el=document.getElementById("build-stamp");if(el)el.textContent=BUILD_STAMP})();
+// 检查线上有没有新版：带时间戳抓一份线上的自己，把里面的版本号抠出来跟当前跑的比。
+// 光看"当前正在跑哪版"回答不了"线上已经是哪版了"——缓存住的旧版显示的也是它自己的旧版本号
+async function checkUpdate(){
+  const el=document.getElementById("update-msg"),btn=document.getElementById("update-btn");
+  if(btn){btn.disabled=true;btn.textContent="查询中…"}
+  if(el)el.textContent="正在抓线上那份…";
+  try{
+    const r=await fetch(location.origin+location.pathname+"?_="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const txt=await r.text();
+    // **必须拼出来，不能写成完整字面量**：抓下来的文件里既有真的版本号声明，
+    // 也有这行正则自己。写成字面量的话，正则会先匹配到自己，抠出来的是 ([^ 之类的碎片
+    const m=txt.match(new RegExp("const BUILD_"+'STAMP="([^"]+)"'));
+    if(!m)throw new Error("线上那份里没找到版本号");
+    if(m[1]===BUILD_STAMP){
+      el.innerHTML=`<span style="color:var(--green)">✓ 已经是最新版</span><br>${escapeHtml(m[1])}`;
+    }else{
+      el.innerHTML=`<span style="color:var(--accent);font-weight:600">线上有新版，你这份是旧的</span><br>
+        线上：<b>${escapeHtml(m[1])}</b><br>你在跑：<b>${escapeHtml(BUILD_STAMP)}</b>
+        <button class="ai-btn" onclick="hardReload()">强制刷新，装上新版</button>`;
+    }
+  }catch(e){
+    // 本地 file:// 打开、断网、跨域都会走到这儿，说清楚是查不了而不是"已是最新"
+    el.innerHTML=`<span style="color:var(--accent)">查不了：${escapeHtml(e.message||"网络问题")}</span><br>本地打开或没网时查不了，这不代表已是最新。`;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="🔄 检查线上有没有新版"}
+  }
+}
+// location.reload(true) 在现代浏览器里已经是空操作，得换个 URL 才真绕得开缓存
+function hardReload(){location.replace(location.origin+location.pathname+"?v="+Date.now())}
 
 // 启动：若有未完成的背词会话则自动恢复（中途切走/刷新回到原处）
 restoreSession();
