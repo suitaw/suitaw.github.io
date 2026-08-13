@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>理财入门 · 第二课 风险到底是什么</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#e8a84c;--accent-dim:rgba(232,168,76,.12);
+  --text:#e8e9f0;--dim:#8890a8;
+  --ok:#4caf82;--no:#e85c5c;--blue:#82aaff;
+  --dock-h:74px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);min-height:100vh;
+  font-family:system-ui,-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.7;padding-bottom:calc(var(--dock-h) + 24px);}
+.wrap{max-width:560px;margin:0 auto;padding:0 14px;}
+
+.top{position:sticky;top:0;z-index:10;background:var(--bg);padding:12px 14px 8px;}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.top h1{font-size:16px;font-weight:600;}
+.top .sub{font-size:12px;color:var(--dim);white-space:nowrap;}
+.bar{height:3px;background:var(--surface2);border-radius:2px;margin-top:8px;overflow:hidden;}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .35s;}
+.back{display:inline-block;font-size:12px;color:var(--dim);text-decoration:none;
+  padding:12px 0 4px;min-height:24px;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:16px 15px;margin-top:12px;}
+.card h2{font-size:17px;font-weight:600;line-height:1.5;margin-bottom:10px;}
+.body{font-size:15px;}
+.body p{margin:9px 0;}
+.body p:first-child{margin-top:0;}
+.body b{color:var(--accent);font-weight:600;}
+.body em{color:var(--no);font-style:normal;font-weight:600;}
+.body ul{margin:9px 0;padding-left:0;list-style:none;}
+.body li{margin:7px 0;padding-left:15px;position:relative;}
+.body li:before{content:"·";position:absolute;left:3px;color:var(--accent);font-weight:700;}
+
+/* 回本对照表 */
+.tbl{margin:11px 0;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.tbl div{display:flex;font-size:13.5px;border-bottom:1px solid var(--border);}
+.tbl div:last-child{border-bottom:none;}
+.tbl span{flex:1;padding:7px 11px;font-family:var(--mono);}
+.tbl span:first-child{background:var(--surface2);color:#c9cee0;}
+.tbl .hd span{background:var(--surface2);font-family:inherit;font-size:12px;color:var(--dim);}
+.tbl .hot span:last-child{color:var(--no);font-weight:700;}
+
+/* 图 */
+.chart-card{padding:12px 10px 10px;}
+canvas{display:block;width:100%;height:250px;}
+.legend{display:flex;flex-wrap:wrap;gap:11px;padding:8px 5px 2px;font-size:12px;color:var(--dim);}
+.legend i{display:inline-block;width:14px;height:0;border-top:2px solid;margin-right:5px;
+  vertical-align:4px;}
+.howto{margin:2px 5px 0;padding-top:8px;border-top:1px solid var(--border);
+  font-size:12px;line-height:1.65;color:var(--dim);}
+.howto b{color:#a8b0c8;}
+
+/* 掷骰子行 */
+.roll{display:flex;gap:8px;margin-top:10px;}
+.roll button{flex:1;min-height:44px;border-radius:10px;background:var(--surface2);
+  color:var(--text);border:1px solid var(--border);font-family:inherit;font-size:14px;
+  font-weight:600;cursor:pointer;}
+.roll button.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+.roll .go{flex:0 0 auto;padding:0 15px;background:var(--accent);color:#1a1206;border:none;}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px;}
+.st{background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:11px 12px;}
+.st .lb{font-size:12px;color:var(--dim);line-height:1.5;}
+.st .v{font-size:19px;font-weight:700;font-family:var(--mono);margin-top:2px;}
+.st.big{grid-column:1 / -1;background:var(--accent-dim);border-color:rgba(232,168,76,.35);}
+.st.big .v{font-size:26px;color:var(--accent);}
+.st.bad .v{color:var(--no);}
+.st.good .v{color:var(--ok);}
+.st.dd{grid-column:1 / -1;background:rgba(232,92,92,.09);border-color:rgba(232,92,92,.3);}
+.st.dd .v{color:var(--no);}
+
+.ctrl{margin-top:14px;}
+.ctrl .hd{font-size:12px;color:var(--dim);letter-spacing:.06em;margin-bottom:2px;}
+.row{padding:9px 0 3px;}
+.row .top2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.row .name{font-size:14px;}
+.row .val{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;
+  background:transparent;margin:0;cursor:pointer;}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;
+  background:var(--surface2);border:1px solid var(--border);}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:26px;height:26px;border-radius:50%;background:var(--accent);
+  border:3px solid var(--surface);margin-top:-11px;}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--surface2);
+  border:1px solid var(--border);}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
+  background:var(--accent);border:3px solid var(--surface);}
+
+.lesson{border-left:3px solid var(--accent);}
+.lesson .step{font-size:12px;color:var(--accent);font-weight:700;letter-spacing:.05em;}
+.lesson h2{margin:6px 0 8px;}
+.warn{margin-top:11px;padding:11px 12px;border-radius:10px;
+  background:rgba(232,92,92,.1);border:1px solid rgba(232,92,92,.3);font-size:13.5px;color:#e2b5b5;}
+.warn b{color:#ff9f9f;}
+.aside{margin-top:11px;padding-top:10px;border-top:1px solid var(--border);
+  font-size:13.5px;color:#a8b0c8;}
+.aside b{color:var(--accent);}
+
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:linear-gradient(to top,var(--bg) 66%,rgba(15,17,23,0));padding:12px 14px 16px;}
+.dock-in{max-width:560px;margin:0 auto;display:flex;gap:9px;}
+.btn{flex:1;min-height:48px;border:none;border-radius:11px;background:var(--accent);
+  color:#1a1206;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn:disabled{opacity:.32;}
+.btn.ghost{flex:0 0 auto;padding:0 16px;background:var(--surface2);color:var(--dim);
+  border:1px solid var(--border);font-weight:500;font-size:14px;min-width:60px;}
+</style>
+</head>
+<body>
+
+<div class="top wrap">
+  <div class="top-row">
+    <h1>第二课 · 风险到底是什么</h1>
+    <div class="sub" id="prog">1 / 8</div>
+  </div>
+  <div class="bar"><i id="barFill" style="width:0%"></i></div>
+</div>
+
+<div class="wrap">
+  <a class="back" href="learn-money.html">‹ 回第一课 · 复利模拟器</a>
+
+  <div class="card chart-card">
+    <canvas id="cv"></canvas>
+    <div class="legend">
+      <span><i style="border-color:#5a6285"></i>可能走出来的路</span>
+      <span><i style="border-color:#e8a84c;border-width:3px"></i>中间那条</span>
+      <span><i style="border-color:#82aaff;border-top-style:dashed"></i>第一课承诺的</span>
+    </div>
+    <div class="howto" id="howto"></div>
+    <div class="roll">
+      <button data-n="1">1 条</button>
+      <button data-n="20">20 条</button>
+      <button data-n="150">150 条</button>
+      <button class="go" id="bRoll">再掷一次</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="card lesson" id="lessonCard">
+    <div class="step" id="lStep"></div>
+    <h2 id="lTitle"></h2>
+    <div class="body" id="lBody"></div>
+  </div>
+
+  <div class="card ctrl">
+    <div class="hd">随时可以自己拖</div>
+    <div id="rows"></div>
+  </div>
+
+  <div class="card" style="font-size:13px;color:var(--dim);line-height:1.75">
+    这里的路径是<b style="color:#a8b0c8">随机生成</b>的，不是历史数据，也不是预测。
+    它只保证一件事：<b style="color:#a8b0c8">平均涨幅和波动幅度是你设的那两个数</b>。
+    真实市场比这更难对付 —— 它的暴跌会扎堆出现，而这里的随机数不会。
+    <br><br>换句话说，<b style="color:#a8b0c8">现实大概率比这张图更颠簸，不会更平稳。</b>
+  </div>
+</div>
+
+<div class="dock"><div class="dock-in">
+  <button class="btn ghost" id="bPrev">‹ 上一步</button>
+  <button class="btn" id="bNext">下一步</button>
+</div></div>
+
+<script>
+/* ================= 参数 ================= */
+const P = [
+  {k:'p0', name:'现在手上有',      unit:'元',
+   vals:[0,10000,50000,100000,200000,500000,1000000]},
+  {k:'m',  name:'每月存进去',      unit:'元',
+   vals:[0,500,1000,2000,3000,5000,10000]},
+  {k:'mu', name:'平均每年涨',      unit:'%',
+   vals:[0,1,2,3,4,5,6,7,8,9,10,12,15]},
+  {k:'sig',name:'波动幅度',        unit:'%',
+   vals:[0,2,5,8,10,12,15,18,20,25,30,40,50]},
+  {k:'y',  name:'投多少年',        unit:'年',
+   vals:[1,3,5,10,15,20,25,30,35,40]}
+];
+const IDX={}; P.forEach(p=>IDX[p.k]=0);
+function V(k){const p=P.find(x=>x.k===k);return p.vals[IDX[k]];}
+function setV(k,val){const p=P.find(x=>x.k===k);let b=0,bd=Infinity;
+  p.vals.forEach((v,i)=>{const d=Math.abs(v-val);if(d<bd){bd=d;b=i;}});IDX[k]=b;}
+
+let N=1;                       // 画几条路径
+
+/* ================= 模拟 =================
+   月对数收益 ~ N(m, s²)，其中 12m = ln(1+mu) - sig²/2。
+   这样标出来的 mu 正好是「算术平均年收益」，
+   而实际拿到的几何年化 = (1+mu)*e^(-sig²/2) - 1 —— 波动拖累就是这一项。
+   sig=0 时精确退回第一课的 (1+r)^(1/12)-1，两课对得上（验证过）。
+============================================ */
+function gauss(){
+  let u=0,v=0;
+  while(!u)u=Math.random();
+  while(!v)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+function geoRate(){                       // 实际到手的年化
+  const mu=V('mu')/100, sig=V('sig')/100;
+  return (1+mu)*Math.exp(-sig*sig/2)-1;
+}
+let PATHS=[], PUT=[], SMOOTH=[];
+function simulate(){
+  const p0=V('p0'), m=V('m'), mu=V('mu')/100, sig=V('sig')/100, y=V('y');
+  const months=y*12;
+  const mm=(Math.log(1+mu)-sig*sig/2)/12, s=sig/Math.sqrt(12);
+
+  PATHS=[];
+  for(let k=0;k<N;k++){
+    let bal=p0, peak=p0, mdd=0;
+    const pts=[bal];
+    for(let i=0;i<months;i++){
+      bal=bal*Math.exp(mm+s*gauss())+m;
+      if(bal<0)bal=0;
+      peak=Math.max(peak,bal);
+      if(peak>0)mdd=Math.max(mdd,(peak-bal)/peak);
+      pts.push(bal);
+    }
+    PATHS.push({pts,end:bal,mdd});
+  }
+  PATHS.sort((a,b)=>a.end-b.end);
+
+  // 投入本金线 + 第一课那条无波动的平滑曲线
+  PUT=[p0]; SMOOTH=[p0];
+  const rm=Math.pow(1+mu,1/12)-1;
+  let put=p0, sm=p0;
+  for(let i=0;i<months;i++){put+=m;sm=sm*(1+rm)+m;PUT.push(put);SMOOTH.push(sm);}
+}
+function pct(q){                          // 分位数（PATHS 已按终值排序）
+  if(!PATHS.length)return 0;
+  return PATHS[Math.min(PATHS.length-1,Math.floor(PATHS.length*q))].end;
+}
+function fmt(n){
+  n=Math.round(n);
+  if(Math.abs(n)>=100000000)return (n/100000000).toFixed(2)+' 亿';
+  if(Math.abs(n)>=10000)return (n/10000).toFixed(1)+' 万';
+  return n.toLocaleString('zh-CN');
+}
+function axisFmt(n){
+  if(n>=100000000)return +(n/100000000).toFixed(1)+'亿';
+  if(n>=10000)return +(n/10000).toFixed(1)+'万';
+  if(n>=1000)return +(n/1000).toFixed(1)+'千';
+  return String(Math.round(n));
+}
+
+/* ================= 画图 ================= */
+const cv=document.getElementById('cv'), cx=cv.getContext('2d');
+function draw(){
+  const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight;
+  cv.width=W*dpr; cv.height=H*dpr;
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  cx.clearRect(0,0,W,H);
+  if(!PATHS.length)return;
+
+  const padL=52,padR=8,padT=14,padB=22;
+  const w=W-padL-padR, h=H-padT-padB;
+  const months=PATHS[0].pts.length-1, years=months/12;
+
+  // 纵轴上限：对数正态的右尾很长，按 90% 分位截，
+  // 否则一条走运的线会把其余全部压成贴地的一坨。截掉的部分在说明里交代。
+  let top=Math.max(pct(0.88), SMOOTH[months]*1.06, PUT[months]);
+  if(N===1)top=Math.max(PATHS[0].pts.reduce((a,b)=>Math.max(a,b),0),SMOOTH[months])*1.1;
+  top=top||1;
+  const pow=Math.pow(10,Math.floor(Math.log10(top)));
+  const step=(top/pow>5?2:top/pow>2?1:0.5)*pow;
+  top=Math.ceil(top/step)*step;
+
+  const X=i=>padL+(i/months)*w;
+  const Y=v=>padT+h-Math.min(v/top,1.03)*h;
+
+  cx.font='11px '+getComputedStyle(document.body).fontFamily;
+  cx.textAlign='right'; cx.textBaseline='middle';
+  for(let v=0;v<=top+1e-6;v+=step){
+    const yy=Y(v);
+    cx.strokeStyle='#262b43'; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(padL,yy); cx.lineTo(W-padR,yy); cx.stroke();
+    cx.fillStyle='#6b7391'; cx.fillText(v===0?'0':axisFmt(v),padL-6,yy);
+  }
+  cx.textAlign='center'; cx.textBaseline='top';
+  const tick=years<=5?1:years<=12?2:years<=25?5:10;
+  for(let t=0;t<=years;t+=tick){
+    cx.fillStyle='#6b7391'; cx.fillText(t+(t===0?' 年':''),X(t*12),padT+h+5);
+  }
+
+  cx.save();
+  cx.beginPath(); cx.rect(padL,0,w,padT+h); cx.clip();
+  const line=(arr,color,width,dash)=>{
+    cx.beginPath();
+    for(let i=0;i<arr.length;i++){const xx=X(i),yy=Y(arr[i]);i?cx.lineTo(xx,yy):cx.moveTo(xx,yy);}
+    cx.strokeStyle=color; cx.lineWidth=width; cx.lineJoin='round';
+    cx.setLineDash(dash||[]); cx.stroke(); cx.setLineDash([]);
+  };
+  // 全部路径（多条时压暗、变细，让中位数看得出来）
+  const alpha=N===1?1:N<=20?.5:.16;
+  PATHS.forEach(p=>line(p.pts,'rgba(130,142,190,'+alpha+')',N===1?2:1));
+  // 投进去的本金
+  line(PUT,'#4a5170',2);
+  // 第一课那条
+  line(SMOOTH,'#82aaff',2,[5,4]);
+  // 中位数那条
+  if(N>1)line(PATHS[Math.floor(N/2)].pts,'#e8a84c',3);
+  cx.restore();
+}
+
+/* ================= 渲染 ================= */
+const KEY='learn_money_c2';
+let si=0;
+
+const STEPS=[
+{set:{p0:100000,m:2000,mu:8,y:30,sig:0},n:1,
+ step:'第 1 步 · 先把第一课摆回来',
+ h:'波动先设成 0：这就是第一课那条曲线',
+ body:`<p>参数跟第一课最后一样：10 万起步、每月 2000、平均每年 8%、30 年，
+ <b>但波动设成 0</b> —— 意思是「每年不多不少正好涨 8%」。</p>
+<p>图上那条线就是第一课的 <b>382 万</b>。蓝虚线跟它完全重合，因为它俩是同一回事。</p>
+<p>现在问一个问题：<b>现实中有哪样东西，是年年正好涨 8% 的？</b></p>
+<p>没有。下一步我只把「波动幅度」拖起来。</p>`},
+
+{set:{sig:20},n:1,
+ step:'第 2 步 · 把波动打开',
+ h:'同样是平均 8%，真实的一条路长这样',
+ body:`<p>平均涨幅<b>一点没改</b>，还是 8%。我只是允许它每年上下起伏。</p>
+<p>看那条锯齿线 —— 这才是钱在真实市场里的样子：涨几年、跌一段、再涨。
+ 蓝虚线（第一课承诺的）还在那儿，你自己看它俩差多少。</p>
+<p><b>按几次「再掷一次」。</b>每按一次就是重新活一遍这 30 年。</p>
+<p>你会发现：<em>每次的结果都不一样，而且差得很远。</em></p>
+<p>这就是「风险」这个词真正的意思 —— 不是「会不会亏钱」这么笼统，而是：</p>
+<ul><li><b>你事先不知道自己会落在哪一条路上。</b></li></ul>`},
+
+{set:{},n:150,
+ step:'第 3 步 · 一次看 150 种可能',
+ h:'那条蓝虚线，其实是个偏乐观的说法',
+ body:`<p>现在一次画 150 条，每条都是一种可能的 30 年。<b>金色那条是中间那条</b>
+ —— 一半的人比它好，一半的人比它差。</p>
+<p>关键的事实：<b>金色那条明显低于蓝虚线</b>。</p>
+<p>用这套参数反复模拟，大约<b>三分之二</b>的路径达不到第一课那个 382 万，
+ 中间那条大概在 <b>250~270 万</b> 一带（每次掷都会有点出入，看上面的数字）。</p>
+<p>第一课那条平滑曲线<b>不是骗你</b>，它算的数学没错。
+ 但它回答的是「如果年年正好 8%」，而那个「如果」在现实里不成立。</p>
+<div class="aside">注意图的上边 —— 少数运气特别好的线冲出画面了。
+ 我故意把纵轴截在 90% 分位，否则一条暴富的线会把其余 149 条压成贴着地的一坨，
+ 什么也看不出来。<b>那几条冲出去的，正是让「平均值」变好看的那些。</b></div>`},
+
+{set:{},n:150,
+ step:'第 4 步 · 为什么亏损更难补回来',
+ h:'跌 50%，要涨 100% 才回本',
+ body:`<p>波动之所以伤人，根子在一个不对称：</p>
+<div class="tbl">
+<div class="hd"><span>跌了多少</span><span>要涨回多少才回本</span></div>
+<div><span>−10%</span><span>+11%</span></div>
+<div><span>−20%</span><span>+25%</span></div>
+<div><span>−30%</span><span>+43%</span></div>
+<div class="hot"><span>−50%</span><span>+100%</span></div>
+<div class="hot"><span>−70%</span><span>+233%</span></div>
+</div>
+<p>为什么？因为跌的时候是从<b>大的数</b>上扣，涨的时候是从<b>剩下的小数</b>上加。</p>
+<p>100 块跌一半剩 50，这 50 要变回 100 得<b>翻倍</b>。</p>
+<p>所以一句常听的话是错的：<em>「今年跌 20%，明年涨 20% 就扯平了」</em>
+ —— 实际是 0.8 × 1.2 = 0.96，<b>还亏 4%</b>。</p>
+<div class="aside">把这个念头推到极端：涨 50% 再跌 50%，听起来打平，
+ 实际 1.5 × 0.5 = <b>0.75，亏 25%</b>。顺序反过来也一样。
+ <b>波动本身就在吃你的钱</b>，跟涨跌的次序无关。</div>`},
+
+{set:{},n:150,
+ step:'第 5 步 · 所以「平均 8%」你拿不到 8%',
+ h:'上面写着 8%，你实际到手的年化在这儿',
+ body:`<p>把第 4 步那个不对称摊到 30 年里，就变成一条能算出来的规律：</p>
+<ul><li>你实际拿到的年化 ≈ <b>平均涨幅 − 波动² ÷ 2</b></li></ul>
+<p>平均 8%、波动 20%：8% − (20%)²÷2 = 8% − 2% = <b>约 6%</b>。
+ 上面「实际到手年化」那一格就是精确算出来的这个数。</p>
+<p>这两个数在广告里都可以叫「收益率」，但差着一整个概念：</p>
+<ul>
+<li><b>平均每年涨多少</b> —— 把每年的涨跌加起来除以年数。宣传材料爱用这个，因为它大</li>
+<li><b>实际年化</b> —— 你 30 年后账户里真有的钱，倒推出来的那个数。这才是你花得出去的</li>
+</ul>
+<p><b>波动越大，这两个数差得越远。</b>把波动拖到 30%、40% 看看 ——
+ 40% 的时候，平均涨 8% 的东西，实际年化会掉到 <b>0 附近</b>。</p>
+<div class="aside">这解释了一件反直觉的事：<b>一个波动小、平均涨 6% 的东西，
+ 可能比一个波动大、平均涨 8% 的东西，最后给你更多钱。</b>
+ 你可以现在就拖滑杆验证 —— 这不是玄学，是上面那个减法。</div>`},
+
+{set:{},n:150,
+ step:'第 6 步 · 路上你要忍受什么',
+ h:'「最大回撤」：从最高点掉下去多少',
+ body:`<p>终值只是终点。真正让人拿不住的是<b>路上</b>。</p>
+<p>看上面那格「路上最惨要跌掉」—— 它算的是每条路径从<b>历史最高点</b>掉下来最多多少。</p>
+<p>这套参数下，跌掉三成以上几乎是<b>必然会遇上的</b>（模拟里九成以上的路径都碰到过），
+ 有<b>四分之一到三分之一</b>的路径会经历一次<b>腰斩</b>。</p>
+<div class="warn"><b>这才是第二课真正要你记住的地方。</b><br><br>
+ 假设你投了 30 年，中间某一年，账户从 200 万掉到 100 万。
+ 新闻里全是坏消息，身边的人都在割肉。<br><br>
+ <b>你要做的事是：什么都不做，甚至继续买。</b><br><br>
+ 这在纸上很容易，在那一刻极难。而<b>大部分人做不到</b> ——
+ 他们在最低点卖掉，把「账面上的下跌」变成了「真实的亏损」，
+ 然后错过后面的回升。<br><br>
+ 所以那个 8% 的真正代价不是数学，是<em>你得熬得住</em>。</div>`},
+
+{set:{},n:150,
+ step:'第 7 步 · 波动幅度大概是什么量级',
+ h:'不同的东西，波动差着一个数量级',
+ body:`<p>现在把「波动幅度」这根滑杆从 0 拖到 50，看图怎么变。下面是大致的量级参照
+ —— <b>是量级，不是精确统计</b>，真实数字随时间和品种变化很大：</p>
+<ul>
+<li><b>0~1%</b>：银行存款、国债持有到期。基本不波动</li>
+<li><b>2~6%</b>：债券基金、稳健理财。会小幅回撤，但不吓人</li>
+<li><b>15~25%</b>：股票宽基指数基金。这是「长期年化可能有 7~8%」那一类东西的<b>真实价格</b></li>
+<li><b>30%~50%+</b>：单只股票、行业主题基金、小盘成长股</li>
+<li>更高的：加了杠杆的、加密货币这类。这一档的「平均涨幅」多半也不可靠</li>
+</ul>
+<p>把上面两课合起来，你现在能看懂这句话了：</p>
+<ul><li><b>收益和风险不是「两个可以分开挑」的东西，它们是同一样东西的两面。</b></li></ul>
+<p>谁要是给你一个高收益、又说没风险，那不是他找到了窍门，
+ 是<b>风险被藏在了你看不见的地方</b>（比如「暴雷之前一切正常」）。</p>`},
+
+{set:{},n:150,
+ step:'第 8 步 · 换成你自己的情况',
+ h:'先问自己一个问题，再拖滑杆',
+ body:`<p>问题是这个：<b>如果明年你的账户跌掉 30%，你会不会睡不着、会不会想卖掉？</b></p>
+<p>诚实回答。然后把「波动幅度」拖到你答得起的那一档，再看终值。</p>
+<p>这个顺序是反过来的，而且是故意的：<b>不是先挑收益，是先挑你受得了的波动</b>，
+ 收益是它带来的结果。</p>
+<p><b>这一课你现在会的：</b></p>
+<ul>
+<li>风险 = 你事先不知道会落在哪条路上，不是「会不会亏」</li>
+<li>跌了要涨更多才回本；跌 50% 要涨 100%</li>
+<li>「平均每年涨 8%」≠「你能拿到 8%」，差的是<b>波动² ÷ 2</b></li>
+<li>波动大的东西，平均涨得多，最后到手可能更少</li>
+<li>真正的代价在路上：会腰斩，而大部分人是在最低点卖掉的</li>
+<li>先定你受得了多大回撤，再谈收益</li>
+</ul>
+<p>第三课讲<b>存款、债券、股票凭什么给你不同的回报</b> ——
+ 也就是这个波动到底是从哪来的、你承担的到底是什么。</p>`}
+];
+
+function buildRows(){
+  document.getElementById('rows').innerHTML=P.map(p=>
+    '<div class="row"><div class="top2"><span class="name">'+p.name+'</span>'+
+    '<span class="val" id="v_'+p.k+'"></span></div>'+
+    '<input type="range" id="r_'+p.k+'" min="0" max="'+(p.vals.length-1)+'" step="1"></div>'
+  ).join('');
+  P.forEach(p=>document.getElementById('r_'+p.k).addEventListener('input',e=>{
+    IDX[p.k]=+e.target.value; simulate(); update(); save();
+  }));
+}
+function update(){
+  P.forEach(p=>{
+    const v=p.vals[IDX[p.k]];
+    document.getElementById('r_'+p.k).value=IDX[p.k];
+    document.getElementById('v_'+p.k).textContent=p.unit==='元'?fmt(v)+' 元':v+' '+p.unit;
+  });
+  document.querySelectorAll('.roll button[data-n]').forEach(b=>
+    b.classList.toggle('on',+b.dataset.n===N));
+  draw();
+
+  const g=geoRate(), mu=V('mu');
+  const put=PUT[PUT.length-1];
+  const mddAvg=PATHS.reduce((a,p)=>a+p.mdd,0)/PATHS.length;
+  const mddMax=PATHS.reduce((a,p)=>Math.max(a,p.mdd),0);
+  const s=document.getElementById('stats');
+
+  if(N===1){
+    const p=PATHS[0];
+    s.innerHTML=
+      '<div class="st big"><div class="lb">这一次走出来的结果</div><div class="v">'+fmt(p.end)+'</div></div>'+
+      '<div class="st"><div class="lb">第一课承诺的</div><div class="v">'+fmt(SMOOTH[SMOOTH.length-1])+'</div></div>'+
+      '<div class="st"><div class="lb">你自己投进去的</div><div class="v">'+fmt(put)+'</div></div>'+
+      '<div class="st dd"><div class="lb">这一次路上从最高点跌掉过</div><div class="v">'+
+        Math.round(p.mdd*100)+'%</div></div>';
+  }else{
+    const worse=PATHS.filter(p=>p.end<SMOOTH[SMOOTH.length-1]).length/PATHS.length;
+    s.innerHTML=
+      '<div class="st big"><div class="lb">中间那条（一半人比它好，一半比它差）</div>'+
+        '<div class="v">'+fmt(pct(0.5))+'</div></div>'+
+      '<div class="st bad"><div class="lb">差的情况（10% 的人比这更差）</div>'+
+        '<div class="v">'+fmt(pct(0.1))+'</div></div>'+
+      '<div class="st good"><div class="lb">好的情况（10% 的人比这更好）</div>'+
+        '<div class="v">'+fmt(pct(0.9))+'</div></div>'+
+      '<div class="st"><div class="lb">上面写的平均每年涨</div><div class="v">'+mu+'%</div></div>'+
+      '<div class="st bad"><div class="lb">实际到手年化</div><div class="v">'+
+        (g*100).toFixed(1)+'%</div></div>'+
+      '<div class="st dd"><div class="lb">路上最惨要跌掉（平均 / 最惨的一条）</div>'+
+        '<div class="v">'+Math.round(mddAvg*100)+'% / '+Math.round(mddMax*100)+'%</div></div>'+
+      '<div class="st" style="grid-column:1/-1"><div class="lb">没达到第一课那条蓝虚线的比例</div>'+
+        '<div class="v">'+Math.round(worse*100)+'%</div></div>';
+  }
+  document.getElementById('howto').innerHTML = N===1
+    ? '横轴年数、竖轴钱。<b>灰线</b>是这一次随机走出来的路，<b>蓝虚线</b>是第一课「年年正好涨这么多」的算法。'
+    : '每条<b>淡灰线</b>是一种可能的走法，<b>金线</b>是中间那条，<b>蓝虚线</b>是第一课承诺的。纵轴截在 90% 分位，冲出上边的是运气特别好的那几条。';
+  document.getElementById('prog').textContent=(si+1)+'/'+STEPS.length;
+}
+function renderStep(){
+  const s=STEPS[si];
+  Object.keys(s.set||{}).forEach(k=>setV(k,s.set[k]));
+  if(s.n)N=s.n;
+  document.getElementById('lStep').textContent=s.step;
+  document.getElementById('lTitle').textContent=s.h;
+  document.getElementById('lBody').innerHTML=s.body;
+  document.getElementById('barFill').style.width=((si+1)/STEPS.length*100)+'%';
+  document.getElementById('bPrev').disabled=si===0;
+  document.getElementById('bNext').disabled=si===STEPS.length-1;
+  document.getElementById('bNext').textContent=si===STEPS.length-2?'最后一步':'下一步';
+  simulate(); update(); save();
+  document.getElementById('lessonCard').scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({si,IDX,N}));}catch(e){}}
+function load(){try{
+  const d=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(d&&typeof d.si==='number'){si=Math.min(d.si,STEPS.length-1);
+    if(d.IDX)Object.keys(d.IDX).forEach(k=>{if(k in IDX)IDX[k]=d.IDX[k];});
+    if(d.N)N=d.N;}
+}catch(e){}}
+
+document.getElementById('bPrev').onclick=()=>{if(si>0){si--;renderStep();}};
+document.getElementById('bNext').onclick=()=>{if(si<STEPS.length-1){si++;renderStep();}};
+document.getElementById('bRoll').onclick=()=>{simulate();update();};
+document.querySelectorAll('.roll button[data-n]').forEach(b=>
+  b.onclick=()=>{N=+b.dataset.n;simulate();update();save();});
+window.addEventListener('resize',()=>draw());
+
+buildRows();
+const fresh=!localStorage.getItem(KEY);
+load();
+if(fresh){renderStep();}
+else{
+  const s=STEPS[si];
+  document.getElementById('lStep').textContent=s.step;
+  document.getElementById('lTitle').textContent=s.h;
+  document.getElementById('lBody').innerHTML=s.body;
+  document.getElementById('barFill').style.width=((si+1)/STEPS.length*100)+'%';
+  document.getElementById('bPrev').disabled=si===0;
+  document.getElementById('bNext').disabled=si===STEPS.length-1;
+  simulate(); update();
+}
+</script>
+</body>
+</html>
