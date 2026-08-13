@@ -121,11 +121,21 @@ function css(){
 .ma-ov.on{display:block;}
 .ma-panel{position:absolute;left:0;right:0;bottom:0;max-height:82vh;display:flex;flex-direction:column;
   background:#14161f;border-top:1px solid #2e3350;border-radius:16px 16px 0 0;}
-.ma-hd{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid #2e3350;}
-.ma-hd .ti{flex:1;font-size:14px;font-weight:600;color:#e8e9f0;}
-.ma-hd button{min-width:44px;min-height:44px;border:none;background:none;color:#8890a8;
-  font-size:17px;font-family:inherit;cursor:pointer;}
-.ma-msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;}
+/* dvh 会跟着软键盘缩，vh 不会 —— 不用 dvh 的话键盘一弹出对话区就被挤没 */
+@supports (height:1dvh){.ma-panel{max-height:82dvh;}}
+.ma-hd{display:flex;align-items:center;gap:4px;padding:10px 6px 10px 14px;
+  border-bottom:1px solid #2e3350;}
+/* 标题必须单行：课程全名太长会折成两行，把本来就紧的面板又吃掉一截 */
+.ma-hd .ti{flex:1;min-width:0;font-size:14px;font-weight:600;color:#e8e9f0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ma-hd button{flex:0 0 auto;width:44px;min-height:44px;border:none;background:none;
+  color:#8890a8;font-size:17px;font-family:inherit;cursor:pointer;}
+.ma-msgs{flex:1;min-height:110px;overflow-y:auto;padding:12px 14px;
+  display:flex;flex-direction:column;gap:10px;}
+/* 设置是独占的一屏：叠在对话上面会看成两个页面糊在一起 */
+.ma-panel.setting .ma-msgs,
+.ma-panel.setting .ma-tips,
+.ma-panel.setting .ma-in{display:none;}
 .ma-m{max-width:88%;padding:10px 13px;border-radius:13px;font-size:14.5px;line-height:1.7;}
 .ma-m.me{align-self:flex-end;background:#e8a84c;color:#1a1206;border-bottom-right-radius:4px;}
 .ma-m.ai{align-self:flex-start;background:#22263a;color:#e8e9f0;border-bottom-left-radius:4px;}
@@ -144,8 +154,10 @@ function css(){
 .ma-in button{flex:0 0 auto;min-width:60px;min-height:46px;border:none;border-radius:11px;
   background:#e8a84c;color:#1a1206;font-weight:700;font-size:15px;font-family:inherit;cursor:pointer;}
 .ma-in button:disabled{opacity:.35;}
-.ma-set{padding:12px 14px;border-top:1px solid #2e3350;display:none;}
+.ma-set{padding:12px 14px 16px;display:none;overflow-y:auto;}
 .ma-set.on{display:block;}
+.ma-done{width:100%;min-height:48px;margin-top:16px;border:none;border-radius:11px;
+  background:#e8a84c;color:#1a1206;font-weight:700;font-size:15px;font-family:inherit;}
 .ma-set label{display:block;font-size:12px;color:#8890a8;margin:9px 0 4px;}
 .ma-set select,.ma-set input{width:100%;min-height:44px;border-radius:10px;border:1px solid #2e3350;
   background:#0f1117;color:#e8e9f0;padding:0 11px;font-family:inherit;font-size:14px;}
@@ -168,9 +180,11 @@ function build(){
 
   const ov=document.createElement('div');
   ov.className='ma-ov';
+  // 只取「第二课」这一段，全名带副标题会长到折行
+  const shortName=String(HOST.lesson||'理财课').split(/\s*·\s*/)[0];
   ov.innerHTML=`<div class="ma-panel">
     <div class="ma-hd">
-      <div class="ti">助教 · ${esc(HOST.lesson||'理财课')}</div>
+      <div class="ti">助教 · ${esc(shortName)}</div>
       <button id="maGear" title="设置">⚙</button>
       <button id="maClose" title="关闭">✕</button>
     </div>
@@ -190,15 +204,17 @@ function build(){
       input:ov.querySelector('#maIn'),send:ov.querySelector('#maSend'),
       set:ov.querySelector('#maSet')};
 
-  ov.querySelector('#maClose').onclick=()=>show(false);
-  ov.querySelector('#maGear').onclick=()=>{
-    const on=el.set.classList.toggle('on');
-    if(on)renderSet();
+  el.panel=ov.querySelector('.ma-panel');
+  ov.querySelector('#maClose').onclick=()=>{
+    if(el.panel.classList.contains('setting'))toggleSet(false); else show(false);
   };
+  ov.querySelector('#maGear').onclick=()=>toggleSet();
   el.send.onclick=()=>submit();
   el.input.addEventListener('keydown',e=>{
     if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit();}
   });
+  // 键盘弹出会把面板压矮，不滚一下最后几条就看不见了
+  el.input.addEventListener('focus',()=>setTimeout(scrollBottom,300));
   bar.querySelector('#maBarStop').onclick=()=>{stopWanted=true;setBar('停下了，这一轮做完就收手');};
   bar.querySelector('#maBarOpen').onclick=()=>show(true);
 
@@ -213,6 +229,16 @@ function renderTips(){
   el.tips.querySelectorAll('button').forEach(b=>
     b.onclick=()=>{el.input.value=HOST.suggestions[+b.dataset.i];submit();});
 }
+// 建议按钮只是开场白，聊起来之后它占的两行比对话本身还高
+function updateTips(){
+  el.tips.style.display=shown.some(m=>m.who==='me'||m.who==='ai')?'none':'';
+}
+function toggleSet(on){
+  const v = on===undefined ? !el.panel.classList.contains('setting') : !!on;
+  el.panel.classList.toggle('setting',v);
+  el.set.classList.toggle('on',v);
+  if(v)renderSet(); else scrollBottom();
+}
 function renderSet(){
   const provOpts=Object.keys(MODELS).map(p=>
     '<option value="'+p+'"'+(p===cfg.provider?' selected':'')+'>'+PROV_NAME[p]+'</option>').join('');
@@ -224,7 +250,9 @@ function renderSet(){
     '<label>API Key</label><input id="maKey" type="password" placeholder="粘贴 key" value="'+
       esc(cfg.apikey)+'">'+
     '<div class="note">Key 只存在这台手机的浏览器里，不上传别处。'+
-      '和词汇应用共用同一个域名，那边配过的会自动带过来。</div>';
+      '和词汇应用共用同一个域名，那边配过的会自动带过来。</div>'+
+    '<button class="ma-done" id="maDone">完成</button>';
+  el.set.querySelector('#maDone').onclick=()=>toggleSet(false);
   el.set.querySelector('#maProv').onchange=e=>{cfg.provider=e.target.value;saveCfg();renderSet();};
   el.set.querySelector('#maMdl').onchange=e=>{
     cfg.models=cfg.models||{}; cfg.models[cfg.provider]=e.target.value; saveCfg();};
@@ -245,6 +273,7 @@ function push(who,text){
   d.className='ma-m '+who;
   d.innerHTML=who==='me'?esc(text):rich(text);
   el.msgs.appendChild(d);
+  updateTips();
   scrollBottom();
   return d;
 }
@@ -328,7 +357,7 @@ async function submit(){
   if(busy){push('sys','上一条还在跑，等它结束');return;}
   if(!cfg.apikey){
     push('err','还没填 API Key。点右上角 ⚙ 填一个。');
-    el.set.classList.add('on'); renderSet(); return;
+    toggleSet(true); return;
   }
   el.input.value='';
   push('me',q);
