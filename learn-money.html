@@ -165,8 +165,10 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
   <button class="btn" id="bNext">下一步</button>
 </div></div>
 
+<script src="money-nav.js"></script>
 <script src="money-agent.js"></script>
 <script>
+MoneyNav.init({no:1});
 /* ================= 参数定义 =================
    每项：key / 名字 / 单位 / 滑杆下标对应的实际值表 vals
    用「下标 → 值」而不是连续区间，是为了让常用档位（1万 5万 10万）好停。

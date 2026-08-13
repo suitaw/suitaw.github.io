@@ -117,12 +117,14 @@ function css(){
 .ma-bar button{flex:0 0 auto;min-height:36px;padding:0 12px;border-radius:9px;
   border:1px solid #2e3350;background:#1a1d27;color:#8890a8;font-size:13px;font-family:inherit;}
 .ma-bar button.p{background:#e8a84c;color:#1a1206;border:none;font-weight:700;}
-.ma-ov{position:fixed;inset:0;z-index:60;background:rgba(8,9,13,.6);display:none;}
+/* 全屏。原来是 82dvh 的底部抽屉，一半屏幕给了看不见的背景，对话区被挤得很小。
+   全屏不跟「有动作就让开」冲突：那是执行时自动 show(false)，让开的时机没变。 */
+.ma-ov{position:fixed;inset:0;z-index:60;background:#14161f;display:none;}
 .ma-ov.on{display:block;}
-.ma-panel{position:absolute;left:0;right:0;bottom:0;max-height:82vh;display:flex;flex-direction:column;
-  background:#14161f;border-top:1px solid #2e3350;border-radius:16px 16px 0 0;}
-/* dvh 会跟着软键盘缩，vh 不会 —— 不用 dvh 的话键盘一弹出对话区就被挤没 */
-@supports (height:1dvh){.ma-panel{max-height:82dvh;}}
+.ma-panel{position:absolute;inset:0;display:flex;flex-direction:column;background:#14161f;
+  padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+/* dvh 会跟着软键盘缩，vh 不会 —— 不用 dvh 的话键盘一弹出输入框就被顶到屏幕外 */
+@supports (height:1dvh){.ma-panel{height:100dvh;}}
 .ma-hd{display:flex;align-items:center;gap:4px;padding:10px 6px 10px 14px;
   border-bottom:1px solid #2e3350;}
 /* 标题必须单行：课程全名太长会折成两行，把本来就紧的面板又吃掉一截 */
@@ -186,7 +188,7 @@ function build(){
     <div class="ma-hd">
       <div class="ti">助教 · ${esc(shortName)}</div>
       <button id="maGear" title="设置">⚙</button>
-      <button id="maClose" title="关闭">✕</button>
+      <button id="maClose" title="收起">⌄</button>
     </div>
     <div class="ma-set" id="maSet"></div>
     <div class="ma-msgs" id="maMsgs"></div>
@@ -300,6 +302,8 @@ ${tools||'（这一页没有可执行的动作）'}
 - 用中文，直接给结论，不要"这是个好问题"这类铺垫，不要长篇总结
 - 学生看不懂行话，出现术语必须当场用大白话解释一次
 - 页面上的真实数字在下面的【当前状态】里，**引用数字只能用那里的，绝对不要自己编**
+- 【当前状态】后面还附了他此刻屏幕上显示的讲解原文、数字块和图注。
+  他说"这段话""这个图""这些数字"指的就是那些，直接照着讲，别反问他在说哪一段
 - 不确定就说不确定。金融里很多事没有确定答案，别编一个听起来合理的
 - 可以解释概念、机制、怎么算；**不要推荐具体的股票、基金或产品**，
   也不要预测涨跌。学生问了就说明为什么不给这类建议
@@ -315,9 +319,27 @@ ${tools||'（这一页没有可执行的动作）'}
 - **空数组是正常的结束方式**。想说的话说完了就给空数组，不要为了凑动作而动作
 - 每次执行完动作，我会把结果告诉你，你再决定下一步；确实做完了就回空数组收尾`;
 }
+/* 读屏。宿主的 getState 给的是滑杆值和算出来的数，
+   但学生问得最多的是「这段话什么意思」「这个图什么意思」——
+   指的是屏幕上那几块文字，不喂进去模型根本看不见他在指什么。
+   按 class/id 抓，八课结构一样，加新课不用改这里。 */
+function screenText(){
+  const grab=(sel,label)=>{
+    const e=document.querySelector(sel);
+    if(!e)return '';
+    const t=(e.innerText||'').trim().replace(/[ \t]+\n/g,'\n').replace(/\n{2,}/g,'\n');
+    return t?('【'+label+'】\n'+t):'';
+  };
+  return [
+    grab('#lessonCard','他屏幕上这一步的讲解原文（他问「这段话」指的就是这个）'),
+    grab('.stats','屏幕上那几个数字块'),
+    grab('.legend','图例'),
+    grab('.howto','图下面的看图说明')
+  ].filter(Boolean).join('\n\n');
+}
 function stateText(){
-  let s='【当前状态】\n'+(HOST.getState?HOST.getState():'（无）');
-  return s;
+  const scr=screenText();
+  return '【当前状态】\n'+(HOST.getState?HOST.getState():'（无）')+(scr?'\n\n'+scr:'');
 }
 
 /* ---------- 解析模型输出 ---------- */

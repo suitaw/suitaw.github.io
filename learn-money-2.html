@@ -173,8 +173,10 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
   <button class="btn" id="bNext">下一步</button>
 </div></div>
 
+<script src="money-nav.js"></script>
 <script src="money-agent.js"></script>
 <script>
+MoneyNav.init({no:2});
 /* ================= 参数 ================= */
 const P = [
   {k:'p0', name:'现在手上有',      unit:'元',
@@ -504,8 +506,8 @@ function setDock(){
   const prev=document.getElementById('bPrev'), nx=document.getElementById('bNext');
   prev.disabled=si===0;
   if(si===STEPS.length-1){
-    nx.disabled=true; nx.textContent='第三课还没做';
-    nx.onclick=null;
+    nx.disabled=false; nx.textContent='下一课 · 钱该放哪儿 ›';
+    nx.onclick=()=>{location.href='learn-money-3.html';};
   }else{
     nx.disabled=false;
     nx.textContent=si===STEPS.length-2?'最后一步':'下一步';
