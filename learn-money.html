@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>理财入门 · 第一课 钱的时间价值</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#e8a84c;--accent-dim:rgba(232,168,76,.12);
+  --text:#e8e9f0;--dim:#8890a8;
+  --ok:#4caf82;--no:#e85c5c;--blue:#82aaff;
+  --dock-h:74px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);min-height:100vh;
+  font-family:system-ui,-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.7;padding-bottom:calc(var(--dock-h) + 24px);}
+.wrap{max-width:560px;margin:0 auto;padding:0 14px;}
+
+/* 顶栏 */
+.top{position:sticky;top:0;z-index:10;background:var(--bg);padding:12px 14px 8px;}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.top h1{font-size:16px;font-weight:600;}
+.top .sub{font-size:12px;color:var(--dim);white-space:nowrap;}
+.bar{height:3px;background:var(--surface2);border-radius:2px;margin-top:8px;overflow:hidden;}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .35s;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:16px 15px;margin-top:12px;}
+.card h2{font-size:17px;font-weight:600;line-height:1.5;margin-bottom:10px;}
+.kicker{font-size:12px;letter-spacing:.1em;color:var(--accent);font-weight:600;margin-bottom:8px;}
+.body{font-size:15px;}
+.body p{margin:9px 0;}
+.body p:first-child{margin-top:0;}
+.body b{color:var(--accent);font-weight:600;}
+.body em{color:var(--no);font-style:normal;font-weight:600;}
+.body ul{margin:9px 0;padding-left:0;list-style:none;}
+.body li{margin:7px 0;padding-left:15px;position:relative;}
+.body li:before{content:"·";position:absolute;left:3px;color:var(--accent);font-weight:700;}
+.num{font-family:var(--mono);font-size:13.5px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+
+/* 图 */
+.chart-card{padding:12px 10px 10px;}
+canvas{display:block;width:100%;height:230px;}
+.legend{display:flex;flex-wrap:wrap;gap:12px;padding:8px 5px 2px;font-size:12px;color:var(--dim);}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;
+  vertical-align:-1px;}
+.legend .dash{width:14px;height:0;border-top:2px dashed var(--blue);border-radius:0;
+  vertical-align:3px;}
+
+/* 结果数字 */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px;}
+.st{background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:11px 12px;}
+.st .lb{font-size:12px;color:var(--dim);}
+.st .v{font-size:19px;font-weight:700;font-family:var(--mono);margin-top:2px;}
+.st.big{grid-column:1 / -1;background:var(--accent-dim);border-color:rgba(232,168,76,.35);}
+.st.big .v{font-size:26px;color:var(--accent);}
+.st.real .v{color:var(--blue);}
+.st.int .v{color:var(--ok);}
+
+/* 滑杆 */
+.ctrl{margin-top:14px;}
+.ctrl .hd{font-size:12px;color:var(--dim);letter-spacing:.06em;margin-bottom:2px;}
+.row{padding:9px 0 3px;}
+.row .top2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.row .name{font-size:14px;}
+.row .val{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;
+  background:transparent;margin:0;cursor:pointer;}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;
+  background:var(--surface2);border:1px solid var(--border);}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:26px;height:26px;border-radius:50%;background:var(--accent);
+  border:3px solid var(--surface);margin-top:-11px;}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--surface2);
+  border:1px solid var(--border);}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
+  background:var(--accent);border:3px solid var(--surface);}
+.hint{font-size:12px;color:var(--dim);margin-top:-4px;}
+
+/* 讲解 */
+.lesson{border-left:3px solid var(--accent);}
+.lesson .step{font-size:12px;color:var(--accent);font-weight:700;letter-spacing:.05em;}
+.lesson h2{margin:6px 0 8px;}
+.warn{margin-top:11px;padding:11px 12px;border-radius:10px;
+  background:rgba(232,92,92,.1);border:1px solid rgba(232,92,92,.3);font-size:13.5px;color:#e2b5b5;}
+.warn b{color:#ff9f9f;}
+.aside{margin-top:11px;padding-top:10px;border-top:1px solid var(--border);
+  font-size:13.5px;color:#a8b0c8;}
+
+/* 吸底 */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:linear-gradient(to top,var(--bg) 66%,rgba(15,17,23,0));padding:12px 14px 16px;}
+.dock-in{max-width:560px;margin:0 auto;display:flex;gap:9px;}
+.btn{flex:1;min-height:48px;border:none;border-radius:11px;background:var(--accent);
+  color:#1a1206;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn:disabled{opacity:.32;}
+.btn.ghost{flex:0 0 auto;padding:0 16px;background:var(--surface2);color:var(--dim);
+  border:1px solid var(--border);font-weight:500;font-size:14px;min-width:60px;}
+</style>
+</head>
+<body>
+
+<div class="top wrap">
+  <div class="top-row">
+    <h1>第一课 · 钱的时间价值</h1>
+    <div class="sub" id="prog">1 / 8</div>
+  </div>
+  <div class="bar"><i id="barFill" style="width:0%"></i></div>
+</div>
+
+<div class="wrap">
+
+  <div class="card chart-card">
+    <canvas id="cv"></canvas>
+    <div class="legend">
+      <span><i style="background:#4a5170"></i>你投进去的本金</span>
+      <span><i style="background:var(--accent)"></i>利息滚出来的</span>
+      <span><i class="dash"></i>扣掉通胀后真值多少</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="st big"><div class="lb">最后账户里有</div><div class="v" id="sTotal">—</div></div>
+    <div class="st"><div class="lb">其中你自己投的</div><div class="v" id="sIn">—</div></div>
+    <div class="st int"><div class="lb">利息挣的</div><div class="v" id="sInt">—</div></div>
+    <div class="st real" style="grid-column:1 / -1">
+      <div class="lb">按今天的物价算，这笔钱真正买得起的东西 ≈</div>
+      <div class="v" id="sReal">—</div>
+    </div>
+  </div>
+
+  <div class="card lesson" id="lessonCard">
+    <div class="step" id="lStep"></div>
+    <h2 id="lTitle"></h2>
+    <div class="body" id="lBody"></div>
+  </div>
+
+  <div class="card ctrl">
+    <div class="hd">这几根随时可以自己拖，图会跟着变</div>
+    <div id="rows"></div>
+  </div>
+
+  <div class="card" style="font-size:13px;color:var(--dim);line-height:1.75">
+    这个页面算的是<b style="color:#a8b0c8">数学</b>，不是<b style="color:#a8b0c8">预测</b>。
+    它假设收益率每年一模一样 —— 现实里没有任何投资是这样的。
+    真实的年化 8% 长什么样、代价是什么，第二课专门讲。
+    <br><br>在那之前，别拿这里的曲线当成你能拿到的钱。
+  </div>
+
+</div>
+
+<div class="dock"><div class="dock-in">
+  <button class="btn ghost" id="bPrev">‹ 上一步</button>
+  <button class="btn" id="bNext">下一步</button>
+</div></div>
+
+<script>
+/* ================= 参数定义 =================
+   每项：key / 名字 / 单位 / 滑杆下标对应的实际值表 vals
+   用「下标 → 值」而不是连续区间，是为了让常用档位（1万 5万 10万）好停。
+============================================== */
+const P = [
+  {k:'p0',  name:'现在手上有',   unit:'元',
+   vals:[0,5000,10000,20000,30000,50000,80000,100000,150000,200000,300000,500000,1000000]},
+  {k:'m',   name:'每月能存进去', unit:'元',
+   vals:[0,200,500,800,1000,1500,2000,3000,4000,5000,8000,10000]},
+  {k:'r',   name:'年化收益率',   unit:'%',
+   vals:[0,0.5,1,1.5,2,2.5,3,4,5,6,7,8,10,12]},
+  {k:'y',   name:'存多少年',     unit:'年',
+   vals:[1,2,3,5,8,10,15,20,25,30,35,40]},
+  {k:'inf', name:'通胀率',       unit:'%',
+   vals:[0,1,1.5,2,2.5,3,4,5]}
+];
+const IDX = {};              // key -> 当前下标
+P.forEach(p=>IDX[p.k]=0);
+function V(k){const p=P.find(x=>x.k===k);return p.vals[IDX[k]];}
+function setV(k,val){        // 按实际值反查最近的下标
+  const p=P.find(x=>x.k===k);
+  let best=0,bd=Infinity;
+  p.vals.forEach((v,i)=>{const d=Math.abs(v-val);if(d<bd){bd=d;best=i;}});
+  IDX[k]=best;
+}
+
+/* ================= 课程步骤 =================
+   set  ：这一步把滑杆摆成什么样（只写要改的）
+   lock ：这一步重点看哪几根（其余照旧可拖，只是不强调）
+============================================== */
+const STEPS = [
+{set:{p0:100000,m:0,r:0,y:20,inf:0},
+ step:'第 1 步 · 先看最没风险的做法',
+ h:'10 万块钱，锁抽屉里放 20 年',
+ body:`<p>收益率我先摆成 <b>0</b>，通胀也摆成 <b>0</b>。图上是一条平线：<b>10 万还是 10 万</b>。</p>
+<p>这是所有人心里默认的「安全」—— 不投资、不冒险、一分不少。</p>
+<p>下一步我只动一根滑杆，你看看这条平线会怎么样。</p>`},
+
+{set:{inf:2},
+ step:'第 2 步 · 通胀',
+ h:'把通胀调到 2%，钱一分没少，但变小了',
+ body:`<p>账户里<b>还是 10 万</b>，一分没少。可蓝色虚线掉下去了 —— 20 年后这 10 万，
+ 只买得起今天大约 <b>6.7 万</b>的东西。</p>
+<p>为什么：东西每年贵 2%，20 年下来物价涨到 1.02<sup>20</sup> ≈ <b>1.49 倍</b>。
+ 同样的钱，换回来的东西自然只剩 1 ÷ 1.49 ≈ 67%。</p>
+<p>这是整个第一课最要紧的一句话：</p>
+<ul><li><em>「不投资」不是没有风险，是一种确定会亏的做法。</em></li></ul>
+<p>你不是在「保本」和「冒险」之间选，你是在<b>两种亏法</b>之间选。</p>
+<div class="aside">通胀 2% 是个温和的假设。你可以把它拖到 3%、5% 试试
+ —— 5% 的话 20 年只剩 38%，这不是极端数字，很多国家真实经历过。</div>`},
+
+{set:{r:3},
+ step:'第 3 步 · 打开利息',
+ h:'年化 3%：勉强跑赢通胀',
+ body:`<p>3% 大概是国债、大额存单、稳健理财这一档的水平 —— <b>风险很低，但不是没有</b>。</p>
+<p>现在金色部分出现了，那是利息挣的钱。20 年后账户里约 <b>18 万</b>。</p>
+<p>但真正要看的是<b>蓝色虚线</b>：扣掉 2% 通胀，它只值今天的 <b>12.2 万</b>。</p>
+<p>所以你真正赚到的不是 3%，是 <b>3% − 2% ≈ 1%</b>。这个差额有个名字：</p>
+<ul>
+<li><b>名义收益率</b> —— 银行海报上印的那个数</li>
+<li><b>实际收益率</b> —— 名义减掉通胀，你的购买力真正长了多少</li>
+</ul>
+<p>看任何理财产品，都要在心里做一次这个减法。</p>`},
+
+{set:{y:40},
+ step:'第 4 步 · 曲线为什么是弯的',
+ h:'同样 3%，放 40 年',
+ body:`<p>把年数拖到 40 年，注意金色部分：它<b>不是匀速长的</b>，越往后越陡。</p>
+<p>原因就一句话：<b>第二年的利息，是按「本金 + 第一年的利息」算的。</b>
+ 利息自己也会生利息 —— 这就是复利。</p>
+<p>有个心算法叫 <b>72 法则</b>：<span class="num">72 ÷ 收益率 ≈ 翻倍要多少年</span></p>
+<ul>
+<li>3% → 72÷3 = <b>24 年</b>翻一倍</li>
+<li>6% → 72÷6 = <b>12 年</b>翻一倍</li>
+<li>10% → 72÷10 ≈ <b>7 年</b>翻一倍</li>
+</ul>
+<p>页面右上角我给你算好了当前这个收益率的翻倍年数，拖滑杆时可以对一下。</p>
+<div class="aside">72 法则是个近似，不是精确公式，但在 1%~15% 这个范围里误差很小，
+ 心算够用。你现在就能拿它检验一句话：<b>「保本，年化 20%」——
+ 那意味着 3.6 年翻一倍，18 年翻 32 倍。听到这种话，人是冲着你本金来的。</b></div>`},
+
+{set:{y:30,m:2000},
+ step:'第 5 步 · 定投',
+ h:'每月再存 2000，看两块颜色怎么拉开',
+ body:`<p>30 年，每月 2000，一共投进去 <b>本金 82 万</b>（10 万 + 2000×360）。</p>
+<p>最后账户里约 <b>140 万</b> —— 金色那块（利息）已经有 <b>58 万</b>，
+ 快赶上你自己掏的钱了。</p>
+<p>你多干了什么？没有。你只是<b>把时间拉长了</b>。</p>
+<p>这也是为什么「每月定投一点」对普通人比「攒一大笔再进场」更现实：
+ 前者不需要你先有一大笔钱，也不需要你判断什么时候是低点。</p>
+<div class="aside">你可以把年数从 30 拖到 20 再拖回来，只盯着<b>金色那块（利息）</b>看：
+ 前 20 年一共才滚出 25 万利息，<b>最后这 10 年就滚出 33 万</b> —— 反超了前面 20 年。
+ 你在末尾这几年并没有多存钱，是<b>本金基数已经变大了</b>，同样的 3% 落下来就是更多的钱。
+ 这就是「早开始」真正的意义，不是鸡汤，是曲线形状决定的。</div>`},
+
+{set:{r:8},
+ step:'第 6 步 · 把 3% 换成 8%',
+ h:'差 5 个点，30 年后差多少？',
+ body:`<p>刚才 3% 是 <b>140 万</b>，现在 8% 是 <b>382 万</b>。</p>
+<p>投进去的本金<b>一模一样</b>，都是 82 万。多出来的 <b>242 万</b>全是复利放大出来的。</p>
+<p>这就是「收益率差几个点无所谓」的错觉有多贵 —— 在 30 年的尺度上，
+ <b>几个百分点的差距会变成几倍的差距</b>。</p>
+<div class="warn"><b>但是 ——</b> 这一步最重要的不是那个 382 万，是下面这句：
+ <br><br>3% 和 8% <b>不是同一件事的两个档位</b>，它们是两种完全不同的东西。
+ 3% 你大概率年年拿得到；8% 是一个<b>长期平均值</b>，路上会有某一年跌 30%
+ 让你怀疑人生。<br><br>这条平滑的金色曲线，现实里长着锯齿。
+ <b>拿不住的人，最后拿不到那个 8%。</b>下一课整节都在讲这件事。</div>`},
+
+{set:{r:6.5},
+ step:'第 7 步 · 手续费',
+ h:'把 8% 改成 6.5%：只少 1.5 个点',
+ body:`<p>1.5% 差不多是一只主动型基金一年的管理费加托管费。
+ 你的钱赚 8%，扣完到手 6.5%。</p>
+<p>结果：<b>382 万 → 280 万</b>。</p>
+<p><b>这 1.5% 的费率，30 年吃掉了 102 万</b> —— 比你自己投进去的 82 万本金还多。</p>
+<p>它每年只从你账户里拿走一点点，你几乎感觉不到，但它是从<b>本该继续滚利的钱</b>里拿的。</p>
+<div class="aside">这也是指数基金（费率常在 0.2% 以下）被反复推荐的核心原因之一：
+ <b>收益率你控制不了，费率你控制得了。</b>第五课会把这件事算细。</div>`},
+
+{set:{},
+ step:'第 8 步 · 换成你自己的数字',
+ h:'现在拖成你真实的情况',
+ body:`<p>下面五根滑杆，按你自己的实际情况拖一遍：手上有多少、每月能存多少、
+ 打算存几年。收益率先填你现在实际拿到的那个（活期 0.2%、余额宝 1.5% 左右、
+ 银行理财 2~3%）。</p>
+<p>然后看那条<b>蓝色虚线</b>是往上走还是往下走。这一个动作就是第一课的全部目的。</p>
+<p><b>这一课你现在会的：</b></p>
+<ul>
+<li>不投资不是零风险，通胀是一种确定的亏损</li>
+<li>名义收益率 减 通胀 才是<b>实际收益率</b>，看产品先做这个减法</li>
+<li>复利的钱几乎全在后半段赚到，所以早开始比多投重要</li>
+<li>72 ÷ 收益率 = 翻倍年数，用它一秒识破「保本高收益」</li>
+<li>几个百分点的差距，拉长了就是几倍的差距 —— 费率同理</li>
+</ul>
+<p>拖完之后跟我说一声，我做第二课：<b>那个 8% 到底要你付出什么</b>。</p>`}
+];
+
+/* ================= 计算 ================= */
+// 月复利。年化 r 折成月利率用几何折算 (1+r)^(1/12)-1，
+// 不是 r/12 —— 后者是单利口径，年数一长会偏高。
+function series(){
+  const p0=V('p0'), m=V('m'), r=V('r')/100, y=V('y'), inf=V('inf')/100;
+  const rm=Math.pow(1+r,1/12)-1;
+  const pts=[];                       // 每年一个点
+  let bal=p0, put=p0;
+  pts.push({t:0,bal,put,real:bal});
+  for(let month=1;month<=y*12;month++){
+    bal = bal*(1+rm) + m;
+    put += m;
+    if(month%12===0){
+      const t=month/12;
+      pts.push({t,bal,put,real:bal/Math.pow(1+inf,t)});
+    }
+  }
+  return pts;
+}
+function fmt(n){
+  n=Math.round(n);
+  if(Math.abs(n)>=100000000) return (n/100000000).toFixed(2)+' 亿';
+  if(Math.abs(n)>=10000)     return (n/10000).toFixed(1)+' 万';
+  return n.toLocaleString('zh-CN');
+}
+// 纵轴专用：短一截，否则「150.0 万」在 padL 里放不下会被裁成「.50.0 万」
+function axisFmt(n){
+  if(n>=100000000) return +(n/100000000).toFixed(1)+'亿';
+  if(n>=10000)     return +(n/10000).toFixed(1)+'万';
+  if(n>=1000)      return +(n/1000).toFixed(1)+'千';
+  return String(Math.round(n));
+}
+
+/* ================= 画图 ================= */
+const cv=document.getElementById('cv');
+const cx=cv.getContext('2d');
+function draw(pts){
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.clientWidth, H=cv.clientHeight;
+  cv.width=W*dpr; cv.height=H*dpr;
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  cx.clearRect(0,0,W,H);
+
+  const padL=52,padR=8,padT=14,padB=22;
+  const w=W-padL-padR, h=H-padT-padB;
+  const maxT=pts[pts.length-1].t||1;
+  let maxY=0; pts.forEach(p=>{maxY=Math.max(maxY,p.bal,p.put,p.real);});
+  // 留 6% 余量，否则曲线最高点正好贴住画布上边
+  maxY=(maxY||1)*1.06;
+  // 纵轴取整到好看的刻度
+  const pow=Math.pow(10,Math.floor(Math.log10(maxY)));
+  const step=(maxY/pow>5?2:maxY/pow>2?1:0.5)*pow;
+  const top=Math.ceil(maxY/step)*step;
+
+  const X=t=>padL+(t/maxT)*w;
+  const Y=v=>padT+h-(v/top)*h;
+
+  // 网格 + 纵轴标签
+  cx.font='11px '+getComputedStyle(document.body).fontFamily;
+  cx.textAlign='right'; cx.textBaseline='middle';
+  for(let v=0;v<=top+1e-6;v+=step){
+    const yy=Y(v);
+    cx.strokeStyle='#262b43'; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(padL,yy); cx.lineTo(W-padR,yy); cx.stroke();
+    cx.fillStyle='#6b7391';
+    cx.fillText(v===0?'0':axisFmt(v),padL-6,yy);
+  }
+  // 横轴
+  cx.textAlign='center'; cx.textBaseline='top';
+  const tick=maxT<=5?1:maxT<=12?2:maxT<=25?5:10;
+  for(let t=0;t<=maxT;t+=tick){
+    cx.fillStyle='#6b7391';
+    cx.fillText(t+(t===0?' 年':''),X(t),padT+h+5);
+  }
+
+  const area=(key,color)=>{
+    cx.beginPath(); cx.moveTo(X(0),Y(0));
+    pts.forEach(p=>cx.lineTo(X(p.t),Y(p[key])));
+    cx.lineTo(X(maxT),Y(0)); cx.closePath();
+    cx.fillStyle=color; cx.fill();
+  };
+  area('bal','rgba(232,168,76,.55)');    // 总额（露出来的部分＝利息）
+  area('put','#4a5170');                 // 本金压在上面
+
+  // 总额描边
+  cx.beginPath();
+  pts.forEach((p,i)=>i?cx.lineTo(X(p.t),Y(p.bal)):cx.moveTo(X(p.t),Y(p.bal)));
+  cx.strokeStyle='#e8a84c'; cx.lineWidth=2; cx.lineJoin='round'; cx.stroke();
+
+  // 实际购买力虚线
+  cx.setLineDash([5,4]);
+  cx.beginPath();
+  pts.forEach((p,i)=>i?cx.lineTo(X(p.t),Y(p.real)):cx.moveTo(X(p.t),Y(p.real)));
+  cx.strokeStyle='#82aaff'; cx.lineWidth=2; cx.stroke();
+  cx.setLineDash([]);
+}
+
+/* ================= 渲染 ================= */
+const KEY='learn_money_c1';
+let si=0;                                  // 当前步骤
+
+function buildRows(){
+  const box=document.getElementById('rows');
+  box.innerHTML=P.map(p=>
+    '<div class="row"><div class="top2"><span class="name">'+p.name+'</span>'+
+    '<span class="val" id="v_'+p.k+'"></span></div>'+
+    '<input type="range" id="r_'+p.k+'" min="0" max="'+(p.vals.length-1)+'" step="1"></div>'
+  ).join('');
+  P.forEach(p=>{
+    document.getElementById('r_'+p.k).addEventListener('input',e=>{
+      IDX[p.k]=+e.target.value; update(); save();
+    });
+  });
+}
+function update(){
+  P.forEach(p=>{
+    const v=p.vals[IDX[p.k]];
+    document.getElementById('r_'+p.k).value=IDX[p.k];
+    document.getElementById('v_'+p.k).textContent=
+      p.unit==='元'?fmt(v)+' 元':v+' '+p.unit;
+  });
+  const pts=series();
+  const last=pts[pts.length-1];
+  draw(pts);
+  document.getElementById('sTotal').textContent=fmt(last.bal);
+  document.getElementById('sIn').textContent=fmt(last.put);
+  document.getElementById('sInt').textContent=fmt(last.bal-last.put);
+  document.getElementById('sReal').textContent=fmt(last.real);
+
+  // 72 法则提示跟进度并排，拖收益率时能立刻对上；步数不能被顶掉
+  const r=V('r');
+  document.getElementById('prog').textContent =
+    (si+1)+'/'+STEPS.length + (r>0 ? ' · 翻倍 '+Math.round(72/r)+' 年' : '');
+}
+function renderStep(){
+  const s=STEPS[si];
+  Object.keys(s.set||{}).forEach(k=>setV(k,s.set[k]));
+  document.getElementById('lStep').textContent=s.step;
+  document.getElementById('lTitle').textContent=s.h;
+  document.getElementById('lBody').innerHTML=s.body;
+  document.getElementById('barFill').style.width=((si+1)/STEPS.length*100)+'%';
+  document.getElementById('bPrev').disabled = si===0;
+  document.getElementById('bNext').disabled = si===STEPS.length-1;
+  document.getElementById('bNext').textContent = si===STEPS.length-2?'最后一步':'下一步';
+  update(); save();
+  document.getElementById('lessonCard').scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({si,IDX}));}catch(e){}}
+function load(){try{
+  const d=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(d&&typeof d.si==='number'){si=Math.min(d.si,STEPS.length-1);
+    if(d.IDX)Object.keys(d.IDX).forEach(k=>{if(k in IDX)IDX[k]=d.IDX[k];});}
+}catch(e){}}
+
+document.getElementById('bPrev').onclick=()=>{if(si>0){si--;renderStep();}};
+document.getElementById('bNext').onclick=()=>{if(si<STEPS.length-1){si++;renderStep();}};
+window.addEventListener('resize',()=>update());
+
+buildRows();
+load();
+// 恢复进度时不要覆盖用户拖过的滑杆：只有第一次进来才套用步骤预设
+const fresh = !localStorage.getItem(KEY);
+if(fresh){ renderStep(); }
+else{
+  const s=STEPS[si];
+  document.getElementById('lStep').textContent=s.step;
+  document.getElementById('lTitle').textContent=s.h;
+  document.getElementById('lBody').innerHTML=s.body;
+  document.getElementById('barFill').style.width=((si+1)/STEPS.length*100)+'%';
+  document.getElementById('bPrev').disabled=si===0;
+  document.getElementById('bNext').disabled=si===STEPS.length-1;
+  update();
+}
+</script>
+</body>
+</html>
