@@ -31,9 +31,17 @@ body{background:var(--bg);color:var(--text);min-height:100vh;
 /* sticky 的经典坑：scrollIntoView 会把目标滚到视口最上边，正好被吸顶块盖住。
    --stick-h 由 JS 量了写进来（图的高度会随视口变）。 */
 .lesson,.row,.stats,.howto{scroll-margin-top:calc(var(--stick-h,320px) + 12px);}
-.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .top h1{font-size:16px;font-weight:600;}
-.top .sub{font-size:12px;color:var(--dim);white-space:nowrap;}
+.top .sub{font-size:12px;color:var(--dim);white-space:nowrap;margin-left:auto;}
+/* 收起按钮放顶栏 —— 这是唯一一个位置不随收起状态变化的地方。
+   放图卡上的话，收起之后它自己也跟着挪，每次都得重新找 */
+.fold{flex:0 0 auto;width:40px;height:40px;margin:-8px -8px -8px 0;border:none;
+  background:none;color:var(--dim);font-size:15px;font-family:inherit;cursor:pointer;
+  line-height:1;}
+.stick.folded canvas,.stick.folded .legend{display:none;}
+.stick.folded .chart-card{padding:6px 8px;background:transparent;border-color:transparent;}
+.stick.folded .pick{margin-top:0;}
 .bar{height:3px;background:var(--surface2);border-radius:2px;margin-top:8px;overflow:hidden;}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .35s;}
 .back{display:inline-flex;align-items:center;font-size:12.5px;color:var(--dim);
@@ -163,6 +171,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
     <div class="top-row">
       <h1>第三课 · 钱该放哪儿</h1>
       <div class="sub" id="prog">1 / 8</div>
+      <button class="fold" id="fold" title="收起图，把地方让给讲解">▲</button>
     </div>
     <div class="bar"><i id="barFill" style="width:0%"></i></div>
   </div>
@@ -413,7 +422,7 @@ const STEPS=[
  h:'凭什么股票给 8.5%，活期只给 2%？',
  body:`<p>第二课你已经知道了：<b>收益和风险是同一样东西的两面</b>。
  这一课把它拆开 —— 到底是<b>哪些</b>风险，各值多少钱。</p>
-<p>看上面这张图。五根柱子从左到右：活期、国债、企业债、股票指数、单只股票。
+<p><b class="jump" data-j="chart">看上面这张图</b>。五根柱子从左到右：活期、国债、企业债、股票指数、单只股票。
  <b>柱子越高，市场肯给你的平均回报越多。</b></p>
 
 <div class="bet" data-bet="c3-why-more"
@@ -455,7 +464,7 @@ const STEPS=[
 <ul><li><b>利率会变。</b>你锁定 3% 借出去 10 年，第二年市场利率涨到 5%，
  你就亏了 —— 别人拿 5%，你只能拿 3%，而且钱拿不回来（想拿回来只能折价卖掉）</li></ul>
 <p>这一段叫<b>期限溢价</b>：钱借得越久，越要多补你。</p>
-<p>看图上第二根柱子下面那根红条 —— 比活期宽了不少。国债<b>持有到期</b>确实稳，
+<p><b class="jump" data-j="chart">看图上第二根柱子下面那根红条</b> —— 比活期宽了不少。国债<b>持有到期</b>确实稳，
  但你中途想卖，价格是会跌的。<b>「不会违约」不等于「价格不波动」</b>，
  这是两件常被混在一起的事。</p>`},
 
@@ -496,7 +505,7 @@ const STEPS=[
 {set:{},a:3,
  step:'第 6 步 · 柱顶不是你到手的',
  h:'白横杠比柱顶矮的那一截，就是波动吃掉的',
- body:`<p>图上每根柱子有一条<b>白横杠</b>。柱顶是「平均每年涨多少」，
+ body:`<p><b class="jump" data-j="chart">图上每根柱子有一条白横杠</b>。柱顶是「平均每年涨多少」，
  白横杠才是<b>你实际到手的年化</b>。</p>
 <p>用默认这套参数，股票指数这一档：柱顶 <b>8.5%</b>，白横杠在 <b>6.56%</b>，
  差了 <b>1.94 个百分点</b>。这一截去哪了？第二课那个减法：</p>
@@ -519,7 +528,7 @@ const STEPS=[
  step:'第 7 步 · 最重要的一步',
  h:'同样是当老板，为什么不能只买一只',
  body:`<p>现在选中的是最后一档：<b>单独一只股票</b>。</p>
-<p>请仔细看它和「指数」那根柱子的区别：</p>
+<p>请<b class="jump" data-j="chart">仔细看它和「指数」那根柱子</b>的区别：</p>
 <ul>
 <li>柱子<b>一样高</b> —— 平均涨幅都是 8.5%，一分不多一分不少</li>
 <li>红条<b>宽了一倍多</b> —— 从 19% 抖到 40%</li>
@@ -580,7 +589,37 @@ const STEPS=[
 <li><b>不是所有风险都有人付钱</b>：能靠多买几家消掉的那种，市场不给溢价</li>
 </ul>
 <p>第四课讲<b>分散</b> —— 也就是怎么把上一条里「白担的那部分风险」真的消掉。
- 它是这门课里唯一一件<b>不用付出代价就能改善结果</b>的事。</p>`}
+ 它是这门课里唯一一件<b>不用付出代价就能改善结果</b>的事。</p>
+
+<div class="quiz" data-quiz="c3">
+<div class="qzh">最后三道题，看看拿住没有</div>
+<div class="qzt">做完这三道，这一课就算过了</div>
+
+<div class="qz"
+ data-q="一个理财产品写着「预期年化 8%」，比同期国债高出 5 个点。按这一课的框架，你第一个该问的是什么？"
+ data-opts="它过去三年实际涨了多少|多出来的这 5 个点，是在补偿我承担什么|管理这只产品的经理是谁"
+ data-right="1"
+ data-why="**回报是风险的价格。** 高出来的每一段，都必须对应一样你多担的具体的事 —— 可能是「借得更久」「借给信用更差的人」「排在分钱队伍更后面」。
+这个问题不一定有坏答案，但**一定有答案**。答不上来，就说明风险在你看不见的地方。
+过去涨了多少不能回答这个问题：它只告诉你过去发生了什么，不告诉你这钱是拿什么换的。"></div>
+
+<div class="qz"
+ data-q="一家公司破产清算，下面三种人，谁最后才拿到钱（也最可能一分拿不到）？"
+ data-opts="借钱给它的银行|买了它发的债券的人|买了它股票的人"
+ data-right="2"
+ data-why="**股东排在最后。** 顺序是：工资 → 供应商 → 银行 → 债券 → 税 → 剩下的才轮到股东。
+这正是**股权溢价**的来源：你站在队伍最末尾，所以要求的补偿最多。
+股票的高回报不是因为「公司赚钱多」，是因为**你承担了先赔光的那个位置**。"></div>
+
+<div class="qz"
+ data-q="你有一笔钱，一年后要交房子首付。按这一课，它该放哪一档？"
+ data-opts="股票指数，长期年化最高，一年也不亏|活期或货币基金|单只股票，一年时间搏一把大的"
+ data-right="1"
+ data-why="**波动大的东西不是不好，是你没有时间等它涨回来。**
+指数长期年化确实最高，但那个「长期」是十年二十年；它一年之内跌掉三成完全正常（第二课：跌 30% 要涨 43% 才回本）。
+一年后必须动用的钱，**首要目标不是增值，是那天它还在**。
+这就是第 8 步那个顺序：先看这笔钱多久不用，再谈放哪儿。"></div>
+</div>`}
 ];
 
 /* ================= UI ================= */
@@ -693,12 +732,30 @@ function load(){try{
 }catch(e){}}
 
 document.getElementById('bPrev').onclick=()=>{if(si>0){si--;renderStep();}};
-/* 吸顶块有多高，得让 CSS 知道（scroll-margin-top 要用），而它随视口变 */
+/* 吸顶块有多高，得让 CSS 知道（scroll-margin-top 要用），而它随视口和收没收起变 */
 function syncStickH(){
   const h=document.querySelector('.stick').getBoundingClientRect().height;
   document.documentElement.style.setProperty('--stick-h',Math.round(h)+'px');
 }
 window.addEventListener('resize',()=>{draw();syncStickH();});
+
+/* 图可以收起，把地方让给讲解。收起后仍留着档位那一排 ——
+   换档是这一页最主要的动作，把它一起收掉的话，讲解让人「点个档位看看」就没处点了。
+   实测：展开吸顶 327px，收起后 112px，讲解可视区 377 → 592。 */
+const FOLD_KEY='learn_money_c3_fold';
+let folded=false;
+function setFold(v,silent){
+  folded=!!v;
+  document.querySelector('.stick').classList.toggle('folded',folded);
+  const b=document.getElementById('fold');
+  b.textContent=folded?'▼':'▲';
+  b.title=folded?'把图放回来':'收起图，把地方让给讲解';
+  b.setAttribute('aria-expanded',String(!folded));
+  if(!folded)requestAnimationFrame(draw);      // display:none 过一轮，canvas 得按新尺寸重画
+  syncStickH();
+  if(!silent){try{localStorage.setItem(FOLD_KEY,folded?'1':'0');}catch(e){}}
+}
+document.getElementById('fold').onclick=()=>setFold(!folded);
 
 /* 讲解里的 <b class="jump" data-j="rf"> 点了滚到那根滑杆并闪一下。
    data-j 取滑杆的 k，或 'pick'（档位那排）。图是吸顶的，不用跳。 */
@@ -713,6 +770,8 @@ document.getElementById('lBody').addEventListener('click',e=>{
   const j=e.target.closest('[data-j]');
   if(!j)return;
   const k=j.dataset.j;
+  // 讲到图的时候，图要是被收起来了就自动放回来 —— 不然「看上面这张图」指着一片空
+  if(k==='chart'){ if(folded)setFold(false); flash(document.querySelector('.chart-card')); return; }
   if(k==='pick'){ flash(document.getElementById('pick')); return; }   // 吸顶区，本来就看得见
   let target=null;
   if(k==='stats')target=document.getElementById('stats');
@@ -731,7 +790,7 @@ load();
 if(fresh){renderStep(false);}
 else{paintLesson();quick();}
 later(true);        // 首屏直接算出来，别让他先看见一屏「…」
-syncStickH();
+try{ setFold(localStorage.getItem(FOLD_KEY)==='1',true); }catch(e){ setFold(false,true); }
 
 /* ================= AI 助教 ================= */
 MoneyAgent.init({
