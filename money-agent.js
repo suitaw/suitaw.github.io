@@ -30,17 +30,45 @@ const MODELS={
 const PROV_NAME={deepseek:'DeepSeek',kimi:'Kimi',anthropic:'Claude',
                  openai:'ChatGPT',openrouter:'OpenRouter'};
 
-let cfg={provider:'deepseek',apikey:'',models:{}};
+/* Key 必须按 provider 分开存。
+   原来只有 `apikey` 一个槽，五个服务商共用 —— 切到 Claude 还在拿 DeepSeek 的 Key 发请求，
+   必然失败。（vocab-ai-v5 早就修过这个，我抄过来的时候把修复丢了。）
+   `cfg.apikey` 保留成「当前 provider 那把」的镜像，其余代码照旧读它。 */
+let cfg={provider:'deepseek',apikey:'',keys:{},models:{}};
 function loadCfg(){
+  let dirty=false;
   try{
     const own=JSON.parse(localStorage.getItem(CFG_KEY)||'null');
-    if(own&&own.apikey){cfg=Object.assign(cfg,own);return;}
-    const v=JSON.parse(localStorage.getItem(VOCAB_CFG)||'null');   // 继承词汇应用的
-    if(v&&v.apikey)cfg=Object.assign(cfg,{provider:v.provider,apikey:v.apikey,models:v.models||{}});
     if(own)cfg=Object.assign(cfg,own);
+    cfg.keys=cfg.keys||{};
+    // 迁移旧的单一 apikey：那会儿存的是当时选中那个 provider 的
+    if(cfg.apikey&&cfg.provider&&!cfg.keys[cfg.provider]){
+      cfg.keys[cfg.provider]=cfg.apikey; dirty=true;
+    }
+    // 缺的从词汇应用继承 —— 它那边也是按 provider 分开存的，逐个补，别整份覆盖
+    const v=JSON.parse(localStorage.getItem(VOCAB_CFG)||'null');
+    if(v){
+      const vk=Object.assign({},v.keys||{});
+      if(v.apikey&&v.provider&&!vk[v.provider])vk[v.provider]=v.apikey;
+      Object.keys(vk).forEach(k=>{ if(!cfg.keys[k]&&vk[k]){cfg.keys[k]=vk[k];dirty=true;} });
+      if(!own){
+        if(v.provider&&MODELS[v.provider])cfg.provider=v.provider;
+        if(v.models)cfg.models=Object.assign({},v.models,cfg.models);
+      }
+    }
   }catch(e){}
+  cfg.keys=cfg.keys||{};
+  cfg.apikey=cfg.keys[cfg.provider]||'';
+  // 迁移/继承的结果要立刻落盘。只留在内存里的话，下次进来又得重做一遍，
+  // 而词汇应用那边万一把 Key 删了，这边继承来的也就跟着没了
+  if(dirty)saveCfg();
 }
-function saveCfg(){try{localStorage.setItem(CFG_KEY,JSON.stringify(cfg));}catch(e){}}
+function saveCfg(){
+  cfg.keys=cfg.keys||{};
+  if(cfg.provider)cfg.keys[cfg.provider]=cfg.apikey||'';
+  try{localStorage.setItem(CFG_KEY,JSON.stringify(cfg));}catch(e){}
+}
+function hasKey(p){return !!(cfg.keys&&cfg.keys[p]);}
 function curModel(){
   const list=MODELS[cfg.provider]||MODELS.deepseek;
   const s=cfg.models&&cfg.models[cfg.provider];
@@ -256,13 +284,32 @@ function css(){
   padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
 /* dvh 会跟着软键盘缩，vh 不会 —— 不用 dvh 的话键盘一弹出输入框就被顶到屏幕外 */
 @supports (height:1dvh){.ma-panel{height:100dvh;}}
-.ma-hd{display:flex;align-items:center;gap:4px;padding:10px 6px 10px 14px;
+.ma-hd{display:flex;flex-wrap:nowrap;align-items:center;gap:2px;padding:10px 4px 10px 14px;
   border-bottom:1px solid #2e3350;}
 /* 标题必须单行：课程全名太长会折成两行，把本来就紧的面板又吃掉一截 */
+/* 别给它 display:flex —— flex 容器上的 text-overflow:ellipsis 不生效，
+   标题就不缩了，320px 宽时会把右边四颗按钮挤到第二行去 */
 .ma-hd .ti{flex:1;min-width:0;font-size:14px;font-weight:600;color:#e8e9f0;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ma-hd button{flex:0 0 auto;width:44px;min-height:44px;border:none;background:none;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}
+.ma-hd .ti .car{font-size:11px;color:#8890a8;margin-left:4px;}
+/* 标题下面滑出来的课程条：一点就切到那一课的对话。
+   默认收着 —— 常驻要吃掉 48px，而他多数时候只在当前这一课里聊 */
+.ma-lessons{display:none;gap:7px;padding:9px 12px;overflow-x:auto;
+  border-bottom:1px solid #2e3350;background:#12141c;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.ma-lessons::-webkit-scrollbar{display:none;}
+.ma-lessons.on{display:flex;}
+.ma-lessons button{flex:0 0 auto;min-height:44px;padding:0 13px;border-radius:10px;
+  border:1px solid #2e3350;background:#1a1d27;color:#a8b0c8;
+  font-family:inherit;font-size:13px;white-space:nowrap;}
+.ma-lessons button.on{border-color:#e8a84c;background:rgba(232,168,76,.12);color:#e8a84c;
+  font-weight:600;}
+.ma-lessons button.has::after{content:'';display:inline-block;width:5px;height:5px;
+  border-radius:50%;background:#e8a84c;margin-left:6px;vertical-align:2px;}
+.ma-lessons button.off{opacity:.34;}
+.ma-hd button{flex:0 0 auto;width:40px;min-height:44px;border:none;background:none;
   color:#8890a8;font-size:17px;font-family:inherit;cursor:pointer;}
+#maNewTop{font-size:20px;color:#e8a84c;}
 .ma-msgs{flex:1;min-height:110px;overflow-y:auto;padding:12px 14px;
   display:flex;flex-direction:column;gap:10px;}
 /* 设置和历史各自独占一屏：叠在对话上面会看成两个页面糊在一起 */
@@ -333,6 +380,11 @@ function css(){
 .ma-set label{display:block;font-size:12px;color:#8890a8;margin:9px 0 4px;}
 .ma-set select,.ma-set input{width:100%;min-height:44px;border-radius:10px;border:1px solid #2e3350;
   background:#0f1117;color:#e8e9f0;padding:0 11px;font-family:inherit;font-size:14px;}
+.ma-keyrow{display:flex;gap:8px;}
+.ma-keyrow input{flex:1;min-width:0;}
+.ma-keyrow button{flex:0 0 auto;min-height:44px;padding:0 14px;border-radius:10px;
+  border:1px solid #2e3350;background:#22263a;color:#a8b0c8;
+  font-family:inherit;font-size:13.5px;}
 .ma-set .note{font-size:12px;color:#8890a8;line-height:1.6;margin-top:9px;}`;
   document.head.appendChild(s);
 }
@@ -356,11 +408,13 @@ function build(){
   const shortName=String(HOST.lesson||'理财课').split(/\s*·\s*/)[0];
   ov.innerHTML=`<div class="ma-panel">
     <div class="ma-hd">
-      <div class="ti">助教 · ${esc(shortName)}</div>
+      <div class="ti" id="maTitle">助教 · ${esc(shortName)}<span class="car">▾</span></div>
+      <button id="maNewTop" title="开一条新对话">＋</button>
       <button id="maHist" title="历史对话">☰</button>
       <button id="maGear" title="设置">⚙</button>
       <button id="maClose" title="收起">⌄</button>
     </div>
+    <div class="ma-lessons" id="maLessons"></div>
     <div class="ma-set" id="maSet"></div>
     <div class="ma-hist" id="maHistPane"></div>
     <div class="ma-msgs" id="maMsgs"></div>
@@ -376,7 +430,8 @@ function build(){
   el={fab,bar,ov,barT:bar.querySelector('#maBarT'),
       msgs:ov.querySelector('#maMsgs'),tips:ov.querySelector('#maTips'),
       input:ov.querySelector('#maIn'),send:ov.querySelector('#maSend'),
-      set:ov.querySelector('#maSet'),hist:ov.querySelector('#maHistPane')};
+      set:ov.querySelector('#maSet'),hist:ov.querySelector('#maHistPane'),
+      lessons:ov.querySelector('#maLessons'),title:ov.querySelector('#maTitle')};
 
   el.panel=ov.querySelector('.ma-panel');
   ov.querySelector('#maClose').onclick=()=>{
@@ -384,6 +439,13 @@ function build(){
   };
   ov.querySelector('#maGear').onclick=()=>setView(view==='set'?'chat':'set');
   ov.querySelector('#maHist').onclick=()=>setView(view==='hist'?'chat':'hist');
+  // 「新对话」提到标题栏。原来埋在 对话→☰历史→＋新对话 的第三级，
+  // 而「重开一条」是高频动作，不该翻两层
+  ov.querySelector('#maNewTop').onclick=()=>{
+    if(busy){push('sys','正在跑，等它结束再开新的');return;}
+    setView('chat'); newChat(); renderLessons();
+  };
+  el.title.onclick=()=>toggleLessons();
   el.send.onclick=()=>submit();
   el.input.addEventListener('keydown',e=>{
     if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit();}
@@ -426,6 +488,7 @@ function updateTips(){
 let view='chat';
 function setView(v){
   view=v;
+  if(v!=='chat')toggleLessons(false);      // 进设置/历史时把课程条收起来
   el.panel.classList.toggle('setting',v==='set');
   el.panel.classList.toggle('histing',v==='hist');
   el.set.classList.toggle('on',v==='set');
@@ -433,6 +496,51 @@ function setView(v){
   if(v==='set')renderSet();
   else if(v==='hist')renderHist();
   else scrollBottom();
+}
+
+/* ---------- 标题栏下面那条课程条 ----------
+   点标题展开，一点就切到那一课的对话。
+   原来切课得走 对话→☰历史→翻到那一课的组→点某条，三层。 */
+function toggleLessons(v){
+  const on = v===undefined ? !el.lessons.classList.contains('on') : !!v;
+  el.lessons.classList.toggle('on',on);
+  el.title.querySelector('.car').textContent=on?'▴':'▾';
+  if(on){renderLessons();
+    // 把当前这一课滚进视野，八课横着排，第 6 课在屏幕外
+    const cur=el.lessons.querySelector('button.on');
+    if(cur)cur.scrollIntoView({inline:'center',block:'nearest'});
+  }
+}
+function renderLessons(){
+  const nav=window.MoneyNav;
+  const list=(nav&&nav.lessons)||[];
+  const items=readIdx();
+  const my=HOST.lessonNo||0;
+  const here=chatLesson||my;
+  el.lessons.innerHTML=list.map(L=>{
+    const n=items.filter(x=>x.lesson===L.n).length;
+    const cls=[ 'lesson-chip',
+                L.n===here?'on':'',
+                n?'has':'',
+                L.f?'':'off' ].filter(Boolean).join(' ');
+    return '<button class="'+cls+'" data-n="'+L.n+'" data-f="'+esc(L.f||'')+'">'+
+      '第'+L.n+'课'+(n?' '+n:'')+'</button>';
+  }).join('');
+  el.lessons.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const n=+b.dataset.n, f=b.dataset.f;
+    if(!f){push('sys','第'+n+'课还没做');return;}
+    if(busy){push('sys','正在跑，等它结束再切');return;}
+    // 那一课有聊过的，就地打开最近一条（跨课的话 crossBar 会说明）；
+    // 一条都没有，就跳到那一课去开新的 —— 在这一页开一条挂在别课名下的空对话，
+    // 问出来的东西读到的还是这一页的数字，没意义
+    const mine=readIdx().filter(x=>x.lesson===n);
+    if(mine.length){
+      if(openChat(mine[0].id)){toggleLessons(false);setView('chat');renderLessons();}
+      return;
+    }
+    if(n===(HOST.lessonNo||0)){newChat();toggleLessons(false);setView('chat');renderLessons();return;}
+    location.href=f;
+  });
 }
 
 function renderHist(){
@@ -498,20 +606,41 @@ function renderHist(){
     };
   });
 }
+let keyShown=false;
+/* 填完 Key 要就地更新「哪个配过」和「存了几把」。
+   整块重绘会把输入框的光标弄丢，所以只改这两处的文字。 */
+function refreshKeyHints(){
+  const sel=el.set.querySelector('#maProv');
+  if(sel)[...sel.options].forEach(o=>{
+    o.textContent=PROV_NAME[o.value]+(hasKey(o.value)?'　✓ 已配':'　（没配 Key）');
+  });
+  const n=el.set.querySelector('#maKeyN');
+  if(n)n.textContent=Object.keys(cfg.keys||{}).filter(k=>cfg.keys[k]).length;
+}
 function renderSet(){
+  // 下拉里直接标出哪个服务商配过 Key —— 不标的话，切过去发一条才发现没配
   const provOpts=Object.keys(MODELS).map(p=>
-    '<option value="'+p+'"'+(p===cfg.provider?' selected':'')+'>'+PROV_NAME[p]+'</option>').join('');
+    '<option value="'+p+'"'+(p===cfg.provider?' selected':'')+'>'+
+    PROV_NAME[p]+(hasKey(p)?'　✓ 已配':'　（没配 Key）')+'</option>').join('');
   const mdlOpts=(MODELS[cfg.provider]||[]).map(m=>
     '<option value="'+m[0]+'"'+(m[0]===curModel()?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+  const nk=Object.keys(cfg.keys||{}).filter(k=>cfg.keys[k]).length;
   el.set.innerHTML=
     '<label>服务商</label><select id="maProv">'+provOpts+'</select>'+
     '<label>模型</label><select id="maMdl">'+mdlOpts+'</select>'+
-    '<label>API Key</label><input id="maKey" type="password" placeholder="粘贴 key" value="'+
-      esc(cfg.apikey)+'">'+
-    '<div class="note">Key 只存在这台手机的浏览器里，不上传别处。'+
+    '<label>'+PROV_NAME[cfg.provider]+' 的 API Key</label>'+
+    '<div class="ma-keyrow">'+
+      '<input id="maKey" type="'+(keyShown?'text':'password')+'" placeholder="粘贴 key" '+
+      'autocomplete="off" spellcheck="false" value="'+esc(cfg.apikey)+'">'+
+      '<button id="maEye" type="button">'+(keyShown?'隐藏':'显示')+'</button>'+
+    '</div>'+
+    '<div class="note"><b style="color:#a8b0c8">每个服务商各存一把 Key</b>，'+
+      '换服务商会自动带出它自己那把（现在存了 <b id="maKeyN" style="color:#a8b0c8">'+
+      nk+'</b> 把）。<br>'+
+      'Key 只存在这台手机的浏览器里，不上传别处。'+
       '和词汇应用共用同一个域名，那边配过的会自动带过来。</div>'+
     '<label>对话记录</label>'+
-    '<div class="note" style="margin-top:0">当前这条 '+countMsg(shown)+' 条，共存了 '+
+    '<div class="note" style="margin-top:0">当前这条对话 '+countMsg(shown)+' 句，一共存了 '+
       readIdx().length+' 条对话，都在这台手机上。点标题栏的 ☰ 翻历史、新开、删除。</div>'+
     '<button class="ma-wipe" id="maWipe">删掉全部对话记录</button>'+
     '<button class="ma-done" id="maDone">完成</button>';
@@ -524,10 +653,28 @@ function renderSet(){
       newChat(); setView('chat');
     }
   };
-  el.set.querySelector('#maProv').onchange=e=>{cfg.provider=e.target.value;saveCfg();renderSet();};
+  el.set.querySelector('#maProv').onchange=e=>{
+    // 顺序要紧：先把手上这把存回它原来的槽，再换 provider，再带出新的那把。
+    // 直接 saveCfg() 的话，会把旧服务商的 Key 写进新服务商的槽里
+    cfg.keys=cfg.keys||{};
+    cfg.keys[cfg.provider]=cfg.apikey||'';
+    cfg.provider=e.target.value;
+    cfg.apikey=cfg.keys[cfg.provider]||'';
+    saveCfg(); renderSet();
+  };
   el.set.querySelector('#maMdl').onchange=e=>{
     cfg.models=cfg.models||{}; cfg.models[cfg.provider]=e.target.value; saveCfg();};
-  el.set.querySelector('#maKey').oninput=e=>{cfg.apikey=e.target.value.trim();saveCfg();};
+  el.set.querySelector('#maKey').oninput=e=>{
+    cfg.apikey=e.target.value.trim(); saveCfg();
+    refreshKeyHints();     // 不能整块重绘 —— 那样光标会跳没
+  };
+  el.set.querySelector('#maEye').onclick=()=>{
+    // 只切 type，不重画整块 —— 重画会把光标和已选中的文字弄丢
+    keyShown=!keyShown;
+    const i=el.set.querySelector('#maKey');
+    i.type=keyShown?'text':'password';
+    el.set.querySelector('#maEye').textContent=keyShown?'隐藏':'显示';
+  };
 }
 
 function show(v){
@@ -692,6 +839,8 @@ function doSave(){
     try{localStorage.removeItem(ITEM_KEY(gone.id));}catch(e){}
   }
   writeIdx(items);
+  // 课程条开着的时候，上面那个条数得跟着变，不然刚聊完的这条不算数
+  if(el&&el.lessons&&el.lessons.classList.contains('on'))renderLessons();
 }
 function openChat(id){
   let d=null; try{ d=JSON.parse(localStorage.getItem(ITEM_KEY(id))||'null'); }catch(e){}
