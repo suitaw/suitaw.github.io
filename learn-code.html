@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>读代码入门 · 第一章 变量</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#e8a84c;--accent-dim:rgba(232,168,76,.12);
+  --text:#e8e9f0;--dim:#8890a8;
+  --ok:#4caf82;--ok-bg:rgba(76,175,130,.12);
+  --no:#e85c5c;--no-bg:rgba(232,92,92,.12);
+  --dock-h:76px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);min-height:100vh;
+  font-family:system-ui,-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.75;padding-bottom:calc(var(--dock-h) + 20px);}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px;}
+
+/* 顶栏 */
+.top{position:sticky;top:0;z-index:10;background:var(--bg);padding:14px 16px 10px;}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.top h1{font-size:16px;font-weight:600;}
+.top .sub{font-size:12px;color:var(--dim);white-space:nowrap;}
+.bar{height:3px;background:var(--surface2);border-radius:2px;margin-top:9px;overflow:hidden;}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .35s;}
+
+/* 卡片 */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:20px 18px;margin-top:14px;}
+.kicker{font-size:12px;letter-spacing:.1em;color:var(--accent);font-weight:600;margin-bottom:10px;}
+.card h2{font-size:18px;font-weight:600;line-height:1.5;margin-bottom:12px;}
+.body{font-size:15px;color:var(--text);}
+.body p{margin:10px 0;}
+.body p:first-child{margin-top:0;}
+.body b{color:var(--accent);font-weight:600;}
+.body .ic{font-family:var(--mono);font-size:13px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:#e8e9f0;}
+.body ul{margin:10px 0;padding-left:0;list-style:none;}
+.body li{margin:8px 0;padding-left:16px;position:relative;}
+.body li:before{content:"·";position:absolute;left:4px;color:var(--accent);font-weight:700;}
+
+/* 代码块 */
+pre{background:#0b0d13;border:1px solid var(--border);border-radius:10px;
+  padding:14px 14px;margin:14px 0;overflow-x:auto;
+  font-family:var(--mono);font-size:14px;line-height:1.9;}
+pre .k{color:#c792ea;}
+pre .s{color:#7ec98f;}
+pre .n{color:#f0a35e;}
+pre .cm{color:#5c6482;font-style:italic;}
+
+/* 选项 */
+.q{font-size:16px;font-weight:600;margin:4px 0 14px;line-height:1.6;}
+.opts{display:flex;flex-direction:column;gap:10px;}
+.opt{display:flex;align-items:flex-start;gap:11px;width:100%;min-height:52px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:left;color:var(--text);cursor:pointer;
+  font-family:inherit;font-size:15px;line-height:1.6;transition:border-color .15s,background .15s;}
+.opt .ltr{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--border);
+  color:var(--dim);font-size:12px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;margin-top:2px;}
+.opt .txt{flex:1;}
+.opt code{font-family:var(--mono);font-size:13.5px;}
+.opt:disabled{cursor:default;}
+.opt.ok{border-color:var(--ok);background:var(--ok-bg);}
+.opt.ok .ltr{background:var(--ok);color:#fff;}
+.opt.no{border-color:var(--no);background:var(--no-bg);}
+.opt.no .ltr{background:var(--no);color:#fff;}
+.opt.fade{opacity:.45;}
+
+/* 讲解 */
+.exp{margin-top:14px;padding:14px 15px;border-radius:11px;background:var(--surface2);
+  border-left:3px solid var(--border);font-size:14px;line-height:1.8;color:#c9cee0;}
+.exp.g{border-left-color:var(--ok);}
+.exp.r{border-left-color:var(--no);}
+.exp .hd{font-size:13px;font-weight:700;margin-bottom:7px;letter-spacing:.03em;}
+.exp.g .hd{color:var(--ok);}
+.exp.r .hd{color:var(--no);}
+.exp b{color:var(--accent);font-weight:600;}
+.exp .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.exp .more{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+
+/* 吸底 */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:linear-gradient(to top,var(--bg) 65%,rgba(15,17,23,0));
+  padding:14px 16px 18px;}
+.dock-in{max-width:560px;margin:0 auto;display:flex;gap:10px;}
+.btn{flex:1;min-height:48px;border:none;border-radius:11px;background:var(--accent);
+  color:#1a1206;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn:disabled{opacity:.35;cursor:default;}
+.btn.ghost{flex:0 0 auto;padding:0 18px;background:var(--surface2);
+  color:var(--dim);border:1px solid var(--border);font-weight:500;font-size:14px;}
+
+/* 结算 */
+.fin{text-align:center;padding:16px 4px 4px;}
+.fin .big{font-size:44px;}
+.fin h2{margin:10px 0 6px;}
+.fin .score{font-size:15px;color:var(--dim);margin-bottom:6px;}
+.fin .score em{color:var(--accent);font-style:normal;font-weight:700;font-size:22px;}
+</style>
+</head>
+<body>
+
+<div class="top wrap">
+  <div class="top-row">
+    <h1 id="chTitle">读代码 · 第一章 变量</h1>
+    <div class="sub" id="prog">1 / 1</div>
+  </div>
+  <div class="bar"><i id="barFill" style="width:0%"></i></div>
+</div>
+
+<div class="wrap" id="stage"></div>
+
+<div class="dock"><div class="dock-in" id="dock"></div></div>
+
+<script>
+/* ============ 题目数据 ============
+   现在只有一章。以后加章节就往 CHAPTERS 里添一项，UI 不用动。
+   卡片两种：
+     {t:'teach', kicker, h, body, code}          只讲，不问
+     {t:'quiz',  kicker, code, q, opts:[...], exp} 选择题
+   opts 里每一项：{a:'选项文字', ok:true/false, why:'选错时单独讲这一项错在哪'}
+==================================== */
+const CHAPTERS = [{
+name:'第一章 变量',
+cards:[
+
+{t:'teach',kicker:'开始之前',h:'这一章只讲一样东西',
+ body:`<p>代码里最常见的东西叫<b>变量</b>。你的项目里几乎每一行都有它。</p>
+<p>一句话说完：<b>变量就是一个名字，装着一个值。</b></p>
+<p>像给盒子贴张标签，写上「年龄」，盒子里放张纸写着 18。以后你说「年龄」，指的就是里面那个 18。</p>
+<p>就这么简单。下面把它拆开看。</p>`},
+
+{t:'teach',kicker:'第 1 步',h:'把第一行代码拆开',
+ code:`let x = 5;`,
+ body:`<p>这一行有五个零件，一个一个看：</p>
+<ul>
+<li><span class="ic">let</span> —— 「我要新起一个名字」</li>
+<li><span class="ic">x</span> —— 名字，你自己起的</li>
+<li><span class="ic">=</span> —— <b>装进去</b>（注意：不是数学里的「等于」）</li>
+<li><span class="ic">5</span> —— 装的那个值</li>
+<li><span class="ic">;</span> —— 这句说完了</li>
+</ul>
+<p>连起来念：<b>起个名字叫 x，里面装 5。</b></p>`},
+
+{t:'quiz',kicker:'练一下',code:`let x = 5;`,
+ q:'这行跑完之后，x 里装的是什么？',
+ opts:[
+  {a:'5',ok:true},
+  {a:'x',why:'x 是<b>名字</b>，不是值。名字是盒子外面的标签，值是盒子里的东西，两回事。'},
+  {a:'0',why:'变量不会自己变成 0。你装什么它就是什么，这里装的是 5。'},
+  {a:'空的，什么都没有',why:'如果只写 <span class="ic">let x;</span> 不装东西，那才是空的。这行装了 5。'}],
+ exp:'`let x = 5;` 念作「起个名字叫 x，里面装 5」。以后代码里再出现 x，就是指这个 5。'},
+
+{t:'teach',kicker:'第 2 步',h:'名字是你自己起的',
+ code:`let age = 18;
+let price = 20;`,
+ body:`<p>名字随你起，但要<b>起得让人看得懂</b>。起成 a、b、c，一周后你自己都想不起来装的是什么。</p>
+<p>你项目里那些 <span class="ic">agentBusy</span>、<span class="ic">prState</span> 就是这么来的 —— 名字本身就在说明它装的是什么东西。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`let price = 20;
+let count = 3;`,
+ q:'price 里装的是几？',
+ opts:[
+  {a:'20',ok:true},
+  {a:'3',why:'3 装在 count 里。这是<b>两个不同的盒子</b>，互不影响。'},
+  {a:'23',why:'这两行只是各装各的，没让它们做任何计算。'},
+  {a:'60',why:'同上 —— 你没让它们相乘，代码不会自作主张。'}],
+ exp:'两行 `let` 就是两个盒子，各装各的，谁也不碰谁。'},
+
+{t:'teach',kicker:'第 3 步',h:'变量能拿来算',
+ code:`let price = 20;
+let count = 3;
+let total = price * count;`,
+ body:`<p>看第三行。它的意思是：把 price 里的 20 取出来、count 里的 3 取出来，乘一下，<b>结果装进一个新名字 total</b>。</p>
+<p>四则运算的符号：<span class="ic">+</span> 加、<span class="ic">-</span> 减、<span class="ic">*</span> 乘、<span class="ic">/</span> 除。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`let price = 20;
+let count = 3;
+let total = price * count;`,
+ q:'total 里装的是什么？',
+ opts:[
+  {a:'60',ok:true},
+  {a:'price * count 这个算式',why:'代码会<b>先把右边算出来</b>，再把算完的结果装进左边。存进 total 的是 60，不是算式本身。这条马上还要用到。'},
+  {a:'23',why:'`*` 是乘不是加。20 × 3 = 60。'},
+  {a:'3',why:'3 是 count 里的。total 装的是算完的结果。'}],
+ exp:'记住这个顺序：<b>先算右边，再装左边。</b>这是整个第一章最要紧的一句话。'},
+
+{t:'teach',kicker:'第 4 步',h:'装进去的值可以换 —— 所以叫「变」量',
+ code:`let n = 5;
+n = 8;`,
+ body:`<p>第二行<b>没有再写 let</b>。let 只在第一次起名字的时候用，后面再写 <span class="ic">n = 8</span> 就是「把 n 里的东西换成 8」。</p>
+<p>盒子还是那个盒子，标签还是那个标签，只是里面的东西换了。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`let n = 5;
+n = 8;`,
+ q:'现在 n 里装的是几？',
+ opts:[
+  {a:'8',ok:true},
+  {a:'5',why:'5 已经被 8 顶掉了。<b>一个盒子同一时间只装一样东西。</b>'},
+  {a:'13',why:'`=` 不是相加，是替换。旧的那个直接没了。'},
+  {a:'5 和 8 都在',why:'装不下两个。第二行一执行，5 就被扔掉了。'}],
+ exp:'`n = 8` 念作「把 8 装进 n」。原来那个 5 被覆盖掉，找不回来了。'},
+
+{t:'quiz',kicker:'这题是个坎',
+ code:`let n = 5;
+n = n + 1;`,
+ q:'第二行跑完，n 里装的是几？',
+ opts:[
+  {a:'6',ok:true},
+  {a:'5',why:'第二行确实改了它。往下看正解里的两步拆解。'},
+  {a:'1',why:'`n + 1` 是拿 n 现在的值（5）去加 1，不是把 n 扔了只留 1。'},
+  {a:'这行有毛病，n 不可能等于 n+1',why:'数学里确实不可能 —— 但代码里的 <span class="ic">=</span> <b>不念「等于」，念「装进去」</b>。它不是在陈述一件事，是在下一个命令。'}],
+ exp:'用刚才那条规矩拆成两步就不别扭了：<br>① <b>先算右边</b>：n 现在是 5，5 + 1 = 6<br>② <b>再装左边</b>：把 6 装回 n<br>于是 n 变成 6。<br>这种写法在真实代码里到处都是（计数、累加、翻页全靠它），一定要看顺眼。'},
+
+{t:'teach',kicker:'第 5 步',h:'值分两种：数字 和 文字',
+ code:`let n = 5;
+let s = "5";`,
+ body:`<p>加了<b>引号</b>的是文字（行话叫「字符串」），没加引号的是数字。</p>
+<p>这俩长得一样，但根本不是一回事：<span class="ic">5</span> 能拿去算数，<span class="ic">"5"</span> 只是一串符号，跟 <span class="ic">"你好"</span> 是同一类东西。</p>
+<p>下一题就是这个区别惹的祸，而且是真实项目里最常见的坑之一。</p>`},
+
+{t:'quiz',kicker:'真实的坑',
+ code:`let s = "5" + 3;`,
+ q:'s 里装的是什么？',
+ opts:[
+  {a:'文字 "53"',ok:true},
+  {a:'数字 8',why:'两边<b>都是数字</b>才会相加。这里左边是带引号的文字。'},
+  {a:'会报错',why:'不报错 —— 这正是它麻烦的地方。它安安静静给你一个你没想要的结果，你还得自己找半天。'},
+  {a:'数字 53',why:'接近了，位数对了，但它是<b>文字</b>不是数字。拿这个 "53" 再去做减法就会出乱子。'}],
+ exp:'`+` 有两个意思，看两边是什么来定：<br>· 两边都是数字 → <b>相加</b>，5 + 3 = 8<br>· 只要有一边是文字 → <b>接起来</b>，"5" 接上 3 就成了 "53"<br><div class="more">为什么说这是真实的坑：网页输入框里拿到的东西<b>永远是文字</b>，哪怕用户打的是数字。直接拿去相加就会变成拼接 —— 输入 5，加 3，结果显示 53。</div>'},
+
+{t:'quiz',kicker:'对照一下',
+ code:`let s = 5 + 3;`,
+ q:'这次呢？（注意 5 没有引号了）',
+ opts:[
+  {a:'数字 8',ok:true},
+  {a:'文字 "53"',why:'两边都没引号，都是数字，所以是正经相加。有没有那对引号，结果完全不同。'},
+  {a:'"8"',why:'两个数字相加，结果还是数字，不会自己长出引号。'},
+  {a:'报错',why:'这是最普通的一行代码，没有任何问题。'}],
+ exp:'同一个 `+`，前一题给出 "53"，这一题给出 8。差别只在那对引号 —— 所以读代码时<b>看见引号要留个心</b>。'},
+
+{t:'teach',kicker:'第 6 步',h:'const：装进去就不许改',
+ code:`const PI = 3.14;
+let n = 5;`,
+ body:`<p><span class="ic">const</span> 和 <span class="ic">let</span> 一样是起名字，只有一个区别：<b>const 装进去之后不许再改</b>。</p>
+<p>起名的时候就知道这辈子不会变的（圆周率、上限、配置），用 const；会变的用 let。</p>
+<p>这不是规矩死板，是<b>给以后的自己上保险</b>：万一哪天不小心改了它，代码会当场报错拦住你，而不是安静地跑出一个错结果。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`const PI = 3.14;
+PI = 3;`,
+ q:'第二行会发生什么？',
+ opts:[
+  {a:'报错，代码停在这一行',ok:true},
+  {a:'PI 变成 3',why:'那就是 let 的行为了。写成 const 就是明确说「不许改」。'},
+  {a:'PI 还是 3.14，但也不报错',why:'那样反而更糟 —— 你会以为自己改成功了，然后对着一个错结果找半天。<b>const 的价值就在于它吵。</b>'},
+  {a:'PI 变成 6.14',why:'`=` 是装进去，不是相加。而且这里它连装都装不进去。'}],
+ exp:'const 一被改就报错，报错点正好停在犯错的那一行 —— <b>你要的不是「不出错」，是「出错的时候立刻知道」</b>。这是看代码时判断作者靠不靠谱的一个小信号。'},
+
+{t:'quiz',kicker:'最后一题 · 真家伙',
+ code:`const AGENT_TURNS = 8;`,
+ q:'这一行是从你自己的 vocab-ai-v5.html 里原样抄出来的。它在说什么？',
+ opts:[
+  {a:'起了个名字叫 AGENT_TURNS，里面装着 8，而且不许改',ok:true},
+  {a:'让智能体去跑 8 次',why:'很接近，但差了关键一层：<b>这一行本身只是把 8 存起来</b>。真正「跑 8 次」是别处的代码去读这个 8 才发生的。<br>分清「存值」和「用值」，是读代码的基本功。'},
+  {a:'定义了一个叫 8 的东西',why:'反了。8 是值，AGENT_TURNS 才是名字。左边是标签，右边是盒子里的东西。'},
+  {a:'看不懂，这个比前面的复杂',why:'其实一模一样。它和 <span class="ic">const PI = 3.14;</span> 是<b>同一个结构</b>，只是名字长了点、值是整数。把名字盖住再看一遍。'}],
+ exp:'这行就是你设置里「智能体最多跑几轮」那个默认值。<div class="more">这一题想让你看到的是：<b>真实项目的代码不比刚才的例子难，只是多。</b>4300 行看着吓人，但拆开之后，绝大部分就是刚才这六步在反复套。</div>'},
+
+{t:'teach',kicker:'这一章完了',h:'你现在会的东西',
+ body:`<ul>
+<li><span class="ic">let x = 5;</span> 起个名字装个值</li>
+<li><span class="ic">=</span> 念「装进去」，不念「等于」</li>
+<li><b>先算右边，再装左边</b> —— 所以 <span class="ic">n = n + 1</span> 成立</li>
+<li>加引号是文字，不加是数字；<span class="ic">+</span> 碰上文字就变成「接起来」</li>
+<li><span class="ic">const</span> 是「不许改」，改了当场报错</li>
+</ul>
+<p>这五条能让你看懂真实代码里的一大类行。<b>下一章讲「判断」</b>（如果…就…），学完你就能读懂程序为什么会走这条路而不走那条。</p>
+<p>下面按「重做错题」把刚才答错的再过一遍 —— 错过的地方才是真学到东西的地方。</p>`}
+
+]}];
+
+/* ============ 渲染 ============ */
+const KW=/^(let|const|var|function|return|if|else|for|while|true|false|null|undefined)$/;
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hl(code){
+  let out='',i=0;
+  while(i<code.length){
+    const c=code[i];
+    if(c==='"'||c==="'"){let j=i+1;while(j<code.length&&code[j]!==c)j++;
+      out+='<span class="s">'+esc(code.slice(i,Math.min(j+1,code.length)))+'</span>';i=j+1;continue;}
+    if(c==='/'&&code[i+1]==='/'){let j=code.indexOf('\n',i);if(j<0)j=code.length;
+      out+='<span class="cm">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[0-9]/.test(c)&&!/[A-Za-z0-9_$]/.test(code[i-1]||' ')){
+      let j=i;while(j<code.length&&/[0-9.]/.test(code[j]))j++;
+      out+='<span class="n">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[A-Za-z_$]/.test(c)){
+      let j=i;while(j<code.length&&/[A-Za-z0-9_$]/.test(code[j]))j++;
+      const w=code.slice(i,j);
+      out+=KW.test(w)?'<span class="k">'+esc(w)+'</span>':esc(w);i=j;continue;}
+    out+=esc(c);i++;
+  }
+  return out;
+}
+// 讲解文本里认 `代码` 和 <b>，其余原样（数据是我们自己写的，不来自用户输入）
+function rich(s){return (s||'').replace(/`([^`]+)`/g,(m,c)=>'<span class="ic">'+esc(c)+'</span>');}
+
+const LTR=['A','B','C','D','E'];
+const KEY='learn_code_v1';
+let cards=CHAPTERS[0].cards.slice();
+let idx=0, answered=false, wrongIdx=[], rightCnt=0, quizTotal=0, redo=false;
+cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+
+const stage=document.getElementById('stage');
+const dock=document.getElementById('dock');
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify({idx,wrongIdx,rightCnt}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(d&&d.idx>0&&d.idx<cards.length){idx=d.idx;wrongIdx=d.wrongIdx||[];rightCnt=d.rightCnt||0;}}catch(e){}}
+
+function render(){
+  const c=cards[idx];
+  if(!c){renderFin();return;}
+  answered=false;
+  document.getElementById('prog').textContent=(idx+1)+' / '+cards.length;
+  document.getElementById('barFill').style.width=(idx/cards.length*100)+'%';
+  document.getElementById('chTitle').textContent=redo?'重做错题 · 变量':'读代码 · '+CHAPTERS[0].name;
+
+  let h='<div class="card">';
+  if(c.kicker)h+='<div class="kicker">'+esc(c.kicker)+'</div>';
+  if(c.h)h+='<h2>'+esc(c.h)+'</h2>';
+  if(c.t==='teach'){
+    if(c.code)h+='<pre>'+hl(c.code)+'</pre>';
+    h+='<div class="body">'+c.body+'</div>';
+  }else{
+    if(c.code)h+='<pre>'+hl(c.code)+'</pre>';
+    h+='<div class="q">'+esc(c.q)+'</div><div class="opts" id="opts">';
+    c.opts.forEach((o,i)=>{
+      h+='<button class="opt" data-i="'+i+'"><span class="ltr">'+LTR[i]+'</span>'+
+         '<span class="txt">'+rich(o.a)+'</span></button>';
+    });
+    h+='</div><div id="expSlot"></div>';
+  }
+  h+='</div>';
+  stage.innerHTML=h;
+  window.scrollTo(0,0);
+
+  if(c.t==='quiz'){
+    document.getElementById('opts').querySelectorAll('.opt')
+      .forEach(b=>b.addEventListener('click',()=>pick(+b.dataset.i)));
+    dock.innerHTML='<button class="btn" id="next" disabled>先选一个</button>';
+  }else{
+    dock.innerHTML='<button class="btn" id="next">'+(idx===cards.length-1?'看结果':'懂了，继续')+'</button>';
+    document.getElementById('next').onclick=nextCard;
+  }
+  save();
+}
+
+function pick(i){
+  if(answered)return;
+  answered=true;
+  const c=cards[idx], right=c.opts.findIndex(o=>o.ok), good=(i===right);
+  const btns=document.getElementById('opts').querySelectorAll('.opt');
+  btns.forEach((b,k)=>{
+    b.disabled=true;
+    if(k===right)b.classList.add('ok');
+    else if(k===i)b.classList.add('no');
+    else b.classList.add('fade');
+  });
+  if(good){rightCnt++;}
+  else if(!wrongIdx.includes(idx)&&!redo){wrongIdx.push(idx);}
+
+  let e='<div class="exp '+(good?'g':'r')+'">';
+  e+='<div class="hd">'+(good?'✓ 对了':'✗ 选的是 '+LTR[i])+'</div>';
+  if(!good&&c.opts[i].why)e+='<p>'+rich(c.opts[i].why)+'</p><div class="more">'+rich(c.exp)+'</div>';
+  else e+=rich(c.exp);
+  e+='</div>';
+  document.getElementById('expSlot').innerHTML=e;
+
+  const n=document.getElementById('next');
+  n.disabled=false;
+  n.textContent=(idx===cards.length-1?'看结果':'下一题');
+  n.onclick=nextCard;
+  n.scrollIntoView({block:'nearest'});
+}
+
+function nextCard(){idx++;save();render();}
+
+function renderFin(){
+  document.getElementById('barFill').style.width='100%';
+  document.getElementById('prog').textContent='完成';
+  const w=wrongIdx.length;
+  stage.innerHTML='<div class="card fin">'+
+    '<div class="big">'+(w===0?'🎉':'📗')+'</div>'+
+    '<h2>'+(w===0?'一题没错':'第一章过完了')+'</h2>'+
+    '<div class="score"><em>'+rightCnt+'</em> / '+quizTotal+' 题答对</div>'+
+    '<div class="body" style="text-align:left;margin-top:14px">'+
+    (w>0?'<p>有 <b>'+w+'</b> 题答错。错的那几题正是没想通的地方，重做一遍比往下学新的更划算。</p>'
+        :'<p>全对。可以往下学「判断」了 —— 跟我说一声我就做第二章。</p>')+
+    '</div></div>';
+  let d='';
+  if(w>0)d+='<button class="btn" id="redo">重做那 '+w+' 题</button>';
+  d+='<button class="btn '+(w>0?'ghost':'')+'" id="again">'+(w>0?'从头':'从头再来一遍')+'</button>';
+  dock.innerHTML=d;
+  if(w>0)document.getElementById('redo').onclick=()=>{
+    const list=wrongIdx.slice();
+    cards=list.map(i=>CHAPTERS[0].cards[i]);
+    quizTotal=cards.length;rightCnt=0;wrongIdx=[];idx=0;redo=true;render();
+  };
+  document.getElementById('again').onclick=()=>{
+    cards=CHAPTERS[0].cards.slice();
+    quizTotal=0;cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+    rightCnt=0;wrongIdx=[];idx=0;redo=false;
+    try{localStorage.removeItem(KEY);}catch(e){}
+    render();
+  };
+  try{localStorage.removeItem(KEY);}catch(e){}
+}
+
+load();
+render();
+</script>
+</body>
+</html>
