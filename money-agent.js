@@ -89,8 +89,15 @@ async function callAIStream(messages,sys,onText,maxTokens=1200){
   try{
     let r;
     try{ r=await fetch(url,{method:'POST',headers,body:JSON.stringify(body),signal:ctl.signal}); }
-    catch(e){ throw new Error(e.name==='AbortError'?'超时了，网络或服务商没响应'
-                                                  :'连不上（'+e.message+'）'); }
+    catch(e){
+      // 连都没连上，标成 noStream 让外面用非流式再试一次。
+      // 流式是一条长连接，VPN、公司代理、某些运营商会把它挡掉或掐断，
+      // 而同一个接口用普通请求反而通得过。不回退的话，他看到的就是一句
+      // 「连不上（Failed to fetch）」，而其实换个方式就能用
+      throw Object.assign(
+        new Error(e.name==='AbortError'?'超时了，网络或服务商没响应':'连不上（'+e.message+'）'),
+        {noStream:true});
+    }
     if(!r.ok){
       let msg='接口报错 HTTP '+r.status;
       try{const d=await r.json();if(d&&d.error&&d.error.message)msg=d.error.message;}catch(e){}
@@ -289,12 +296,23 @@ function css(){
 .ma-m.sys{align-self:center;background:none;color:#8890a8;font-size:12.5px;text-align:center;
   padding:2px 0;max-width:100%;}
 .ma-when{align-self:center;font-size:12px;color:#6b7391;padding:4px 0 2px;}
+/* 翻别课的对话时顶上那条说明 */
+.ma-cross{align-self:stretch;padding:10px 12px;border-radius:10px;
+  background:rgba(130,170,255,.09);border:1px solid rgba(130,170,255,.3);
+  font-size:12.5px;line-height:1.65;color:#a8b8dd;}
+.ma-cross b{color:#c9d8ff;}
+.ma-cross button{display:block;width:100%;min-height:44px;margin-top:9px;border-radius:9px;
+  border:1px solid rgba(130,170,255,.45);background:rgba(130,170,255,.12);
+  color:#c9d8ff;font-family:inherit;font-size:13.5px;font-weight:600;}
 /* 流式时跟在文字后面的光标，表示还在写 */
 .ma-cur{display:inline-block;width:2px;height:15px;margin-left:2px;vertical-align:-3px;
   background:#e8a84c;animation:ma-blink 1s steps(2,start) infinite;}
 @keyframes ma-blink{to{visibility:hidden;}}
 .ma-m.err{align-self:center;background:rgba(232,92,92,.12);border:1px solid rgba(232,92,92,.35);
-  color:#e2b5b5;font-size:13px;max-width:100%;}
+  color:#e2b5b5;font-size:13px;max-width:100%;text-align:center;}
+.ma-retry{margin-top:8px;min-height:44px;padding:0 18px;border-radius:10px;
+  border:1px solid rgba(232,92,92,.5);background:rgba(232,92,92,.14);color:#ffc9c9;
+  font-family:inherit;font-size:14px;font-weight:600;}
 .ma-tips{display:flex;flex-wrap:wrap;gap:7px;padding:0 14px 10px;}
 .ma-tips button{min-height:38px;padding:0 12px;border-radius:9px;border:1px solid #2e3350;
   background:#1a1d27;color:#a8b0c8;font-size:13px;font-family:inherit;cursor:pointer;}
@@ -447,7 +465,7 @@ function renderHist(){
       html+='<div class="ma-hit'+(cur?' on':'')+'" data-id="'+esc(it.id)+'" data-l="'+it.lesson+'">'+
         '<span class="tx"><span class="t1">'+esc(it.title)+'</span>'+
         '<span class="t2">'+esc(whenText(it.at))+' · '+it.n+' 条'+
-        (cur?' · 正在看':(it.lesson!==my?' · 点了跳过去':''))+'</span></span>'+
+        (cur?' · 正在看':(it.lesson!==my?' · 别的课':''))+'</span></span>'+
         '<button class="del" data-del="'+esc(it.id)+'" title="删掉">✕</button></div>';
     });
   });
@@ -465,13 +483,9 @@ function renderHist(){
       if(busy){push('sys','正在跑，等它结束再切');setView('chat');return;}
       const id=row.dataset.id, l=+row.dataset.l;
       if(id===chatId){setView('chat');return;}
-      // 别的课的对话得跳到那一课去看：上下文和页面必须是同一课，
-      // 否则它读的是这一页的数字，聊的却是另一课的事
-      if(l!==(HOST.lessonNo||0)){
-        const L=nav&&nav.get?nav.get(l):null;
-        if(L&&L.f){location.href=L.f+'#chat='+encodeURIComponent(id);return;}
-        push('sys','那一课还没做，打不开');setView('chat');return;
-      }
+      // 别课的对话也**就地打开**，不再硬跳页面 —— 翻记录是高频动作，
+      // 为了看一眼旧对话就整页刷新太重。但接着聊会读到这一页的数字，
+      // 所以顶上挂一条提醒 + 一颗「去那一课」，见 crossBar()
       if(openChat(id))setView('chat');
     };
   });
@@ -520,7 +534,9 @@ function show(v){
   open=v;
   el.ov.classList.toggle('on',v);
   el.fab.style.display=v?'none':'';
-  if(v){hideBar();scrollBottom();setTimeout(()=>el.input.focus(),60);}
+  // 打开时**不要** focus 输入框：手机上一进来软键盘就弹出来占掉半屏，
+  // 而他多半是先来看之前聊的内容。要打字自己点输入框就行
+  if(v){hideBar();scrollBottom();}
   else if(busy)el.bar.classList.add('on');
 }
 /* 完成态的条子必须会自己消失。原来做完只是把文案换成「✓ …」就一直挂在那儿，
@@ -572,6 +588,23 @@ function whenText(ts){
   return (d.getMonth()+1)+'月'+d.getDate()+'日 '+hm;
 }
 function scrollBottom(){requestAnimationFrame(()=>{el.msgs.scrollTop=el.msgs.scrollHeight;});}
+
+/* 出错就地挂一颗「重试」。原来报了错那条就死在那儿，他得把问题重新打一遍 ——
+   而断网、Key 一时抽风、服务商 503 这些，重试一下多半就过去了。
+   err 走 tmp（不入档）：重试成功之后，存档里不该留着一条失败记录。
+   history 的最后一条还是他那个问题，所以直接再跑一遍 loop 就行。 */
+function pushErr(msg,retryable){
+  const d=push('err',msg,true);
+  if(retryable){
+    const b=document.createElement('button');
+    b.className='ma-retry';
+    b.textContent='重试';
+    b.onclick=()=>{ if(busy)return; d.remove(); loop(); };
+    d.appendChild(document.createElement('br'));
+    d.appendChild(b);
+  }
+  return d;
+}
 
 /* ---------- 对话存档（多会话） ----------
    一次页面加载 = 一个新对话（他要的：刷新就从头开始）；
@@ -641,7 +674,9 @@ function doSave(){
   const n=countMsg(shown);
   if(!n)return;                          // 空对话不落盘，见上面那段注释
   if(!chatId)chatId='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  const lesson=HOST.lessonNo||0, at=Date.now();
+  // 归哪一课看它从哪一课开起的，不看现在停在哪一页 ——
+  // 否则他在第三课翻开第一课那条聊两句，它就从第一课组里消失了
+  const lesson=chatLesson||HOST.lessonNo||0, at=Date.now();
   try{
     localStorage.setItem(ITEM_KEY(chatId),JSON.stringify({
       id:chatId, lesson, at,
@@ -663,17 +698,40 @@ function openChat(id){
   if(!d||!Array.isArray(d.shown))return false;
   clearTimeout(saveTimer);
   chatId=id;
+  chatLesson=d.lesson||0;
   shown=d.shown.filter(m=>m&&m.who&&m.text)
                .map(m=>({who:m.who,text:m.text,t:m.t||d.at||Date.now()}));
   history=Array.isArray(d.history)?d.history.filter(h=>h&&h.role&&h.content):[];
   el.msgs.innerHTML='';
+  crossBar();
   shown.forEach((m,i)=>paint(m,shown[i-1]));
   updateTips(); scrollBottom();
   return true;
 }
+/* 打开的是别课的对话时，顶上挂一条说明。
+   不挂的话会出一件很怪的事：他接着问「这个数怎么算的」，
+   而助教读到的是**当前这一页**的数字，答的却是另一课的问题。 */
+function crossBar(){
+  const old=el.msgs.querySelector('.ma-cross');
+  if(old)old.remove();
+  const my=HOST.lessonNo||0;
+  if(!chatLesson||chatLesson===my)return;
+  const nav=window.MoneyNav;
+  const L=nav&&nav.get?nav.get(chatLesson):null;
+  const name=L?('第'+chatLesson+'课 · '+L.t):('第'+chatLesson+'课');
+  const d=document.createElement('div');
+  d.className='ma-cross';
+  d.innerHTML='<span>这是<b>'+esc(name)+'</b>的对话。看没问题，'+
+    '但在这一页接着问，我读到的是<b>第'+my+'课</b>的数字。</span>'+
+    (L&&L.f?'<button id="maGoLesson">去'+esc(name.split(' · ')[0])+'接着聊</button>':'');
+  el.msgs.appendChild(d);
+  const b=d.querySelector('#maGoLesson');
+  if(b)b.onclick=()=>{ location.href=L.f+'#chat='+encodeURIComponent(chatId); };
+}
+let chatLesson=0;
 function newChat(){
   clearTimeout(saveTimer);              // 干掉在飞的那次写入，否则会写到新对话名下
-  chatId=null; shown=[]; history=[];
+  chatId=null; chatLesson=HOST.lessonNo||0; shown=[]; history=[];
   el.msgs.innerHTML='';
   updateTips();
   greet();
@@ -820,7 +878,7 @@ async function loop(){
       catch(e){
         if(thinking.parentNode)thinking.remove();
         if(live)live.remove();
-        push('err',(e&&e.message)||'调用失败');
+        pushErr((e&&e.message)||'调用失败',true);
         break;
       }
       if(thinking.parentNode)thinking.remove();
