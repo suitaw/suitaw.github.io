@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>第 0 课 · 读懂符号 —— 电工入门</title>
+<style>
+:root{
+  --bg:#f3f5f7; --card:#ffffff; --card2:#f7f9fb; --line:#dde2e8;
+  --tx:#1e2329; --tx2:#5d6773; --tx3:#8b949e;
+  --acc:#1a6fd4; --accbg:#e8f1fc;
+  --ok:#1c8348; --okbg:#e6f4ec;
+  --err:#c32f2f; --errbg:#fdeaea;
+  --warn:#a86200; --warnbg:#fdf2e0;
+  --r:10px; --tap:44px; --dock-h:62px; --stick-h:260px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#14171b; --card:#1d2126; --card2:#232830; --line:#333b44;
+    --tx:#e7eaee; --tx2:#9ba5b1; --tx3:#78828e;
+    --acc:#5da3f0; --accbg:#17293c;
+    --ok:#4dc47e; --okbg:#16301f;
+    --err:#ff7373; --errbg:#3a1c1c;
+    --warn:#e2a53c; --warnbg:#38290f;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font:15px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  -webkit-text-size-adjust:100%;
+  padding-bottom:calc(var(--dock-h) + 24px);
+}
+h1,h2,h3,h4{margin:0;font-weight:600;line-height:1.4}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:max(12px,.9em);
+  background:var(--accbg);color:var(--acc);padding:1px 5px;border-radius:5px}
+p{margin:.7em 0}
+ul{margin:.6em 0;padding-left:1.3em}
+li{margin:.35em 0}
+.wrap{max-width:760px;margin:0 auto}
+
+/* ---------- 吸顶区：顶栏 + 舞台 ----------
+   顶栏和舞台包在同一个 sticky 里，就不用去算顶栏到底多高。 */
+.stick{position:sticky;top:0;z-index:20;background:var(--bg);
+  box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.top{display:flex;align-items:center;gap:6px;padding:0 8px;
+  height:48px;background:var(--card);border-bottom:1px solid var(--line)}
+.top h1{flex:1;min-width:0;font-size:.95rem;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.tbtn{flex:none;min-width:var(--tap);height:var(--tap);padding:0 8px;
+  display:flex;align-items:center;justify-content:center;
+  font:inherit;font-size:.85rem;color:var(--tx2);background:none;
+  border:none;border-radius:8px;cursor:pointer;text-decoration:none}
+.tbtn:active{background:var(--card2)}
+.stage{padding:8px 10px 10px;background:var(--card);
+  border-bottom:1px solid var(--line)}
+body.fold .stage{display:none}
+.st-t{font-size:.75rem;color:var(--tx3);margin-bottom:6px}
+
+/* ---------- 铭牌 ---------- */
+.pl-tabs{display:flex;gap:6px;margin-bottom:7px}
+.pl-tab{min-height:var(--tap);padding:0 12px;font:inherit;font-size:.78rem;color:var(--tx2);
+  background:var(--card2);border:1px solid var(--line);border-radius:999px;cursor:pointer}
+.pl-tab.on{background:var(--accbg);border-color:var(--acc);color:var(--acc);font-weight:600}
+.plate{background:#20252c;border:1px solid #3a424c;border-radius:8px;
+  padding:7px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pi{min-height:var(--tap);padding:5px 8px;font:inherit;cursor:pointer;
+  background:#2a3038;border:1px solid #454e59;border-radius:6px;
+  color:#e9edf2;font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:.95rem;font-weight:700;letter-spacing:.03em;text-align:center}
+.pi.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.pl-x{margin-top:7px;min-height:74px;max-height:104px;overflow-y:auto;
+  background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.pl-x .h{font-size:.82rem;font-weight:600;color:var(--acc)}
+.pl-x .d{font-size:.8rem;line-height:1.6;color:var(--tx2)}
+.pl-x .hint{font-size:.8rem;color:var(--tx3)}
+
+/* ---------- 身高↔电流 对齐图 ---------- */
+.alg{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.alg-h,.alg-r{display:grid;grid-template-columns:66px 34px 1fr 56px;
+  gap:6px;align-items:center}
+.alg-h span{font-size:.75rem;color:var(--tx3);text-align:center}
+.alg-h span:first-child{text-align:left}
+.alg-r{min-height:36px;border-top:1px dashed var(--line)}
+.alg-n{font-size:.82rem;font-weight:600}
+.alg-s{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1rem;font-weight:700;
+  color:var(--acc);text-align:center;background:var(--accbg);border-radius:6px;padding:2px 0}
+.alg-v{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1rem;
+  font-weight:700;text-align:center}
+.alg-u{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1rem;font-weight:700;
+  color:var(--ok);text-align:center;background:var(--okbg);border-radius:6px;padding:2px 0}
+.alg-f{margin-top:8px;padding-top:7px;border-top:1px solid var(--line);
+  font-size:.8rem;color:var(--tx2)}
+
+/* ---------- U 还是 V ---------- */
+.uv{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px}
+.uv-f{text-align:center;font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:1.7rem;font-weight:700;letter-spacing:.08em}
+.uv-f .s1{color:var(--acc)}
+.uv-f .s2{color:var(--ok)}
+.uv-x{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.uv-c{border-radius:8px;padding:7px 9px;font-size:.78rem;line-height:1.5}
+.uv-c b{display:block;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.05rem}
+.uv-c span{display:block;color:var(--tx3);font-size:.75rem}
+.uv-c.c1{background:var(--accbg);color:var(--acc)}
+.uv-c.c2{background:var(--okbg);color:var(--ok)}
+.uv-n{margin-top:8px;font-size:.78rem;color:var(--tx2);line-height:1.55}
+
+/* ---------- 换算器 ---------- */
+.cv{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+.cv-r{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.cv-r select,.cv-r input{min-height:var(--tap);width:100%;font:inherit;font-size:.85rem;
+  color:var(--tx);background:var(--card);border:1px solid var(--line);
+  border-radius:8px;padding:0 8px}
+.cv-out{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.cv-o{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88rem;
+  background:var(--card);border:1px solid var(--line);border-radius:7px;
+  padding:6px 8px;color:var(--tx2)}
+.cv-o.on{background:var(--accbg);border-color:var(--acc);color:var(--acc);font-weight:700}
+.cv-p{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  font-size:.75rem;color:var(--tx3)}
+.cv-p button{min-height:var(--tap);padding:0 10px;font:inherit;font-size:.78rem;
+  color:var(--acc);background:var(--card);border:1px solid var(--line);
+  border-radius:999px;cursor:pointer}
+
+/* ---------- 欧姆三角 ---------- */
+.tri{display:flex;gap:10px;align-items:flex-start}
+.tri-b{flex:none;width:150px;border:1px solid var(--line);border-radius:8px;
+  overflow:hidden;background:var(--card2)}
+.tc{width:100%;min-height:46px;font:inherit;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.3rem;font-weight:700;
+  color:var(--acc);background:var(--card);border:none;cursor:pointer}
+.tc.cov{color:var(--tx3);background:var(--line)}
+.tri-b .top-c{border-bottom:2px solid var(--tx2)}
+.tri-bot{display:grid;grid-template-columns:1fr 1fr}
+.tri-bot .tc+.tc{border-left:1px solid var(--line)}
+.tri-o{flex:1;min-width:0;font-size:.8rem;line-height:1.6;color:var(--tx2)}
+.tri-o b{display:block;font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:1.1rem;color:var(--tx);margin-bottom:3px}
+
+/* ---------- 讲解卡 ---------- */
+main{padding:12px 12px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:13px 14px}
+.card h2{font-size:1rem;margin-bottom:2px}
+.card .sub{font-size:.75rem;color:var(--tx3);margin-bottom:8px}
+.card h4{font-size:.88rem;margin:14px 0 4px}
+.hi{background:var(--accbg);border-left:3px solid var(--acc);
+  border-radius:8px;padding:9px 11px;font-size:.85rem;line-height:1.65}
+.warnbox{background:var(--warnbg);border-left:3px solid var(--warn);
+  border-radius:8px;padding:9px 11px;font-size:.85rem;line-height:1.65;color:var(--tx)}
+.px{background:var(--card2);border:1px solid var(--line);border-radius:8px;
+  padding:8px 10px;font-size:.82rem}
+.px table{width:100%;border-collapse:collapse}
+.px td{padding:5px 4px;border-bottom:1px dashed var(--line)}
+.px tr:last-child td{border-bottom:none}
+.px .s{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;
+  font-size:1rem;color:var(--acc);width:34px;text-align:center}
+.px .m{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--tx2);
+  font-size:.85rem;text-align:right;white-space:nowrap}
+.nxt{display:block;margin-top:14px;min-height:var(--tap);line-height:var(--tap);
+  text-align:center;font-size:.88rem;font-weight:600;text-decoration:none;
+  color:#fff;background:var(--acc);border-radius:9px}
+
+/* ---------- 吸底导航 ---------- */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:30;
+  background:var(--card);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom)}
+/* 进度只做一条 2px 的线：吸底那两颗按钮要留够宽度写得下字，
+   六个可点的圆点会把它们挤到换行截断（截图抓到的） */
+.bar{height:3px;background:var(--line)}
+.bar i{display:block;height:3px;background:var(--acc);transition:width .25s}
+.dbtns{display:flex;align-items:center;gap:8px;padding:8px 10px;width:100%}
+.dbtn{flex:1;min-height:var(--tap);padding:0 10px;font:inherit;font-size:.88rem;
+  font-weight:600;white-space:nowrap;color:var(--tx);background:var(--card2);
+  border:1px solid var(--line);border-radius:9px;cursor:pointer}
+.dbtn.go{flex:1.35;color:#fff;background:var(--acc);border-color:var(--acc)}
+.dbtn:disabled{opacity:.4;cursor:default}
+
+/* 吸顶的经典坑：scrollIntoView 会把目标滚到视口最上边、正好被吸顶块盖住 */
+[data-anchor]{scroll-margin-top:calc(var(--stick-h) + 12px)}
+</style>
+</head>
+<body>
+
+<div class="stick" id="stick">
+  <div class="wrap">
+    <div class="top">
+      <a class="tbtn" href="index.html" title="返回">‹</a>
+      <h1>第 0 课 · 读懂符号</h1>
+      <button class="tbtn" id="fold" title="收起图示">▲</button>
+    </div>
+    <div class="stage" id="stage" data-anchor="stage"></div>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="card" id="lessonCard"></div>
+</main>
+
+<div class="dock">
+  <div class="bar"><i id="bar"></i></div>
+  <div class="wrap dbtns">
+    <button class="dbtn" id="prev">‹ 上一步</button>
+    <button class="dbtn go" id="next">下一步 ›</button>
+  </div>
+</div>
+
+<script src="elec-ui.js"></script>
+<script>
+'use strict';
+var U = window.ElecUI;
+
+/* ================================================================
+   第 1 部分：舞台（吸顶那块图示）
+   六种视图，按步骤切换。每种视图自己的状态存在模块变量里，
+   切回来还是原样。
+   ================================================================ */
+
+/* ---- 铭牌数据 ---- */
+var PLATES = {
+  lamp: {
+    tab:'LED 灯泡', name:'一只 LED 灯泡尾部印的字（点每一项看它是什么）',
+    items:[
+      { k:'220V', t:'额定电压 220 伏',
+        d:'它设计工作在 220 伏电压下。我国家用市电就是 220V，所以这只灯泡能直接接家里的灯座。这里的 V 是<b>单位</b>「伏特」；电压这个<b>物理量</b>的符号是 U。' },
+      { k:'~50Hz', t:'交流电，频率 50 赫兹',
+        d:'波浪号 ~ 表示交流电（电流方向来回变），直流一般写 DC。50Hz 是我国市电频率，意思是每秒来回变化 50 次。Hz 是频率的单位「赫兹」，频率的物理量符号是 f。' },
+      { k:'5W', t:'额定功率 5 瓦',
+        d:'它每秒钟消耗 5 焦耳的电能 —— 这一项说的就是「费不费电」。W 是功率的单位「瓦特」，功率的物理量符号是 P。老式白炽灯要 40W 左右才有这个亮度。' },
+      { k:'E27', t:'灯头型号，螺口直径约 27mm',
+        d:'E 表示螺口（爱迪生螺纹），27 表示螺纹外径约 27 毫米，也就是家里最常见的大螺口。这一项跟电学无关，是机械尺寸 —— 认错了拧不上去。' }
+    ]
+  },
+  mcb: {
+    tab:'家用断路器', name:'配电箱里那一排小开关上印的字（点每一项看它是什么）',
+    items:[
+      { k:'C16', t:'脱扣曲线 C，额定电流 16A',
+        d:'16 是额定电流 16 安培：长期电流在 16A 以内它不动作，超了就跳闸。C 是脱扣曲线类型（常见 B / C / D），决定它对<b>瞬间</b>大电流有多敏感，家用照明和插座回路一般用 C。具体倍数看产品手册，断路器那一课再细讲。' },
+      { k:'230/400V~', t:'额定电压，交流',
+        d:'单相回路 230V、三相回路 400V 都能用，~ 还是「交流」。它跟灯泡上的 220V 不矛盾：断路器印的是国际标称值 230/400V，我国市电标称 220V/380V，属于同一档。' },
+      { k:'6000', t:'额定短路分断能力 6000A',
+        d:'短路瞬间的电流可能高达几千安培。这个数字是说：只要短路电流不超过 6000 安培，它能安全切断而不炸开。数字越大越经得起短路。' }
+    ]
+  }
+};
+var plState = { which:'lamp', pick:{ lamp:null, mcb:null } };
+
+function stagePlate(tabs){
+  var p = PLATES[plState.which], h = '';
+  if(tabs){
+    h += '<div class="pl-tabs">';
+    ['lamp','mcb'].forEach(function(k){
+      h += '<button class="pl-tab'+(plState.which===k?' on':'')+'" data-pl="'+k+'">'+
+           PLATES[k].tab+'</button>';
+    });
+    h += '</div>';
+  }
+  h += '<div class="st-t">'+p.name+'</div><div class="plate">';
+  p.items.forEach(function(it,i){
+    h += '<button class="pi'+(plState.pick[plState.which]===i?' on':'')+
+         '" data-pi="'+i+'">'+it.k+'</button>';
+  });
+  h += '</div><div class="pl-x">';
+  var pi = plState.pick[plState.which];
+  if(pi==null) h += '<div class="hint">↑ 点上面任意一项，这里就说它是什么。</div>';
+  else h += '<div class="h">'+p.items[pi].k+' —— '+p.items[pi].t+'</div>'+
+            '<div class="d">'+p.items[pi].d+'</div>';
+  h += '</div>';
+  return h;
+}
+function bindPlate(box, tabs){
+  box.querySelectorAll('[data-pi]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var i = +b.dataset.pi;
+      plState.pick[plState.which] = (plState.pick[plState.which]===i ? null : i);
+      paintStage();
+    });
+  });
+  if(tabs) box.querySelectorAll('[data-pl]').forEach(function(b){
+    b.addEventListener('click', function(){
+      plState.which = b.dataset.pl; paintStage();
+    });
+  });
+}
+
+/* ---- 身高↔电流 对齐图 ---- */
+function stageAlign(){
+  var rows = [
+    ['身高','h','175','cm'],
+    ['电流','I','2','A'],
+    ['电压','U','220','V'],
+    ['电阻','R','10','Ω']
+  ];
+  var h = '<div class="st-t">同一件事的两种符号：蓝色是「要量的东西」，绿色是「用的尺子」</div>'+
+          '<div class="alg"><div class="alg-h"><span>要量的东西</span><span>符号</span>'+
+          '<span>数值</span><span>尺子</span></div>';
+  rows.forEach(function(r){
+    h += '<div class="alg-r"><span class="alg-n">'+r[0]+'</span>'+
+         '<span class="alg-s">'+r[1]+'</span>'+
+         '<span class="alg-v">'+r[2]+'</span>'+
+         '<span class="alg-u">'+r[3]+'</span></div>';
+  });
+  h += '<div class="alg-f">「小明身高 175 厘米」写成式子就是 <code>h = 175 cm</code>；'+
+       '「电流是 2 安培」写成式子就是 <code>I = 2 A</code>。一模一样。</div></div>';
+  return h;
+}
+
+/* ---- U 还是 V ---- */
+function stageUV(){
+  return '<div class="st-t">电压这一个量，有两个写法 —— 这是零基础最大的混淆源</div>'+
+    '<div class="uv"><div class="uv-f"><b class="s1">U</b> = 220 <b class="s2">V</b></div>'+
+    '<div class="uv-x">'+
+      '<div class="uv-c c1"><b>U</b>物理量：电压<span>美式写法里也写成 V</span></div>'+
+      '<div class="uv-c c2"><b>V</b>单位：伏特<span>只有这一个写法</span></div>'+
+    '</div>'+
+    '<div class="uv-n">按美式写法就长成 <code>V = 220 V</code>：前一个是物理量，'+
+    '后一个是单位。判别法只有一条 —— <b>紧跟数字的是单位</b>。</div></div>';
+}
+
+/* ---- 单位换算器 ---- */
+var CONV = {
+  I:{ n:'电流', us:[['μA',1e-6],['mA',1e-3],['A',1],['kA',1e3]] },
+  U:{ n:'电压', us:[['mV',1e-3],['V',1],['kV',1e3]] },
+  R:{ n:'电阻', us:[['mΩ',1e-3],['Ω',1],['kΩ',1e3],['MΩ',1e6]] },
+  P:{ n:'功率', us:[['mW',1e-3],['W',1],['kW',1e3],['MW',1e6]] }
+};
+var cvSt = { q:'I', u:'mA', n:30 };
+
+function fmtNum(v){
+  if(!isFinite(v)) return '—';
+  if(v===0) return '0';
+  var a = Math.abs(v), s;
+  if(a>=1e12 || a<1e-9) return v.toExponential(3);
+  if(a<1) s = v.toFixed(10);
+  else s = v.toFixed(Math.max(0, 6-Math.floor(Math.log10(a))));
+  if(s.indexOf('.')>=0) s = s.replace(/0+$/,'').replace(/\.$/,'');
+  return s;
+}
+function stageConv(){
+  var g = CONV[cvSt.q], mul = 1;
+  g.us.forEach(function(u){ if(u[0]===cvSt.u) mul = u[1]; });
+  var base = (parseFloat(cvSt.n)||0) * mul;
+  var h = '<div class="st-t">同一个大小的量，换个单位写法就完全变样 —— 自己试试</div><div class="cv">';
+  h += '<div class="cv-r"><select id="cvQ">';
+  Object.keys(CONV).forEach(function(k){
+    h += '<option value="'+k+'"'+(k===cvSt.q?' selected':'')+'>'+CONV[k].n+'</option>';
+  });
+  h += '</select><input id="cvN" type="number" inputmode="decimal" value="'+cvSt.n+'">'+
+       '<select id="cvU">';
+  g.us.forEach(function(u){
+    h += '<option value="'+u[0]+'"'+(u[0]===cvSt.u?' selected':'')+'>'+u[0]+'</option>';
+  });
+  h += '</select></div><div class="cv-out">';
+  g.us.forEach(function(u){
+    h += '<div class="cv-o'+(u[0]===cvSt.u?' on':'')+'">'+fmtNum(base/u[1])+' '+u[0]+'</div>';
+  });
+  h += '</div><div class="cv-p">现场常见：'+
+       '<button data-cv="I|mA|30">30mA 漏保</button>'+
+       '<button data-cv="R|Ω|5000000">5000000Ω 绝缘</button>'+
+       '<button data-cv="P|kW|1">1kW 一度电</button>'+
+       '</div></div>';
+  return h;
+}
+function bindConv(box){
+  var q = box.querySelector('#cvQ'), nn = box.querySelector('#cvN'),
+      uu = box.querySelector('#cvU');
+  q.addEventListener('change', function(){
+    cvSt.q = q.value; cvSt.u = CONV[cvSt.q].us[0][0]; paintStage();
+  });
+  uu.addEventListener('change', function(){ cvSt.u = uu.value; paintStage(); });
+  nn.addEventListener('input', function(){
+    cvSt.n = nn.value;
+    // 只重画结果，别整块重绘 —— 会把输入框光标弄丢
+    var g = CONV[cvSt.q], mul = 1;
+    g.us.forEach(function(u){ if(u[0]===cvSt.u) mul = u[1]; });
+    var base = (parseFloat(cvSt.n)||0) * mul, out = box.querySelector('.cv-out'), h = '';
+    g.us.forEach(function(u){
+      h += '<div class="cv-o'+(u[0]===cvSt.u?' on':'')+'">'+fmtNum(base/u[1])+' '+u[0]+'</div>';
+    });
+    out.innerHTML = h;
+  });
+  box.querySelectorAll('[data-cv]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var p = b.dataset.cv.split('|');
+      cvSt.q = p[0]; cvSt.u = p[1]; cvSt.n = p[2]; paintStage();
+    });
+  });
+}
+
+/* ---- 欧姆三角（这一课只用来练「一条式子三种用法」，定律本身后面专门讲） ---- */
+var TRI = {
+  U:{ f:'U = I × R', d:'盖住 U，剩下的 I 和 R 是<b>并排</b>的 → 两个相乘。' },
+  I:{ f:'I = U ÷ R', d:'盖住 I，剩下 U 在<b>上</b>、R 在<b>下</b> → 上面的除以下面的。' },
+  R:{ f:'R = U ÷ I', d:'盖住 R，剩下 U 在<b>上</b>、I 在<b>下</b> → 上面的除以下面的。' }
+};
+var triSt = { cov:null };
+function stageTri(){
+  var c = triSt.cov, t = c ? TRI[c] : null;
+  var cell = function(k, cls){
+    return '<button class="tc '+(cls||'')+(c===k?' cov':'')+'" data-tc="'+k+'">'+
+           (c===k ? '?' : k)+'</button>';
+  };
+  return '<div class="st-t">点一下你想求的那个量，把它盖住</div><div class="tri">'+
+    '<div class="tri-b">'+cell('U','top-c')+
+    '<div class="tri-bot">'+cell('I')+cell('R')+'</div></div>'+
+    '<div class="tri-o">'+(t ? '<b>'+t.f+'</b>'+t.d
+      : 'U 在上，I 和 R 并排在下。盖住哪个，剩下的摆法就是算它的式子。') +'</div></div>';
+}
+function bindTri(box){
+  box.querySelectorAll('[data-tc]').forEach(function(b){
+    b.addEventListener('click', function(){
+      triSt.cov = (triSt.cov===b.dataset.tc ? null : b.dataset.tc); paintStage();
+    });
+  });
+}
+
+/* ---- 舞台总入口 ---- */
+var STAGE = {
+  lamp:  { html:function(){ return stagePlate(false); }, bind:function(b){ bindPlate(b,false); } },
+  plates:{ html:function(){ return stagePlate(true);  }, bind:function(b){ bindPlate(b,true);  } },
+  align: { html:stageAlign },
+  uv:    { html:stageUV },
+  conv:  { html:stageConv, bind:bindConv },
+  tri:   { html:stageTri,  bind:bindTri }
+};
+function paintStage(){
+  var kind = STEPS[cur].stage, v = STAGE[kind], box = document.getElementById('stage');
+  box.innerHTML = v.html();
+  if(v.bind) v.bind(box);
+  syncStickH();
+}
+
+/* ================================================================
+   第 2 部分：课程内容
+   ================================================================ */
+var STEPS = [
+
+/* ---------- 1 ---------- */
+{
+  stage:'lamp',
+  h:'先看一眼你以后每天要读的东西',
+  sub:'第 1 步 / 6',
+  body:
+   '<p>这是一只 LED 灯泡尾部印的字，一共就四项。你上班后天天要读这种字 ——'+
+   '换一只灯、配一个开关、判断这条线还能不能再加东西，全靠它。</p>'+
+
+   '<div class="bet" data-bet="c00-plate" data-q="这四项里，哪一项在说「这灯有多费电」？"'+
+   ' data-opts="220V|~50Hz|5W|E27" data-right="2"'+
+   ' data-after="5W 是<b>功率</b>，说的是它每秒钟吃掉多少电。220V 说的是它要配多高的电压，'+
+   '50Hz 说的是交流电每秒来回变 50 次，E27 说的是灯头螺纹直径 27 毫米。"></div>'+
+
+   '<div data-bet-for="c00-plate">'+
+   '<p><b data-j="stage">上面那张铭牌</b>每一项都能点，点开就是它是什么。</p>'+
+   '<div class="hi">这一课不讲任何电学原理，只解决一件事：<b>这些字母分别是谁</b>。'+
+   '不先把这个弄清楚，后面每一条公式对你都是天书 —— 这不是你笨，'+
+   '是从来没人跟你讲过：符号有<b>两套</b>，而且长得很像。</div>'+
+   '</div>'
+},
+
+/* ---------- 2 ---------- */
+{
+  stage:'align',
+  h:'两套符号：要量的东西，和用来量的尺子',
+  sub:'第 2 步 / 6',
+  body:
+   '<p>先看一句你早就会的话：<b>小明身高 175 厘米。</b></p>'+
+   '<p>这句话里有三样东西：<b>身高</b>是要量的那个东西，<b>175</b> 是量出来的数，'+
+   '<b>厘米</b>是用的那把尺子。写成式子就是 <code>h = 175 cm</code> ——'+
+   'h 代表「身高」，cm 代表「厘米」。</p>'+
+   '<p>电学里一模一样。<b>电流</b>是要量的东西，符号 <code>I</code>；'+
+   '<b>安培</b>是尺子，符号 <code>A</code>。所以 <code>I = 2 A</code> 念作「电流是 2 安培」。'+
+   '<b data-j="stage">上面那张对齐图</b>四行是一一对应的，横着看。</p>'+
+
+   '<h4>常用的六个，先认脸</h4>'+
+   U.qtyTable(['I','U','R','P','Q','t'])+
+
+   '<div class="hi">分不清的时候用这一条，百试百灵：'+
+   '<b>紧跟在数字后面的一定是单位；单独站在等号旁边的是物理量。</b>'+
+   '「220V」里的 V 是单位，「U = 220V」里的 U 是物理量。</div>'+
+
+   '<h4>顺手把「电荷」讲清楚</h4>'+
+   '<p>表里的<b>电荷量 Q</b>第一次见会懵。你就理解成「电本身有多少」——'+
+   '水有多少升，电有多少库仑。1 库仑是很大的一坨：大约 6.24×10¹⁸ 个电子的电量。</p>'+
+   '<p>换算给你个体感：一节标 2000mAh 的 5 号充电电池，'+
+   '满电大约能放出 <b>7200 库仑</b>（2000mAh = 2A×3600s = 7200C）。</p>'+
+   '<p>印刷上还有个规矩：物理量斜体（<i>I</i>、<i>U</i>），单位正体（A、V）。'+
+   '手写看不出斜正，所以还是靠上面那条位置判别法。</p>'
+},
+
+/* ---------- 3 ---------- */
+{
+  stage:'uv',
+  h:'电压最坑：它自己就有两个写法',
+  sub:'第 3 步 / 6',
+  body:
+   '<p>上一步表里，电压那一行的符号我写的是 <code>U</code>。'+
+   '但你在别处一定会看到 <code>V</code>：</p>'+
+   '<p>国标和欧洲教材写 <code>U</code>，美国教材和很多电子类资料写 <code>V</code>。'+
+   '<b>两个都对，指的是同一个东西。</b>而单位只有一个写法：<code>V</code>（伏特）。</p>'+
+   '<p>于是就出现了这个看着很晕的式子：<code>V = 220 V</code>。'+
+   '<b data-j="stage">上面</b>把两个 V 拆开标了 —— 前一个是物理量「电压」，'+
+   '后一个是单位「伏特」。用上一步那条判别法一看就分开了。</p>'+
+
+   '<div class="hi">本课程一律用国标写法 <code>U</code>，就是为了少一个混淆源。'+
+   '你在外面看到 V 站在等号左边，知道它是电压就行，不用管为什么。</div>'+
+
+   '<h4>顺便说三个容易看串的</h4>'+
+   '<ul>'+
+   '<li><code>P</code> 是功率（物理量），<code>W</code> 是它的单位「瓦特」。'+
+   '但 <code>W</code> 单独当物理量用时是<b>电能</b>（单位是焦耳 J）。看位置。</li>'+
+   '<li><code>I</code> 是电流，<code>A</code> 是安培。写成 <code>A</code> 在等号左边的场合很少见，'+
+   '所以电流这一对基本不会串。</li>'+
+   '<li><code>Ω</code> 只是单位，电阻这个物理量写 <code>R</code>。'+
+   '没人会用 Ω 当物理量。</li>'+
+   '</ul>'
+},
+
+/* ---------- 4 ---------- */
+{
+  stage:'conv',
+  h:'k、M、m、μ：单位前面那个小字母',
+  sub:'第 4 步 / 6',
+  body:
+   '<p>电工现场的数字跨度极大：漏电保护器的动作电流是 0.03 安培，'+
+   '而绝缘电阻要 5000000 欧姆以上。这么写零容易数错，'+
+   '所以在单位前面加一个字母表示倍数。</p>'+
+
+   '<div class="px"><table>'+
+   '<tr><td class="s">M</td><td>兆</td><td class="m">×1 000 000</td></tr>'+
+   '<tr><td class="s">k</td><td>千</td><td class="m">×1 000</td></tr>'+
+   '<tr><td class="s">—</td><td>（什么都不加）</td><td class="m">×1</td></tr>'+
+   '<tr><td class="s">m</td><td>毫</td><td class="m">÷1 000</td></tr>'+
+   '<tr><td class="s">μ</td><td>微</td><td class="m">÷1 000 000</td></tr>'+
+   '</table></div>'+
+
+   '<div class="warnbox">⚠ <b>大写 M 是兆，小写 m 是毫，两个差十亿倍。</b>'+
+   '<code>1MΩ = 1000000Ω</code>，<code>1mΩ = 0.001Ω</code>。'+
+   '这不是抠字眼 —— 抄错一个字母，判断就整个反了。</div>'+
+
+   '<p><b data-j="stage">上面那个换算器</b>可以随手换：'+
+   '选好物理量、填数、选单位，其它写法自己就出来了。下面三个是现场原话，直接点。</p>'+
+
+   '<div class="bet" data-bet="c00-milli" data-q="漏电保护器上写着 30mA，它是在多少安培的漏电流下动作？"'+
+   ' data-opts="30A|3A|0.03A" data-right="2"'+
+   ' data-after="m（毫）是 ÷1000，所以 30mA = 30÷1000 = 0.03A。"></div>'+
+
+   '<div data-bet-for="c00-milli">'+
+   '<p>为什么定得这么小：几十毫安的交流电通过人体就可能致命'+
+   '（具体阈值跟通电时间、电流路径都有关，安全那一课细讲）。'+
+   '要是把 30mA 理解成 30A，对这个数字的整个感觉就反了 —— '+
+   '30A 够烧断一根 4 平方的线，而漏保是要在<b>远远小于</b>这个的时候就跳。</p>'+
+
+   '<h4>三个你一定会遇到的写法</h4>'+
+   '<ul>'+
+   '<li><b>30mA</b> —— 家用漏电保护器的动作电流，即 0.03A。</li>'+
+   '<li><b>1.5mm²</b> —— 导线截面积，说的是铜芯有多粗。'+
+   '这里的 mm² 是「平方毫米」，那个 m 不是前缀，别看串。</li>'+
+   '<li><b>1kW·h</b> —— 俗称「一度电」：1000 瓦的东西用满 1 小时。'+
+   '中间那个点是<b>乘号</b>，不是小数点。</li>'+
+   '</ul>'+
+   '</div>'
+},
+
+/* ---------- 5 ---------- */
+{
+  stage:'tri',
+  h:'公式里的符号怎么读',
+  sub:'第 5 步 / 6',
+  body:
+   '<p>公式里除了字母，还有几个记号，也从来没人专门讲过：</p>'+
+   '<ul>'+
+   '<li><b>乘号常常省略。</b><code>U = IR</code> 就是「U 等于 I 乘 R」。'+
+   '两个字母贴在一起就是相乘。</li>'+
+   '<li><b>除号写成斜杠或分数线。</b><code>I = U / R</code> 和「U 除以 R」是一回事。</li>'+
+   '<li><b>右上角那个小 2 叫平方。</b><code>U²</code> 是 U 乘 U，<b>不是</b> U 乘 2。'+
+   '所以 <code>P = U²/R</code> 念作「U 乘 U，再除以 R」。</li>'+
+   '<li><b>单位中间的点是乘。</b><code>kW·h</code> 是千瓦乘小时。</li>'+
+   '<li><b>Ω</b> 是希腊字母，读「欧姆」。</li>'+
+   '</ul>'+
+
+   '<h4>一条式子有三种用法</h4>'+
+   '<p>拿后面要专门讲的欧姆定律当例子 —— 这里<b>只练怎么读</b>，不讲道理：</p>'+
+   U.formula({
+     plain:'电压 = 电流 × 电阻',
+     f:'U = I R',
+     vars:['U','I','R'],
+     note:'把它倒过来就是 <code>I = U / R</code> 和 <code>R = U / I</code>。'+
+           '这不是三条公式，是<b>同一条</b>的三种用法：三个量知道两个，第三个就能算。'
+   })+
+   '<p><b data-j="stage">上面那个方框</b>就是干这个用的：点一下你要求的那个量把它盖住，'+
+   '剩下两个的<b>摆法</b>就是算它的式子。</p>'+
+
+   '<div class="hi">往后每出现一条新公式，都会像上面这样把每个字母拆开摆给你：'+
+   '<b>符号 / 它是什么 / 单位</b>三样齐全。你不用再猜。</div>'
+},
+
+/* ---------- 6 ---------- */
+{
+  stage:'plates',
+  h:'回头再读一遍铭牌',
+  sub:'第 6 步 / 6',
+  body:
+   '<p>回到<b data-j="stage">开头那张灯泡铭牌</b>，现在四项应该都读得下来了：</p>'+
+   '<ul>'+
+   '<li><code>220V</code> —— 额定电压 220 伏。V 是单位。</li>'+
+   '<li><code>~50Hz</code> —— 交流，频率 50 赫兹。~ 表示交流。</li>'+
+   '<li><code>5W</code> —— 额定功率 5 瓦。W 是单位，物理量是 P。</li>'+
+   '<li><code>E27</code> —— 灯头螺口直径约 27mm，机械尺寸。</li>'+
+   '</ul>'+
+   '<p>舞台上多了一张：<b>家用断路器</b>，配电箱里那一排就是它，'+
+   '你以后开箱第一眼看的就是这些字。点上面的「家用断路器」切过去看。</p>'+
+
+   '<div class="hi">这一课一个电学原理都没教，但它是后面所有课的钥匙。'+
+   '零基础学不下去，十次里有八次不是卡在道理上，是卡在<b>看不懂符号</b>——'+
+   '一句话里有一半字母不知道是谁，再简单的道理也读不进去。</div>'+
+
+   '<h4>检验一下</h4>'+
+   '<div class="quiz" data-quiz="c00">'+
+     '<div class="qz" data-q="「220V」里的 V，是什么？"'+
+     ' data-opts="物理量「电压」的符号|单位「伏特」的符号|两个都是，看心情"'+
+     ' data-right="1"'+
+     ' data-why="判别法：紧跟在数字后面的一定是单位。物理量「电压」的符号是 U（美式写法也用 V），'+
+     '它出现在等号左边那种位置。"></div>'+
+
+     '<div class="qz" data-q="绝缘电阻 1.5MΩ，等于多少欧姆？"'+
+     ' data-opts="1500 Ω|1500000 Ω|0.0015 Ω" data-right="1"'+
+     ' data-why="M（兆）是 ×1000000，所以 1.5MΩ = 1500000Ω。'+
+     '要是看成小写 m（毫，÷1000），算出来是 0.0015Ω —— 两者差十亿倍，'+
+     '一个是「绝缘良好」，一个是「等于短路」。"></div>'+
+
+     '<div class="qz" data-q="P = U²/R 里的 U²，念作什么？"'+
+     ' data-opts="U 的两倍|U 乘 U|U 加 U" data-right="1"'+
+     ' data-why="右上角的小 2 是平方，意思是自己乘自己。U=220 时 U² 是 48400，'+
+     '不是 440 —— 差得非常远，这个看错整道题就废了。"></div>'+
+
+     '<div class="qz" data-q="万用表打在「200mA」档，你要测一条估计有 0.5A 的电流。行吗？"'+
+     ' data-opts="行，0.5 比 200 小得多|不行，0.5A 是 500mA，超量程了|行，档位越小测得越准"'+
+     ' data-right="1"'+
+     ' data-why="比大小之前必须先统一单位：0.5A = 500mA，比 200mA 大一倍半，超量程了'+
+     '（轻则读数不对，重则烧掉表内保险）。这道题就是这一课的用处 —— '+
+     '不是算错，是<b>没换单位就直接比</b>。"></div>'+
+   '</div>'+
+
+   '<p style="font-size:.78rem;color:var(--tx3)">（完整课表和第 1 课正在做。'+
+   '下面那颗按钮先带你去电路搭建器，边搭边看这些符号在实物上长什么样。）</p>'
+}
+
+];
+
+/* ================================================================
+   第 3 部分：翻页 / 吸顶 / 收起
+   ================================================================ */
+var cur = 0;
+var $ = function(s){ return document.querySelector(s); };
+
+function paintLesson(){
+  var s = STEPS[cur], card = $('#lessonCard');
+  card.innerHTML = '<h2>'+s.h+'</h2><div class="sub">'+s.sub+'</div>'+s.body;
+  // 组件：先猜一下 / 练习题 / 讲解里的可点跳转
+  U.bind(card, { jump:function(k){
+    if(k==='stage'){ setFold(false); return $('#stage'); }
+    return document.querySelector(k);
+  }});
+  paintStage();
+  $('#prev').disabled = (cur===0);
+  // 末步不能只是把「下一步」禁用：最顺手的位置白占着，
+  // 而真要点的那颗埋在讲解卡最底下（money 课踩过）
+  var last = (cur===STEPS.length-1);
+  $('#next').textContent = last ? '去搭个电路练手 ›' : '下一步 ›';
+  $('#bar').style.width = Math.round((cur+1)/STEPS.length*100)+'%';
+  U.progress('c00', Math.max(cur+1, U.progress('c00')||0));
+}
+
+function go(i, noScroll){
+  if(i<0 || i>=STEPS.length) return;
+  cur = i; paintLesson();
+  if(!noScroll) window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+/* 吸顶块有多高只有量出来才知道（图会随视口变），量完写进 --stick-h，
+   [data-anchor] 的 scroll-margin-top 靠它。 */
+function syncStickH(){
+  var h = $('#stick').getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--stick-h', Math.round(h)+'px');
+}
+function setFold(on){
+  document.body.classList.toggle('fold', !!on);
+  $('#fold').textContent = on ? '▼' : '▲';
+  $('#fold').title = on ? '展开图示' : '收起图示';
+  syncStickH();
+}
+
+$('#prev').addEventListener('click', function(){ go(cur-1); });
+$('#next').addEventListener('click', function(){
+  if(cur===STEPS.length-1) location.href = 'index.html';
+  else go(cur+1);
+});
+$('#fold').addEventListener('click', function(){
+  setFold(!document.body.classList.contains('fold'));
+});
+window.addEventListener('resize', syncStickH);
+
+// 初始化那次不要滚动：一进来就该从最上面开始看
+go(0, true);
+syncStickH();
+
+// 供后续脚本化验证用
+window.__C00__ = { STEPS:STEPS, go:go, state:function(){
+  return { cur:cur, stage:STEPS[cur].stage, fold:document.body.classList.contains('fold'),
+           plate:plState, conv:cvSt, tri:triSt };
+} };
+</script>
+</body>
+</html>
