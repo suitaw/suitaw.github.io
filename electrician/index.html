@@ -54,6 +54,19 @@ button{font:inherit;color:inherit;cursor:pointer}
 }
 @media (min-width:900px){.jumps{display:none}}
 
+/* ---------- 第 0 课入口（放在最上面，因为它是读懂后面一切的前提） ---------- */
+.pre{max-width:1240px;margin:14px auto 0;padding:0 14px}
+.pre a{display:flex;align-items:center;gap:11px;min-height:var(--tap);
+  padding:11px 13px;text-decoration:none;color:inherit;
+  background:var(--accbg);border:1px solid var(--acc);border-radius:var(--r)}
+.pre .ic{flex:none;width:34px;height:34px;border-radius:9px;background:var(--acc);
+  color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;
+  font-size:.95rem}
+.pre .tt{flex:1;min-width:0}
+.pre .tt b{display:block;font-size:.9rem;color:var(--acc)}
+.pre .tt span{display:block;font-size:.78rem;color:var(--tx2);line-height:1.5}
+.pre .ar{flex:none;color:var(--acc);font-size:1.1rem}
+
 /* ---------- 主栅格 ---------- */
 .wrap{max-width:1240px;margin:0 auto;padding:14px}
 .cols{display:grid;gap:14px;grid-template-columns:1fr}
@@ -298,6 +311,15 @@ footer{max-width:1240px;margin:0 auto;padding:6px 14px;font-size:.75rem;color:va
     <a href="#lab">实验</a>
   </div>
   <div class="sub">第一章切片：电流 / 电压 / 电阻 / 欧姆定律 / 串联并联 —— 左边看懂，右边动手搭。</div>
+</div>
+
+<div class="pre">
+  <a href="c00.html">
+    <span class="ic">0</span>
+    <span class="tt"><b>先读第 0 课 · 读懂符号</b>
+      <span>公式里每个字母是谁、V 和 U 有什么区别、mA 和 MΩ 差多少 —— 六步，不讲原理。</span></span>
+    <span class="ar">›</span>
+  </a>
 </div>
 
 <div class="wrap">
