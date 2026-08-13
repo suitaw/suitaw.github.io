@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>读代码入门 · Python 第二章 判断</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#e8a84c;--accent-dim:rgba(232,168,76,.12);
+  --text:#e8e9f0;--dim:#8890a8;
+  --ok:#4caf82;--ok-bg:rgba(76,175,130,.12);
+  --no:#e85c5c;--no-bg:rgba(232,92,92,.12);
+  --dock-h:76px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);min-height:100vh;
+  font-family:system-ui,-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.75;padding-bottom:calc(var(--dock-h) + 20px);}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px;}
+
+/* 顶栏 */
+.top{position:sticky;top:0;z-index:10;background:var(--bg);padding:14px 16px 10px;}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.top h1{font-size:16px;font-weight:600;}
+.top .sub{font-size:12px;color:var(--dim);white-space:nowrap;}
+.bar{height:3px;background:var(--surface2);border-radius:2px;margin-top:9px;overflow:hidden;}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .35s;}
+.back{display:inline-flex;align-items:center;min-height:44px;font-size:13px;
+  color:var(--dim);text-decoration:none;}
+.back:active{color:var(--accent);}
+
+/* 卡片 */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:20px 18px;margin-top:6px;}
+.kicker{font-size:12px;letter-spacing:.1em;color:var(--accent);font-weight:600;margin-bottom:10px;}
+.card h2{font-size:18px;font-weight:600;line-height:1.5;margin-bottom:12px;}
+.body{font-size:15px;color:var(--text);}
+.body p{margin:10px 0;}
+.body p:first-child{margin-top:0;}
+.body b{color:var(--accent);font-weight:600;}
+.body .ic{font-family:var(--mono);font-size:13px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:#e8e9f0;}
+.body ul{margin:10px 0;padding-left:0;list-style:none;}
+.body li{margin:8px 0;padding-left:16px;position:relative;}
+.body li:before{content:"·";position:absolute;left:4px;color:var(--accent);font-weight:700;}
+.golink{display:flex;align-items:center;justify-content:center;min-height:48px;
+  margin-top:14px;border-radius:11px;background:var(--accent-dim);
+  border:1px solid var(--accent);color:var(--accent);font-weight:600;
+  font-size:15px;text-decoration:none;}
+
+/* 代码块 */
+pre{background:#0b0d13;border:1px solid var(--border);border-radius:10px;
+  padding:14px 14px;margin:14px 0;overflow-x:auto;
+  font-family:var(--mono);font-size:14px;line-height:1.9;}
+pre .k{color:#c792ea;}
+pre .s{color:#7ec98f;}
+pre .n{color:#f0a35e;}
+pre .b{color:#82aaff;}
+pre .cm{color:#5c6482;font-style:italic;}
+
+/* 屏幕输出 */
+.out{margin:-6px 0 14px;padding:10px 13px;border-radius:0 0 10px 10px;
+  background:#141821;border:1px solid var(--border);border-top:none;
+  font-family:var(--mono);font-size:13.5px;color:#9aa4c0;line-height:1.7;}
+.out .lb{font-family:inherit;font-size:11px;letter-spacing:.08em;color:#5c6482;
+  display:block;margin-bottom:3px;}
+.out .v{display:block;color:#e8e9f0;white-space:pre-wrap;}
+.out .v.none{color:#5c6482;font-style:italic;}
+
+/* 选项 */
+.q{font-size:16px;font-weight:600;margin:4px 0 14px;line-height:1.6;}
+.opts{display:flex;flex-direction:column;gap:10px;}
+.opt{display:flex;align-items:flex-start;gap:11px;width:100%;min-height:52px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:left;color:var(--text);cursor:pointer;
+  font-family:inherit;font-size:15px;line-height:1.6;transition:border-color .15s,background .15s;}
+.opt .ltr{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--border);
+  color:var(--dim);font-size:12px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;margin-top:2px;}
+.opt .txt{flex:1;}
+.opt .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.opt:disabled{cursor:default;}
+.opt.ok{border-color:var(--ok);background:var(--ok-bg);}
+.opt.ok .ltr{background:var(--ok);color:#fff;}
+.opt.no{border-color:var(--no);background:var(--no-bg);}
+.opt.no .ltr{background:var(--no);color:#fff;}
+.opt.fade{opacity:.45;}
+
+/* 讲解 */
+.exp{margin-top:14px;padding:14px 15px;border-radius:11px;background:var(--surface2);
+  border-left:3px solid var(--border);font-size:14px;line-height:1.8;color:#c9cee0;}
+.exp.g{border-left-color:var(--ok);}
+.exp.r{border-left-color:var(--no);}
+.exp .hd{font-size:13px;font-weight:700;margin-bottom:7px;letter-spacing:.03em;}
+.exp.g .hd{color:var(--ok);}
+.exp.r .hd{color:var(--no);}
+.exp b{color:var(--accent);font-weight:600;}
+.exp .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.exp .more{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.exp .ic.blk{display:block;padding:9px 11px;margin:7px 0;line-height:1.6;
+  white-space:pre-wrap;word-break:break-word;color:#e88a8a;}
+
+/* 吸底 */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:linear-gradient(to top,var(--bg) 65%,rgba(15,17,23,0));
+  padding:14px 16px 18px;}
+.dock-in{max-width:560px;margin:0 auto;display:flex;gap:10px;}
+.btn{flex:1;min-height:48px;border:none;border-radius:11px;background:var(--accent);
+  color:#1a1206;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn:disabled{opacity:.35;cursor:default;}
+.btn.ghost{flex:0 0 auto;padding:0 18px;background:var(--surface2);
+  color:var(--dim);border:1px solid var(--border);font-weight:500;font-size:14px;}
+
+/* 结算 */
+.fin{text-align:center;padding:16px 4px 4px;}
+.fin .big{font-size:44px;}
+.fin h2{margin:10px 0 6px;}
+.fin .score{font-size:15px;color:var(--dim);margin-bottom:6px;}
+.fin .score em{color:var(--accent);font-style:normal;font-weight:700;font-size:22px;}
+</style>
+</head>
+<body>
+
+<div class="top wrap">
+  <div class="top-row">
+    <h1 id="chTitle">Python · 第二章 判断</h1>
+    <div class="sub" id="prog">1 / 1</div>
+  </div>
+  <div class="bar"><i id="barFill" style="width:0%"></i></div>
+</div>
+
+<div class="wrap"><a class="back" href="learn-code.html">‹ 回第一章 变量</a></div>
+<div class="wrap" id="stage"></div>
+
+<div class="dock"><div class="dock-in" id="dock"></div></div>
+
+<script>
+/* ============ 题目数据 ============
+   卡片两种：
+     {t:'teach', kicker, h, body, code, out}           只讲，不问
+     {t:'quiz',  kicker, code, out, q, opts:[...], exp} 选择题
+   out  ：代码块下面接一条「屏幕上会出现什么」；写 '' 表示「什么都没有」
+   opts ：每一项 {a:'选项文字', ok:true/false, why:'选错时单独讲这一项错在哪'}
+   ★ 所有代码的输出和报错原文，都用本机 python3 3.14.6 实跑核对过，不是凭记忆写的
+==================================== */
+const CHAPTERS = [{
+name:'第二章 判断',
+cards:[
+
+{t:'teach',kicker:'开始之前',h:'给直路加一个岔路口',
+ body:`<p>第一章的代码是一条<b>直路</b>：从上到下，一行接一行，全都会跑。</p>
+<p>这一章给它加个岔路口 —— <b>满足某个条件，才做某件事</b>。</p>
+<p>程序之所以看着像会思考，全靠这一样东西。你手机上任何一个 App，「登录了就进首页，没登录就跳登录页」，本质就是这一章讲的玩意儿。</p>`},
+
+{t:'teach',kicker:'第 1 步',h:'if 长什么样',
+ code:`age = 20
+if age >= 18:
+    print("成年了")`,
+ out:'成年了',
+ body:`<p>三个要点，缺一个就报错：</p>
+<ul>
+<li><span class="ic">if</span> 后面跟一道<b>判断题</b>（age >= 18），答案只有「成立」或「不成立」</li>
+<li>这一行<b>末尾有个冒号</b> <span class="ic">:</span></li>
+<li>下一行<b>往右缩进</b>（按 4 个空格）—— 缩进的这些行，才是「成立时要做的事」</li>
+</ul>
+<p>别的语言用大括号圈出这一块，<b>Python 用缩进</b>。所以在 Python 里，缩进不是排版好看，<b>是语法</b>。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`age = 20
+if age >= 18:
+    print("成年了")`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'成年了',ok:true},
+  {a:'什么都没有',why:'age 是 20，20 >= 18 <b>成立</b>，所以缩进里那行会执行。'},
+  {a:'True',why:'`age >= 18` 算出来确实是 True，但那是 if 自己拿去判断用的，不会打到屏幕上。屏幕上出现的是 print 括号里的东西。'},
+  {a:'age >= 18',why:'代码不会把自己原样抄到屏幕上，它会被执行。'}],
+ exp:'`age >= 18` 成立 → 执行缩进里的 `print("成年了")` → 屏幕出现「成年了」。'},
+
+{t:'quiz',kicker:'反过来',
+ code:`age = 15
+if age >= 18:
+    print("成年了")`,
+ q:'只把 20 改成 15，这次屏幕上出现什么？',
+ opts:[
+  {a:'什么都没有',ok:true},
+  {a:'成年了',why:'15 >= 18 <b>不成立</b>。条件不成立时，缩进里的行整个跳过，一行都不执行。'},
+  {a:'False',why:'条件不成立就是安静地跳过，不会打印任何东西，也不会报错。'},
+  {a:'报错',why:'这是完全正常的代码。条件不成立不是错误，是本来就允许发生的情况。'}],
+ exp:'条件不成立 → 缩进里的整块<b>直接跳过</b>，什么都不发生。<br>这是 if 的全部意义：<b>有些代码不是每次都跑</b>。'},
+
+{t:'teach',kicker:'第 2 步 · 大坑',h:'一个等号和两个等号，是两回事',
+ code:`x = 5      # 装进去
+x == 5     # 提问：x 是 5 吗？`,
+ body:`<p>第一章说过：<span class="ic">=</span> 念「<b>装进去</b>」，不念「等于」。</p>
+<p>那真要问「相等吗」怎么写？<b>写两个等号</b>：</p>
+<ul>
+<li><span class="ic">=</span> 一个等号 —— <b>动作</b>：把右边装进左边</li>
+<li><span class="ic">==</span> 两个等号 —— <b>提问</b>：左右一样吗？</li>
+</ul>
+<p>提问的答案只有两个：<span class="ic">True</span>（成立）或 <span class="ic">False</span>（不成立）。<b>首字母必须大写</b>，这是 Python 里两个特殊的值。</p>
+<p>（那行 <span class="ic">#</span> 后面的字是<b>注释</b>：写给人看的，Python 会完全忽略。）</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`x = 5
+print(x == 5)
+print(x == 3)`,
+ out:'True\nFalse',
+ q:'屏幕上出现的两行是什么？（这题答案已经写在上面了，看懂就行）',
+ opts:[
+  {a:'True 和 False',ok:true},
+  {a:'5 和 3',why:'`x == 5` 不是「取出 5」，是「问 x 是不是 5」。问出来的答案是 True / False，不是数字本身。'},
+  {a:'True 和 True',why:'x 装的是 5。问「x 是 3 吗」，答案当然是 False。'},
+  {a:'报错',why:'完全正常的代码。`==` 的结果本身就是个值，可以直接 print 出来看。'}],
+ exp:'`==` 是在提问，答案是 <b>True</b> 或 <b>False</b>。<br>if 后面那道判断题，算出来的就是这两个值之一 —— <b>True 就执行，False 就跳过</b>。'},
+
+{t:'quiz',kicker:'这题是个坎',
+ code:`x = 1
+if x = 5:
+    print("嗯")`,
+ q:'注意第二行只有一个等号。这段代码会怎样？',
+ opts:[
+  {a:'报错，代码根本跑不起来',ok:true},
+  {a:'把 5 装进 x，然后打印「嗯」',why:'很多人第一反应是这个。但 <span class="ic">if</span> 后面要的是一道<b>判断题</b>，你给了它一个<b>动作</b> —— Python 直接拒收。'},
+  {a:'判断 x 是不是 5，不是，所以什么都不打印',why:'那要写<b>两个</b>等号 <span class="ic">==</span>。一个等号是「装进去」，不是「提问」。'},
+  {a:'什么都不做，但也不报错',why:'Python 在这儿态度很硬 —— 它认为这是写错了，直接拦下不让跑。'}],
+ exp:'报错原文长这样：<span class="ic blk">SyntaxError: invalid syntax. Maybe you meant \'==\' or \':=\' instead of \'=\'?</span><b>Python 甚至猜到了你想写什么</b>，直接在报错里提示「你是不是想写 ==」。<div class="more">记住一句话：<b>if 后面永远是提问，不是动作。</b><br>在有些语言里这么写是合法的，然后就会安静地跑出一个错结果 —— Python 选择当场拦下你。这和上一章 `"5" + 3` 报错是同一个脾气。</div>'},
+
+{t:'teach',kicker:'第 3 步',h:'六个比较符号',
+ code:`a > b     # 大于
+a < b     # 小于
+a >= b    # 大于或等于
+a <= b    # 小于或等于
+a == b    # 等于
+a != b    # 不等于`,
+ body:`<p>前四个跟数学课上一样，只是 ≥ 在键盘上打不出来，就写成两个字符 <span class="ic">&gt;=</span>。</p>
+<p>最后一个 <span class="ic">!=</span> 是「<b>不等于</b>」—— 感叹号在代码里通常表示「非、不是」。</p>
+<p>这六个的结果，全都是 <span class="ic">True</span> 或 <span class="ic">False</span>。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`score = 60
+print(score >= 60)
+print(score != 60)`,
+ q:'屏幕上出现的两行是什么？',
+ opts:[
+  {a:'True 和 False',ok:true},
+  {a:'True 和 True',why:'第二行问的是「score <b>不等于</b> 60 吗」。score 正好就是 60，所以「不等于」这句话不成立 → False。'},
+  {a:'False 和 True',why:'第一行是「大于<b>或等于</b>」，60 和 60 相等，所以成立 → True。'},
+  {a:'60 和 60',why:'比较的结果是 True / False，不是数字本身。'}],
+ exp:'第一行：<span class="ic">&gt;=</span> 含「等于」，60 >= 60 成立 → True<br>第二行：<span class="ic">!=</span> 是「不等于」，60 != 60 不成立 → False<br><b>「大于」和「大于或等于」差一个字，行为差一整个边界值</b>，这一章最后一题还会撞上它。'},
+
+{t:'teach',kicker:'第 4 步',h:'else：不成立时走另一条',
+ code:`money = 30
+if money >= 50:
+    print("买")
+else:
+    print("不买")`,
+ out:'不买',
+ body:`<p><span class="ic">else</span> 的意思是「否则」。条件不成立时走它这一条。</p>
+<p>三个细节：</p>
+<ul>
+<li>else 后面<b>也有冒号</b>，下面<b>也要缩进</b></li>
+<li>else 和 if <b>左边对齐</b> —— 对齐了才是一对</li>
+<li>两条路<b>只会走一条</b>，绝不会两条都走</li>
+</ul>
+<p>有了 else，就不会出现「条件不成立时什么都没发生」的尴尬了。</p>`},
+
+{t:'teach',kicker:'第 5 步',h:'elif：三条路以上',
+ code:`score = 75
+if score >= 90:
+    print("优秀")
+elif score >= 60:
+    print("及格")
+else:
+    print("不及格")`,
+ out:'及格',
+ body:`<p><span class="ic">elif</span> 是 else if 挤在一起的写法。想要几条岔路就写几个 elif。</p>
+<p><b>关键在执行顺序</b>：从上往下一条条试，<b>撞上第一个成立的就执行，剩下的全部跳过</b>。</p>
+<p>所以上面 75 分：先问 >= 90？不成立，往下；再问 >= 60？成立 → 打印「及格」→ <b>直接结束</b>，else 那条看都不看。</p>`},
+
+{t:'quiz',kicker:'顺序惹的祸',
+ code:`score = 95
+if score >= 60:
+    print("及格")
+elif score >= 90:
+    print("优秀")`,
+ q:'这次是 95 分，但两个条件的顺序写反了。屏幕上出现什么？',
+ opts:[
+  {a:'只有「及格」',ok:true},
+  {a:'只有「优秀」',why:'从上往下走：第一条 `score >= 60` 就已经成立了（95 >= 60），<b>撞上就执行完走人</b>，下面那个 elif 根本不会被看到。'},
+  {a:'「及格」和「优秀」都出现',why:'if / elif 是一串<b>岔路</b>，只会走一条。想两句都打印，得写成两个独立的 if。'},
+  {a:'什么都没有',why:'95 >= 60 是成立的，第一条就会执行。'}],
+ exp:'<b>顺序错了，结果就错了。</b>这段代码的毛病是把「宽」的条件放在了前面，于是 95 分永远拿不到「优秀」—— 满分也一样。<div class="more">正确写法是<b>从严到宽</b>：先判 >= 90，再判 >= 60。<br>要命的是<b>这种错不报错</b>。它安安静静地跑，安安静静地给你一个错答案 —— 比报错难找得多。这是真实项目里非常常见的一类 bug。</div>'},
+
+{t:'teach',kicker:'第 6 步',h:'缩进决定「哪些行归 if 管」',
+ code:`age = 15
+if age >= 18:
+    print("成年了")
+    print("可以投票")
+print("程序结束")`,
+ out:'程序结束',
+ body:`<p>三个 print，只有前两个<b>缩进</b>了，所以只有它俩归 if 管。</p>
+<p>最后一行<b>顶格</b>写，已经跳出 if 的范围了 —— 不管条件成不成立，它都会跑。</p>
+<p>所以这段代码 age 是 15，前两个 print 全跳过，屏幕上只剩「程序结束」。</p>
+<p><b>缩进多一格少一格，管辖范围就变了，程序行为跟着变</b>。这也是 Python 唯一需要你注意排版的地方。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`age = 15
+if age >= 18:
+    print("A")
+print("B")`,
+ q:'屏幕上出现什么？',
+ opts:[
+  {a:'只有 B',ok:true},
+  {a:'只有 A',why:'反了。age 是 15，条件不成立，<b>缩进的</b> print("A") 被跳过；而 print("B") 顶格，不归 if 管。'},
+  {a:'A 和 B 都有',why:'条件不成立，A 那行不会执行。'},
+  {a:'什么都没有',why:'print("B") <b>顶格</b>写，它不在 if 里面，无论如何都会跑。'}],
+ exp:'判断一行归不归 if 管，<b>只看它有没有缩进</b>，不看它离得近不近。<br>`print("B")` 顶格 → 跟 if 无关 → 一定执行。'},
+
+{t:'teach',kicker:'第 7 步',h:'and / or / not：把条件拼起来',
+ code:`age = 25
+money = 100
+if age >= 18 and money >= 50:
+    print("可以进")`,
+ out:'可以进',
+ body:`<ul>
+<li><span class="ic">and</span> —— <b>两个都成立</b>才算成立</li>
+<li><span class="ic">or</span> —— <b>有一个成立</b>就算成立</li>
+<li><span class="ic">not</span> —— 把成立变成不成立</li>
+</ul>
+<p>Python 在这儿用的是<b>英文单词</b>，不是符号。大多数语言写作 <span class="ic">&amp;&amp;</span> 和 <span class="ic">||</span> —— 相比之下 Python 这套念出来就是意思，好读得多。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`age = 25
+money = 30
+print(age >= 18 and money >= 50)
+print(age >= 18 or money >= 50)`,
+ q:'这次 money 只有 30。两行分别是什么？',
+ opts:[
+  {a:'False 和 True',ok:true},
+  {a:'True 和 False',why:'顺序反了。第一行是 <b>and</b>：money 那边不成立（30 < 50），有一边塌了整句就不成立 → False。第二行是 <b>or</b>：age 那边成立就够了 → True。'},
+  {a:'True 和 True',why:'第一行是 and，要求<b>两个都成立</b>。money 是 30，30 >= 50 不成立。'},
+  {a:'False 和 False',why:'第二行是 or，只要有一个成立就行。age 是 25，25 >= 18 成立。'}],
+ exp:'`and` 像串起来的两道门，<b>每一道都得过</b>；`or` 像两个入口，<b>随便进一个就行</b>。<br>读代码时看见 and 就想「全都要满足」，看见 or 就想「满足一个就够」。'},
+
+{t:'quiz',kicker:'最后一题 · 真家伙',
+ code:`AGENT_TURNS = 8
+turns = 8
+
+if turns >= AGENT_TURNS:
+    print("轮数用完了，停")
+else:
+    print("继续跑下一轮")`,
+ out:'轮数用完了，停',
+ q:'这段对应你 vocab 智能体里真实存在的一道关卡（它每跑完一轮都会查一次）。为什么走的是「停」这条？',
+ opts:[
+  {a:'因为 >= 含「等于」，turns 正好等于 8，条件成立',ok:true},
+  {a:'因为 turns 比 AGENT_TURNS 大',why:'两个都是 8，<b>一样大</b>，谁也没超过谁。走「停」是因为 <span class="ic">&gt;=</span> 里的那个「或等于」。'},
+  {a:'因为 AGENT_TURNS 是全大写，优先级高',why:'全大写只是<b>给人看的约定</b>（第一章讲过：「这是设定值，别改」），Python 完全不管名字长什么样。'},
+  {a:'因为 if 写在 else 前面，总是先走 if',why:'顺序决定<b>先检查谁</b>，不决定<b>走哪条</b>。条件不成立时照样会掉进 else。'}],
+ exp:'关键就在那个 <span class="ic">&gt;=</span>。<b>如果写成 <span class="ic">&gt;</span>（只大于、不含等于），8 &gt; 8 不成立，就会掉进 else 多跑一轮</b> —— 实跑验证过，输出会变成「继续跑下一轮」。<br>差一个等号，行为差一整轮。<div class="more">顺带把两章连起来看：<br>第一章那行 <span class="ic">AGENT_TURNS = 8</span> 只是<b>把 8 存起来</b>；<br>这一章的 if 才是真正<b>去读它、拿它做决定</b>。<br>真实项目里，这两处经常隔着好几千行。</div>'},
+
+{t:'teach',kicker:'这一章完了',h:'你现在会的东西',
+ body:`<ul>
+<li><span class="ic">if 判断题:</span> —— 冒号 + 缩进，成立才执行缩进里的行</li>
+<li><b><span class="ic">=</span> 是装进去，<span class="ic">==</span> 是提问</b> —— 混了会直接报错</li>
+<li>六个比较符 <span class="ic">&gt; &lt; &gt;= &lt;= == !=</span>，结果都是 True / False</li>
+<li><span class="ic">else</span> 走另一条，<span class="ic">elif</span> 加更多条；<b>撞上第一个成立的就停</b>，所以条件要从严排到宽</li>
+<li>缩进是语法不是排版，它决定<b>哪些行归 if 管</b></li>
+<li><span class="ic">and</span> 两个都要，<span class="ic">or</span> 有一个就行，<span class="ic">not</span> 取反</li>
+</ul>
+<p><b>去手机上敲。</b>Termux 里 <span class="ic">python</span> 回车。这一章有三个错值得你<b>故意犯一次</b>，看看它们长什么样：</p>
+<ul>
+<li>把 <span class="ic">==</span> 写成 <span class="ic">=</span></li>
+<li>把 if 那行末尾的冒号删掉</li>
+<li>把缩进删掉，让 print 顶格</li>
+</ul>
+<p>三条报错各不相同，认得它们，以后自己写代码能省下大把时间。</p>
+<p>下一章讲<b>循环</b> —— 把一件事重复做很多遍。</p>`}
+
+]}];
+
+/* ============ 渲染 ============ */
+const KW=/^(if|else|elif|for|while|def|return|import|from|in|not|and|or|is|True|False|None|class|try|except|finally|with|as|pass|break|continue|lambda|global)$/;
+const BI=/^(print|input|len|int|str|float|bool|list|dict|range|type|open|sum|min|max|abs|round)$/;
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hl(code){
+  let out='',i=0;
+  while(i<code.length){
+    const c=code[i];
+    if(c==='"'||c==="'"){let j=i+1;while(j<code.length&&code[j]!==c)j++;
+      out+='<span class="s">'+esc(code.slice(i,Math.min(j+1,code.length)))+'</span>';i=j+1;continue;}
+    if(c==='#'){let j=code.indexOf('\n',i);if(j<0)j=code.length;
+      out+='<span class="cm">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[0-9]/.test(c)&&!/[A-Za-z0-9_]/.test(code[i-1]||' ')){
+      let j=i;while(j<code.length&&/[0-9.]/.test(code[j]))j++;
+      out+='<span class="n">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[A-Za-z_]/.test(c)){
+      let j=i;while(j<code.length&&/[A-Za-z0-9_]/.test(code[j]))j++;
+      const w=code.slice(i,j);
+      out+=KW.test(w)?'<span class="k">'+esc(w)+'</span>'
+          :BI.test(w)?'<span class="b">'+esc(w)+'</span>':esc(w);i=j;continue;}
+    out+=esc(c);i++;
+  }
+  return out;
+}
+function rich(s){return (s||'').replace(/`([^`]+)`/g,(m,c)=>'<span class="ic">'+esc(c)+'</span>');}
+function codeBlock(c,out){
+  let h='<pre>'+hl(c)+'</pre>';
+  if(out!==undefined)h+='<div class="out"><span class="lb">屏幕上出现</span>'+
+    (out===''?'<span class="v none">（什么都没有）</span>':'<span class="v">'+esc(out)+'</span>')+'</div>';
+  return h;
+}
+
+const LTR=['A','B','C','D','E'];
+const KEY='learn_py_v2';
+let cards=CHAPTERS[0].cards.slice();
+let idx=0, answered=false, wrongIdx=[], rightCnt=0, quizTotal=0, redo=false;
+cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+
+const stage=document.getElementById('stage');
+const dock=document.getElementById('dock');
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify({idx,wrongIdx,rightCnt}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(d&&d.idx>0&&d.idx<cards.length){idx=d.idx;wrongIdx=d.wrongIdx||[];rightCnt=d.rightCnt||0;}}catch(e){}}
+
+function render(){
+  const c=cards[idx];
+  if(!c){renderFin();return;}
+  answered=false;
+  document.getElementById('prog').textContent=(idx+1)+' / '+cards.length;
+  document.getElementById('barFill').style.width=(idx/cards.length*100)+'%';
+  document.getElementById('chTitle').textContent=redo?'重做错题 · 判断':'Python · '+CHAPTERS[0].name;
+
+  let h='<div class="card">';
+  if(c.kicker)h+='<div class="kicker">'+esc(c.kicker)+'</div>';
+  if(c.h)h+='<h2>'+esc(c.h)+'</h2>';
+  if(c.code)h+=codeBlock(c.code,c.out);
+  if(c.t==='teach'){
+    h+='<div class="body">'+c.body+'</div>';
+  }else{
+    h+='<div class="q">'+esc(c.q)+'</div><div class="opts" id="opts">';
+    c.opts.forEach((o,i)=>{
+      h+='<button class="opt" data-i="'+i+'"><span class="ltr">'+LTR[i]+'</span>'+
+         '<span class="txt">'+rich(o.a)+'</span></button>';
+    });
+    h+='</div><div id="expSlot"></div>';
+  }
+  h+='</div>';
+  stage.innerHTML=h;
+  window.scrollTo(0,0);
+
+  if(c.t==='quiz'){
+    document.getElementById('opts').querySelectorAll('.opt')
+      .forEach(b=>b.addEventListener('click',()=>pick(+b.dataset.i)));
+    dock.innerHTML='<button class="btn" id="next" disabled>先选一个</button>';
+  }else{
+    dock.innerHTML='<button class="btn" id="next">'+(idx===cards.length-1?'看结果':'懂了，继续')+'</button>';
+    document.getElementById('next').onclick=nextCard;
+  }
+  save();
+}
+
+function pick(i){
+  if(answered)return;
+  answered=true;
+  const c=cards[idx], right=c.opts.findIndex(o=>o.ok), good=(i===right);
+  const btns=document.getElementById('opts').querySelectorAll('.opt');
+  btns.forEach((b,k)=>{
+    b.disabled=true;
+    if(k===right)b.classList.add('ok');
+    else if(k===i)b.classList.add('no');
+    else b.classList.add('fade');
+  });
+  if(good){rightCnt++;}
+  else if(!wrongIdx.includes(idx)&&!redo){wrongIdx.push(idx);}
+
+  let e='<div class="exp '+(good?'g':'r')+'">';
+  e+='<div class="hd">'+(good?'✓ 对了':'✗ 选的是 '+LTR[i])+'</div>';
+  if(!good&&c.opts[i].why)e+='<p>'+rich(c.opts[i].why)+'</p><div class="more">'+rich(c.exp)+'</div>';
+  else e+=rich(c.exp);
+  e+='</div>';
+  document.getElementById('expSlot').innerHTML=e;
+
+  const n=document.getElementById('next');
+  n.disabled=false;
+  n.textContent=(idx===cards.length-1?'看结果':'下一题');
+  n.onclick=nextCard;
+  n.scrollIntoView({block:'nearest'});
+}
+
+function nextCard(){idx++;save();render();}
+
+function renderFin(){
+  document.getElementById('barFill').style.width='100%';
+  document.getElementById('prog').textContent='完成';
+  const w=wrongIdx.length;
+  stage.innerHTML='<div class="card fin">'+
+    '<div class="big">'+(w===0?'🎉':'📗')+'</div>'+
+    '<h2>'+(w===0?'一题没错':'第二章过完了')+'</h2>'+
+    '<div class="score"><em>'+rightCnt+'</em> / '+quizTotal+' 题答对</div>'+
+    '<div class="body" style="text-align:left;margin-top:14px">'+
+    (w>0?'<p>有 <b>'+w+'</b> 题答错。错的那几题正是没想通的地方，重做一遍比往下学新的更划算。</p>'
+        :'<p>全对。去 Termux 里敲 <b>python</b> 亲手试一遍 —— 尤其是那三个故意要犯的错。然后跟我说一声，我做第三章「循环」。</p>')+
+    '</div></div>';
+  let d='';
+  if(w>0)d+='<button class="btn" id="redo">重做那 '+w+' 题</button>';
+  d+='<button class="btn '+(w>0?'ghost':'')+'" id="again">'+(w>0?'从头':'从头再来一遍')+'</button>';
+  dock.innerHTML=d;
+  if(w>0)document.getElementById('redo').onclick=()=>{
+    const list=wrongIdx.slice();
+    cards=list.map(i=>CHAPTERS[0].cards[i]);
+    quizTotal=cards.length;rightCnt=0;wrongIdx=[];idx=0;redo=true;render();
+  };
+  document.getElementById('again').onclick=()=>{
+    cards=CHAPTERS[0].cards.slice();
+    quizTotal=0;cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+    rightCnt=0;wrongIdx=[];idx=0;redo=false;
+    try{localStorage.removeItem(KEY);}catch(e){}
+    render();
+  };
+  try{localStorage.removeItem(KEY);}catch(e){}
+}
+
+load();
+render();
+</script>
+</body>
+</html>

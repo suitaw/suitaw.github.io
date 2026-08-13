@@ -42,6 +42,10 @@ body{background:var(--bg);color:var(--text);min-height:100vh;
 .body ul{margin:10px 0;padding-left:0;list-style:none;}
 .body li{margin:8px 0;padding-left:16px;position:relative;}
 .body li:before{content:"·";position:absolute;left:4px;color:var(--accent);font-weight:700;}
+.golink{display:flex;align-items:center;justify-content:center;min-height:48px;
+  margin-top:14px;border-radius:11px;background:var(--accent-dim);
+  border:1px solid var(--accent);color:var(--accent);font-weight:600;
+  font-size:15px;text-decoration:none;}
 
 /* 代码块 */
 pre{background:#0b0d13;border:1px solid var(--border);border-radius:10px;
@@ -321,7 +325,8 @@ name = "小王"`,
 </ul>
 <p><b>现在去手机上敲一遍。</b>Termux 里输入 <span class="ic">python</span> 回车，看见 <span class="ic">&gt;&gt;&gt;</span> 就开始，把上面每一条都亲手试一次 —— 尤其是那个报错，故意敲一次看看它长什么样。出来敲 <span class="ic">exit()</span>。</p>
 <p>看完的东西过两天就忘，敲过的不会。</p>
-<p>下一章讲<b>判断</b>（如果…就…）。下面先把刚才答错的过一遍。</p>`}
+<p>下一章讲<b>判断</b>（如果…就…）—— 让代码在两条路里选一条。下面先把刚才答错的过一遍。</p>
+<a class="golink" href="learn-code-2.html">第二章 · 判断 →</a>`}
 
 ]}];
 
@@ -447,7 +452,8 @@ function renderFin(){
     '<div class="score"><em>'+rightCnt+'</em> / '+quizTotal+' 题答对</div>'+
     '<div class="body" style="text-align:left;margin-top:14px">'+
     (w>0?'<p>有 <b>'+w+'</b> 题答错。错的那几题正是没想通的地方，重做一遍比往下学新的更划算。</p>'
-        :'<p>全对。接下来去 Termux 里敲 <b>python</b> 亲手试一遍，然后跟我说一声，我做第二章「判断」。</p>')+
+        :'<p>全对。接下来去 Termux 里敲 <b>python</b> 亲手试一遍，然后往下走。</p>')+
+    '<a class="golink" href="learn-code-2.html">第二章 · 判断 →</a>'+
     '</div></div>';
   let d='';
   if(w>0)d+='<button class="btn" id="redo">重做那 '+w+' 题</button>';
