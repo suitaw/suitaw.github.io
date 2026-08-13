@@ -166,6 +166,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
   <button class="btn" id="bNext">下一步</button>
 </div></div>
 
+<script src="money-agent.js"></script>
 <script>
 /* ================= 参数定义 =================
    每项：key / 名字 / 单位 / 滑杆下标对应的实际值表 vals
@@ -478,6 +479,45 @@ else{
   document.getElementById('bNext').disabled=si===STEPS.length-1;
   update();
 }
+
+/* ================= AI 助教 ================= */
+MoneyAgent.init({
+  lesson:'第一课 · 钱的时间价值（复利模拟器）',
+  lessonNo:1,
+  outline:'这一课八步：'+STEPS.map((s,i)=>(i+1)+'.'+s.h).join('；'),
+  getState(){
+    const pts=series(), last=pts[pts.length-1], r=V('r');
+    return [
+      '在第 '+(si+1)+'/'+STEPS.length+' 步：'+STEPS[si].h,
+      '滑杆：手上 '+V('p0')+' 元 / 每月存 '+V('m')+' 元 / 年化收益率 '+r+
+        '% / 存 '+V('y')+' 年 / 通胀率 '+V('inf')+'%',
+      '算出来：最后账户 '+fmt(last.bal)+'，自己投入 '+fmt(last.put)+
+        '，利息 '+fmt(last.bal-last.put)+'，按今天购买力值 '+fmt(last.real),
+      r>0?('72 法则：翻倍约 '+Math.round(72/r)+' 年'):'收益率是 0，永远不会翻倍'
+    ].join('\n');
+  },
+  tools:[
+    {name:'setParam',desc:'把某根滑杆设成某个值，页面立刻重算',
+     args:'k 取 p0(手上有,元) / m(每月存,元) / r(年化收益率,%) / y(年数) / inf(通胀率,%)；v 是数字',
+     run(a){
+       const p=P.find(x=>x.k===a.k);
+       if(!p)return '没有这个参数「'+a.k+'」，只能是 p0/m/r/y/inf';
+       const v=Number(a.v);
+       if(!isFinite(v))return '值不是数字：'+a.v;
+       setV(a.k,v); update(); save();
+       return p.name+' 现在是 '+V(a.k)+p.unit+'（滑杆是固定档位，取了最接近的一档）';
+     }},
+    {name:'gotoStep',desc:'跳到这一课的第几步，会把滑杆摆成那一步的预设',
+     args:'n 是 1~'+STEPS.length,
+     run(a){
+       const n=Math.round(Number(a.n));
+       if(!(n>=1&&n<=STEPS.length))return '只有 1~'+STEPS.length+' 步';
+       si=n-1; renderStep();
+       return '已跳到第 '+n+' 步：'+STEPS[si].h;
+     }}
+  ],
+  suggestions:['这张图怎么看？','什么是通胀？','年化 3% 和 8% 到底差多少','帮我按我的情况调一下']
+});
 </script>
 </body>
 </html>

@@ -171,6 +171,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
   <button class="btn" id="bNext">下一步</button>
 </div></div>
 
+<script src="money-agent.js"></script>
 <script>
 /* ================= 参数 ================= */
 const P = [
@@ -540,6 +541,72 @@ else{
   document.getElementById('bNext').disabled=si===STEPS.length-1;
   simulate(); update();
 }
+
+/* ================= AI 助教 ================= */
+MoneyAgent.init({
+  lesson:'第二课 · 风险到底是什么（波动模拟器）',
+  lessonNo:2,
+  outline:'这一课八步：'+STEPS.map((s,i)=>(i+1)+'.'+s.h).join('；'),
+  getState(){
+    const g=geoRate(), put=PUT[PUT.length-1], sm=SMOOTH[SMOOTH.length-1];
+    const L=[
+      '在第 '+(si+1)+'/'+STEPS.length+' 步：'+STEPS[si].h,
+      '滑杆：手上 '+V('p0')+' 元 / 每月 '+V('m')+' 元 / 平均每年涨 '+V('mu')+
+        '% / 波动幅度 '+V('sig')+'% / 投 '+V('y')+' 年',
+      '当前画 '+N+' 条路径',
+      '自己投入本金 '+fmt(put),
+      '第一课口径（波动为 0）的终值：'+fmt(sm),
+      '实际到手年化 '+(g*100).toFixed(2)+'%（＝平均涨幅 −  波动²÷2）'
+    ];
+    if(N>1){
+      const mddAvg=PATHS.reduce((a,p)=>a+p.mdd,0)/PATHS.length;
+      const mddMax=PATHS.reduce((a,p)=>Math.max(a,p.mdd),0);
+      const worse=PATHS.filter(p=>p.end<sm).length/PATHS.length;
+      L.push('中位数终值 '+fmt(pct(0.5))+'；差的情况(10%分位) '+fmt(pct(0.1))+
+             '；好的情况(90%分位) '+fmt(pct(0.9)));
+      L.push('平均最大回撤 '+Math.round(mddAvg*100)+'%，最惨一条 '+Math.round(mddMax*100)+'%');
+      L.push('没达到第一课那条线的比例 '+Math.round(worse*100)+'%');
+    }else{
+      L.push('这一次单条路径：终值 '+fmt(PATHS[0].end)+
+             '，路上最大回撤 '+Math.round(PATHS[0].mdd*100)+'%');
+    }
+    return L.join('\n');
+  },
+  tools:[
+    {name:'setParam',desc:'把某根滑杆设成某个值，会重新模拟',
+     args:'k 取 p0(手上有,元) / m(每月存,元) / mu(平均每年涨,%) / sig(波动幅度,%) / y(年数)；v 是数字',
+     run(a){
+       const p=P.find(x=>x.k===a.k);
+       if(!p)return '没有这个参数「'+a.k+'」，只能是 p0/m/mu/sig/y';
+       const v=Number(a.v);
+       if(!isFinite(v))return '值不是数字：'+a.v;
+       setV(a.k,v); simulate(); update(); save();
+       return p.name+' 现在是 '+V(a.k)+p.unit+'（固定档位，取了最接近的一档）';
+     }},
+    {name:'setPaths',desc:'改画几条路径。1 条＝看单独一次的走法，150 条＝看整体分布',
+     args:'n 只能是 1、20 或 150',
+     run(a){
+       const n=Math.round(Number(a.n));
+       if(![1,20,150].includes(n))return 'n 只能是 1、20 或 150';
+       N=n; simulate(); update(); save();
+       return '现在画 '+N+' 条路径';
+     }},
+    {name:'roll',desc:'重新掷一次随机（参数不变，重新走一遍这些年）',args:'无',
+     run(){ simulate(); update();
+       return N===1?('这次走出来 '+fmt(PATHS[0].end)+'，最大回撤 '+
+                     Math.round(PATHS[0].mdd*100)+'%')
+                  :('重掷完毕，中位数 '+fmt(pct(0.5))); }},
+    {name:'gotoStep',desc:'跳到这一课的第几步，会摆成那一步的预设',
+     args:'n 是 1~'+STEPS.length,
+     run(a){
+       const n=Math.round(Number(a.n));
+       if(!(n>=1&&n<=STEPS.length))return '只有 1~'+STEPS.length+' 步';
+       si=n-1; renderStep();
+       return '已跳到第 '+n+' 步：'+STEPS[si].h;
+     }}
+  ],
+  suggestions:['这堆线是什么意思？','为什么中位数比蓝虚线低','波动 20% 是什么概念','帮我试试波动 40%']
+});
 </script>
 </body>
 </html>
