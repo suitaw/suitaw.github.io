@@ -30,7 +30,7 @@ body{background:var(--bg);color:var(--text);min-height:100vh;
 .top{padding:12px 14px 8px;}
 /* sticky 的经典坑：scrollIntoView 会把目标滚到视口最上边，正好被吸顶块盖住。
    --stick-h 由 JS 量了写进来（图的高度会随视口变）。 */
-.lesson,.row,.stats,.howto{scroll-margin-top:calc(var(--stick-h,320px) + 12px);}
+.lesson,.stats,.howto{scroll-margin-top:calc(var(--stick-h,320px) + 12px);}
 .top-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .top h1{font-size:16px;font-weight:600;}
 .top .sub{font-size:12px;color:var(--dim);white-space:nowrap;margin-left:auto;}
@@ -114,10 +114,38 @@ canvas{display:block;width:100%;height:176px;}
 .st.cmp{grid-column:1 / -1;background:rgba(130,170,255,.08);border-color:rgba(130,170,255,.3);}
 .st.cmp .v{color:var(--blue);font-size:17px;}
 
-.ctrl{margin-top:14px;}
+/* 滑杆做成从底部升起的抽屉，不再摊在页面最下面。
+   摊着有两个毛病：每一步都占掉近 900px 要滚很久；更要命的是**滚到滑杆那儿图已经看不见了**，
+   调了看不到效果 —— 和「讲的和看的必须同屏」是同一个毛病，只是换到了滑杆上。
+   抽屉高度卡在吸顶区下面，所以拖的时候图一直露着。 */
+/* 遮罩只从吸顶区**下边缘**开始，不是 inset:0。
+   盖住整屏的话图虽然看得见，但档位按钮和「参数」按钮全点不动 ——
+   而「一边调滑杆一边换档位看」正是这个抽屉存在的理由。 */
+.sheet-ov{position:fixed;left:0;right:0;bottom:0;top:calc(var(--stick-h,320px) + 4px);
+  z-index:30;background:rgba(8,9,13,.55);display:none;}
+.sheet-ov.on{display:block;}
+.sheet{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;
+  max-height:100%;
+  background:var(--surface);border:1px solid var(--border);border-bottom:none;
+  border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform .22s;}
+.sheet-ov.on .sheet{transform:none;}
+.sheet .grip{width:38px;height:4px;border-radius:2px;background:var(--border);
+  margin:9px auto 2px;flex:none;}
+.sheet .body2{flex:1;overflow-y:auto;padding:4px 15px 8px;}
+.sheet .foot{flex:none;padding:8px 15px calc(12px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--border);}
+.sheet .foot button{width:100%;min-height:48px;border:none;border-radius:11px;
+  background:var(--accent);color:#1a1206;font-size:15px;font-weight:700;font-family:inherit;}
 .ctrl .hd{font-size:12px;color:var(--dim);letter-spacing:.06em;margin-bottom:2px;}
 .ctrl .hd2{font-size:12px;color:var(--dim);letter-spacing:.06em;
   margin:14px 0 -2px;padding-top:12px;border-top:1px solid var(--border);}
+/* 顶栏那颗唤出按钮。用「参数」两个字不用图标 —— 图标猜不出是干嘛的 */
+.parm{flex:0 0 auto;min-height:40px;padding:0 10px;border:1px solid var(--border);
+  border-radius:9px;background:var(--surface2);color:var(--dim);
+  font-family:inherit;font-size:12.5px;cursor:pointer;}
+.parm.on{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+/* 抽屉开着时把助教那颗球藏掉 —— 它 z-index 比抽屉高，会浮在滑杆上面挡着 */
+body.sheet-open .ma-fab{display:none !important;}
 .row{padding:9px 0 3px;}
 .row .top2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
 .row .name{font-size:14px;}
@@ -171,6 +199,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
     <div class="top-row">
       <h1>第三课 · 钱该放哪儿</h1>
       <div class="sub" id="prog">1 / 8</div>
+      <button class="parm" id="parm">参数</button>
       <button class="fold" id="fold" title="收起图，把地方让给讲解">▲</button>
     </div>
     <div class="bar"><i id="barFill" style="width:0%"></i></div>
@@ -202,13 +231,6 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
 
   <div class="howto" id="howto"></div>
 
-  <div class="card ctrl">
-    <div class="hd">你的情况</div>
-    <div id="rowsA"></div>
-    <div class="hd2">市场现在肯给多少（这四段加起来就是柱子的高度）</div>
-    <div id="rowsB"></div>
-  </div>
-
   <div class="card" style="font-size:13px;color:var(--dim);line-height:1.75">
     上面那四段溢价的默认值<b style="color:#a8b0c8">是量级，不是精确统计</b> ——
     它们随时间、国家、品种变化很大，我没有拿任何历史数据做承诺。
@@ -220,6 +242,19 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
   </div>
 
   <a class="back" href="learn-money-2.html">‹ 回第二课 · 风险到底是什么</a>
+</div>
+
+<div class="sheet-ov" id="sheetOv">
+  <div class="sheet">
+    <div class="grip"></div>
+    <div class="body2 ctrl">
+      <div class="hd">你的情况</div>
+      <div id="rowsA"></div>
+      <div class="hd2">市场现在肯给多少（这四段加起来就是柱子的高度）</div>
+      <div id="rowsB"></div>
+    </div>
+    <div class="foot"><button id="sheetDone">好了</button></div>
+  </div>
 </div>
 
 <div class="dock"><div class="dock-in">
@@ -577,7 +612,7 @@ const STEPS=[
 <li><b>十年以上不动的钱</b> → 可以往右靠。你有时间熬过回撤，才拿得到那个溢价</li>
 <li><b>任何一档</b> → 拿之前先回答：这多出来的回报，对应我担了什么？答不上来就别拿</li>
 </ul>
-<p>现在把 <b class="jump" data-j="p0">上面三根滑杆</b> 改成你自己的真实数字，
+<p>现在点右上角「参数」，把 <b class="jump" data-j="p0">「你的情况」那三根</b> 改成你自己的真实数字，
  再 <b class="jump" data-j="pick">挨个点五个档位</b>，看终值和「路上最惨跌掉多少」。</p>
 <p><b>这一课你现在会的：</b></p>
 <ul>
@@ -757,6 +792,24 @@ function setFold(v,silent){
 }
 document.getElementById('fold').onclick=()=>setFold(!folded);
 
+/* 参数抽屉 */
+const sheetOv=document.getElementById('sheetOv');
+function openSheet(){
+  syncStickH();                       // 高度按当前吸顶高算，图收起时抽屉能更高
+  sheetOv.classList.add('on');
+  document.body.classList.add('sheet-open');
+  document.getElementById('parm').classList.add('on');
+}
+function closeSheet(){
+  sheetOv.classList.remove('on');
+  document.body.classList.remove('sheet-open');
+  document.getElementById('parm').classList.remove('on');
+}
+document.getElementById('parm').onclick=()=>
+  sheetOv.classList.contains('on')?closeSheet():openSheet();
+document.getElementById('sheetDone').onclick=closeSheet;
+sheetOv.addEventListener('click',e=>{ if(e.target===sheetOv)closeSheet(); });
+
 /* 讲解里的 <b class="jump" data-j="rf"> 点了滚到那根滑杆并闪一下。
    data-j 取滑杆的 k，或 'pick'（档位那排）。图是吸顶的，不用跳。 */
 function flash(node){
@@ -773,15 +826,22 @@ document.getElementById('lBody').addEventListener('click',e=>{
   // 讲到图的时候，图要是被收起来了就自动放回来 —— 不然「看上面这张图」指着一片空
   if(k==='chart'){ if(folded)setFold(false); flash(document.querySelector('.chart-card')); return; }
   if(k==='pick'){ flash(document.getElementById('pick')); return; }   // 吸顶区，本来就看得见
-  let target=null;
-  if(k==='stats')target=document.getElementById('stats');
-  else{
-    const r=document.getElementById('r_'+k);
-    target=r&&r.closest('.row');
+  if(k==='stats'){
+    const s=document.getElementById('stats');
+    if(!s)return;
+    s.scrollIntoView({block:'start',behavior:'smooth'});
+    setTimeout(()=>flash(s),280);
+    return;
   }
-  if(!target)return;
-  target.scrollIntoView({block:'start',behavior:'smooth'});
-  setTimeout(()=>flash(target),280);
+  // 滑杆在抽屉里，先把抽屉拉出来再滚到那一根
+  const r=document.getElementById('r_'+k);
+  const row=r&&r.closest('.row');
+  if(!row)return;
+  openSheet();
+  setTimeout(()=>{
+    row.scrollIntoView({block:'center',behavior:'smooth'});   // 抽屉自己是滚动容器
+    flash(row);
+  },260);
 });
 
 buildRows();
