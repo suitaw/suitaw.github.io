@@ -47,6 +47,114 @@ function curModel(){
   return (s&&list.some(m=>m[0]===s))?s:list[0][0];
 }
 
+/* ---------- 请求参数（流式和非流式共用一份，别抄两遍） ---------- */
+function buildReq(messages,sys,maxTokens,stream){
+  if(!cfg.apikey)throw new Error('还没填 API Key');
+  const p=cfg.provider;
+  let url,headers,body;
+  if(p==='anthropic'){
+    url='https://api.anthropic.com/v1/messages';
+    headers={'Content-Type':'application/json','x-api-key':cfg.apikey,
+      'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};
+    body={model:curModel(),max_tokens:maxTokens,messages};
+    if(sys)body.system=sys;
+  }else{
+    url = p==='deepseek' ? 'https://api.deepseek.com/v1/chat/completions'
+        : p==='kimi'     ? 'https://api.moonshot.cn/v1/chat/completions'
+        : p==='openai'   ? 'https://api.openai.com/v1/chat/completions'
+        :                  'https://openrouter.ai/api/v1/chat/completions';
+    headers={'Content-Type':'application/json','Authorization':'Bearer '+cfg.apikey};
+    body={model:curModel(),messages:sys?[{role:'system',content:sys}].concat(messages):messages};
+    if(p==='openai'&&/^gpt-5/.test(curModel())){
+      body.max_completion_tokens=maxTokens+6000; body.reasoning_effort='low';
+    }else if(p==='openai'){ body.max_completion_tokens=maxTokens; }
+    else { body.max_tokens=maxTokens; }
+    if(p==='kimi')body.thinking={type:'disabled'};
+  }
+  if(stream)body.stream=true;
+  return {url,headers,body};
+}
+
+/* ---------- 流式 ----------
+   onText 每次收到的是**到目前为止的全文**，不是增量 —— 调用方用 `=` 不是 `+=`。
+   （vocab-ai-v5 的 callAIStream 也是这个约定，两边保持一致，免得来回改时踩错） */
+async function callAIStream(messages,sys,onText,maxTokens=1200){
+  const {url,headers,body}=buildReq(messages,sys,maxTokens,true);
+  const ctl=new AbortController();
+  streamAbort=ctl;
+  // 流式不能像非流式那样卡死超时：只要还在往外吐字就算活着，静默 60 秒才断
+  let lastBeat=Date.now();
+  const beat=setInterval(()=>{if(Date.now()-lastBeat>60000)ctl.abort();},5000);
+  let acc='', got=false;
+  try{
+    let r;
+    try{ r=await fetch(url,{method:'POST',headers,body:JSON.stringify(body),signal:ctl.signal}); }
+    catch(e){ throw new Error(e.name==='AbortError'?'超时了，网络或服务商没响应'
+                                                  :'连不上（'+e.message+'）'); }
+    if(!r.ok){
+      let msg='接口报错 HTTP '+r.status;
+      try{const d=await r.json();if(d&&d.error&&d.error.message)msg=d.error.message;}catch(e){}
+      throw new Error(msg);
+    }
+    if(!r.body||!r.body.getReader)throw Object.assign(new Error('这个环境读不了流'),{noStream:true});
+
+    const reader=r.body.getReader(), dec=new TextDecoder();
+    let buf='';
+    for(;;){
+      const {done,value}=await reader.read();
+      if(done)break;
+      lastBeat=Date.now();
+      buf+=dec.decode(value,{stream:true});
+      // SSE 一行一条，最后一行可能是半截，留到下一块
+      const lines=buf.split('\n');
+      buf=lines.pop();
+      for(const raw of lines){
+        const line=raw.trim();
+        if(!line||line.startsWith(':')||!line.startsWith('data:'))continue;
+        const payload=line.slice(5).trim();
+        if(payload==='[DONE]')continue;
+        let d; try{ d=JSON.parse(payload); }catch(e){ continue; }
+        const piece = cfg.provider==='anthropic'
+          ? (d.type==='content_block_delta'&&d.delta&&(d.delta.text||''))
+          : (d.choices&&d.choices[0]&&d.choices[0].delta&&d.choices[0].delta.content);
+        if(d.error)throw new Error(d.error.message||'接口报错');
+        if(piece){ acc+=piece; got=true; if(onText)onText(acc); }
+      }
+    }
+  } finally { clearInterval(beat); streamAbort=null; }
+  if(!acc)throw Object.assign(new Error('模型返回了空的内容'),{noStream:!got});
+  return acc;
+}
+let streamAbort=null;
+
+/* 从半截 JSON 里抠出 say 已经流到哪儿了。
+   模型输出的是 {"say":"…","actions":[…]}，流式拿到的是逐渐长出来的 JSON 文本，
+   照原样贴屏幕上就是一堆花括号和引号。 */
+function partialSay(raw){
+  let t=String(raw||'').replace(/^\s*```(?:json)?\s*/i,'');
+  const k=t.search(/"say"\s*:\s*"/);
+  // 还没流到 say 就先别显示；模型偶尔不给 JSON 直接说人话，那就原样显示
+  if(k<0)return /^\s*[{[]/.test(t)?'':t;
+  let i=t.indexOf('"',t.indexOf(':',k)+1)+1;
+  let out='';
+  while(i<t.length){
+    const c=t[i];
+    if(c==='\\'){
+      const n=t[i+1];
+      if(n===undefined)break;              // 转义只写了一半，等下一块
+      if(n==='u'){
+        if(t.length<i+6)break;
+        out+=String.fromCharCode(parseInt(t.slice(i+2,i+6),16)||0); i+=6; continue;
+      }
+      out += n==='n'?'\n' : n==='t'?'\t' : n==='r'?'' : n;
+      i+=2; continue;
+    }
+    if(c==='"')break;                      // 闭引号，say 到头了
+    out+=c; i++;
+  }
+  return out;
+}
+
 /* ---------- API 调用（非流式，五个 provider） ---------- */
 async function callAI(messages,sys,maxTokens=1200){
   if(!cfg.apikey)throw new Error('还没填 API Key');
@@ -89,8 +197,24 @@ async function callAI(messages,sys,maxTokens=1200){
   return t;
 }
 
+/* 统一入口。流式一个字都没吐出来就回退到非流式再试一次 ——
+   某个 provider 不给流、或者环境读不了 body 时，不该让助教整个不能用。
+   已经吐出字之后再失败，那是真的网络断了，如实报错。 */
+let noStream=false;
+async function ask(messages,sys,onText){
+  if(mocked)return callAI(messages,sys);          // 打桩时不走网络
+  if(!noStream){
+    try{ return await callAIStream(messages,sys,onText); }
+    catch(e){
+      if(!e.noStream)throw e;
+      noStream=true;                              // 这个环境/服务商不支持，以后都别试了
+    }
+  }
+  return callAI(messages,sys);
+}
+
 /* ---------- 宿主注册 ---------- */
-let HOST=null;
+let HOST=null, mocked=false;
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 // 只认 **加粗** 和换行，其余原样（内容来自模型，不能直接塞 innerHTML）
 function rich(s){
@@ -145,6 +269,10 @@ function css(){
 .ma-m.sys{align-self:center;background:none;color:#8890a8;font-size:12.5px;text-align:center;
   padding:2px 0;max-width:100%;}
 .ma-when{align-self:center;font-size:12px;color:#6b7391;padding:4px 0 2px;}
+/* 流式时跟在文字后面的光标，表示还在写 */
+.ma-cur{display:inline-block;width:2px;height:15px;margin-left:2px;vertical-align:-3px;
+  background:#e8a84c;animation:ma-blink 1s steps(2,start) infinite;}
+@keyframes ma-blink{to{visibility:hidden;}}
 .ma-m.err{align-self:center;background:rgba(232,92,92,.12);border:1px solid rgba(232,92,92,.35);
   color:#e2b5b5;font-size:13px;max-width:100%;}
 .ma-tips{display:flex;flex-wrap:wrap;gap:7px;padding:0 14px 10px;}
@@ -221,7 +349,12 @@ function build(){
   });
   // 键盘弹出会把面板压矮，不滚一下最后几条就看不见了
   el.input.addEventListener('focus',()=>setTimeout(scrollBottom,300));
-  bar.querySelector('#maBarStop').onclick=()=>{stopWanted=true;setBar('停下了，这一轮做完就收手');};
+  // 停止要真的掐断在飞的那次请求，否则字还在一个个往外冒，看着像没停下
+  bar.querySelector('#maBarStop').onclick=()=>{
+    stopWanted=true;
+    if(streamAbort)try{streamAbort.abort();}catch(e){}
+    setBar('停下了，这一轮做完就收手');
+  };
   bar.querySelector('#maBarOpen').onclick=()=>show(true);
 
   renderTips();
@@ -498,13 +631,26 @@ async function loop(){
     for(let turn=0;turn<MAX_TURNS;turn++){
       if(stopWanted){push('sys','停下了');break;}
       let raw;
-      try{ raw=await callAI(history,sysPrompt()); }
+      // 边流边显示。这个气泡是临时的（tmp），流完删掉换成正式那条 ——
+      // 免得存档里留下半截文字，也免得 shown 里出现两条一样的
+      let live=null;
+      const onText=acc=>{
+        const s=partialSay(acc);
+        if(!s)return;
+        if(thinking.parentNode)thinking.remove();
+        if(!live)live=push('ai','',true);
+        live.innerHTML=rich(s)+'<i class="ma-cur"></i>';
+        scrollBottom();
+      };
+      try{ raw=await ask(history,sysPrompt(),onText); }
       catch(e){
         if(thinking.parentNode)thinking.remove();
+        if(live)live.remove();
         push('err',(e&&e.message)||'调用失败');
         break;
       }
       if(thinking.parentNode)thinking.remove();
+      if(live)live.remove();
       history.push({role:'assistant',content:raw});
       const {say,actions}=parseReply(raw);
 
@@ -558,7 +704,11 @@ window.MoneyAgent={
   open(){show(true);},
   // 测试钩子：打桩掉真实 API，用脚本驱动整个循环
   // （不这么做就得拿真 Key 才能验多轮/回喂/让开/上限）
-  _mockAI(fn){ callAI=fn; cfg.apikey=cfg.apikey||'test'; },
+  _mockAI(fn){ callAI=fn; mocked=true; cfg.apikey=cfg.apikey||'test'; },
+  // 打桩流式：fn(messages,sys,onText) 自己决定分几块吐，用来验边流边显示
+  _mockStream(fn){ callAIStream=fn; mocked=false; noStream=false;
+                   cfg.apikey=cfg.apikey||'test'; },
+  _partialSay(raw){ return partialSay(raw); },
   _state(){ return {busy,open,history:history.slice(),shown:shown.slice(),
                     bar:el&&el.bar.classList.contains('on')}; },
   _clear(){ clearChat(); }
