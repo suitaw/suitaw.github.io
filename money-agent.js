@@ -258,10 +258,30 @@ function css(){
   color:#8890a8;font-size:17px;font-family:inherit;cursor:pointer;}
 .ma-msgs{flex:1;min-height:110px;overflow-y:auto;padding:12px 14px;
   display:flex;flex-direction:column;gap:10px;}
-/* 设置是独占的一屏：叠在对话上面会看成两个页面糊在一起 */
+/* 设置和历史各自独占一屏：叠在对话上面会看成两个页面糊在一起 */
 .ma-panel.setting .ma-msgs,
 .ma-panel.setting .ma-tips,
-.ma-panel.setting .ma-in{display:none;}
+.ma-panel.setting .ma-in,
+.ma-panel.histing .ma-msgs,
+.ma-panel.histing .ma-tips,
+.ma-panel.histing .ma-in{display:none;}
+.ma-hist{padding:12px 14px 16px;display:none;overflow-y:auto;flex:1;}
+.ma-hist.on{display:block;}
+.ma-new{width:100%;min-height:48px;border:1px dashed #4a5170;border-radius:11px;
+  background:transparent;color:#e8a84c;font-size:15px;font-weight:600;font-family:inherit;
+  margin-bottom:6px;}
+.ma-gh{font-size:12px;color:#8890a8;margin:16px 2px 7px;}
+.ma-gh i{font-style:normal;color:#e8a84c;}
+.ma-hit{display:flex;align-items:center;gap:8px;min-height:56px;padding:9px 4px 9px 12px;
+  margin-bottom:6px;border-radius:11px;background:#1a1d27;border:1px solid #2e3350;}
+.ma-hit.on{border-color:#e8a84c;background:rgba(232,168,76,.09);}
+.ma-hit .tx{flex:1;min-width:0;}
+.ma-hit .t1{display:block;font-size:14px;color:#e8e9f0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ma-hit.on .t1{color:#e8a84c;}
+.ma-hit .t2{display:block;font-size:12px;color:#6b7391;margin-top:2px;}
+.ma-hit .del{flex:0 0 auto;width:44px;min-height:44px;border:none;background:none;
+  color:#6b7391;font-size:15px;font-family:inherit;}
 .ma-m{max-width:88%;padding:10px 13px;border-radius:13px;font-size:14.5px;line-height:1.7;}
 .ma-m.me{align-self:flex-end;background:#e8a84c;color:#1a1206;border-bottom-right-radius:4px;}
 .ma-m.ai{align-self:flex-start;background:#22263a;color:#e8e9f0;border-bottom-left-radius:4px;}
@@ -319,10 +339,12 @@ function build(){
   ov.innerHTML=`<div class="ma-panel">
     <div class="ma-hd">
       <div class="ti">助教 · ${esc(shortName)}</div>
+      <button id="maHist" title="历史对话">☰</button>
       <button id="maGear" title="设置">⚙</button>
       <button id="maClose" title="收起">⌄</button>
     </div>
     <div class="ma-set" id="maSet"></div>
+    <div class="ma-hist" id="maHistPane"></div>
     <div class="ma-msgs" id="maMsgs"></div>
     <div class="ma-tips" id="maTips"></div>
     <div class="ma-in">
@@ -336,13 +358,14 @@ function build(){
   el={fab,bar,ov,barT:bar.querySelector('#maBarT'),
       msgs:ov.querySelector('#maMsgs'),tips:ov.querySelector('#maTips'),
       input:ov.querySelector('#maIn'),send:ov.querySelector('#maSend'),
-      set:ov.querySelector('#maSet')};
+      set:ov.querySelector('#maSet'),hist:ov.querySelector('#maHistPane')};
 
   el.panel=ov.querySelector('.ma-panel');
   ov.querySelector('#maClose').onclick=()=>{
-    if(el.panel.classList.contains('setting'))toggleSet(false); else show(false);
+    if(view!=='chat')setView('chat'); else show(false);      // 先退回对话，再退才是收起
   };
-  ov.querySelector('#maGear').onclick=()=>toggleSet();
+  ov.querySelector('#maGear').onclick=()=>setView(view==='set'?'chat':'set');
+  ov.querySelector('#maHist').onclick=()=>setView(view==='hist'?'chat':'hist');
   el.send.onclick=()=>submit();
   el.input.addEventListener('keydown',e=>{
     if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit();}
@@ -358,8 +381,16 @@ function build(){
   bar.querySelector('#maBarOpen').onclick=()=>show(true);
 
   renderTips();
-  // 有存档就把上次聊的摆回来，没有才说开场白
-  if(!loadChat())greet();
+  migrate();
+  /* 一次页面加载 = 一个新对话（刷新就从头开始，他要的）。
+     例外是带 #chat=<id> 进来的 —— 那是从历史里点了别课的对话跳过来的。
+     用完把 hash 抹掉，否则他再刷新又落回那条，「刷新＝新开」就不成立了。
+     注意用 window.history：模块里的 history 是喂模型的那个数组，名字撞了。 */
+  const h=(location.hash||'').match(/chat=([A-Za-z0-9_-]+)/);
+  if(h){
+    try{ window.history.replaceState(null,'',location.pathname+location.search); }catch(e){}
+  }
+  if(!(h&&openChat(h[1])))newChat();
 }
 
 function renderTips(){
@@ -372,11 +403,86 @@ function renderTips(){
 function updateTips(){
   el.tips.style.display=shown.some(m=>m.who==='me'||m.who==='ai')?'none':'';
 }
-function toggleSet(on){
-  const v = on===undefined ? !el.panel.classList.contains('setting') : !!on;
-  el.panel.classList.toggle('setting',v);
-  el.set.classList.toggle('on',v);
-  if(v)renderSet(); else scrollBottom();
+/* 三个视图互斥、各自独占一屏：对话 / 设置 / 历史。
+   叠在一起会看成两个页面糊在一块（设置那次已经栽过）。 */
+let view='chat';
+function setView(v){
+  view=v;
+  el.panel.classList.toggle('setting',v==='set');
+  el.panel.classList.toggle('histing',v==='hist');
+  el.set.classList.toggle('on',v==='set');
+  el.hist.classList.toggle('on',v==='hist');
+  if(v==='set')renderSet();
+  else if(v==='hist')renderHist();
+  else scrollBottom();
+}
+
+function renderHist(){
+  const items=readIdx();
+  const my=HOST.lessonNo||0;
+  const nav=window.MoneyNav;
+  const lessonName=n=>{
+    const L=nav&&nav.get?nav.get(n):null;
+    return L?('第'+n+'课 · '+L.t):(n?'第'+n+'课':'其它');
+  };
+  // 按课分组，组内按时间倒序（items 本来就是倒序的）
+  const groups=[];
+  items.forEach(it=>{
+    let g=groups.find(x=>x.n===it.lesson);
+    if(!g){g={n:it.lesson,rows:[]};groups.push(g);}
+    g.rows.push(it);
+  });
+  // 当前这一课排最前，其余按课号
+  groups.sort((a,b)=>(a.n===my?-1:b.n===my?1:a.n-b.n));
+
+  let html='<button class="ma-new" id="maNew">＋ 新对话</button>';
+  if(!items.length){
+    html+='<div class="note" style="text-align:center;padding:22px 0">还没有存下来的对话。<br>'+
+          '聊过之后会自动出现在这儿，按课分开。</div>';
+  }
+  groups.forEach(g=>{
+    html+='<div class="ma-gh">'+esc(lessonName(g.n))+(g.n===my?'　<i>当前这课</i>':'')+'</div>';
+    g.rows.forEach(it=>{
+      const cur=it.id===chatId;
+      html+='<div class="ma-hit'+(cur?' on':'')+'" data-id="'+esc(it.id)+'" data-l="'+it.lesson+'">'+
+        '<span class="tx"><span class="t1">'+esc(it.title)+'</span>'+
+        '<span class="t2">'+esc(whenText(it.at))+' · '+it.n+' 条'+
+        (cur?' · 正在看':(it.lesson!==my?' · 点了跳过去':''))+'</span></span>'+
+        '<button class="del" data-del="'+esc(it.id)+'" title="删掉">✕</button></div>';
+    });
+  });
+  html+='<button class="ma-done" id="maHDone">回到对话</button>';
+  el.hist.innerHTML=html;
+
+  el.hist.querySelector('#maNew').onclick=()=>{
+    if(busy){push('sys','正在跑，等它结束再开新的');setView('chat');return;}
+    newChat(); setView('chat');
+  };
+  el.hist.querySelector('#maHDone').onclick=()=>setView('chat');
+  el.hist.querySelectorAll('.ma-hit').forEach(row=>{
+    row.onclick=e=>{
+      if(e.target.closest('[data-del]'))return;              // 点的是删除
+      if(busy){push('sys','正在跑，等它结束再切');setView('chat');return;}
+      const id=row.dataset.id, l=+row.dataset.l;
+      if(id===chatId){setView('chat');return;}
+      // 别的课的对话得跳到那一课去看：上下文和页面必须是同一课，
+      // 否则它读的是这一页的数字，聊的却是另一课的事
+      if(l!==(HOST.lessonNo||0)){
+        const L=nav&&nav.get?nav.get(l):null;
+        if(L&&L.f){location.href=L.f+'#chat='+encodeURIComponent(id);return;}
+        push('sys','那一课还没做，打不开');setView('chat');return;
+      }
+      if(openChat(id))setView('chat');
+    };
+  });
+  el.hist.querySelectorAll('[data-del]').forEach(b=>{
+    b.onclick=e=>{
+      e.stopPropagation();
+      const id=b.dataset.del;
+      if(busy&&id===chatId){push('sys','这条正在跑，等它结束再删');return;}
+      if(confirm('删掉这条对话？删了找不回来。')){dropChat(id);renderHist();}
+    };
+  });
 }
 function renderSet(){
   const provOpts=Object.keys(MODELS).map(p=>
@@ -390,15 +496,19 @@ function renderSet(){
       esc(cfg.apikey)+'">'+
     '<div class="note">Key 只存在这台手机的浏览器里，不上传别处。'+
       '和词汇应用共用同一个域名，那边配过的会自动带过来。</div>'+
-    '<label>这一课的对话</label>'+
-    '<div class="note" style="margin-top:0">共 '+shown.filter(m=>m.who==='me'||m.who==='ai').length+
-      ' 条，存在这台手机上，按课分开。切到别的课再回来还在。</div>'+
-    '<button class="ma-wipe" id="maWipe">清空这一课的对话</button>'+
+    '<label>对话记录</label>'+
+    '<div class="note" style="margin-top:0">当前这条 '+countMsg(shown)+' 条，共存了 '+
+      readIdx().length+' 条对话，都在这台手机上。点标题栏的 ☰ 翻历史、新开、删除。</div>'+
+    '<button class="ma-wipe" id="maWipe">删掉全部对话记录</button>'+
     '<button class="ma-done" id="maDone">完成</button>';
-  el.set.querySelector('#maDone').onclick=()=>toggleSet(false);
+  el.set.querySelector('#maDone').onclick=()=>setView('chat');
   el.set.querySelector('#maWipe').onclick=()=>{
-    if(busy){push('sys','正在跑，等它结束再清');return;}
-    if(confirm('清空这一课的全部对话？清了就找不回来了。')){clearChat();toggleSet(false);}
+    if(busy){push('sys','正在跑，等它结束再删');return;}
+    if(confirm('删掉全部 '+readIdx().length+' 条对话记录？删了找不回来。')){
+      readIdx().forEach(it=>{try{localStorage.removeItem(ITEM_KEY(it.id));}catch(e){}});
+      writeIdx([]);
+      newChat(); setView('chat');
+    }
   };
   el.set.querySelector('#maProv').onchange=e=>{cfg.provider=e.target.value;saveCfg();renderSet();};
   el.set.querySelector('#maMdl').onchange=e=>{
@@ -463,12 +573,59 @@ function whenText(ts){
 }
 function scrollBottom(){requestAnimationFrame(()=>{el.msgs.scrollTop=el.msgs.scrollHeight;});}
 
-/* ---------- 对话存档 ----------
-   按课分开存：他在第一课问的东西，切到第二课再回来还得在。
+/* ---------- 对话存档（多会话） ----------
+   一次页面加载 = 一个新对话（他要的：刷新就从头开始）；
+   面板收起再打开还是当前这个（内存里没变，天然成立）。
+   旧的都在「☰ 历史」里点得回来，按课分组。
+
+   **空对话不落盘** 是这套规则能成立的前提：手机上切页面、被系统回收重载
+   都会走一次「新开」，不拦住的话历史里会攒出一堆空壳。所以 id 是
+   第一条真消息发出时才分配的。
+
    两份都要存 —— shown 是屏幕上看到的，history 是喂模型的上下文；
    只存 shown 的话，回来接着问「那第二个呢」它根本不知道第一个是什么。 */
-function chatKey(){return 'money_agent_chat_'+(HOST.lessonNo||0);}
-const KEEP_SHOWN=60, KEEP_HIST=16;
+const IDX_KEY='money_agent_chats';
+const ITEM_KEY=id=>'money_agent_chat_v2_'+id;
+const KEEP_SHOWN=60, KEEP_HIST=16, MAX_CHATS=40;
+let chatId=null;
+
+function readIdx(){
+  try{const d=JSON.parse(localStorage.getItem(IDX_KEY)||'null');
+    if(d&&d.v===2&&Array.isArray(d.items))return d.items;}catch(e){}
+  return [];
+}
+function writeIdx(items){
+  try{localStorage.setItem(IDX_KEY,JSON.stringify({v:2,items}));}catch(e){}
+}
+function titleOf(list){
+  const m=(list||[]).find(x=>x.who==='me');
+  const t=m?String(m.text).replace(/\s+/g,' ').trim():'（还没说话）';
+  return t.length>18?t.slice(0,18)+'…':t;
+}
+const countMsg=list=>(list||[]).filter(m=>m.who==='me'||m.who==='ai').length;
+
+/* 旧版是一课一条固定 key（money_agent_chat_<课号>）。搬进新结构，
+   别让他已经聊过的记录凭空消失。搬完删掉旧 key，只跑这一次。 */
+function migrate(){
+  if(localStorage.getItem(IDX_KEY))return;
+  const items=[];
+  for(let n=1;n<=8;n++){
+    const k='money_agent_chat_'+n;
+    let d=null; try{ d=JSON.parse(localStorage.getItem(k)||'null'); }catch(e){}
+    if(!d||!Array.isArray(d.shown)||!countMsg(d.shown)){
+      try{localStorage.removeItem(k);}catch(e){}
+      continue;
+    }
+    const id='m'+n, at=d.at||Date.now();
+    try{
+      localStorage.setItem(ITEM_KEY(id),JSON.stringify({
+        id,lesson:n,at,shown:d.shown,history:d.history||[]}));
+      localStorage.removeItem(k);
+      items.push({id,lesson:n,at,title:titleOf(d.shown),n:countMsg(d.shown)});
+    }catch(e){}
+  }
+  writeIdx(items.sort((a,b)=>b.at-a.at));
+}
 
 /* 存 history 前把【当前状态】那一大段剥掉。
    这段是每轮现读页面拼的，存下来明天就过期了 —— 他滑杆早改了，
@@ -479,35 +636,52 @@ function stripState(c){
   return i>0?String(c).slice(0,i).trim():String(c);
 }
 let saveTimer=null;
-function saveChat(){
-  clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{
-    try{
-      localStorage.setItem(chatKey(),JSON.stringify({
-        v:1, at:Date.now(),
-        shown:shown.slice(-KEEP_SHOWN),
-        history:history.slice(-KEEP_HIST).map(h=>({role:h.role,content:stripState(h.content)}))
-      }));
-    }catch(e){ /* 配额满了就算了，对话没了总比页面崩了强 */ }
-  },300);
+function saveChat(){ clearTimeout(saveTimer); saveTimer=setTimeout(doSave,300); }
+function doSave(){
+  const n=countMsg(shown);
+  if(!n)return;                          // 空对话不落盘，见上面那段注释
+  if(!chatId)chatId='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const lesson=HOST.lessonNo||0, at=Date.now();
+  try{
+    localStorage.setItem(ITEM_KEY(chatId),JSON.stringify({
+      id:chatId, lesson, at,
+      shown:shown.slice(-KEEP_SHOWN),
+      history:history.slice(-KEEP_HIST).map(h=>({role:h.role,content:stripState(h.content)}))
+    }));
+  }catch(e){ return; }                   // 配额满了就算了，对话没了总比页面崩了强
+  const items=readIdx().filter(x=>x.id!==chatId);
+  items.unshift({id:chatId,lesson,at,title:titleOf(shown),n});
+  items.sort((a,b)=>b.at-a.at);
+  while(items.length>MAX_CHATS){
+    const gone=items.pop();
+    try{localStorage.removeItem(ITEM_KEY(gone.id));}catch(e){}
+  }
+  writeIdx(items);
 }
-function loadChat(){
-  let d=null;
-  try{ d=JSON.parse(localStorage.getItem(chatKey())||'null'); }catch(e){}
-  if(!d||!Array.isArray(d.shown)||!d.shown.length)return false;
-  shown=d.shown.filter(m=>m&&m.who&&m.text).map(m=>({who:m.who,text:m.text,t:m.t||d.at||Date.now()}));
+function openChat(id){
+  let d=null; try{ d=JSON.parse(localStorage.getItem(ITEM_KEY(id))||'null'); }catch(e){}
+  if(!d||!Array.isArray(d.shown))return false;
+  clearTimeout(saveTimer);
+  chatId=id;
+  shown=d.shown.filter(m=>m&&m.who&&m.text)
+               .map(m=>({who:m.who,text:m.text,t:m.t||d.at||Date.now()}));
   history=Array.isArray(d.history)?d.history.filter(h=>h&&h.role&&h.content):[];
+  el.msgs.innerHTML='';
   shown.forEach((m,i)=>paint(m,shown[i-1]));
-  updateTips();
+  updateTips(); scrollBottom();
   return true;
 }
-function clearChat(){
-  clearTimeout(saveTimer);          // 干掉在飞的那次写入，否则刚删完又被写回来
-  shown=[]; history=[];
+function newChat(){
+  clearTimeout(saveTimer);              // 干掉在飞的那次写入，否则会写到新对话名下
+  chatId=null; shown=[]; history=[];
   el.msgs.innerHTML='';
-  try{localStorage.removeItem(chatKey());}catch(e){}
   updateTips();
   greet();
+}
+function dropChat(id){
+  try{localStorage.removeItem(ITEM_KEY(id));}catch(e){}
+  writeIdx(readIdx().filter(x=>x.id!==id));
+  if(id===chatId)newChat();
 }
 /* 开场白一律 tmp —— 它是每次进来按当前有没有 Key 现生成的。
    存进档的话，等他后来配好了 Key，还会一直显示「还没配 API Key」。 */
@@ -614,7 +788,7 @@ async function submit(){
   if(busy){push('sys','上一条还在跑，等它结束');return;}
   if(!cfg.apikey){
     push('err','还没填 API Key。点右上角 ⚙ 填一个。');
-    toggleSet(true); return;
+    setView('set'); return;
   }
   el.input.value='';
   push('me',q);
@@ -711,6 +885,9 @@ window.MoneyAgent={
   _partialSay(raw){ return partialSay(raw); },
   _state(){ return {busy,open,history:history.slice(),shown:shown.slice(),
                     bar:el&&el.bar.classList.contains('on')}; },
-  _clear(){ clearChat(); }
+  _clear(){ newChat(); },
+  _chatId(){ return chatId; },
+  _idx(){ return readIdx(); },
+  _open(id){ return openChat(id); }
 };
 })();
