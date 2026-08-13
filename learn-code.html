@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>读代码入门 · 第一章 变量</title>
+<title>读代码入门 · Python 第一章 变量</title>
 <style>
 :root{
   --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
@@ -50,7 +50,16 @@ pre{background:#0b0d13;border:1px solid var(--border);border-radius:10px;
 pre .k{color:#c792ea;}
 pre .s{color:#7ec98f;}
 pre .n{color:#f0a35e;}
+pre .b{color:#82aaff;}
 pre .cm{color:#5c6482;font-style:italic;}
+
+/* 屏幕输出 */
+.out{margin:-6px 0 14px;padding:10px 13px;border-radius:0 0 10px 10px;
+  background:#141821;border:1px solid var(--border);border-top:none;
+  font-family:var(--mono);font-size:13.5px;color:#9aa4c0;line-height:1.7;}
+.out .lb{font-family:inherit;font-size:11px;letter-spacing:.08em;color:#5c6482;
+  display:block;margin-bottom:3px;}
+.out .v{color:#e8e9f0;}
 
 /* 选项 */
 .q{font-size:16px;font-weight:600;margin:4px 0 14px;line-height:1.6;}
@@ -63,7 +72,8 @@ pre .cm{color:#5c6482;font-style:italic;}
   color:var(--dim);font-size:12px;font-weight:700;display:flex;align-items:center;
   justify-content:center;margin-top:2px;}
 .opt .txt{flex:1;}
-.opt code{font-family:var(--mono);font-size:13.5px;}
+.opt .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
 .opt:disabled{cursor:default;}
 .opt.ok{border-color:var(--ok);background:var(--ok-bg);}
 .opt.ok .ltr{background:var(--ok);color:#fff;}
@@ -83,6 +93,8 @@ pre .cm{color:#5c6482;font-style:italic;}
 .exp .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
   border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
 .exp .more{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.exp .ic.blk{display:block;padding:9px 11px;margin:7px 0;line-height:1.6;
+  white-space:pre-wrap;word-break:break-word;color:#e88a8a;}
 
 /* 吸底 */
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:20;
@@ -107,7 +119,7 @@ pre .cm{color:#5c6482;font-style:italic;}
 
 <div class="top wrap">
   <div class="top-row">
-    <h1 id="chTitle">读代码 · 第一章 变量</h1>
+    <h1 id="chTitle">Python · 第一章 变量</h1>
     <div class="sub" id="prog">1 / 1</div>
   </div>
   <div class="bar"><i id="barFill" style="width:0%"></i></div>
@@ -121,69 +133,91 @@ pre .cm{color:#5c6482;font-style:italic;}
 /* ============ 题目数据 ============
    现在只有一章。以后加章节就往 CHAPTERS 里添一项，UI 不用动。
    卡片两种：
-     {t:'teach', kicker, h, body, code}          只讲，不问
-     {t:'quiz',  kicker, code, q, opts:[...], exp} 选择题
-   opts 里每一项：{a:'选项文字', ok:true/false, why:'选错时单独讲这一项错在哪'}
+     {t:'teach', kicker, h, body, code, out}          只讲，不问
+     {t:'quiz',  kicker, code, out, q, opts:[...], exp} 选择题
+   out  ：代码块下面接一条「屏幕上会出现什么」，没有就不显示
+   opts ：每一项 {a:'选项文字', ok:true/false, why:'选错时单独讲这一项错在哪'}
 ==================================== */
 const CHAPTERS = [{
 name:'第一章 变量',
 cards:[
 
 {t:'teach',kicker:'开始之前',h:'这一章只讲一样东西',
- body:`<p>代码里最常见的东西叫<b>变量</b>。你的项目里几乎每一行都有它。</p>
+ body:`<p>代码里最常见的东西叫<b>变量</b>。任何一个程序，拆开之后一大半都是它。</p>
 <p>一句话说完：<b>变量就是一个名字，装着一个值。</b></p>
 <p>像给盒子贴张标签，写上「年龄」，盒子里放张纸写着 18。以后你说「年龄」，指的就是里面那个 18。</p>
 <p>就这么简单。下面把它拆开看。</p>`},
 
 {t:'teach',kicker:'第 1 步',h:'把第一行代码拆开',
- code:`let x = 5;`,
- body:`<p>这一行有五个零件，一个一个看：</p>
+ code:`x = 5`,
+ body:`<p>这一行只有三个零件：</p>
 <ul>
-<li><span class="ic">let</span> —— 「我要新起一个名字」</li>
 <li><span class="ic">x</span> —— 名字，你自己起的</li>
 <li><span class="ic">=</span> —— <b>装进去</b>（注意：不是数学里的「等于」）</li>
 <li><span class="ic">5</span> —— 装的那个值</li>
-<li><span class="ic">;</span> —— 这句说完了</li>
 </ul>
-<p>连起来念：<b>起个名字叫 x，里面装 5。</b></p>`},
+<p>连起来念：<b>起个名字叫 x，里面装 5。</b></p>
+<p>Python 干净就干净在这儿：<b>行末不用加符号，也不用事先声明</b>。想要一个变量，直接写下去就有了。</p>`},
 
-{t:'quiz',kicker:'练一下',code:`let x = 5;`,
+{t:'quiz',kicker:'练一下',code:`x = 5`,
  q:'这行跑完之后，x 里装的是什么？',
  opts:[
   {a:'5',ok:true},
   {a:'x',why:'x 是<b>名字</b>，不是值。名字是盒子外面的标签，值是盒子里的东西，两回事。'},
   {a:'0',why:'变量不会自己变成 0。你装什么它就是什么，这里装的是 5。'},
-  {a:'空的，什么都没有',why:'如果只写 <span class="ic">let x;</span> 不装东西，那才是空的。这行装了 5。'}],
- exp:'`let x = 5;` 念作「起个名字叫 x，里面装 5」。以后代码里再出现 x，就是指这个 5。'},
+  {a:'空的，什么都没有',why:'Python 里写下 <span class="ic">x = 5</span> 的同时就把 5 装进去了，没有「先声明后赋值」那一步。'}],
+ exp:'`x = 5` 念作「起个名字叫 x，里面装 5」。以后代码里再出现 x，就是指这个 5。'},
 
-{t:'teach',kicker:'第 2 步',h:'名字是你自己起的',
- code:`let age = 18;
-let price = 20;`,
- body:`<p>名字随你起，但要<b>起得让人看得懂</b>。起成 a、b、c，一周后你自己都想不起来装的是什么。</p>
-<p>你项目里那些 <span class="ic">agentBusy</span>、<span class="ic">prState</span> 就是这么来的 —— 名字本身就在说明它装的是什么东西。</p>`},
+{t:'teach',kicker:'第 2 步',h:'怎么才能看见结果',
+ code:`x = 5
+print(x)`,
+ out:'5',
+ body:`<p>光写第一行，屏幕上<b>什么都不会出现</b>。5 只是被装进盒子里了，没人让它露面。</p>
+<p><span class="ic">print</span> 就是「打到屏幕上」的意思。括号里放你想看的东西。</p>
+<p>这是你以后最常用的一个动作 —— 代码跑得不对时，第一反应就是往里塞几个 print，看看每一步到底装了什么。</p>
+<p><b>你现在就能试</b>：Termux 里敲 <span class="ic">python</span> 回车，看见 <span class="ic">&gt;&gt;&gt;</span> 就是进去了，一行一行敲。想出来敲 <span class="ic">exit()</span>。</p>`},
 
 {t:'quiz',kicker:'练一下',
- code:`let price = 20;
-let count = 3;`,
+ code:`x = 5
+print(x)`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'5',ok:true},
+  {a:'x',why:'打出来的是<b>盒子里的东西</b>，不是标签。想在屏幕上看见字母 x，得写 <span class="ic">print("x")</span> —— 加了引号才是「字母 x 本身」。'},
+  {a:'print(x)',why:'代码不会把自己原样抄到屏幕上，它会被执行。'},
+  {a:'什么都没有',why:'只写第一行才什么都没有。加了 print 就看得见了 —— 这正是 print 存在的理由。'}],
+ exp:'`print(x)` 的意思是「把 x 里装的东西打到屏幕上」。x 里装着 5，所以屏幕上出现 5。'},
+
+{t:'teach',kicker:'第 3 步',h:'名字是你自己起的',
+ code:`age = 18
+price = 20`,
+ body:`<p>名字随你起，但有两条硬规矩：<b>不能带空格，不能用数字开头</b>。</p>
+<p>剩下的是习惯问题：要<b>起得让人看得懂</b>。起成 a、b、c，一周后你自己都想不起来装的是什么。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`price = 20
+count = 3`,
  q:'price 里装的是几？',
  opts:[
   {a:'20',ok:true},
   {a:'3',why:'3 装在 count 里。这是<b>两个不同的盒子</b>，互不影响。'},
   {a:'23',why:'这两行只是各装各的，没让它们做任何计算。'},
   {a:'60',why:'同上 —— 你没让它们相乘，代码不会自作主张。'}],
- exp:'两行 `let` 就是两个盒子，各装各的，谁也不碰谁。'},
+ exp:'两行就是两个盒子，各装各的，谁也不碰谁。'},
 
-{t:'teach',kicker:'第 3 步',h:'变量能拿来算',
- code:`let price = 20;
-let count = 3;
-let total = price * count;`,
+{t:'teach',kicker:'第 4 步',h:'变量能拿来算',
+ code:`price = 20
+count = 3
+total = price * count
+print(total)`,
+ out:'60',
  body:`<p>看第三行。它的意思是：把 price 里的 20 取出来、count 里的 3 取出来，乘一下，<b>结果装进一个新名字 total</b>。</p>
 <p>四则运算的符号：<span class="ic">+</span> 加、<span class="ic">-</span> 减、<span class="ic">*</span> 乘、<span class="ic">/</span> 除。</p>`},
 
 {t:'quiz',kicker:'练一下',
- code:`let price = 20;
-let count = 3;
-let total = price * count;`,
+ code:`price = 20
+count = 3
+total = price * count`,
  q:'total 里装的是什么？',
  opts:[
   {a:'60',ok:true},
@@ -192,26 +226,28 @@ let total = price * count;`,
   {a:'3',why:'3 是 count 里的。total 装的是算完的结果。'}],
  exp:'记住这个顺序：<b>先算右边，再装左边。</b>这是整个第一章最要紧的一句话。'},
 
-{t:'teach',kicker:'第 4 步',h:'装进去的值可以换 —— 所以叫「变」量',
- code:`let n = 5;
-n = 8;`,
- body:`<p>第二行<b>没有再写 let</b>。let 只在第一次起名字的时候用，后面再写 <span class="ic">n = 8</span> 就是「把 n 里的东西换成 8」。</p>
-<p>盒子还是那个盒子，标签还是那个标签，只是里面的东西换了。</p>`},
+{t:'teach',kicker:'第 5 步',h:'装进去的值可以换 —— 所以叫「变」量',
+ code:`n = 5
+n = 8
+print(n)`,
+ out:'8',
+ body:`<p>第二行不需要任何额外的词，直接写 <span class="ic">n = 8</span>，意思就是「把 n 里的东西换成 8」。</p>
+<p>盒子还是那个盒子，标签还是那个标签，只是里面的东西换了 —— 原来那个 5 被扔掉，找不回来了。</p>`},
 
 {t:'quiz',kicker:'练一下',
- code:`let n = 5;
-n = 8;`,
+ code:`n = 5
+n = 8`,
  q:'现在 n 里装的是几？',
  opts:[
   {a:'8',ok:true},
   {a:'5',why:'5 已经被 8 顶掉了。<b>一个盒子同一时间只装一样东西。</b>'},
   {a:'13',why:'`=` 不是相加，是替换。旧的那个直接没了。'},
   {a:'5 和 8 都在',why:'装不下两个。第二行一执行，5 就被扔掉了。'}],
- exp:'`n = 8` 念作「把 8 装进 n」。原来那个 5 被覆盖掉，找不回来了。'},
+ exp:'`n = 8` 念作「把 8 装进 n」。原来那个 5 被覆盖掉了。'},
 
 {t:'quiz',kicker:'这题是个坎',
- code:`let n = 5;
-n = n + 1;`,
+ code:`n = 5
+n = n + 1`,
  q:'第二行跑完，n 里装的是几？',
  opts:[
   {a:'6',ok:true},
@@ -220,76 +256,78 @@ n = n + 1;`,
   {a:'这行有毛病，n 不可能等于 n+1',why:'数学里确实不可能 —— 但代码里的 <span class="ic">=</span> <b>不念「等于」，念「装进去」</b>。它不是在陈述一件事，是在下一个命令。'}],
  exp:'用刚才那条规矩拆成两步就不别扭了：<br>① <b>先算右边</b>：n 现在是 5，5 + 1 = 6<br>② <b>再装左边</b>：把 6 装回 n<br>于是 n 变成 6。<br>这种写法在真实代码里到处都是（计数、累加、翻页全靠它），一定要看顺眼。'},
 
-{t:'teach',kicker:'第 5 步',h:'值分两种：数字 和 文字',
- code:`let n = 5;
-let s = "5";`,
+{t:'teach',kicker:'第 6 步',h:'值分两种：数字 和 文字',
+ code:`n = 5
+s = "5"`,
  body:`<p>加了<b>引号</b>的是文字（行话叫「字符串」），没加引号的是数字。</p>
 <p>这俩长得一样，但根本不是一回事：<span class="ic">5</span> 能拿去算数，<span class="ic">"5"</span> 只是一串符号，跟 <span class="ic">"你好"</span> 是同一类东西。</p>
 <p>下一题就是这个区别惹的祸，而且是真实项目里最常见的坑之一。</p>`},
 
 {t:'quiz',kicker:'真实的坑',
- code:`let s = "5" + 3;`,
- q:'s 里装的是什么？',
+ code:`print("5" + 3)`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'什么都没有，直接报错',ok:true},
+  {a:'8',why:'两边<b>都是数字</b>才会相加。这里左边是带引号的文字。'},
+  {a:'53',why:'有些语言确实这么干 —— 比如你项目里用的 JavaScript，它会安安静静给你一个 "53"。<b>Python 不惯着你</b>，它当场报错。'},
+  {a:'"5"3',why:'Python 不会把两种东西硬凑在一起。它认为这个操作根本没有意义，所以拒绝执行。'}],
+ exp:'报错长这样：<span class="ic blk">TypeError: can only concatenate str (not "int") to str</span>翻译：<b>只能把文字接到文字上，不能接数字</b>。（str = 文字，int = 整数）<br><b>报错在这儿是好事。</b>Python 宁可当场吵，也不给你一个你没想要的结果 —— 不然你得抱着一个错数字找半天。<div class="more">为什么说这是真实的坑：从输入框、从文件、从网络拿到的东西<b>默认都是文字</b>，哪怕看着是数字。这个错你以后会遇到很多次，记住它的样子。</div>'},
+
+{t:'quiz',kicker:'换一下',
+ code:`s = "5" + "3"`,
+ q:'这次两边都加了引号。s 里装的是什么？',
  opts:[
   {a:'文字 "53"',ok:true},
-  {a:'数字 8',why:'两边<b>都是数字</b>才会相加。这里左边是带引号的文字。'},
-  {a:'会报错',why:'不报错 —— 这正是它麻烦的地方。它安安静静给你一个你没想要的结果，你还得自己找半天。'},
-  {a:'数字 53',why:'接近了，位数对了，但它是<b>文字</b>不是数字。拿这个 "53" 再去做减法就会出乱子。'}],
- exp:'`+` 有两个意思，看两边是什么来定：<br>· 两边都是数字 → <b>相加</b>，5 + 3 = 8<br>· 只要有一边是文字 → <b>接起来</b>，"5" 接上 3 就成了 "53"<br><div class="more">为什么说这是真实的坑：网页输入框里拿到的东西<b>永远是文字</b>，哪怕用户打的是数字。直接拿去相加就会变成拼接 —— 输入 5，加 3，结果显示 53。</div>'},
+  {a:'数字 8',why:'两边都是文字，不是数字。文字之间的 `+` 不做加法。'},
+  {a:'还是报错',why:'不报错了 —— 上一题报错是因为文字和数字混着来。两边同类就没问题。'},
+  {a:'数字 53',why:'位数对了，但它是<b>文字</b>。拿这个 "53" 再去做减法照样会报错。'}],
+ exp:'`+` 有两个意思，看两边是什么来定：<br>· 两边都是数字 → <b>相加</b><br>· 两边都是文字 → <b>接起来</b>（行话叫「拼接」）<br>· 一边文字一边数字 → <b>报错</b>（上一题）'},
 
 {t:'quiz',kicker:'对照一下',
- code:`let s = 5 + 3;`,
- q:'这次呢？（注意 5 没有引号了）',
+ code:`print(5 + 3)`,
+ q:'这次两个都没有引号，屏幕上出现什么？',
  opts:[
-  {a:'数字 8',ok:true},
-  {a:'文字 "53"',why:'两边都没引号，都是数字，所以是正经相加。有没有那对引号，结果完全不同。'},
-  {a:'"8"',why:'两个数字相加，结果还是数字，不会自己长出引号。'},
-  {a:'报错',why:'这是最普通的一行代码，没有任何问题。'}],
- exp:'同一个 `+`，前一题给出 "53"，这一题给出 8。差别只在那对引号 —— 所以读代码时<b>看见引号要留个心</b>。'},
+  {a:'8',ok:true},
+  {a:'53',why:'两边都没引号，都是数字，所以是正经相加。有没有那对引号，结果完全不同。'},
+  {a:'报错',why:'这是最普通的一行代码，没有任何问题。'},
+  {a:'"8"',why:'两个数字相加，结果还是数字，不会自己长出引号。'}],
+ exp:'同一个 `+`，三种情形三个结果。所以读代码时<b>看见引号要留个心</b> —— 它决定了这东西是能算的还是只能拼的。'},
 
-{t:'teach',kicker:'第 6 步',h:'const：装进去就不许改',
- code:`const PI = 3.14;
-let n = 5;`,
- body:`<p><span class="ic">const</span> 和 <span class="ic">let</span> 一样是起名字，只有一个区别：<b>const 装进去之后不许再改</b>。</p>
-<p>起名的时候就知道这辈子不会变的（圆周率、上限、配置），用 const；会变的用 let。</p>
-<p>这不是规矩死板，是<b>给以后的自己上保险</b>：万一哪天不小心改了它，代码会当场报错拦住你，而不是安静地跑出一个错结果。</p>`},
-
-{t:'quiz',kicker:'练一下',
- code:`const PI = 3.14;
-PI = 3;`,
- q:'第二行会发生什么？',
- opts:[
-  {a:'报错，代码停在这一行',ok:true},
-  {a:'PI 变成 3',why:'那就是 let 的行为了。写成 const 就是明确说「不许改」。'},
-  {a:'PI 还是 3.14，但也不报错',why:'那样反而更糟 —— 你会以为自己改成功了，然后对着一个错结果找半天。<b>const 的价值就在于它吵。</b>'},
-  {a:'PI 变成 6.14',why:'`=` 是装进去，不是相加。而且这里它连装都装不进去。'}],
- exp:'const 一被改就报错，报错点正好停在犯错的那一行 —— <b>你要的不是「不出错」，是「出错的时候立刻知道」</b>。这是看代码时判断作者靠不靠谱的一个小信号。'},
+{t:'teach',kicker:'第 7 步',h:'全大写的名字，是一句给人看的话',
+ code:`MAX_TURNS = 8
+name = "小王"`,
+ body:`<p>有些语言有专门的词表示「这个值不许改」。<b>Python 没有</b> —— 任何变量都能改。</p>
+<p>代替的是一个<b>约定</b>：名字写成全大写，意思是「这是个设定值，别去改它」。</p>
+<p>语言不会拦你，拦你的是看代码的人。所以这也是<b>读代码时的一个信号</b>：看见全大写的名字，就知道它多半是个配置项、一个上限、一个开关。</p>`},
 
 {t:'quiz',kicker:'最后一题 · 真家伙',
- code:`const AGENT_TURNS = 8;`,
- q:'这一行是从你自己的 vocab-ai-v5.html 里原样抄出来的。它在说什么？',
+ code:`AGENT_TURNS = 8`,
+ q:'这一行对应你 vocab 项目里真实存在的一句（原文是 JavaScript 写的，翻成 Python 就长这样）。它在说什么？',
  opts:[
-  {a:'起了个名字叫 AGENT_TURNS，里面装着 8，而且不许改',ok:true},
+  {a:'起了个名字叫 AGENT_TURNS 装着 8；全大写表示这是个设定值，约定上别改',ok:true},
   {a:'让智能体去跑 8 次',why:'很接近，但差了关键一层：<b>这一行本身只是把 8 存起来</b>。真正「跑 8 次」是别处的代码去读这个 8 才发生的。<br>分清「存值」和「用值」，是读代码的基本功。'},
   {a:'定义了一个叫 8 的东西',why:'反了。8 是值，AGENT_TURNS 才是名字。左边是标签，右边是盒子里的东西。'},
-  {a:'看不懂，这个比前面的复杂',why:'其实一模一样。它和 <span class="ic">const PI = 3.14;</span> 是<b>同一个结构</b>，只是名字长了点、值是整数。把名字盖住再看一遍。'}],
- exp:'这行就是你设置里「智能体最多跑几轮」那个默认值。<div class="more">这一题想让你看到的是：<b>真实项目的代码不比刚才的例子难，只是多。</b>4300 行看着吓人，但拆开之后，绝大部分就是刚才这六步在反复套。</div>'},
+  {a:'看不懂，这个比前面的复杂',why:'其实一模一样。它和 <span class="ic">MAX_TURNS = 8</span> 是<b>同一个结构</b>，只是名字长了点。把名字盖住再看一遍。'}],
+ exp:'这行就是你设置里「智能体最多跑几轮」那个默认值。<div class="more">这一题想让你看到的是：<b>真实项目的代码不比刚才的例子难，只是多。</b>几千行看着吓人，但拆开之后，绝大部分就是刚才这七步在反复套。</div>'},
 
 {t:'teach',kicker:'这一章完了',h:'你现在会的东西',
  body:`<ul>
-<li><span class="ic">let x = 5;</span> 起个名字装个值</li>
+<li><span class="ic">x = 5</span> 起个名字装个值，不用声明、不用分号</li>
 <li><span class="ic">=</span> 念「装进去」，不念「等于」</li>
 <li><b>先算右边，再装左边</b> —— 所以 <span class="ic">n = n + 1</span> 成立</li>
-<li>加引号是文字，不加是数字；<span class="ic">+</span> 碰上文字就变成「接起来」</li>
-<li><span class="ic">const</span> 是「不许改」，改了当场报错</li>
+<li><span class="ic">print(x)</span> 把东西打到屏幕上，调试全靠它</li>
+<li>加引号是文字，不加是数字；文字加数字会<b>报错</b>，而报错是好事</li>
+<li>全大写的名字＝「这是设定值」的约定</li>
 </ul>
-<p>这五条能让你看懂真实代码里的一大类行。<b>下一章讲「判断」</b>（如果…就…），学完你就能读懂程序为什么会走这条路而不走那条。</p>
-<p>下面按「重做错题」把刚才答错的再过一遍 —— 错过的地方才是真学到东西的地方。</p>`}
+<p><b>现在去手机上敲一遍。</b>Termux 里输入 <span class="ic">python</span> 回车，看见 <span class="ic">&gt;&gt;&gt;</span> 就开始，把上面每一条都亲手试一次 —— 尤其是那个报错，故意敲一次看看它长什么样。出来敲 <span class="ic">exit()</span>。</p>
+<p>看完的东西过两天就忘，敲过的不会。</p>
+<p>下一章讲<b>判断</b>（如果…就…）。下面先把刚才答错的过一遍。</p>`}
 
 ]}];
 
 /* ============ 渲染 ============ */
-const KW=/^(let|const|var|function|return|if|else|for|while|true|false|null|undefined)$/;
+const KW=/^(if|else|elif|for|while|def|return|import|from|in|not|and|or|is|True|False|None|class|try|except|finally|with|as|pass|break|continue|lambda|global)$/;
+const BI=/^(print|input|len|int|str|float|bool|list|dict|range|type|open|sum|min|max|abs|round)$/;
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function hl(code){
   let out='',i=0;
@@ -297,24 +335,30 @@ function hl(code){
     const c=code[i];
     if(c==='"'||c==="'"){let j=i+1;while(j<code.length&&code[j]!==c)j++;
       out+='<span class="s">'+esc(code.slice(i,Math.min(j+1,code.length)))+'</span>';i=j+1;continue;}
-    if(c==='/'&&code[i+1]==='/'){let j=code.indexOf('\n',i);if(j<0)j=code.length;
+    if(c==='#'){let j=code.indexOf('\n',i);if(j<0)j=code.length;
       out+='<span class="cm">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
-    if(/[0-9]/.test(c)&&!/[A-Za-z0-9_$]/.test(code[i-1]||' ')){
+    if(/[0-9]/.test(c)&&!/[A-Za-z0-9_]/.test(code[i-1]||' ')){
       let j=i;while(j<code.length&&/[0-9.]/.test(code[j]))j++;
       out+='<span class="n">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
-    if(/[A-Za-z_$]/.test(c)){
-      let j=i;while(j<code.length&&/[A-Za-z0-9_$]/.test(code[j]))j++;
+    if(/[A-Za-z_]/.test(c)){
+      let j=i;while(j<code.length&&/[A-Za-z0-9_]/.test(code[j]))j++;
       const w=code.slice(i,j);
-      out+=KW.test(w)?'<span class="k">'+esc(w)+'</span>':esc(w);i=j;continue;}
+      out+=KW.test(w)?'<span class="k">'+esc(w)+'</span>'
+          :BI.test(w)?'<span class="b">'+esc(w)+'</span>':esc(w);i=j;continue;}
     out+=esc(c);i++;
   }
   return out;
 }
 // 讲解文本里认 `代码` 和 <b>，其余原样（数据是我们自己写的，不来自用户输入）
 function rich(s){return (s||'').replace(/`([^`]+)`/g,(m,c)=>'<span class="ic">'+esc(c)+'</span>');}
+function codeBlock(c,out){
+  let h='<pre>'+hl(c)+'</pre>';
+  if(out)h+='<div class="out"><span class="lb">屏幕上出现</span><span class="v">'+esc(out)+'</span></div>';
+  return h;
+}
 
 const LTR=['A','B','C','D','E'];
-const KEY='learn_code_v1';
+const KEY='learn_py_v1';
 let cards=CHAPTERS[0].cards.slice();
 let idx=0, answered=false, wrongIdx=[], rightCnt=0, quizTotal=0, redo=false;
 cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
@@ -332,16 +376,15 @@ function render(){
   answered=false;
   document.getElementById('prog').textContent=(idx+1)+' / '+cards.length;
   document.getElementById('barFill').style.width=(idx/cards.length*100)+'%';
-  document.getElementById('chTitle').textContent=redo?'重做错题 · 变量':'读代码 · '+CHAPTERS[0].name;
+  document.getElementById('chTitle').textContent=redo?'重做错题 · 变量':'Python · '+CHAPTERS[0].name;
 
   let h='<div class="card">';
   if(c.kicker)h+='<div class="kicker">'+esc(c.kicker)+'</div>';
   if(c.h)h+='<h2>'+esc(c.h)+'</h2>';
+  if(c.code)h+=codeBlock(c.code,c.out);
   if(c.t==='teach'){
-    if(c.code)h+='<pre>'+hl(c.code)+'</pre>';
     h+='<div class="body">'+c.body+'</div>';
   }else{
-    if(c.code)h+='<pre>'+hl(c.code)+'</pre>';
     h+='<div class="q">'+esc(c.q)+'</div><div class="opts" id="opts">';
     c.opts.forEach((o,i)=>{
       h+='<button class="opt" data-i="'+i+'"><span class="ltr">'+LTR[i]+'</span>'+
@@ -404,7 +447,7 @@ function renderFin(){
     '<div class="score"><em>'+rightCnt+'</em> / '+quizTotal+' 题答对</div>'+
     '<div class="body" style="text-align:left;margin-top:14px">'+
     (w>0?'<p>有 <b>'+w+'</b> 题答错。错的那几题正是没想通的地方，重做一遍比往下学新的更划算。</p>'
-        :'<p>全对。可以往下学「判断」了 —— 跟我说一声我就做第二章。</p>')+
+        :'<p>全对。接下来去 Termux 里敲 <b>python</b> 亲手试一遍，然后跟我说一声，我做第二章「判断」。</p>')+
     '</div></div>';
   let d='';
   if(w>0)d+='<button class="btn" id="redo">重做那 '+w+' 题</button>';
