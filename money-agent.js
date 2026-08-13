@@ -144,6 +144,7 @@ function css(){
 .ma-m.ai b{color:#e8a84c;}
 .ma-m.sys{align-self:center;background:none;color:#8890a8;font-size:12.5px;text-align:center;
   padding:2px 0;max-width:100%;}
+.ma-when{align-self:center;font-size:12px;color:#6b7391;padding:4px 0 2px;}
 .ma-m.err{align-self:center;background:rgba(232,92,92,.12);border:1px solid rgba(232,92,92,.35);
   color:#e2b5b5;font-size:13px;max-width:100%;}
 .ma-tips{display:flex;flex-wrap:wrap;gap:7px;padding:0 14px 10px;}
@@ -158,6 +159,9 @@ function css(){
 .ma-in button:disabled{opacity:.35;}
 .ma-set{padding:12px 14px 16px;display:none;overflow-y:auto;}
 .ma-set.on{display:block;}
+.ma-wipe{width:100%;min-height:46px;margin-top:10px;border-radius:11px;
+  border:1px solid rgba(232,92,92,.4);background:rgba(232,92,92,.1);color:#e2b5b5;
+  font-size:14px;font-family:inherit;}
 .ma-done{width:100%;min-height:48px;margin-top:16px;border:none;border-radius:11px;
   background:#e8a84c;color:#1a1206;font-weight:700;font-size:15px;font-family:inherit;}
 .ma-set label{display:block;font-size:12px;color:#8890a8;margin:9px 0 4px;}
@@ -221,8 +225,8 @@ function build(){
   bar.querySelector('#maBarOpen').onclick=()=>show(true);
 
   renderTips();
-  if(!cfg.apikey)push('sys','还没配 API Key。点右上角 ⚙ 填一个，或者去词汇应用里配过的会自动拿来用。');
-  else push('sys','问概念、问这一页的数字都行，也可以直接让我帮你把滑杆调成某种情况。');
+  // 有存档就把上次聊的摆回来，没有才说开场白
+  if(!loadChat())greet();
 }
 
 function renderTips(){
@@ -253,8 +257,16 @@ function renderSet(){
       esc(cfg.apikey)+'">'+
     '<div class="note">Key 只存在这台手机的浏览器里，不上传别处。'+
       '和词汇应用共用同一个域名，那边配过的会自动带过来。</div>'+
+    '<label>这一课的对话</label>'+
+    '<div class="note" style="margin-top:0">共 '+shown.filter(m=>m.who==='me'||m.who==='ai').length+
+      ' 条，存在这台手机上，按课分开。切到别的课再回来还在。</div>'+
+    '<button class="ma-wipe" id="maWipe">清空这一课的对话</button>'+
     '<button class="ma-done" id="maDone">完成</button>';
   el.set.querySelector('#maDone').onclick=()=>toggleSet(false);
+  el.set.querySelector('#maWipe').onclick=()=>{
+    if(busy){push('sys','正在跑，等它结束再清');return;}
+    if(confirm('清空这一课的全部对话？清了就找不回来了。')){clearChat();toggleSet(false);}
+  };
   el.set.querySelector('#maProv').onchange=e=>{cfg.provider=e.target.value;saveCfg();renderSet();};
   el.set.querySelector('#maMdl').onchange=e=>{
     cfg.models=cfg.models||{}; cfg.models[cfg.provider]=e.target.value; saveCfg();};
@@ -265,21 +277,111 @@ function show(v){
   open=v;
   el.ov.classList.toggle('on',v);
   el.fab.style.display=v?'none':'';
-  if(v){el.bar.classList.remove('on');scrollBottom();setTimeout(()=>el.input.focus(),60);}
+  if(v){hideBar();scrollBottom();setTimeout(()=>el.input.focus(),60);}
   else if(busy)el.bar.classList.add('on');
 }
-function setBar(t){el.barT.textContent=t;el.bar.classList.add('on');}
-function push(who,text){
-  shown.push({who,text});
-  const d=document.createElement('div');
-  d.className='ma-m '+who;
-  d.innerHTML=who==='me'?esc(text):rich(text);
-  el.msgs.appendChild(d);
+/* 完成态的条子必须会自己消失。原来做完只是把文案换成「✓ …」就一直挂在那儿，
+   要重新打开面板才清得掉（show(true) 里那句 remove）—— 屏幕上留一条
+   「事情早做完了」的横幅，旁边还有颗没用的「停止」。 */
+let barTimer=null;
+function setBar(t,done){
+  clearTimeout(barTimer);
+  el.barT.textContent=t;
+  el.bar.classList.add('on');
+  el.bar.querySelector('#maBarStop').style.display=done?'none':'';
+  if(done)barTimer=setTimeout(()=>el.bar.classList.remove('on'),4500);
+}
+function hideBar(){clearTimeout(barTimer);el.bar.classList.remove('on');}
+
+/* tmp=true 的不进 shown（「想一下…」那条，删 DOM 就完事，不该被存下来）。
+   带 t 时间戳是为了恢复对话时插日期分隔。 */
+function push(who,text,tmp){
+  const m={who,text,t:Date.now()};
+  const prev=shown[shown.length-1];        // 先取，push 之后取到的就是自己了
+  if(!tmp)shown.push(m);
+  const d=paint(m,prev,tmp);
   updateTips();
   scrollBottom();
+  if(!tmp)saveChat();
   return d;
 }
+function paint(m,prev,noWhen){
+  // 隔太久就插一条时间，不然昨天的对话和今天的接在一起看不出断层
+  if(!noWhen&&(!prev||m.t-prev.t>30*60*1000)){
+    const s=document.createElement('div');
+    s.className='ma-when';
+    s.textContent=whenText(m.t);
+    el.msgs.appendChild(s);
+  }
+  const d=document.createElement('div');
+  d.className='ma-m '+m.who;
+  d.innerHTML=m.who==='me'?esc(m.text):rich(m.text);
+  el.msgs.appendChild(d);
+  return d;
+}
+function whenText(ts){
+  const d=new Date(ts), now=new Date();
+  const hm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  const day=x=>x.getFullYear()+'-'+x.getMonth()+'-'+x.getDate();
+  if(day(d)===day(now))return hm;
+  const y=new Date(now.getTime()-864e5);
+  if(day(d)===day(y))return '昨天 '+hm;
+  return (d.getMonth()+1)+'月'+d.getDate()+'日 '+hm;
+}
 function scrollBottom(){requestAnimationFrame(()=>{el.msgs.scrollTop=el.msgs.scrollHeight;});}
+
+/* ---------- 对话存档 ----------
+   按课分开存：他在第一课问的东西，切到第二课再回来还得在。
+   两份都要存 —— shown 是屏幕上看到的，history 是喂模型的上下文；
+   只存 shown 的话，回来接着问「那第二个呢」它根本不知道第一个是什么。 */
+function chatKey(){return 'money_agent_chat_'+(HOST.lessonNo||0);}
+const KEEP_SHOWN=60, KEEP_HIST=16;
+
+/* 存 history 前把【当前状态】那一大段剥掉。
+   这段是每轮现读页面拼的，存下来明天就过期了 —— 他滑杆早改了，
+   模型却看着一份旧数字，还会跟新一轮带的真状态打架。留纯对话就行，
+   状态每次 submit 都会重新附一份最新的。顺带也省下大半存储空间。 */
+function stripState(c){
+  const i=String(c).indexOf('【当前状态】');
+  return i>0?String(c).slice(0,i).trim():String(c);
+}
+let saveTimer=null;
+function saveChat(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    try{
+      localStorage.setItem(chatKey(),JSON.stringify({
+        v:1, at:Date.now(),
+        shown:shown.slice(-KEEP_SHOWN),
+        history:history.slice(-KEEP_HIST).map(h=>({role:h.role,content:stripState(h.content)}))
+      }));
+    }catch(e){ /* 配额满了就算了，对话没了总比页面崩了强 */ }
+  },300);
+}
+function loadChat(){
+  let d=null;
+  try{ d=JSON.parse(localStorage.getItem(chatKey())||'null'); }catch(e){}
+  if(!d||!Array.isArray(d.shown)||!d.shown.length)return false;
+  shown=d.shown.filter(m=>m&&m.who&&m.text).map(m=>({who:m.who,text:m.text,t:m.t||d.at||Date.now()}));
+  history=Array.isArray(d.history)?d.history.filter(h=>h&&h.role&&h.content):[];
+  shown.forEach((m,i)=>paint(m,shown[i-1]));
+  updateTips();
+  return true;
+}
+function clearChat(){
+  clearTimeout(saveTimer);          // 干掉在飞的那次写入，否则刚删完又被写回来
+  shown=[]; history=[];
+  el.msgs.innerHTML='';
+  try{localStorage.removeItem(chatKey());}catch(e){}
+  updateTips();
+  greet();
+}
+/* 开场白一律 tmp —— 它是每次进来按当前有没有 Key 现生成的。
+   存进档的话，等他后来配好了 Key，还会一直显示「还没配 API Key」。 */
+function greet(){
+  if(!cfg.apikey)push('sys','还没配 API Key。点右上角 ⚙ 填一个，或者去词汇应用里配过的会自动拿来用。',true);
+  else push('sys','问概念、问这一页的数字都行，也可以直接让我帮你把滑杆调成某种情况。',true);
+}
 
 /* ---------- 系统提示词 ---------- */
 function sysPrompt(){
@@ -390,7 +492,7 @@ async function submit(){
 async function loop(){
   busy=true; stopWanted=false;
   el.send.disabled=true;
-  const thinking=push('sys','想一下…');
+  const thinking=push('sys','想一下…',true);   // 临时的，不进存档
 
   try{
     for(let turn=0;turn<MAX_TURNS;turn++){
@@ -432,16 +534,15 @@ async function loop(){
     el.send.disabled=false;
     if(thinking.parentNode)thinking.remove();
     if(!open){
+      // 让开着的时候得报一声做完了，但这条会自己消失（setBar 的 done）
       const last=shown.filter(m=>m.who==='ai').pop();
-      setBar(last?('✓ '+last.text.split('\n')[0]):'✓ 做完了');
-      el.bar.querySelector('#maBarStop').style.display='none';
+      setBar(last?('✓ '+last.text.split('\n')[0]):'✓ 做完了',true);
     }else{
-      el.bar.classList.remove('on');
+      hideBar();
     }
-    // 停止按钮只在跑的时候有意义，下一轮开始前恢复
-    setTimeout(()=>{el.bar.querySelector('#maBarStop').style.display='';},50);
     // 历史太长会越烧越多 token，只留最近的
-    if(history.length>16)history=history.slice(-16);
+    if(history.length>KEEP_HIST)history=history.slice(-KEEP_HIST);
+    saveChat();
   }
 }
 
@@ -458,6 +559,8 @@ window.MoneyAgent={
   // 测试钩子：打桩掉真实 API，用脚本驱动整个循环
   // （不这么做就得拿真 Key 才能验多轮/回喂/让开/上限）
   _mockAI(fn){ callAI=fn; cfg.apikey=cfg.apikey||'test'; },
-  _state(){ return {busy,open,history:history.slice(),shown:shown.slice()}; }
+  _state(){ return {busy,open,history:history.slice(),shown:shown.slice(),
+                    bar:el&&el.bar.classList.contains('on')}; },
+  _clear(){ clearChat(); }
 };
 })();
