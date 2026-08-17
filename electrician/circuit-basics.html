@@ -68,6 +68,8 @@ canvas{display:block;width:100%;background:#fafbfc}
 .btn:active{transform:translateY(1px)}
 .btn.on{background:var(--accbg);border-color:var(--acc);color:var(--acc);font-weight:600}
 .btn.big{font-size:.95rem;font-weight:600}
+/* 场景2 三个选项要逐条读（站地上/悬空/两手），各占一行才不会宽窄不齐 */
+#b1 .btn{flex:1 1 100%}
 .btn.danger.on{background:var(--errbg);border-color:var(--err);color:var(--err)}
 .btn.good.on{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
 .chk{display:flex;align-items:center;gap:8px;min-height:var(--tap);
@@ -594,18 +596,18 @@ const S2 = (function(){
          lArm:[[246,GY-106],[232,GY-78],[228,GY-56]],
          path:[[TX+TW,LY],[300,LY],[285,GY-125],[258,GY-106],[252,GY-46],[238,GY],
                [238,210],[PEX,210],[PEX,GY],[PEX,NY],[TX+TW,NY]] },
-    B: { footY:GY-30, air:true, closed:false,
-         rArm:[[258,GY-136],[285,GY-155],[300,LY]],
+    B: { footY:GY-42, air:true, closed:false,
+         rArm:[[258,GY-136],[285,GY-140],[300,LY]],
          lArm:[[246,GY-136],[232,GY-108],[228,GY-86]],
-         path:[[TX+TW,LY],[300,LY],[285,GY-155],[258,GY-136],[252,GY-76],[238,GY-30]] },
+         path:[[TX+TW,LY],[300,LY],[285,GY-140],[258,GY-136],[252,GY-76],[238,GY-30]] },
     /* 肩定在 GY-128、胸口 GY-114：肩再抬高就贴到头底（GY-144）了，
        穿胸的 V 形会变成「双手举过头顶」的样子。
        胸口点定在 GY-100（肩下 28px、躯干中上部）：下潜浅了看着只是条起伏的线，
        「电流真的钻进胸腔」这层意思就没了 */
-    C: { footY:GY-30, air:true, closed:true,
-         rArm:[[264,GY-128],[285,GY-124],[300,LY]],
+    C: { footY:GY-42, air:true, closed:true,
+         rArm:[[264,GY-128],[285,GY-136],[300,LY]],
          lArm:[[240,GY-128],[228,GY-124],[204,NY]],
-         path:[[TX+TW,LY],[300,LY],[285,GY-124],[264,GY-128],[250,GY-100],[240,GY-128],
+         path:[[TX+TW,LY],[300,LY],[285,GY-136],[264,GY-128],[250,GY-100],[240,GY-128],
                [228,GY-124],[204,NY],[TX+TW,NY]] }
   };
   const PATHS = { A:new Path(POSE.A.path), B:new Path(POSE.B.path), C:new Path(POSE.C.path) };
@@ -637,9 +639,9 @@ const S2 = (function(){
 
     /* 火线 / 零线 */
     new Path([[TX+TW,LY],[344,LY]]).stroke(g, 3.4, C.L);
-    new Path([[TX+TW,NY],[344,NY]]).stroke(g, 3.4, C.N);
+    new Path([[TX+TW,NY],[mode === 'C' ? 204 : 344, NY]]).stroke(g, 3.4, C.N);
     /* L/N 标签避开鸟（x152~185）和小人（x238~266）这两块，三者原来挤在一起 */
-    txt(g, 'L 火线 220V', 210, LY-13, {sz:11, b:1, c:C.L, al:'left'});
+    txt(g, 'L 火线 220V', 100, LY+13, {sz:11, b:1, c:C.L, al:'left'});
     txt(g, 'N 零线 0V',  150, NY+14, {sz:11, b:1, c:C.N, al:'left'});
 
     /* 中性点接地 */
@@ -723,7 +725,8 @@ const S2 = (function(){
       g.save(); g.strokeStyle = C.tx3; g.lineWidth = 1.5; g.setLineDash([4,4]);
       g.beginPath(); g.moveTo(CX-26, fy+6); g.lineTo(CX+26, fy+6); g.stroke();
       g.restore();
-      txt(g, '脚离地（悬空）', CX + 2, fy + 18, {sz:10, c:C.tx3});
+      /* 摆到小人左边：居中的话正好被脚底那个红 ✗ 压住（真机截图才看出来） */
+      txt(g, '脚离地（悬空）', CX - 30, fy + 18, {sz:10, c:C.tx3, al:'right'});
     }
 
     /* 心脏：必须正好落在 C 路径的胸口那一点（GY-122），别按脚的高度另算一遍 */
