@@ -781,11 +781,20 @@ playwright 自带的 chromium，直接 `chromium.launch()` 会报 headless_shell
   **0V 虚线只画到 x270**：山那边有它自己的海平面线（也是 0V）、高度不一样，
   横穿过去就成了「同一个 0V 画在两个高度上」
 
-**验证手段：容器里的 chromium + playwright 已经没了**（`/root/webtest` 整个不在，
-全盘找不到 node_modules，`/usr/bin/chromium` 也没有；`shot.js` 因为在共享目录 `/sdcard/webdev/` 里才活着，
-看起来是容器 rootfs 被重置过）。改用**塞 `vm` + mock DOM/canvas**（cube-solver 那一套）：
-拦下全部绘图指令做几何断言（95 项），再**自己光栅化成 PNG** 用眼睛看画面。
-写这个光栅化器踩的坑，下次直接复用别再犯：
+**验证手段是两套，各管各的，别只用一套**（2026-08-17 实测：这个页面一共改了 13 处，
+其中 **5 处只有真机截图看得出来**）：
+
+| | 塞 `vm` + mock DOM/canvas | 真机 Chromium 截图 |
+|---|---|---|
+| 快慢 | 秒级，改一行验一次 | 十几秒，要起浏览器 |
+| 能查 | 几何坐标、数值、文案与屏幕数字是否一致、元素越界 | **版面**：文字被图形挡住、元素重叠、按钮换行、字号、emoji 实际宽度 |
+| 查不了 | 一切 CSS 排版（没有排版引擎）；文字只能按估算宽度当色块 | —— |
+
+被真机截图抓出来、而 95 项断言和光栅化图都放过的：小人的头骑在火线上、
+「L 火线 220V」标注被头挡掉一半、红 ✗ 压在「脚离地（悬空）」上、按钮 2+1 换行且宽窄不齐。
+**共同点是「两个东西挨在一起好不好看」，断言写不出来，色块图也看不出来。**
+
+塞 `vm` 那套要自己写光栅化器，踩的坑下次直接复用别再犯：
 - **一次描边要一次合成**：沿线逐个 disc 混合的话，相邻 disc 会把 alpha 累加到接近 1，
   半透明辉光被画得比浏览器浓得多 —— 我据此判断过「辉光太粗」，是错的。
   正解是先把覆盖率打进 mask 取 max，最后按 alpha 混一次
@@ -798,6 +807,52 @@ playwright 自带的 chromium，直接 `chromium.launch()` 会报 headless_shell
 - 断言要**只取收敛后的那一帧**：`draw(i,n)` 会把 n 帧全累积进记录，
   拿 `[0]` 取到的是缓动途中的位置
 - 断言别用 `includes('安全')` 这种宽匹配：鸟的标注里也有"安全"两个字，B 态那条一直是假阳性
+
+---
+
+## debian 容器（截图环境）—— 2026-08-17 重装记录
+
+容器 rootfs 被重置过一次，连 `node`、`curl` 都没了。重装踩的坑按顺序记在这儿，
+**下次再被重置，照这个走能省掉一整轮试错**。
+
+**① 镜像源：北外和清华在这个网络下都 403，用阿里云或中科大。**
+北外对 `pool/main/n/node-*` 和整个 debian-security 返回 403，
+表现是 apt 下到一半报一串「无法下载 ... 403」然后**整批回滚**（apt 是原子的，
+一个包下不来就全不装）—— 看着像装了半天什么都没装上。
+换源前先用 Termux 这边的 `curl` 挨个探一遍再动手，别直接 apt 试。
+原 `sources.list` 备份在容器 `/etc/apt/sources.list.bak-0817`。
+
+**② proot 的 `--link2symlink` 会把 dpkg 的状态文件弄丢**（最坑的一个）。
+症状：`dpkg: 无法恢复的致命错误，中止: 新建备份文件 '/var/lib/dpkg/status-old' 时出错: 不允许的操作`，
+而且**每次 apt 都在同一处倒下**。
+原理：dpkg 写状态时要 `link(status, status-old)`；proot 用
+`.l2s.<名字><4位序号>` 这套文件来模拟硬链接。**如果目录里已经有同名的
+`.l2s.status0001` 残留（上次中断留下的），转换就会失败，而原文件已经被移走了 ——
+于是 `/var/lib/dpkg/status` 直接消失，apt 彻底不能用。**
+- **`force-unsafe-io` 不解决这个，别浪费时间试**（它管的是 fsync，不是 link）
+- 恢复：内容还在 `.l2s.status0001.000N` 里，挑 `grep -c '^Package:'` 最多、时间最新的那个
+  → `cp` 出来备份 → **删掉所有 `.l2s.status*`** → 复原成 `status` → `dpkg --configure -a`
+- 判据：清完残留后手动 `ln status status-old` 能成功，就修好了
+- `libpam-systemd` / `libgtk-3-0t64` 配置失败是正常的（proot 里没 systemd），不影响 headless chromium
+
+**③ npm 不用装**：`playwright-core` 是**零依赖**包，
+`curl` 下 npmmirror 的 tarball（3MB）解压到 `/root/node_modules/playwright-core` 就能 require。
+Debian 的 `npm` 包要拖一长串 `node-*` 依赖，正是 403 最密集的那批。
+
+**④ 中文字体和 emoji 字体都得装**（`fonts-noto-cjk` + `fonts-noto-color-emoji`）。
+少了 emoji 字体，页面里的 ⚡✅⛔ 会渲染成豆腐块 —— 而 **canvas 里的气泡文字也带 emoji，
+宽度会算错**，等于截图白截。你手机上是有这些字体的，所以这纯粹是截图环境要补齐。
+
+**shot.js 的新位置和用法**（放共享目录，容器再被重置也不会丢；模块在容器里，重装即可）：
+```
+~/deb-run.sh "node /root/sdcard/webdev/shot.js <输入> <输出.png> [选项] [选择器...]"
+```
+- **输入输出一律写绝对路径**（`/root/sdcard/webdev/xxx`）。`cd` 过去再传相对路径会拼成
+  `file://circuit-basics.html/` 直接报 ERR_INVALID_URL
+- `--vp` 只截视口那一屏 —— **验吸顶栏/sticky 必须加**，`fullPage` 对 fixed/sticky 会画错位
+- 末尾可以跟**多个选择器**，按顺序依次点击（每次等 400ms），
+  用来验「点两下才出现」的状态：`'.tab[data-i="1"]' '#b1 button[data-s="C"]'`
+- 有 JS 报错会打 `CONSOLE ERRORS`（`pageerror` 也接了）
 
 ---
 
