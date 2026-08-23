@@ -269,8 +269,8 @@ function draw1(dt){
     const s = segAt(P1, x, RC1.y0); return [s-17, s+17];
   }).concat([[0,10],[P1.len-10,P1.len],
              [segAt(P1,180,RC1.y1)-20, segAt(P1,180,RC1.y1)+20]]);
-  dots(g, P1, {phase:v.ok ? S1.ph : 0, gap:24, r:3.8,
-               color:v.ok ? EP.P.amber : '#c9ced4', skip:skip});
+  EP.flow(g, P1, {phase:v.ok ? S1.ph : 0, gap:52,
+               kind:'cur', skip:skip});
 
   EP.cell(g, RC1.x0, 119, 44, 21, {horiz:false, pm:false, label:'12V', lx:28, ly:0});
   EP.knife(g, 180, RC1.y1, S1.on, {w:52, h:22});
@@ -353,8 +353,8 @@ function draw2(dt){
     g.beginPath(); g.moveTo(58, RC2.yTop); g.lineTo(94, RC2.yTop); g.stroke(); g.restore();
   }
   if(v.It > 0){
-    dots(g, main, {phase:S2.ph, gap:22, r:3.8, color:EP.P.amber, skip:[[0,10],[6,44]]});
-    dots(g, back, {phase:-S2.ph, gap:22, r:3.8, color:EP.P.amber, skip:[[back.len-10,back.len]]});
+    EP.flow(g, main, {phase:S2.ph, gap:52, kind:'cur', skip:[[0,10],[6,44]]});
+    EP.flow(g, back, {phase:-S2.ph, gap:52, kind:'cur', skip:[[back.len-10,back.len]]});
   }
 
   EP.cell(g, RC2.xL, 129, 44, 21, {horiz:false, pm:false, label:'12V', lx:28, ly:0});
@@ -370,7 +370,7 @@ function draw2(dt){
       g.save(); g.strokeStyle = C.bg; g.lineWidth = 6;
       g.beginPath(); g.moveTo(x, 122); g.lineTo(x, 148); g.stroke(); g.restore();
     }
-    if(live) dots(g, br, {phase:S2.ph, gap:20, r:3.4, color:EP.P.amber, skip:[[18,76]]});
+    if(live) EP.flow(g, br, {phase:S2.ph, gap:52, kind:'cur', skip:[[18,76]]});
     node(g, x, RC2.yTop); node(g, x, RC2.yBot);
     EP.lampHolder(g, x, 132, 28, 15);
     EP.bulb(g, x, 114, 13, live ? 1 : 0);
@@ -465,13 +465,13 @@ function draw3(dt){
 
   /* 流动的点 */
   if(v.I > 0){
-    dots(g, wires[0], {phase:S3.ph, gap:22, r:3.4, color:C.cur, skip:[[0,12],[42,78]]});
-    dots(g, wires[4], {phase:S3.ph, gap:22, r:3.4, color:C.cur,
+    EP.flow(g, wires[0], {phase:S3.ph, gap:52, kind:'cur', skip:[[0,12],[42,78]]});
+    EP.flow(g, wires[4], {phase:S3.ph, gap:52, kind:'cur',
                        skip:[[wires[4].len-12,wires[4].len],
                              [segAt(wires[4],162,M3.yMain)-20, segAt(wires[4],162,M3.yMain)+20]]});
     const skB = [[20,52],[70,102]];   /* 两个灯泡各占一段，别让点画到灯上 */
-    if(v.upOK) dots(g, upW, {phase:S3.ph, gap:18, r:3, color:C.cur, skip:skB});
-    if(v.dnOK) dots(g, dnW, {phase:S3.ph, gap:18, r:3, color:C.cur, skip:skB});
+    if(v.upOK) EP.flow(g, upW, {phase:S3.ph, gap:52, kind:'cur', skip:skB});
+    if(v.dnOK) EP.flow(g, dnW, {phase:S3.ph, gap:52, kind:'cur', skip:skB});
   }
 
   EP.cell(g, M3.xL, 159, 42, 20, {horiz:false, pm:false, label:'12V', lx:19, ly:0});
@@ -584,7 +584,7 @@ function draw4(){
     battery(g, 60, 119, {horiz:false, long:18, short:10, gap:8, pm:false});
     lamp(g, 140, 60, 13, 0.5); txt(g, '灯 A', 140, 84, {sz:10, c:C.tx2});
     lamp(g, 230, 60, 13, 0.5); txt(g, '灯 B', 230, 84, {sz:10, c:C.tx2});
-    dots(g, P, {phase:0, gap:22, r:3.2, color:C.cur,
+    EP.flow(g, P, {phase:0, gap:52, kind:'cur',
                 skip:[[0,10],[P.len-10,P.len],
                       [segAt(P,140,60)-17,segAt(P,140,60)+17],
                       [segAt(P,230,60)-17,segAt(P,230,60)+17]]});
@@ -607,7 +607,7 @@ function draw4(){
     switchSym(g, 150, 60, true, {len:34});
     txt(g, '开关', 150, 82, {sz:10, c:C.tx2});
     lamp(g, 250, 60, 13, 0.9); txt(g, '灯', 250, 84, {sz:10, c:C.tx2});
-    dots(g, P, {phase:0, gap:22, r:3.2, color:C.cur,
+    EP.flow(g, P, {phase:0, gap:52, kind:'cur',
                 skip:[[0,10],[P.len-10,P.len],
                       [segAt(P,150,60)-19,segAt(P,150,60)+19],
                       [segAt(P,250,60)-17,segAt(P,250,60)+17]]});

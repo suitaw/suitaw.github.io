@@ -325,10 +325,10 @@ function drawReal1(g){
   /* 电子（蓝点，实际方向）和电流（琥珀箭头，规定方向）分开画、错开半格 */
   const skip = [GAP1, GAP2];
   if(S1.ele)
-    EP.flow(g, PALL, {phase:S1.on ? -S1.phase : 0, kind:'ele', gap:30, r:3.6,
+    EP.flow(g, PALL, {phase:S1.on ? -S1.phase : 0, kind:'ele', gap:56, r:3.4,
                       color:S1.on ? EP.P.ele : '#c3cad2', skip:skip});
   if(S1.cur)
-    EP.flow(g, PALL, {phase:S1.on ? S1.phase + 15 : 15, kind:'cur', gap:30,
+    EP.flow(g, PALL, {phase:S1.on ? S1.phase + 28 : 15, kind:'cur', gap:56,
                       color:S1.on ? EP.P.amber : '#c9ced4', skip:skip});
 
   /* 元件 */
@@ -343,7 +343,7 @@ function drawReal1(g){
 
   EP.lampHolder(g, RH.x, RH.y, RH.w, RH.h);
   EP.bulb(g, RL.x, RL.y, RL.r, b);
-  EP.callout(g, RL.x - RL.r*0.8, RL.y - RL.r*0.5, RL.x - 40, RL.y - 34,
+  EP.callout(g, RL.x - RL.r*0.7, RL.y + RL.r*0.6, RL.x - 34, RL.y + 46,
              '灯泡', S1.on ? '正在发光' : '没通电', {al:'right', color:EP.P.ink});
 
   /* 截面标记 */
@@ -372,10 +372,10 @@ function drawSym1(g){
 
   const skip = [[sSw-18, sSw+18], [sLp-19, sLp+19], [0, 9], [P1.len-9, P1.len]];
   if(S1.ele)
-    EP.flow(g, P1, {phase:S1.on ? -S1.phase : 0, kind:'ele', gap:30, r:3.6,
+    EP.flow(g, P1, {phase:S1.on ? -S1.phase : 0, kind:'ele', gap:56, r:3.4,
                     color:S1.on ? EP.P.ele : '#c3cad2', skip:skip});
   if(S1.cur)
-    EP.flow(g, P1, {phase:S1.on ? S1.phase + 15 : 15, kind:'cur', gap:30,
+    EP.flow(g, P1, {phase:S1.on ? S1.phase + 28 : 15, kind:'cur', gap:56,
                     color:S1.on ? EP.P.amber : '#c9ced4', skip:skip});
 
   battery(g, R1.x0, BY, {horiz:false, long:19, short:10, gap:9, pm:false});
@@ -463,8 +463,8 @@ function draw2(dt){
   const sSw2 = segAt(P2, SW2, R2.y0), sR = segAt(P2, R2.x1, 110);
   const skip = [[0,14],[P2.len-14,P2.len],[sSw2-22,sSw2+22],[sR-26,sR+26]];
   if(!S2.open){
-    EP.flow(g, P2, {phase:-S2.phase, kind:'ele', gap:30, r:3.4, skip:skip});
-    EP.flow(g, P2, {phase:S2.phase + 15, kind:'cur', gap:30, skip:skip});
+    EP.flow(g, P2, {phase:-S2.phase, kind:'ele', gap:56, r:3.4, skip:skip});
+    EP.flow(g, P2, {phase:S2.phase + 28, kind:'cur', gap:56, skip:skip});
   }
 
   /* 电池内部：虚线框把「电动势 + 内阻」圈起来 */
