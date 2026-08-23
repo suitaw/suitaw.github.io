@@ -398,6 +398,126 @@ function dimV(g, x, y0, y1, s, o){
   if(s) tag(g, s, x, (y0+y1)/2, {sz:o.sz || 10.5, c:c, line:c, b:1});
 }
 
+/* ================= 仪表：指针表盘 =================
+   2026-08-23 加的。定下的口径是「A 方案」：课页保持浅色统一，
+   但**仪表要当仪表画** —— 真表盘、真刻度、指针有惯性、读数带单位。
+   第 3 章（万用表/钳形表/绝缘电阻表）、第 5 章（检测）会大量用到。
+
+   dial(g, x, y, w, h, {
+     val, max,            当前值 / 满量程
+     bipolar:true,        中间是 0、可以往两边偏（检流计、电流方向表）
+     label:'检流计',       表盘下面那行字
+     unit:'mV',           右上角小字
+     show:true            要不要把数值印在表盘上
+   })
+   —— 指针的惯性由调用方自己做（存一个平滑过的值传进来），
+      这里只负责画，免得同一块表在两个页面里手感不一样。 */
+function dial(g, x, y, w, h, o){
+  o = o || {};
+  box(g, x, y, w, h, 5, o.face || '#e8e2d0', o.line || '#b9ae8e', 1.4);
+  const cx = x + w/2, cy = y + h*0.80;
+  const R = Math.min(w*0.42, h*0.68);
+  const bip = !!o.bipolar;
+  const span = o.span || (Math.PI/2.4);        /* 半张角 */
+
+  /* 刻度弧 */
+  g.save();
+  g.strokeStyle = o.ink || '#6b6350'; g.lineWidth = 1.2;
+  g.beginPath(); g.arc(cx, cy, R, -Math.PI/2 - span, -Math.PI/2 + span); g.stroke();
+  const n = o.ticks || 5;
+  for(let k = bip ? -n : 0; k <= n; k++){
+    const t = bip ? k/n : (k/n)*2 - 1;
+    const a = t*span - Math.PI/2;
+    const big = (k % (bip ? n : Math.ceil(n/2)) === 0);
+    const r2 = R - (big ? 10 : 5.5);
+    g.beginPath();
+    g.moveTo(cx + Math.cos(a)*R, cy + Math.sin(a)*R);
+    g.lineTo(cx + Math.cos(a)*r2, cy + Math.sin(a)*r2);
+    g.stroke();
+  }
+  g.restore();
+
+  /* 端点标记 */
+  if(bip){
+    txt(g, '−', cx - R + 3, cy - 8, {sz:11, b:1, c:o.ink || '#6b6350'});
+    txt(g, '＋', cx + R - 5, cy - 8, {sz:9, b:1, c:o.ink || '#6b6350'});
+    txt(g, '0', cx, cy - R + 2, {sz:9, c:o.ink || '#6b6350'});
+  }else{
+    txt(g, '0', cx - R + 2, cy - 6, {sz:9, c:o.ink || '#6b6350'});
+    txt(g, o.maxLab != null ? o.maxLab : String(o.max), cx + R - 2, cy - 6,
+        {sz:9, c:o.ink || '#6b6350'});
+  }
+
+  /* 指针 */
+  const raw = (o.max ? (o.val || 0)/o.max : 0);
+  const t = Math.max(bip ? -1 : 0, Math.min(1, raw));
+  const a = (bip ? t : t*2 - 1) * span - Math.PI/2;
+  g.save();
+  g.strokeStyle = o.needle || '#c8422f'; g.lineWidth = 2.2; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(cx, cy);
+  g.lineTo(cx + Math.cos(a)*(R-5), cy + Math.sin(a)*(R-5));
+  g.stroke(); g.restore();
+  g.save(); g.fillStyle = '#3a3527';
+  g.beginPath(); g.arc(cx, cy, 4.2, 0, TAU); g.fill(); g.restore();
+
+  /* 数值印在表盘上半部：位置要避开弧顶那个「0」刻度标（实测 0.30 会压上去） */
+  if(o.show !== false && o.valText)
+    txt(g, o.valText, cx, y + h*0.20, {sz:o.valSz || 13, b:1, c:'#3a3527'});
+  if(o.unit) txt(g, o.unit, x + w - 6, y + 11, {sz:9, c:'#6b6350', al:'right'});
+  if(o.label) txt(g, o.label, cx, cy + 15, {sz:9.5, c:'#6b6350'});
+}
+
+/* ================= 仪表：走纸记录仪 =================
+   把一段滚动缓冲画成一条条曲线。左边旧、右边新。
+   讲「变化率」只有这个办法讲得清：一条量本身、一条它的变化，
+   前者到峰值的那一刻后者正好过零。
+
+   strip(g, x, y, w, h, buf, defs, {n, bg})
+     buf  = [[v0,v1,…], …]  每帧 push 一个样本，长度自己截断
+     defs = [{i:0, color:'#2f86c9', scale:1/0.6},
+             {i:1, color:'#e0731a', auto:true, floor:8}]
+   **auto 的那条要按缓冲区里的实际最大值缩放** —— 写死比例的话，
+   参数一翻倍（比如线圈匝数 ×2）曲线就削顶成一条平台。 */
+function strip(g, x, y, w, h, buf, defs, o){
+  o = o || {};
+  box(g, x, y, w, h, 4, o.bg || '#f2f5f8', o.line || C.boxLine, 1);
+  g.save();
+  g.strokeStyle = '#cfd6dd'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(x, y + h/2); g.lineTo(x + w, y + h/2); g.stroke();
+  g.restore();
+  if(!buf || buf.length < 2) return;
+  const n = o.n || buf.length;
+  const stepx = w / n;
+  defs.forEach(function(d){
+    let sc = d.scale;
+    if(d.auto){
+      let mx = d.floor || 1;
+      buf.forEach(function(p){ mx = Math.max(mx, Math.abs(p[d.i])); });
+      sc = 1/(mx*1.1);
+    }
+    g.save();
+    g.strokeStyle = d.color; g.lineWidth = d.lw || 1.8; g.lineJoin = 'round';
+    g.beginPath();
+    buf.forEach(function(p, i){
+      const px = x + i*stepx;
+      const vv = Math.max(-1, Math.min(1, p[d.i]*sc));
+      const py = y + h/2 - vv*(h/2 - 4);
+      i ? g.lineTo(px, py) : g.moveTo(px, py);
+    });
+    g.stroke(); g.restore();
+  });
+}
+
+/* 走纸图的图例：一行色条 + 名字 */
+function stripLegend(g, x, y, items){
+  let cx = x;
+  items.forEach(function(it){
+    g.save(); g.fillStyle = it[1]; g.fillRect(cx, y - 1.2, 12, 2.4); g.restore();
+    txt(g, it[0], cx + 16, y, {sz:9.5, c:C.tx2, al:'left'});
+    cx += 16 + tw(g, it[0], 9.5) + 16;
+  });
+}
+
 /* ================= 主循环 ================= */
 /* 只画当前这一页。fn(dt, t) —— dt 是秒 */
 function loop(fn){
@@ -419,6 +539,7 @@ global.EC = {
   head:head, flowArrows:flowArrows, dots:dots, glow:glow,
   txt:txt, tw:tw, box:box, tag:tag,
   battery:battery, cell:cell, lamp:lamp, resistor:resistor,
+  dial:dial, strip:strip, stripLegend:stripLegend,
   switchSym:switchSym, meter:meter, node:node, dimV:dimV,
   $:function(id){ return document.getElementById(id); }
 };

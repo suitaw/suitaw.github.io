@@ -229,7 +229,7 @@
 <script>
 'use strict';
 const {C, Path, Stage, dots, txt, box, tag, head, node, tw,
-       battery, lamp, resistor, switchSym, meter, loop, $} = EC;
+       battery, lamp, resistor, switchSym, meter, dial, strip, stripLegend, loop, $} = EC;
 
 let cur = 0;
 const scenes = [$('sc0'), $('sc1'), $('sc2'), $('sc3')];
@@ -471,59 +471,20 @@ function draw2(dt){
     g.restore();
   }
 
-  /* ---- 检流计：真表盘 + 刻度 ---- */
-  box(g, 12, 158, 116, 112, 5, '#e8e2d0', '#b9ae8e', 1.4);
-  const gx = 70, gy = 246, R = 54;
-  g.save(); g.strokeStyle = '#6b6350'; g.lineWidth = 1.2;
-  g.beginPath(); g.arc(gx, gy, R, Math.PI*1.22, Math.PI*1.78); g.stroke();
-  for(let k=-5;k<=5;k++){
-    const a = (k/5)*(Math.PI/2.4) - Math.PI/2;
-    const r2 = (k%5===0) ? R-11 : R-6;
-    g.beginPath();
-    g.moveTo(gx+Math.cos(a)*R, gy+Math.sin(a)*R);
-    g.lineTo(gx+Math.cos(a)*r2, gy+Math.sin(a)*r2);
-    g.stroke();
-  }
-  g.restore();
-  txt(g, '0', gx, gy-R+2, {sz:9, c:'#6b6350'});
-  txt(g, '−', gx-R+4, gy-8, {sz:11, b:1, c:'#6b6350'});
-  txt(g, '＋', gx+R-6, gy-8, {sz:9, b:1, c:'#6b6350'});
-  const defl = Math.max(-1, Math.min(1, S2.e/22));
-  const na = defl*(Math.PI/2.4) - Math.PI/2;
-  g.save();
-  g.strokeStyle = '#c8422f'; g.lineWidth = 2.2; g.lineCap='round';
-  g.beginPath(); g.moveTo(gx, gy); g.lineTo(gx+Math.cos(na)*(R-6), gy+Math.sin(na)*(R-6)); g.stroke();
-  g.restore();
-  g.save(); g.fillStyle = '#3a3527';
-  g.beginPath(); g.arc(gx, gy, 4.5, 0, EC.TAU); g.fill(); g.restore();
-  txt(g, '检流计', gx, gy+16, {sz:9, c:'#6b6350'});
-
-  /* ---- 走纸记录仪：Φ 和 e 两条曲线 ---- */
-  const cb = {x:140, y:158, w:208, h:88};
-  box(g, cb.x, cb.y, cb.w, cb.h, 4, '#f2f5f8', C.boxLine, 1);
-  g.save(); g.strokeStyle = '#cfd6dd'; g.lineWidth = 1;
-  g.beginPath(); g.moveTo(cb.x, cb.y+cb.h/2); g.lineTo(cb.x+cb.w, cb.y+cb.h/2); g.stroke();
-  g.restore();
-  const stepx = cb.w / BUFN;
-  let eMax = 8;
-  S2.buf.forEach(function(p){ eMax = Math.max(eMax, Math.abs(p[1])); });
-  [[0, '#2f86c9', 1/(PHI0*(S2.N/8)*1.15)], [1, '#e0731a', 1/(eMax*1.1)]].forEach(function(a){
-    if(S2.buf.length < 2) return;
-    g.save(); g.strokeStyle = a[1]; g.lineWidth = 1.8; g.lineJoin='round';
-    g.beginPath();
-    S2.buf.forEach(function(p, i){
-      const px = cb.x + i*stepx;
-      const vv = Math.max(-1, Math.min(1, p[a[0]]*a[2]));
-      const py = cb.y + cb.h/2 - vv*(cb.h/2 - 4);
-      i ? g.lineTo(px, py) : g.moveTo(px, py);
-    });
-    g.stroke(); g.restore();
+  /* ---- 检流计（用 EC.dial，第 3 章的万用表/钳形表还会用同一块表）---- */
+  dial(g, 12, 158, 116, 112, {
+    val:S2.e, max:22, bipolar:true, label:'检流计', unit:'mV',
+    valText:(Math.abs(S2.e) < 0.05 ? '0.0' : (S2.e<0?'−':'') + Math.abs(S2.e).toFixed(1))
   });
+
+  /* ---- 走纸记录仪（EC.strip）---- */
+  const cb = {x:140, y:158, w:208, h:88};
+  strip(g, cb.x, cb.y, cb.w, cb.h, S2.buf, [
+    {i:0, color:'#2f86c9', scale:1/(PHI0*(S2.N/8)*1.15)},
+    {i:1, color:'#e0731a', auto:true, floor:8}
+  ], {n:BUFN});
   txt(g, '走纸记录 · 左旧 → 右新', cb.x+cb.w, cb.y-6, {sz:9, c:C.tx3, al:'right'});
-  g.save(); g.fillStyle = '#2f86c9'; g.fillRect(cb.x+2, 254, 12, 2.4); g.restore();
-  txt(g, '磁通 Φ', cb.x+18, 255, {sz:9.5, c:C.tx2, al:'left'});
-  g.save(); g.fillStyle = '#e0731a'; g.fillRect(cb.x+72, 254, 12, 2.4); g.restore();
-  txt(g, '电动势 e', cb.x+88, 255, {sz:9.5, c:C.tx2, al:'left'});
+  stripLegend(g, cb.x+2, 254, [['磁通 Φ', '#2f86c9'], ['电动势 e', '#e0731a']]);
 
   /* ---- 底部状态 ---- */
   const moving = Math.abs(S2.v) > 6;
