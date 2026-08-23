@@ -1,0 +1,1639 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>电路实验室 —— 零基础学电工</title>
+<style>
+:root{
+  --bg:#f3f5f7; --card:#ffffff; --card2:#f7f9fb; --line:#dde2e8;
+  --tx:#1e2329; --tx2:#5d6773; --tx3:#8b949e;
+  --acc:#1a6fd4; --accbg:#e8f1fc;
+  --ok:#1c8348; --okbg:#e6f4ec;
+  --err:#c32f2f; --errbg:#fdeaea;
+  --warn:#a86200; --warnbg:#fdf2e0;
+  --wire:#7a8694; --lamp:#f0b429;
+  --r:10px; --tap:44px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#14171b; --card:#1d2126; --card2:#232830; --line:#333b44;
+    --tx:#e7eaee; --tx2:#9ba5b1; --tx3:#78828e;
+    --acc:#5da3f0; --accbg:#17293c;
+    --ok:#4dc47e; --okbg:#16301f;
+    --err:#ff7373; --errbg:#3a1c1c;
+    --warn:#e2a53c; --warnbg:#38290f;
+    --wire:#8e9aa8;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font:15px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  -webkit-text-size-adjust:100%;
+  padding-bottom:32px;
+}
+h1,h2,h3{margin:0;font-weight:600;line-height:1.4}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* ---------- 顶栏 ---------- */
+.top{
+  position:sticky;top:0;z-index:30;background:var(--card);
+  border-bottom:1px solid var(--line);
+  padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.top h1{font-size:1.05rem}
+.top .sub{font-size:.8rem;color:var(--tx2);flex:1 1 100%;margin-top:-4px}
+.jumps{display:flex;gap:8px;margin-left:auto}
+.jumps a{
+  display:flex;align-items:center;min-height:var(--tap);padding:0 12px;
+  font-size:.8rem;text-decoration:none;color:var(--tx2);
+  border:1px solid var(--line);border-radius:99px;background:var(--card2);
+}
+@media (min-width:900px){.jumps{display:none}}
+
+/* ---------- 第 0 课入口（放在最上面，因为它是读懂后面一切的前提） ---------- */
+.pre{max-width:1240px;margin:14px auto 0;padding:0 14px}
+.pre a{display:flex;align-items:center;gap:11px;min-height:var(--tap);
+  padding:11px 13px;text-decoration:none;color:inherit;
+  background:var(--accbg);border:1px solid var(--acc);border-radius:var(--r)}
+.pre .ic{flex:none;width:34px;height:34px;border-radius:9px;background:var(--acc);
+  color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;
+  font-size:.95rem}
+.pre .tt{flex:1;min-width:0}
+.pre .tt b{display:block;font-size:.9rem;color:var(--acc)}
+.pre .tt span{display:block;font-size:.78rem;color:var(--tx2);line-height:1.5}
+.pre .ar{flex:none;color:var(--acc);font-size:1.1rem}
+
+/* ---------- 主栅格 ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:14px}
+.cols{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:900px){
+  .cols{grid-template-columns:minmax(340px,42fr) 58fr;align-items:start}
+  .col-lab{position:sticky;top:64px}
+}
+.sec-h{display:flex;align-items:baseline;gap:8px;margin:2px 0 10px}
+.sec-h h2{font-size:.95rem}
+.sec-h span{font-size:.78rem;color:var(--tx3)}
+
+/* ---------- 概念卡 ---------- */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  margin-bottom:10px;overflow:hidden;
+}
+.card>summary{
+  list-style:none;cursor:pointer;padding:12px 14px;min-height:var(--tap);
+  display:flex;align-items:center;gap:10px;
+}
+.card>summary::-webkit-details-marker{display:none}
+.card>summary .cn{
+  flex:none;width:24px;height:24px;border-radius:6px;background:var(--accbg);color:var(--acc);
+  display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;
+}
+.card>summary .ct{font-weight:600;font-size:.95rem}
+.card>summary .cu{font-size:.75rem;color:var(--tx3)}
+.card>summary .cq{margin-left:auto;font-size:.75rem;color:var(--tx3)}
+.card[open]>summary{border-bottom:1px solid var(--line)}
+.card>summary .arw{transition:transform .15s;color:var(--tx3);font-size:.8rem}
+.card[open]>summary .arw{transform:rotate(180deg)}
+.cbody{padding:12px 14px 14px}
+.blk{margin-bottom:12px}
+.blk .lb{
+  display:inline-block;font-size:.75rem;font-weight:600;letter-spacing:.05em;
+  padding:2px 7px;border-radius:5px;margin-bottom:5px;
+}
+.lb.l1{background:var(--accbg);color:var(--acc)}
+.lb.l2{background:var(--okbg);color:var(--ok)}
+.lb.l3{background:var(--warnbg);color:var(--warn)}
+.blk p{margin:0;font-size:.9rem}
+.blk p+p{margin-top:6px}
+.blk b{color:var(--tx)}
+.fx{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+   background:var(--card2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:max(12px,.85em)}
+
+/* ---------- 题目 ---------- */
+.qs{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px}
+.q{margin-bottom:14px}
+.q:last-child{margin-bottom:0}
+.qh{font-size:.88rem;font-weight:600;margin-bottom:8px}
+.qh .qn{color:var(--tx3);font-weight:400;margin-right:4px}
+.opt{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  min-height:var(--tap);padding:8px 12px;margin-bottom:6px;
+  background:var(--card2);border:1px solid var(--line);border-radius:8px;
+  font-size:.88rem;
+}
+.opt .mk{
+  flex:none;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--tx3);
+}
+.opt.on{border-color:var(--acc)}
+.opt.right{border-color:var(--ok);background:var(--okbg)}
+.opt.right .mk{border-color:var(--ok);background:var(--ok);color:#fff}
+.opt.wrong{border-color:var(--err);background:var(--errbg)}
+.opt.wrong .mk{border-color:var(--err);background:var(--err);color:#fff}
+.opt[disabled]{cursor:default;opacity:1}
+.nq{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nq input{
+  width:110px;min-height:var(--tap);padding:0 10px;font:inherit;font-size:.9rem;
+  background:var(--card2);color:var(--tx);border:1px solid var(--line);border-radius:8px;
+}
+.nq .un{font-size:.85rem;color:var(--tx2)}
+.btn{
+  min-height:var(--tap);padding:0 16px;border-radius:8px;border:1px solid var(--line);
+  background:var(--card2);font-size:.85rem;display:inline-flex;align-items:center;gap:6px;
+  justify-content:center;
+}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.btn.on{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:600}
+.btn:disabled{opacity:.45;cursor:default}
+.fb{margin-top:8px;padding:9px 11px;border-radius:8px;font-size:.85rem}
+.fb.y{background:var(--okbg);color:var(--ok)}
+.fb.n{background:var(--errbg);color:var(--err)}
+.fb b{color:inherit}
+.fb .again{margin-top:6px}
+
+/* ---------- 实验室 ---------- */
+.lab{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.lv{display:flex;gap:6px;margin-bottom:10px}
+.lv button{
+  flex:1;min-height:var(--tap);border-radius:8px;border:1px solid var(--line);background:var(--card2);
+  font-size:.8rem;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.3;
+}
+.lv button.on{border-color:var(--acc);background:var(--accbg);color:var(--acc);font-weight:600}
+.lv button .dn{font-size:.75rem;color:var(--ok)}
+.task{
+  background:var(--card2);border:1px solid var(--line);border-left:3px solid var(--acc);
+  border-radius:8px;padding:9px 11px;font-size:.85rem;margin-bottom:10px;
+}
+.task .tt{font-weight:600;margin-bottom:2px}
+.task .st{margin-top:6px;font-size:.8rem;color:var(--tx2)}
+.task .st.ok{color:var(--ok);font-weight:600}
+
+.pal{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.pal button{
+  min-height:var(--tap);padding:0 11px;border-radius:8px;border:1px solid var(--line);
+  background:var(--card2);font-size:.8rem;
+}
+.pal button.gh{color:var(--tx2)}
+
+#canvas{
+  position:relative;width:100%;height:360px;overflow:hidden;
+  border:1px solid var(--line);border-radius:8px;
+  background-color:var(--card2);
+  background-image:radial-gradient(circle,var(--line) 1px,transparent 1px);
+  background-size:20px 20px;background-position:-1px -1px;
+  touch-action:pan-y;
+}
+@media (min-width:900px){#canvas{height:420px}}
+#wires{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+/* 短路通路单独画一层浮在元件上面 —— 直跨电源两极的那根线本来被电源本体盖住，看不见就没法拆 */
+#shorts{position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:4;pointer-events:none}
+.el{
+  position:absolute;width:84px;height:50px;touch-action:none;
+  border:1.5px solid var(--line);border-radius:7px;background:var(--card);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:.75rem;line-height:1.2;color:var(--tx2);user-select:none;
+  box-shadow:0 1px 2px rgba(0,0,0,.06);
+}
+.el .nm{font-weight:700;color:var(--tx);font-size:.78rem}
+.el.sel{border-color:var(--acc);box-shadow:0 0 0 2px var(--accbg);z-index:2}
+.el.src{border-color:var(--tx3)}
+.el.src .nm{color:var(--acc)}
+.el.sw .nm{letter-spacing:.02em}
+.el.sw.open .nm{color:var(--tx3)}
+.el.sw.closed .nm{color:var(--ok)}
+.bulb{
+  width:20px;height:20px;border-radius:50%;border:1.5px solid var(--tx3);
+  background:var(--card2);margin-bottom:1px;
+}
+.el.dim  .bulb{background:#8a6d1d;border-color:#8a6d1d}
+.el.ok   .bulb{background:var(--lamp);border-color:#c8931a;box-shadow:0 0 10px 2px rgba(240,180,41,.65)}
+.el.over .bulb{background:#fff3c4;border-color:var(--lamp);box-shadow:0 0 16px 5px rgba(240,180,41,.9)}
+.el.burnt .bulb{background:#4a4a4a;border-color:#333;position:relative}
+.el.burnt .bulb::after{content:"✕";position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:.7rem;color:#ff9a9a}
+.el.burnt{border-color:var(--err)}
+.el.shorted{border-color:var(--err);box-shadow:0 0 0 2px var(--errbg)}
+.pin{
+  position:absolute;width:26px;height:26px;top:12px;touch-action:none;
+  display:flex;align-items:center;justify-content:center;
+  z-index:5;   /* 元件叠在一起时引脚仍然点得到 */
+}
+.pin.a{left:-13px} .pin.b{left:71px}
+.pin i{width:11px;height:11px;border-radius:50%;background:var(--wire);
+  border:1.5px solid var(--card);display:block}
+.pin.hot i{background:var(--acc);transform:scale(1.35)}
+.el .plab{position:absolute;top:-18px;font-size:.75rem;color:var(--tx3)}
+.el .plab.a{left:-6px} .el .plab.b{right:-6px}
+.xbtn{
+  position:absolute;width:26px;height:26px;border-radius:50%;
+  background:var(--err);color:#fff;border:2px solid var(--card);
+  display:flex;align-items:center;justify-content:center;font-size:.75rem;
+  z-index:12;padding:0;line-height:1;
+}
+.hintline{font-size:.75rem;color:var(--tx3);margin:6px 0 0;min-height:1.4em}
+
+.ctl{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.ctl .vwrap{flex:1 1 180px;display:flex;align-items:center;gap:8px;min-width:0}
+.ctl input[type=range]{
+  flex:1;min-width:0;height:var(--tap);touch-action:pan-y;accent-color:var(--acc);background:transparent;
+}
+.ctl .vv{font-size:.85rem;font-weight:600;min-width:52px;text-align:right;
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+.lockn{font-size:.75rem;color:var(--warn)}
+
+.msgs{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.msg{padding:8px 10px;border-radius:8px;font-size:.83rem;display:flex;gap:7px;align-items:flex-start}
+.msg .ic{flex:none}
+.msg.e{background:var(--errbg);color:var(--err)}
+.msg.w{background:var(--warnbg);color:var(--warn)}
+.msg.i{background:var(--card2);color:var(--tx2)}
+.msg.g{background:var(--okbg);color:var(--ok)}
+
+table.res{width:100%;border-collapse:collapse;margin-top:10px;font-size:.8rem}
+table.res th,table.res td{padding:6px 5px;border-bottom:1px solid var(--line);text-align:right}
+table.res th{color:var(--tx3);font-weight:500;font-size:.75rem}
+table.res th:first-child,table.res td:first-child{text-align:left}
+table.res td.n{font-family:ui-monospace,Menlo,Consolas,monospace}
+table.res .bg{font-size:.75rem;padding:1px 6px;border-radius:99px;margin-left:5px;white-space:nowrap}
+.bg.off{background:var(--card2);color:var(--tx3)}
+.bg.dim{background:var(--warnbg);color:var(--warn)}
+.bg.ok{background:var(--okbg);color:var(--ok)}
+.bg.over{background:var(--warnbg);color:var(--err)}
+.bg.burnt{background:var(--errbg);color:var(--err)}
+.empty{font-size:.82rem;color:var(--tx3);text-align:center;padding:14px 0}
+
+details.how{margin-top:10px;font-size:.82rem}
+details.how summary{min-height:var(--tap);display:flex;align-items:center;color:var(--tx2);cursor:pointer}
+details.how ul{margin:4px 0 0;padding-left:20px;color:var(--tx2)}
+details.how li{margin-bottom:3px}
+
+/* ---------- 弹窗 ---------- */
+.ov{
+  position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);
+  display:none;align-items:flex-end;justify-content:center;padding:0;
+}
+.ov.show{display:flex}
+.sheet{
+  background:var(--card);width:100%;max-width:560px;max-height:88dvh;overflow:auto;
+  border-radius:14px 14px 0 0;padding:16px 16px 20px;
+}
+@media (min-width:700px){
+  .ov{align-items:center;padding:20px}
+  .sheet{border-radius:14px}
+}
+.sheet h3{font-size:1rem;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.sheet h3 .tick{color:var(--ok)}
+.sheet p{margin:0 0 9px;font-size:.88rem}
+.sheet ul{margin:0 0 10px;padding-left:20px;font-size:.88rem}
+.sheet li{margin-bottom:5px}
+.sheet .foot{display:flex;gap:8px;margin-top:6px}
+.sheet .foot .btn{flex:1}
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+  background:var(--tx);color:var(--bg);padding:9px 16px;border-radius:99px;
+  font-size:.82rem;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;
+  max-width:90vw;text-align:center;
+}
+.toast.show{opacity:.95}
+footer{max-width:1240px;margin:0 auto;padding:6px 14px;font-size:.75rem;color:var(--tx3)}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>电路实验室</h1>
+  <div class="jumps">
+    <a href="#concepts">概念</a>
+    <a href="#lab">实验</a>
+  </div>
+  <div class="sub">第一章切片：电流 / 电压 / 电阻 / 欧姆定律 / 串联并联 —— 左边看懂，右边动手搭。</div>
+</div>
+
+<div class="pre">
+  <a href="c00.html">
+    <span class="ic">0</span>
+    <span class="tt"><b>先读第 0 课 · 读懂符号</b>
+      <span>公式里每个字母是谁、V 和 U 有什么区别、mA 和 MΩ 差多少 —— 六步，不讲原理。</span></span>
+    <span class="ar">›</span>
+  </a>
+</div>
+
+<div class="wrap">
+<div class="cols">
+
+  <!-- ============ 左：概念 ============ -->
+  <section id="concepts">
+    <div class="sec-h">
+      <h2>概念卡片</h2>
+      <span id="prog">—</span>
+    </div>
+    <div id="cards"></div>
+  </section>
+
+  <!-- ============ 右：实验室 ============ -->
+  <section id="lab" class="col-lab">
+    <div class="sec-h"><h2>串并联电路搭建器</h2><span>拖元件、点引脚连线</span></div>
+    <div class="lab">
+
+      <div class="lv" id="lv"></div>
+      <div class="task" id="task"></div>
+
+      <div class="pal" id="pal"></div>
+
+      <div id="canvas"><svg id="wires"></svg><svg id="shorts"></svg></div>
+      <p class="hintline" id="hint">点上面的元件名把它加进画布。</p>
+
+      <div class="ctl">
+        <button class="btn pri" id="pwr">通电</button>
+        <div class="vwrap">
+          <input type="range" id="vsl" min="1" max="24" step="0.5" value="6" aria-label="电源电压">
+          <span class="vv" id="vvv">6.0 V</span>
+        </div>
+      </div>
+      <p class="lockn" id="lockn" hidden></p>
+
+      <div class="msgs" id="msgs"></div>
+      <div id="restab"></div>
+
+      <details class="how">
+        <summary>怎么操作 / 元件说明</summary>
+        <ul>
+          <li><b>加元件</b>：点上面那排元件名。</li>
+          <li><b>挪位置</b>：按住元件本体拖。</li>
+          <li><b>接导线</b>：点一个引脚（小圆点），再点另一个引脚；也可以按住从一个引脚直接拖到另一个。</li>
+          <li><b>开关</b>：点它本体就切换合/开。</li>
+          <li><b>删除</b>：点元件或导线，会冒出一颗红色 ✕。</li>
+          <li><b>灯泡阻值</b>：由额定值算出来，<span class="fx">R = U²/P</span>。6V/3W 的灯是 12Ω，12V/6W 的灯是 24Ω。本页按固定阻值算，真实灯丝的电阻会随温度变。</li>
+          <li><b>导线和闭合开关</b>当成没有电阻。灯泡功率超过额定 2.5 倍就烧毁，要点「换新灯泡」。</li>
+        </ul>
+      </details>
+
+    </div>
+  </section>
+
+</div>
+</div>
+
+<footer>教学原型 · 文字与题目原创 · 求解器为纯电阻直流，简化模型</footer>
+
+<div class="ov" id="ov"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ==================================================================
+   第 1 部分：电路求解器
+   纯函数，完全不碰 DOM。输入网表，输出每个元件的 U / I / P。
+   方法：改进节点法(MNA)。节点电压为未知量，每个电压源额外增加
+   一个「支路电流」未知量和一条约束方程，然后高斯消元。
+   ================================================================== */
+
+const SW_R    = 1e-4;  // 闭合开关按一个极小电阻处理（这样能算出流过开关的电流）
+const SHORT_I = 50;    // 电源输出电流超过这个值(A)判为短路
+const BURN    = 2.5;   // 功率超过额定这么多倍 → 烧毁
+const LIT     = 0.05;  // 功率达到额定这个比例才算「亮了」
+
+function lampR(e){ return (e.vr*e.vr)/e.pr; }
+
+// 元件的等效电阻：Infinity 表示这条支路不通
+function elemR(e){
+  if(e.type==='lamp')     return e.burned ? Infinity : lampR(e);
+  if(e.type==='resistor') return e.r;
+  if(e.type==='switch')   return e.closed ? SW_R : Infinity;
+  return Infinity;                       // 电源不走这条路，单独处理
+}
+
+// 高斯消元（列主元）。奇异返回 null。
+function gauss(A, b){
+  const n = b.length;
+  if(!n) return [];
+  const M = A.map((row,i)=>row.concat([b[i]]));
+  for(let c=0;c<n;c++){
+    let piv=c, best=Math.abs(M[c][c]);
+    for(let r=c+1;r<n;r++){ const v=Math.abs(M[r][c]); if(v>best){best=v;piv=r;} }
+    if(best < 1e-12) return null;
+    if(piv!==c){ const t=M[c]; M[c]=M[piv]; M[piv]=t; }
+    for(let r=c+1;r<n;r++){
+      const f = M[r][c]/M[c][c];
+      if(!f) continue;
+      for(let k=c;k<=n;k++) M[r][k] -= f*M[c][k];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for(let r=n-1;r>=0;r--){
+    let s = M[r][n];
+    for(let k=r+1;k<n;k++) s -= M[r][k]*x[k];
+    x[r] = s/M[r][r];
+  }
+  return x;
+}
+
+// 找出把电源两极短接起来的那条通路（只走导线和闭合开关），用来在界面上标红
+// —— 光说「短路了」没用，得指出该拆哪一根。
+function findShortPath(net, srcId){
+  const adj = new Map();
+  const add = (p,q,wid,eid)=>{
+    if(!adj.has(p)) adj.set(p,[]);
+    adj.get(p).push({to:q, wid:wid, eid:eid});
+  };
+  for(const w of net.wires){ add(w.p,w.q,w.id,null); add(w.q,w.p,w.id,null); }
+  for(const e of net.elements){
+    if(e.type==='switch' && e.closed){
+      add(e.id+':a', e.id+':b', null, e.id);
+      add(e.id+':b', e.id+':a', null, e.id);
+    }
+  }
+  const start = srcId+':a', goal = srcId+':b';
+  const prev = new Map(); prev.set(start, null);
+  const q = [start];
+  let hit = false;
+  while(q.length){
+    const u = q.shift();
+    if(u===goal){ hit = true; break; }
+    for(const ed of (adj.get(u)||[])){
+      if(prev.has(ed.to)) continue;
+      prev.set(ed.to, {from:u, wid:ed.wid, eid:ed.eid});
+      q.push(ed.to);
+    }
+  }
+  if(!hit && !prev.has(goal)) return {wires:[], els:[]};
+  const wires=[], els=[];
+  let cur = goal;
+  while(prev.get(cur)){
+    const st = prev.get(cur);
+    if(st.wid) wires.push(st.wid);
+    if(st.eid) els.push(st.eid);
+    cur = st.from;
+  }
+  return {wires:wires, els:els};
+}
+
+// 单次求解（不处理烧毁迭代）
+function solveOnce(net){
+  const els = net.elements, wires = net.wires;
+
+  /* --- 1. 引脚 → 节点。只有导线会把两个引脚合并成同一个节点 --- */
+  const par = new Map();
+  const find = k=>{
+    if(!par.has(k)) par.set(k,k);
+    let r=k; while(par.get(r)!==r) r=par.get(r);
+    while(par.get(k)!==r){ const nx=par.get(k); par.set(k,r); k=nx; }
+    return r;
+  };
+  const uni = (a,b)=>{ const x=find(a), y=find(b); if(x!==y) par.set(x,y); };
+  const alive = new Set();
+  for(const e of els){ find(e.id+':a'); find(e.id+':b'); alive.add(e.id); }
+  for(const w of wires){
+    if(!alive.has(w.p.split(':')[0]) || !alive.has(w.q.split(':')[0])) continue;
+    uni(w.p, w.q);
+  }
+  const nidx = new Map();
+  const nodeOf = pk=>{
+    const r = find(pk);
+    if(!nidx.has(r)) nidx.set(r, nidx.size);
+    return nidx.get(r);
+  };
+  const ends = new Map();            // 元件 id → [负端节点, 正端节点]
+  for(const e of els) ends.set(e.id, [nodeOf(e.id+':a'), nodeOf(e.id+':b')]);
+  const N = nidx.size;
+
+  /* --- 2. 结果骨架 --- */
+  const out = {
+    byId:{}, nodeV:null, ends, N,
+    shorted:false, shortIds:[], shortWires:[], shortEls:[], noSource:false, singular:false
+  };
+  for(const e of els){
+    out.byId[e.id] = { u:0, i:0, p:0, live:false, bypassed:false, burned:!!e.burned };
+  }
+
+  const srcs = els.filter(e=>e.type==='source');
+  if(!srcs.length){ out.noSource = true; return out; }
+
+  // 硬短路：电源两极被导线直接连成同一个节点
+  const hard = srcs.filter(s=>ends.get(s.id)[0]===ends.get(s.id)[1]);
+  if(hard.length){
+    out.shorted = true; out.shortIds = hard.map(s=>s.id);
+    const sp = findShortPath(net, hard[0].id);
+    out.shortWires = sp.wires; out.shortEls = sp.els;
+    return out;
+  }
+
+  // 被导线跨接过去的电阻性元件（电流绕过它）
+  for(const e of els){
+    if(e.type==='lamp' || e.type==='resistor'){
+      const [x,y] = ends.get(e.id);
+      if(x===y) out.byId[e.id].bypassed = true;
+    }
+  }
+
+  /* --- 3. 有效电阻支路 --- */
+  const brs = [];
+  for(const e of els){
+    const R = elemR(e);
+    if(!isFinite(R) || R<=0) continue;
+    const [x,y] = ends.get(e.id);
+    if(x===y) continue;                       // 两端同节点，等于被短接
+    brs.push({ id:e.id, g:1/R, x, y });
+  }
+
+  /* --- 4. 连通分量：只求解含电源的那些，其余元件保持「不通电」 --- */
+  const adj = Array.from({length:N},()=>[]);
+  const pairs = brs.map(b=>[b.x,b.y]).concat(srcs.map(s=>ends.get(s.id)));
+  for(const [x,y] of pairs){ adj[x].push(y); adj[y].push(x); }
+  const comp = new Array(N).fill(-1);
+  let nc = 0;
+  for(let i=0;i<N;i++){
+    if(comp[i]>=0) continue;
+    const st=[i]; comp[i]=nc;
+    while(st.length){
+      const u=st.pop();
+      for(const v of adj[u]) if(comp[v]<0){ comp[v]=nc; st.push(v); }
+    }
+    nc++;
+  }
+
+  const V = new Array(N).fill(null);
+  const srcI = {};
+  const solvedComp = new Set();
+
+  for(const s0 of srcs){
+    const c = comp[ends.get(s0.id)[0]];
+    if(solvedComp.has(c)) continue;
+    solvedComp.add(c);
+
+    const gnd = ends.get(s0.id)[0];           // 以这个电源的负极为参考点(0V)
+    const idx = new Map();
+    let m = 0;
+    for(let n=0;n<N;n++) if(comp[n]===c && n!==gnd) idx.set(n, m++);
+    const cs = srcs.filter(s=>comp[ends.get(s.id)[0]]===c);
+    const K = m + cs.length;
+    const A = Array.from({length:K},()=>new Array(K).fill(0));
+    const b = new Array(K).fill(0);
+    const row = n => (n===gnd ? -1 : idx.get(n));
+
+    // 电阻支路：节点导纳矩阵
+    for(const br of brs){
+      if(comp[br.x]!==c) continue;
+      const ri=row(br.x), rj=row(br.y);
+      if(ri>=0){ A[ri][ri]+=br.g; if(rj>=0) A[ri][rj]-=br.g; }
+      if(rj>=0){ A[rj][rj]+=br.g; if(ri>=0) A[rj][ri]-=br.g; }
+    }
+    // 电压源：加一行一列（支路电流 I 定义为「从正极经电源内部流向负极」）
+    cs.forEach((s,k)=>{
+      const [nn,np] = ends.get(s.id);         // a = 负极, b = 正极
+      const rp=row(np), rn=row(nn), ci=m+k;
+      if(rp>=0){ A[rp][ci]+=1; A[ci][rp]+=1; }
+      if(rn>=0){ A[rn][ci]-=1; A[ci][rn]-=1; }
+      b[ci] = s.v;
+    });
+
+    const x = gauss(A,b);
+    if(!x){ out.singular = true; continue; }
+    V[gnd] = 0;
+    for(const [n,i] of idx) V[n] = x[i];
+    cs.forEach((s,k)=>{ srcI[s.id] = -x[m+k]; });   // 取负 → 放电时为正
+  }
+
+  /* --- 5. 填每个元件的 U / I / P --- */
+  for(const e of els){
+    const d = out.byId[e.id];
+    const [x,y] = ends.get(e.id);
+    if(V[x]==null || V[y]==null) continue;    // 不在通电分量里
+    d.live = true;
+    if(e.type==='source'){
+      d.u = e.v;
+      d.i = srcI[e.id] || 0;
+      d.p = d.u * d.i;
+    }else{
+      const R = elemR(e);
+      const du = V[x] - V[y];
+      d.i = (isFinite(R) && R>0 && x!==y) ? du/R : 0;
+      d.p = Math.abs(du * d.i);
+      d.u = Math.abs(du);
+      d.i = Math.abs(d.i);
+    }
+  }
+
+  // 软短路：虽然不是同一个节点，但回路里几乎没有电阻 → 电流大得离谱
+  let maxI = 0;
+  for(const s of srcs) maxI = Math.max(maxI, Math.abs(srcI[s.id]||0));
+  if(maxI > SHORT_I){
+    out.shorted = true;
+    out.shortIds = srcs.filter(s=>Math.abs(srcI[s.id]||0)>SHORT_I).map(s=>s.id);
+    const sp = findShortPath(net, out.shortIds[0]);
+    out.shortWires = sp.wires; out.shortEls = sp.els;
+  }
+
+  out.nodeV = V;
+  return out;
+}
+
+// 对外入口：反复求解，直到没有新的灯泡被烧掉
+function solveCircuit(net){
+  let els = net.elements.map(e=>Object.assign({},e));
+  let res = null;
+  for(let pass=0; pass<8; pass++){
+    res = solveOnce({ elements:els, wires:net.wires });
+    if(res.shorted || res.noSource || res.singular) break;
+    let changed = false;
+    for(const e of els){
+      if(e.type!=='lamp' || e.burned) continue;
+      const d = res.byId[e.id];
+      if(d && e.pr>0 && d.p/e.pr > BURN){ e.burned = true; changed = true; }
+    }
+    if(!changed) break;
+  }
+  res.elements = els;                                  // 含烧毁标记的元件快照
+  res.burned = els.filter(e=>e.burned).map(e=>e.id);
+  return res;
+}
+
+// 灯泡状态（按实际功率 / 额定功率）
+function lampState(ratio, burned){
+  if(burned)         return {k:'burnt', t:'烧毁'};
+  if(!(ratio>LIT))   return {k:'off',   t:'不亮'};
+  if(ratio < 0.5)    return {k:'dim',   t:'偏暗'};
+  if(ratio <= 1.3)   return {k:'ok',    t:'正常'};
+  if(ratio <= BURN)  return {k:'over',  t:'过亮'};
+  return {k:'burnt', t:'烧毁'};
+}
+
+/* ==================================================================
+   第 2 部分：教学内容
+   ================================================================== */
+
+const CONCEPTS = [
+{
+  id:'i', title:'电流', unit:'单位：安培 A',
+  explain:[
+    '电流就是<b>单位时间里流过导线横截面的电荷量</b>。写成公式是 <span class="fx">I = Q / t</span>：2 秒钟过去 4 库仑电荷，电流就是 2A。',
+    '它必须有一个<b>闭合回路</b>才能存在。回路上任何一处断开，整条回路的电流立刻变成零 —— 不是「断口前面还有电流、后面没有」。'
+  ],
+  analogy:'像水管里的水流。单位时间流过多少水，就是「流量」。不过有一点不一样：水管通水前是空的，而导线里的自由电子本来就挤满了，通电只是让它们整体开始挪动 —— 所以开灯几乎是瞬间亮的，不用等电子从电池「跑」到灯泡。',
+  myth:'<b>「电流会被灯泡消耗掉一部分」。</b>不会。一条回路上电流处处相等，从电源正极出去多少，回到负极就是多少。灯泡消耗的是<b>电能</b>（变成光和热），不是电荷。这也是为什么万用表串在回路里，插在灯前面和灯后面读数一样。',
+  qs:[
+    { type:'choice',
+      q:'一根导线里，2 秒内通过了 4 库仑电荷，电流是多少？',
+      opts:['0.5 A','2 A','8 A'], right:1,
+      why:[ '你把除法反了。是电荷除以时间：4 ÷ 2，不是 2 ÷ 4。',
+             '对。I = Q / t = 4 ÷ 2 = 2A。「安培」就是「每秒多少库仑」。',
+             '4 × 2 是相乘。电流问的是「每秒钟多少」，所以要除以时间。' ] },
+    { type:'choice',
+      q:'一个只有一条回路的电路（电源 + 一个灯泡），灯泡<b>前面</b>那段导线的电流，和灯泡<b>后面</b>那段相比：',
+      opts:['前面大，因为还没被灯泡用掉','一样大','后面大'], right:1,
+      why:[ '这是最常见的直觉错误。灯泡不吃电荷，只把电能转成光和热。电荷进多少出多少，电流一样大。',
+             '对。一条回路上电流处处相等，这是判断串联电路的核心依据。',
+             '也不对。电流既不会在灯泡里增加，也不会减少。' ] },
+    { type:'num',
+      q:'一个电器工作电流 0.25A，运行 8 秒，一共通过了多少库仑电荷？',
+      ans:2, unit:'C', tol:0.01,
+      why:'Q = I × t = 0.25 × 8 = 2 库仑。把 I = Q/t 变个形就行。'}
+  ]
+},
+{
+  id:'u', title:'电压', unit:'单位：伏特 V',
+  explain:[
+    '电压是<b>推动电荷流动的那个「压力差」</b>，也叫电位差。关键在「差」字：电压永远是<b>两点之间</b>的量。',
+    '平时说「这个点的电压是 5V」，其实是省略了后半句「相对于参考点（地）」。测电压时万用表必须<b>并在元件两端</b>，两根表笔碰同一个点读数一定是 0。'
+  ],
+  analogy:'像水塔的水位落差。水塔越高，水压越大，水冲得越急。电源（电池、发电机）就是那台不停把水抽到高处的泵 —— 它自己不生产水，只负责维持这个落差。',
+  myth:'<b>「电压会流动」「这根线里有 220V 在流过来」。</b>电压不流动，它是两点之间的差值；流动的只有电流。另一个坑：单独拿着一根导线的一端问「这里多少电压」是没有意义的，必须指明「相对于谁」。零线之所以「不电人」，也是因为它和大地之间几乎没有电位差。',
+  qs:[
+    { type:'choice',
+      q:'一节干电池上标着 1.5V，这个数指的是：',
+      opts:['电池里储存的总能量','正极和负极之间的电位差','这节电池最多能输出的电流'], right:1,
+      why:[ '总能量是「容量」，通常用 mAh 或 Wh 表示，和 1.5V 不是一回事。一节 5 号和一节 1 号电池都是 1.5V，但容量差很多。',
+             '对。1.5V 描述的是正负极之间的「落差」，跟电池大小无关。',
+             '能输出多大电流取决于外面接了多大的电阻（以及电池内阻），不是电池标称电压决定的。' ] },
+    { type:'num',
+      q:'6V 电源，串联两个完全一样的灯泡。每个灯泡两端的电压是多少？',
+      ans:3, unit:'V', tol:0.01,
+      why:'串联要分压，两个相同电阻各分一半：6 ÷ 2 = 3V。如果你填了 6，那是把它们当成并联了 —— 并联时每个才拿到完整的 6V。'},
+    { type:'choice',
+      q:'用万用表测一个灯泡两端的电压，正确接法是：',
+      opts:['把灯泡拆下来，表笔串到线路里','表笔直接搭在灯泡两个接线柱上（并联）','一根表笔搭灯泡，一根表笔悬空'], right:1,
+      why:[ '那是测电流的接法。测电压不用断开线路。',
+             '对。电压是两点之差，所以表要跨在这两点上，也就是和被测元件并联。',
+             '悬空那根没有参考点，读数没有意义（而且很可能乱跳）。' ] }
+  ]
+},
+{
+  id:'r', title:'电阻', unit:'单位：欧姆 Ω',
+  explain:[
+    '电阻是导体<b>阻碍电流通过的程度</b>。同样的电压加上去，电阻越大，电流越小。',
+    '电流通过电阻一定会<b>发热</b>，功率是 <span class="fx">P = I²R</span>。电热水壶、电烙铁靠的就是这个；而导线发热是我们不想要的损耗，所以大电流要用粗线。'
+  ],
+  analogy:'像水管的粗细和内壁的粗糙程度。管子越细、内壁越糙，同样的水压下流过的水就越少。电阻器就是故意做细的那一小段管子。',
+  myth:'<b>「只有电阻器才有电阻，导线没有」。</b>导线也有电阻，只是小到通常可以忽略；线一长、电流一大就不能忽略了（这就是「线损」和「电压跌落」的来源）。<b>另一个坑</b>：灯泡钨丝的电阻会随温度大幅变化，冷的时候比热的时候小很多，所以刚开灯那一瞬间的冲击电流特别大。本页的模拟器按<b>固定阻值</b>计算，这是简化。',
+  qs:[
+    { type:'choice',
+      q:'电压保持不变，把电阻从 10Ω 换成 20Ω，电流会：',
+      opts:['变成原来的 2 倍','变成原来的一半','不变'], right:1,
+      why:[ '方向反了。电阻是「阻碍」，阻碍变大电流应该变小。',
+             '对。I = U/R，电压不变时电流和电阻成反比：电阻翻倍，电流减半。',
+             '电流不变只在「电流源」那种特殊场合出现，普通电压源不是这样。' ] },
+    { type:'num',
+      q:'一个灯泡额定 6V / 3W，按额定值算它的电阻是多少？',
+      ans:12, unit:'Ω', tol:0.05,
+      why:'先由 P = U²/R 变形得 R = U²/P = 36 ÷ 3 = 12Ω。如果你算成 U ÷ P = 2，那是把功率当成电流用了 —— 单位就对不上。也可以两步走：I = P/U = 0.5A，再 R = U/I = 12Ω。'},
+    { type:'num',
+      q:'一个 8Ω 的电阻上通过 0.5A 电流，它发热的功率是多少？',
+      ans:2, unit:'W', tol:0.01,
+      why:'P = I²R = 0.5² × 8 = 0.25 × 8 = 2W。常见错误是写成 I×R = 4（那算出来是电压 4V，不是功率）。'}
+  ]
+},
+{
+  id:'ohm', title:'欧姆定律', unit:'U = I × R',
+  explain:[
+    '<span class="fx">U = I × R</span>，三个量里知道两个就能求第三个。整个电工计算都建在这条式子上。',
+    '用它有一条铁律：<b>三个量必须属于同一个对象</b>。要算某个电阻上的电流，就得用<b>那个电阻自己两端</b>的电压除以它自己的阻值；不能拿电源总电压去除它。'
+  ],
+  analogy:'水压 = 水流量 × 管道阻力。想让水流大一倍，要么把水塔加高一倍（升压），要么把管子换粗到阻力只剩一半（降阻）。',
+  myth:'<b>「欧姆定律对所有元件都成立」。</b>只对<b>线性电阻</b>成立。二极管、灯丝、热敏电阻的 U 和 I 都不是正比关系，硬套会算错。<b>更常犯的是对象搞混</b>：12V 电源串了 4Ω 和 8Ω，很多人直接 12÷4 = 3A，其实电流由<b>总电阻</b>决定，是 12÷12 = 1A。',
+  qs:[
+    { type:'num',
+      q:'把 12V 直接加在一个 4Ω 电阻上，电流是多少？',
+      ans:3, unit:'A', tol:0.01,
+      why:'I = U/R = 12 ÷ 4 = 3A。这一题里 12V 确实就是这个电阻两端的电压，所以能直接除。'},
+    { type:'choice',
+      q:'12V 电源串联一个 4Ω 和一个 8Ω 电阻，通过 4Ω 的电流是多少？',
+      opts:['3 A','1 A','1.5 A'], right:1,
+      why:[ '你用了 12 ÷ 4。但 4Ω 两端并没有 12V —— 有一部分被 8Ω 分掉了。串联电流由总电阻决定。',
+             '对。总电阻 4+8 = 12Ω，I = 12 ÷ 12 = 1A。串联时这 1A 流过每一个元件。',
+             '12 ÷ 8 也不对，同样是拿总电压去除了单个电阻。' ] },
+    { type:'num',
+      q:'接着上一题：8Ω 电阻两端的电压是多少？',
+      ans:8, unit:'V', tol:0.01,
+      why:'U = I × R = 1 × 8 = 8V。剩下的 4V 落在 4Ω 上，两个加起来正好 12V —— 这个「加起来等于总电压」就是最好的自检手段。'}
+  ]
+},
+{
+  id:'sp', title:'串联与并联', unit:'两种基本接法',
+  explain:[
+    '<b>串联</b>：元件首尾相接成<b>一条</b>路。电流处处相等，电压按电阻大小<b>分掉</b>，总电阻 <span class="fx">R = R₁ + R₂</span>（越串越大）。任何一处断开，全部停止工作。',
+    '<b>并联</b>：各支路两端接在<b>同一对节点</b>上。每条支路电压相同（都等于电源电压），电流按电阻反比分配，总电流是各支路之和，总电阻 <span class="fx">1/R = 1/R₁ + 1/R₂</span>（越并越小，一定比其中最小的那个还小）。断掉一条支路，其他照旧。'
+  ],
+  analogy:'串联像一条独木桥，所有人排一队走同一条路，桥断了谁都过不去。并联像并排开的几个收费闸口，每个闸口两边的落差一样，各走各的，关一个不影响别的 —— 但总的通过量是各闸口相加。',
+  myth:'<b>「并联比串联亮，是因为并联电压更高」。</b>电源电压一点没变。区别在于：并联时每个灯拿到<b>完整</b>的电源电压，串联时电压被分掉了。<b>第二个坑</b>：以为「并联总电阻 = 各电阻相加」。并联总电阻比任何一个支路都小，因为多开了一条路。<b>第三个坑</b>：功率和电压是平方关系 —— 电压减半，功率变成四分之一，不是二分之一。',
+  qs:[
+    { type:'choice',
+      q:'两个 12Ω 的灯泡并联，总电阻是多少？',
+      opts:['24 Ω','12 Ω','6 Ω'], right:2,
+      why:[ '24Ω 是把它们<b>串联</b>起来的结果。并联是多开一条路，只会更好走。',
+             '并联总电阻一定比其中最小的那个还小，所以不可能还是 12Ω。',
+             '对。1/R = 1/12 + 1/12 = 2/12，R = 6Ω。两个相同电阻并联，就是一半。' ] },
+    { type:'choice',
+      q:'关掉客厅的灯，卧室的灯照样亮。这说明家里的灯是：',
+      opts:['串联','并联'], right:1,
+      why:[ '串联的话断一处全灭，不可能各自独立开关。',
+             '对。并联的每条支路互不影响，而且每个灯都拿到完整的 220V。家庭电路、插座都是并联。' ] },
+    { type:'num',
+      q:'6V 电源，两个 12Ω 灯泡并联，电源输出的<b>总电流</b>是多少？',
+      ans:1, unit:'A', tol:0.01,
+      why:'每条支路都拿到 6V：6 ÷ 12 = 0.5A，两条加起来 1A。也可以先算总电阻 6Ω，再 6 ÷ 6 = 1A，两种算法必须一致 —— 对不上就说明哪一步错了。'},
+    { type:'num',
+      q:'两个 6V/3W（各 12Ω）的灯泡<b>串联</b>接到 6V 电源上，每个灯泡的实际功率是多少？',
+      ans:0.75, unit:'W', tol:0.02,
+      why:'总电阻 24Ω，I = 6/24 = 0.25A，每个灯 U = 0.25×12 = 3V，P = 3×0.25 = 0.75W —— 只有额定 3W 的四分之一，所以明显偏暗。电压减半 → 功率变 1/4，这就是那个平方关系。'}
+  ]
+}
+];
+
+/* ------------------------- 关卡 ------------------------- */
+
+const LEVELS = [
+{
+  n:1, tab:'各管一个', lockV:null, startV:6,
+  task:'让两个灯泡都正常亮起来，并且<b>断开任意一个开关时，只灭掉一个灯，另一个照亮</b>。',
+  need:'需要：1 个电源 + 2 个灯泡 + 2 个开关',
+  check(){
+    const lamps = CV.els.filter(e=>e.type==='lamp');
+    const sws   = CV.els.filter(e=>e.type==='switch');
+    if(lamps.length<2 || sws.length<2)
+      return {ok:false, msg:'先把 2 个灯泡和 2 个开关加进画布'};
+    const base = trySolve({});
+    if(base.shorted)  return {ok:false, msg:'现在是短路，先把短路改掉'};
+    if(base.noSource) return {ok:false, msg:'画布上还没有电源'};
+    const litIds = lamps.filter(l=>isLit(base,l)).map(l=>l.id);
+    if(litIds.length<2)
+      return {ok:false, msg:'两个灯还没同时亮起来（现在亮着 '+litIds.length+' 个）'};
+    const ctrl = new Map();
+    for(const s of sws){
+      const r = trySolve({[s.id]:false});
+      const off = litIds.filter(id=>!isLit(r, byId(id)));
+      if(off.length===1) ctrl.set(s.id, off[0]);
+    }
+    if(ctrl.size>=2 && new Set(ctrl.values()).size>=2) return {ok:true};
+    return {ok:false, msg:'还差一步：现在断开开关时，要么两个灯一起灭（说明开关在公共干路上），要么灯没反应。每个开关要各自只管一个灯。'};
+  },
+  why:{
+    title:'这就是「并联」',
+    body:[
+      '你搭出来的是<b>并联</b>：两个灯泡各自的两端，分别接到了电源的同一对节点上。',
+      '<b>为什么每个灯都能正常亮：</b>并联的每条支路两端电压都等于电源电压，所以每个灯都拿到完整的 6V，正好是它的额定电压。',
+      '<b>为什么互不影响：</b>每条支路是独立的通路。断开一条，另一条的回路依然完整，电流照旧。',
+      '<b>代价是电源出的电流变大了：</b>总电流 = 各支路电流之和。看下面的结果表，电源输出电流是单个灯的两倍。并联的电器越多，干路电流越大 —— 这就是插座上插太多大功率电器会跳闸、导线会发烫的原因。',
+      '家庭电路里所有的灯和插座都是并联的，正因为要「各开各的、每个都拿到 220V」。'
+    ]
+  }
+},
+{
+  n:2, tab:'一开管俩', lockV:null, startV:6,
+  task:'用<b>一个</b>开关同时控制两个灯：两个灯都要亮，断开这个开关两个一起灭，而且整个电路<b>只有一条回路</b>（两个灯上的电流一样大）。',
+  need:'需要：1 个电源 + 2 个灯泡 + 恰好 1 个开关',
+  check(){
+    const lamps = CV.els.filter(e=>e.type==='lamp');
+    const sws   = CV.els.filter(e=>e.type==='switch');
+    if(lamps.length<2)   return {ok:false, msg:'先把 2 个灯泡加进画布'};
+    if(sws.length!==1)   return {ok:false, msg:'这一关只用 1 个开关（现在有 '+sws.length+' 个）'};
+    const base = trySolve({});
+    if(base.shorted)  return {ok:false, msg:'现在是短路，先把短路改掉'};
+    if(base.noSource) return {ok:false, msg:'画布上还没有电源'};
+    const lit = lamps.filter(l=>isLit(base,l));
+    if(lit.length<2)
+      return {ok:false, msg:'两个灯还没同时亮（串起来会明显偏暗，只要不是「不亮」就算亮）'};
+    const cur = lit.map(l=>Math.abs(base.byId[l.id].i));
+    const hi = Math.max.apply(null,cur), lo = Math.min.apply(null,cur);
+    if(hi - lo > 0.02*hi)
+      return {ok:false, msg:'两个灯上的电流不一样大（'+fmtI(lo)+' 和 '+fmtI(hi)+'），说明它们各走一条路 —— 那是并联，不是串联'};
+    const src = CV.els.find(e=>e.type==='source');
+    const isrc = Math.abs(base.byId[src.id].i);
+    if(Math.abs(isrc-hi) > 0.02*Math.max(isrc,hi))
+      return {ok:false, msg:'电源输出的电流（'+fmtI(isrc)+'）比灯上的电流（'+fmtI(hi)+'）大，说明电流在某处分了岔'};
+    const r2 = trySolve({[sws[0].id]:false});
+    if(lit.some(l=>isLit(r2,l)))
+      return {ok:false, msg:'断开开关后还有灯亮着，这个开关没管住全部'};
+    return {ok:true};
+  },
+  why:{
+    title:'这就是「串联」',
+    body:[
+      '你搭出来的是<b>串联</b>：电源、开关、两个灯首尾相接，全程只有一条回路。',
+      '<b>为什么一个开关就能管住全部：</b>只有一条路，在任何一个位置切断，整条回路的电流都变成零。这也是串联最大的缺点 —— 其中一个灯坏了（灯丝断了），整串都不亮，而且很难看出是哪一个坏的。',
+      '<b>为什么明显偏暗：</b>6V 被两个灯分掉，每个只有 3V。功率和电压是<b>平方</b>关系：电压减半，功率变成 <span class="fx">(1/2)² = 1/4</span>，也就是 0.75W，只有额定 3W 的四分之一。看下面结果表里的功率数就是它。',
+      '<b>串联的正经用途</b>不是接灯，而是<b>分压</b>和<b>限流</b>：给一个额定电压比电源低的元件串一个电阻，把多余的电压吃掉。下一关就是干这件事。',
+      '顺便记住那条判据：<b>电流处处相等 → 串联；电压处处相等 → 并联。</b>你在结果表里能直接读出来。'
+    ]
+  }
+},
+{
+  n:3, tab:'正好额定', lockV:12,
+  task:'电源<b>锁定在 12V</b>。手上只有 6V/3W 的灯泡（每个 12Ω）。想办法让<b>两个</b>灯都正好工作在额定功率 3W 上（误差 5% 以内），而且不能烧掉。',
+  need:'需要：1 个电源(12V) + 2 个灯泡。提示：灯泡受不了 12V，得想办法让它只拿到 6V',
+  check(){
+    const lamps = CV.els.filter(e=>e.type==='lamp');
+    if(lamps.length<2) return {ok:false, msg:'先把 2 个灯泡加进画布'};
+    const base = trySolve({});
+    if(base.shorted)  return {ok:false, msg:'现在是短路，先把短路改掉'};
+    if(base.noSource) return {ok:false, msg:'画布上还没有电源'};
+    if(base.burned && base.burned.length)
+      return {ok:false, msg:'有灯烧了 —— 12V 直接加在 6V 灯泡上，功率会变成额定的 4 倍。点「换新灯泡」再想想'};
+    const good = lamps.filter(e=>{
+      const d = base.byId[e.id];
+      return d && !d.burned && e.pr>0 && Math.abs(d.p/e.pr - 1) <= 0.05;
+    });
+    if(good.length>=2) return {ok:true};
+    return {ok:false, msg:'现在有 '+good.length+' 个灯工作在额定功率附近，需要 2 个'};
+  },
+  why:{
+    title:'串联分压：让元件拿到它该拿的电压',
+    body:[
+      '两个 12Ω 的灯串联，总电阻 24Ω。电流 <span class="fx">I = 12 / 24 = 0.5A</span>，每个灯分到 <span class="fx">U = 0.5 × 12 = 6V</span>，功率 <span class="fx">P = 6 × 0.5 = 3W</span> —— 一分不差就是额定值。',
+      '<b>这是电工最常用的一手：</b>电源电压比元件额定电压高，就串一个东西把多余的电压吃掉。串的可以是另一个同样的负载（像这一关），也可以是一个专门的<b>限流电阻</b>（接 LED 就是这么干的）。',
+      '<b>反过来试试看：</b>把电压锁解开、把这两个灯改成并联，每个灯就要直接承受 12V。电压翻倍 → 功率变 4 倍 = 12W，远超 3W 额定，模拟器会直接判定烧毁。<b>额定值不是建议值，是上限。</b>',
+      '<b>但串联分压有个前提</b>：两个负载必须一样。如果一个 12Ω 一个 24Ω 串起来，24Ω 的那个会分到 8V（偏高），12Ω 的只有 4V（偏暗）。电阻大的分到的电压多 —— 这就是「按电阻比例分压」。',
+      '再往后学到的降压手段（变压器、开关电源、调压模块）解决的是同一个问题，只是效率高得多：串电阻把多余的电压变成了热，白白浪费掉。'
+    ]
+  }
+}
+];
+
+/* ==================================================================
+   第 3 部分：概念卡 UI
+   ================================================================== */
+
+const $  = s=>document.querySelector(s);
+const $$ = s=>Array.prototype.slice.call(document.querySelectorAll(s));
+
+const QKEY = 'ele_quiz_v1';
+let QST = {};
+try{ QST = JSON.parse(localStorage.getItem(QKEY)||'{}') || {}; }catch(e){ QST = {}; }
+function qSave(){ try{ localStorage.setItem(QKEY, JSON.stringify(QST)); }catch(e){} }
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function totalQs(){ return CONCEPTS.reduce((a,c)=>a+c.qs.length,0); }
+function rightQs(){
+  let n=0;
+  for(const c of CONCEPTS) c.qs.forEach((q,i)=>{ const s=QST[c.id+'#'+i]; if(s&&s.ok) n++; });
+  return n;
+}
+function paintProg(){ $('#prog').textContent = '答对 '+rightQs()+' / '+totalQs()+' 题'; }
+
+function buildCards(){
+  const host = $('#cards');
+  host.innerHTML = '';
+  CONCEPTS.forEach((c,ci)=>{
+    const d = document.createElement('details');
+    d.className = 'card';
+    if(ci===0) d.open = true;
+    const done = c.qs.filter((q,i)=>{ const s=QST[c.id+'#'+i]; return s&&s.ok; }).length;
+    d.innerHTML =
+      '<summary><span class="cn">'+(ci+1)+'</span>'+
+      '<span><span class="ct">'+c.title+'</span> <span class="cu">'+c.unit+'</span></span>'+
+      '<span class="cq">'+done+'/'+c.qs.length+'</span><span class="arw">▾</span></summary>'+
+      '<div class="cbody">'+
+        '<div class="blk"><span class="lb l1">是什么</span>'+c.explain.map(p=>'<p>'+p+'</p>').join('')+'</div>'+
+        '<div class="blk"><span class="lb l2">打个比方</span><p>'+c.analogy+'</p></div>'+
+        '<div class="blk"><span class="lb l3">常见误区</span><p>'+c.myth+'</p></div>'+
+        '<div class="qs"></div>'+
+      '</div>';
+    const qs = d.querySelector('.qs');
+    c.qs.forEach((q,qi)=>qs.appendChild(buildQ(c,q,qi)));
+    host.appendChild(d);
+  });
+  paintProg();
+}
+
+function buildQ(c,q,qi){
+  const key = c.id+'#'+qi;
+  const box = document.createElement('div');
+  box.className = 'q';
+  const head = '<div class="qh"><span class="qn">第'+(qi+1)+'题</span>'+q.q+
+               (q.type==='num'?'<span class="cu"> （填数字）</span>':'')+'</div>';
+  function render(){
+    const st = QST[key];
+    let body = '';
+    if(q.type==='choice'){
+      body = q.opts.map((o,oi)=>{
+        let cls='opt', mk=String.fromCharCode(65+oi);
+        if(st){
+          if(oi===q.right){ cls+=' right'; mk='✓'; }
+          else if(oi===st.pick){ cls+=' wrong'; mk='✕'; }
+        }
+        return '<button class="'+cls+'" data-oi="'+oi+'"'+(st?' disabled':'')+
+               '><span class="mk">'+mk+'</span><span>'+o+'</span></button>';
+      }).join('');
+    }else{
+      const dis = st ? ' disabled' : '';
+      body = '<div class="nq"><input type="text" inputmode="decimal" placeholder="?"'+
+             (st?' value="'+esc(st.pick)+'"':'')+dis+'>'+
+             '<span class="un">'+q.unit+'</span>'+
+             '<button class="btn pri go"'+dis+'>提交</button></div>';
+    }
+    let fb = '';
+    if(st){
+      const why = q.type==='choice'
+        ? (st.ok ? q.why[q.right] : q.why[st.pick]+'<br><br><b>正确答案 '+String.fromCharCode(65+q.right)+'：</b>'+q.why[q.right])
+        : (st.ok ? q.why : '<b>正确答案是 '+q.ans+' '+q.unit+'。</b><br>'+q.why);
+      fb = '<div class="fb '+(st.ok?'y':'n')+'">'+(st.ok?'✓ 答对了。':'✕ 再看一下：')+' '+why+
+           '<div class="again"><button class="btn re">重做这题</button></div></div>';
+    }
+    box.innerHTML = head + body + fb;
+
+    box.querySelectorAll('.opt').forEach(b=>{
+      b.addEventListener('click',()=>{
+        const oi = +b.dataset.oi;
+        QST[key] = { pick:oi, ok:oi===q.right };
+        qSave(); render(); paintProg(); bumpCount();
+      });
+    });
+    const go = box.querySelector('.go');
+    if(go){
+      const inp = box.querySelector('input');
+      const submit = ()=>{
+        const raw = (inp.value||'').trim().replace(/[，,]/g,'');
+        const v = parseFloat(raw);
+        if(raw===''||!isFinite(v)){ toast('先填一个数字'); return; }
+        QST[key] = { pick:raw, ok:Math.abs(v-q.ans) <= (q.tol||0.01) };
+        qSave(); render(); paintProg(); bumpCount();
+      };
+      go.addEventListener('click',submit);
+      inp.addEventListener('keydown',e=>{ if(e.key==='Enter') submit(); });
+    }
+    const re = box.querySelector('.re');
+    if(re) re.addEventListener('click',()=>{ delete QST[key]; qSave(); render(); paintProg(); bumpCount(); });
+  }
+  function bumpCount(){
+    const card = box.closest('.card');
+    if(!card) return;
+    const done = c.qs.filter((x,i)=>{ const s=QST[c.id+'#'+i]; return s&&s.ok; }).length;
+    card.querySelector('.cq').textContent = done+'/'+c.qs.length;
+  }
+  render();
+  return box;
+}
+
+/* ==================================================================
+   第 4 部分：电路编辑器
+   ================================================================== */
+
+const EW = 84, EH = 50;      // 元件尺寸
+const PAD = 16;              // 画布内边距（给引脚留地方）
+
+const CV = {
+  els:[], wires:[], seq:1,
+  sel:null,                  // {kind:'el'|'wire', id}
+  pend:null,                 // 正在连的引脚 ref
+  pendXY:null,
+  powered:false,
+  srcV:6,
+  level:0,
+  res:null
+};
+
+const LKEY = 'ele_levels_v1';
+let LDONE = {};
+try{ LDONE = JSON.parse(localStorage.getItem(LKEY)||'{}') || {}; }catch(e){ LDONE = {}; }
+
+const PAL = [
+  {t:'src',  label:'🔋 电源',    max:1},
+  {t:'lamp', label:'💡 6V/3W',  vr:6,  pr:3},
+  {t:'lamp', label:'💡 12V/6W', vr:12, pr:6},
+  {t:'switch',label:'🔘 开关'},
+  {t:'resistor',label:'电阻 10Ω',  r:10},
+  {t:'resistor',label:'电阻 24Ω',  r:24}
+];
+
+function byId(id){ return CV.els.find(e=>e.id===id); }
+function pinPos(ref){
+  const parts = ref.split(':');
+  const e = byId(parts[0]);
+  if(!e) return null;
+  return { x: e.x + (parts[1]==='a' ? 0 : EW), y: e.y + EH/2 };
+}
+
+function canvasBox(){
+  const c = $('#canvas');
+  return { w:c.clientWidth, h:c.clientHeight };
+}
+
+function freeSlot(){
+  const b = canvasBox();
+  const cols = Math.max(1, Math.floor((b.w - 2*PAD + 20) / (EW+22)));
+  const rows = Math.max(1, Math.floor((b.h - 2*PAD + 16) / (EH+30)));
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const x = PAD + c*(EW+22), y = PAD + r*(EH+30);
+    if(!CV.els.some(e=>Math.abs(e.x-x)<10 && Math.abs(e.y-y)<10)) return {x,y};
+  }
+  return { x:PAD+Math.random()*30, y:PAD+Math.random()*30 };
+}
+
+function addEl(spec){
+  if(spec.t==='src' && CV.els.some(e=>e.type==='source')){
+    toast('一个电源就够了');
+    return;
+  }
+  const pos = freeSlot();
+  const e = { id:'e'+(CV.seq++), x:pos.x, y:pos.y };
+  if(spec.t==='src'){ e.type='source'; e.v=CV.srcV; }
+  else if(spec.t==='lamp'){ e.type='lamp'; e.vr=spec.vr; e.pr=spec.pr; e.burned=false; }
+  else if(spec.t==='switch'){ e.type='switch'; e.closed=true; }
+  else { e.type='resistor'; e.r=spec.r; }
+  CV.els.push(e);
+  CV.sel = null;
+  refresh();
+}
+
+function delEl(id){
+  CV.els = CV.els.filter(e=>e.id!==id);
+  CV.wires = CV.wires.filter(w=>w.p.split(':')[0]!==id && w.q.split(':')[0]!==id);
+  if(CV.sel && CV.sel.id===id) CV.sel = null;
+  if(CV.pend && CV.pend.split(':')[0]===id) CV.pend = null;
+  refresh();
+}
+function delWire(id){
+  CV.wires = CV.wires.filter(w=>w.id!==id);
+  if(CV.sel && CV.sel.id===id) CV.sel = null;
+  refresh();
+}
+
+function connect(p,q){
+  if(p===q) return;
+  if(p.split(':')[0]===q.split(':')[0]){ toast('同一个元件的两个引脚不能直接短接'); return; }
+  const dup = CV.wires.some(w=>(w.p===p&&w.q===q)||(w.p===q&&w.q===p));
+  if(dup){ toast('这两个引脚已经连过了'); return; }
+  CV.wires.push({ id:'w'+(CV.seq++), p:p, q:q });
+  refresh();
+}
+
+/* ---------- 网表构建 + 求解 ---------- */
+
+// 从画布状态生成网表；overrides 可以临时改开关状态（关卡检查用）
+function buildNet(overrides){
+  overrides = overrides || {};
+  const els = CV.els.map(e=>{
+    const c = Object.assign({},e);
+    if(c.type==='source') c.v = CV.srcV;
+    if(c.type==='switch' && Object.prototype.hasOwnProperty.call(overrides,c.id))
+      c.closed = !!overrides[c.id];
+    return c;
+  });
+  return { elements:els, wires:CV.wires.slice() };
+}
+function trySolve(overrides){ return solveCircuit(buildNet(overrides)); }
+
+function isLit(res, e){
+  if(!e || e.type!=='lamp') return false;
+  const d = res.byId[e.id];
+  if(!d || d.burned) return false;
+  return e.pr>0 && d.p/e.pr > LIT;
+}
+
+/* ---------- 数字格式 ---------- */
+function fmt(v,d){
+  if(!isFinite(v)) return '—';
+  if(Math.abs(v) < 5e-4) return '0';
+  const s = v.toFixed(d==null?2:d);
+  return s.replace(/\.?0+$/,'');
+}
+function fmtI(i){
+  const a = Math.abs(i);
+  if(a < 5e-5) return '0 A';
+  if(a < 0.1)  return fmt(a*1000,0)+' mA';
+  return fmt(a,3)+' A';
+}
+function elName(e){
+  if(e.type==='source')   return '电源';
+  if(e.type==='lamp')     return '灯 '+e.vr+'V/'+e.pr+'W';
+  if(e.type==='switch')   return '开关'+(e.closed?'(合)':'(开)');
+  return '电阻 '+e.r+'Ω';
+}
+
+/* ---------- 渲染 ---------- */
+
+function rebuild(){
+  const cv = $('#canvas');
+  $$('#canvas .el, #canvas .xbtn').forEach(n=>n.remove());
+  const res = CV.res;
+
+  CV.els.forEach(e=>{
+    const d = document.createElement('div');
+    d.className = 'el';
+    d.dataset.id = e.id;
+    d.style.left = e.x+'px';
+    d.style.top  = e.y+'px';
+    let inner = '';
+    if(e.type==='source'){
+      d.classList.add('src');
+      inner = '<span class="nm">'+fmt(CV.srcV,1)+' V</span><span>电源</span>'+
+              '<span class="plab a">−</span><span class="plab b">+</span>';
+    }else if(e.type==='lamp'){
+      let st = {k:'off',t:''};
+      if(res && CV.powered){
+        const dd = res.byId[e.id];
+        st = lampState(dd ? dd.p/e.pr : 0, dd ? dd.burned : e.burned);
+      }else if(e.burned){ st = {k:'burnt',t:''}; }
+      d.classList.add(st.k);
+      inner = '<span class="bulb"></span><span class="nm">'+e.vr+'V/'+e.pr+'W</span>';
+    }else if(e.type==='switch'){
+      d.classList.add('sw', e.closed?'closed':'open');
+      inner = '<span class="nm">'+(e.closed?'●━━●':'●╱ ●')+'</span><span>'+(e.closed?'闭合':'断开')+'</span>';
+    }else{
+      inner = '<span class="nm">'+e.r+' Ω</span><span>电阻</span>';
+    }
+    inner += '<span class="pin a" data-pin="'+e.id+':a"><i></i></span>'+
+             '<span class="pin b" data-pin="'+e.id+':b"><i></i></span>';
+    d.innerHTML = inner;
+    if(CV.sel && CV.sel.kind==='el' && CV.sel.id===e.id) d.classList.add('sel');
+    if(res && res.shortEls && res.shortEls.indexOf(e.id)>=0) d.classList.add('shorted');
+    if(res && res.shortIds && res.shortIds.indexOf(e.id)>=0) d.classList.add('shorted');
+    if(CV.pend && CV.pend.split(':')[0]===e.id){
+      const pp = d.querySelector('.pin.'+CV.pend.split(':')[1]);
+      if(pp) pp.classList.add('hot');
+    }
+    cv.appendChild(d);
+  });
+
+  // 删除按钮
+  if(CV.sel && CV.sel.kind==='el'){
+    const e = byId(CV.sel.id);
+    if(e) cv.appendChild(mkX(e.x+EW-11, e.y-13, ()=>delEl(e.id)));
+  }
+  if(CV.sel && CV.sel.kind==='wire'){
+    const w = CV.wires.find(x=>x.id===CV.sel.id);
+    if(w){
+      const p=pinPos(w.p), q=pinPos(w.q);
+      if(p&&q) cv.appendChild(mkX((p.x+q.x)/2-13, (p.y+q.y)/2-13, ()=>delWire(w.id)));
+    }
+  }
+  drawWires();
+}
+
+function mkX(x,y,fn){
+  const b = document.createElement('button');
+  b.className='xbtn'; b.textContent='✕'; b.title='删除';
+  b.style.left=x+'px'; b.style.top=y+'px';
+  b.addEventListener('pointerdown',ev=>{ ev.stopPropagation(); ev.preventDefault(); fn(); });
+  return b;
+}
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+function drawWires(){
+  const svg = $('#wires');
+  const top = $('#shorts');
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  while(top.firstChild) top.removeChild(top.firstChild);
+  const mk=(x1,y1,x2,y2,cls,wid,wid2)=>{
+    const ln = document.createElementNS(SVGNS,'line');
+    ln.setAttribute('x1',x1); ln.setAttribute('y1',y1);
+    ln.setAttribute('x2',x2); ln.setAttribute('y2',y2);
+    ln.setAttribute('stroke',cls); ln.setAttribute('stroke-width',wid);
+    ln.setAttribute('stroke-linecap','round');
+    if(wid2) ln.setAttribute('stroke-dasharray',wid2);
+    return ln;
+  };
+  const css = getComputedStyle(document.documentElement);
+  const cW = css.getPropertyValue('--wire').trim() || '#888';
+  const cA = css.getPropertyValue('--acc').trim()  || '#1a6fd4';
+  const cE = css.getPropertyValue('--err').trim()  || '#c32f2f';
+
+  const shortW = new Set((CV.res && CV.res.shortWires) || []);
+  CV.wires.forEach(w=>{
+    const p=pinPos(w.p), q=pinPos(w.q);
+    if(!p||!q) return;
+    const hit = mk(p.x,p.y,q.x,q.y,'transparent',18);
+    hit.setAttribute('pointer-events','stroke');
+    hit.style.cursor='pointer';
+    hit.addEventListener('pointerdown',ev=>{
+      ev.stopPropagation(); ev.preventDefault();
+      CV.sel = {kind:'wire', id:w.id}; CV.pend=null; rebuild(); setHint('点红色 ✕ 删掉这根导线。');
+    });
+    const sel = CV.sel && CV.sel.kind==='wire' && CV.sel.id===w.id;
+    const sht = shortW.has(w.id);
+    svg.appendChild(mk(p.x,p.y,q.x,q.y, (sel||sht)?cE:cW, sht?5:(sel?3.5:3)));
+    svg.appendChild(hit);
+    if(sht) top.appendChild(mk(p.x,p.y,q.x,q.y, cE, 5));
+  });
+  if(CV.pend && CV.pendXY){
+    const p = pinPos(CV.pend);
+    if(p) svg.appendChild(mk(p.x,p.y,CV.pendXY.x,CV.pendXY.y,cA,2.5,'5 4'));
+  }
+}
+
+/* ---------- 结果面板 ---------- */
+
+function paintPanel(){
+  const res = CV.res;
+  const msgs = $('#msgs'), tab = $('#restab');
+  msgs.innerHTML = ''; tab.innerHTML = '';
+  const add=(cls,ic,t)=>{
+    const d=document.createElement('div'); d.className='msg '+cls;
+    d.innerHTML='<span class="ic">'+ic+'</span><span>'+t+'</span>';
+    msgs.appendChild(d);
+  };
+
+  if(!CV.powered){
+    add('i','○','没通电。搭好之后点「通电」看每个元件的电压、电流、功率。');
+    return;
+  }
+  if(!res || res.noSource){ add('e','!','画布上没有电源，无法求解。'); return; }
+
+  if(res.shorted){
+    add('e','⚠',
+      '<b>短路！</b>电源的正负极之间存在一条几乎没有电阻的通路，'+
+      '电流大到只受导线自身电阻限制。真实情况下：电池急剧发烫甚至鼓包、导线绝缘层熔化、'+
+      '保险丝或空开跳闸。最常见的接错就是<b>把开关或导线直接跨在电源两端</b>，'+
+      '或者接线时正负极碰上了。<b>画布上标红加粗的那条通路</b>就是短路点 —— 点它，再点红色 ✕ 拆掉。');
+    return;
+  }
+  if(res.singular){ add('e','!','电路结构无法求解，检查一下接线。'); return; }
+
+  const src = CV.els.find(e=>e.type==='source');
+  const si  = src ? Math.abs(res.byId[src.id].i) : 0;
+  const lamps = CV.els.filter(e=>e.type==='lamp');
+  // 灯烧了之后电流本来就是 0。这时先报「断路」会让人以为是接线问题，
+  // 所以有烧毁的灯就不再报断路 —— 烧毁那条消息已经说清原因了。
+  const anyBurnt = lamps.some(e=>{ const d=res.byId[e.id]; return d && d.burned; });
+  if(src && si < 5e-5 && !anyBurnt){
+    add('w','⚠','<b>断路。</b>电源出去的电流是 0，说明没有形成闭合回路 —— '+
+      '可能是少接了一根导线，或者某个开关处于断开状态。电流必须能从正极出发、经过负载、回到负极。');
+  }
+
+  lamps.forEach(e=>{
+    const d = res.byId[e.id];
+    if(!d) return;
+    const nm = elName(e);
+    if(d.burned){
+      add('e','✕','<b>'+nm+' 烧毁了。</b>它承受的功率超过额定的 '+BURN+' 倍。'+
+        '额定值是上限不是建议值 —— 电压超一点，功率超很多（平方关系）。点「换新灯泡」复原。');
+    }else if(d.bypassed){
+      add('w','⚠','<b>'+nm+' 被导线跨接了。</b>它两端被一根导线直接连上，电流走电阻更小的那条路绕了过去，'+
+        '所以它两端电压是 0、完全不亮。这叫「被短接」。');
+    }else if(!d.live){
+      add('i','○', nm+' 不在通电回路里，孤零零挂着。');
+    }else{
+      const r = d.p/e.pr, st = lampState(r,false);
+      if(st.k==='over') add('w','⚠','<b>'+nm+' 过亮</b>（'+fmt(d.p)+'W，额定 '+e.pr+'W）。'+
+        '再高一点就烧了。想降下来：降低电源电压，或者给它串一个电阻分掉一部分电压。');
+      if(st.k==='off' && si>=5e-5) add('i','○', nm+' 没亮：它这条支路不通，或者分到的电压太低。');
+    }
+  });
+
+  const rows = [];
+  if(src){
+    const d = res.byId[src.id];
+    rows.push('<tr><td><b>电源</b></td><td class="n">'+fmt(CV.srcV,1)+' V</td>'+
+      '<td class="n">'+fmtI(d.i)+'</td><td class="n">'+fmt(Math.abs(d.p))+' W</td></tr>');
+  }
+  CV.els.filter(e=>e.type!=='source').forEach(e=>{
+    const d = res.byId[e.id];
+    let badge = '';
+    if(e.type==='lamp'){
+      const st = lampState(d && d.live ? d.p/e.pr : 0, d ? d.burned : e.burned);
+      badge = '<span class="bg '+st.k+'">'+st.t+'</span>';
+    }
+    const dead = !d || !d.live || (e.type==='switch' && !e.closed) || (d && d.burned);
+    rows.push('<tr><td>'+elName(e)+badge+'</td>'+
+      '<td class="n">'+(d&&d.live?fmt(d.u)+' V':'—')+'</td>'+
+      '<td class="n">'+(d&&d.live&&!dead?fmtI(d.i):(e.type==='switch'&&!e.closed?'0 A':(d&&d.burned?'0 A':'—')))+'</td>'+
+      '<td class="n">'+(d&&d.live&&e.type!=='switch'?fmt(d.p)+' W':'—')+'</td></tr>');
+  });
+  if(rows.length){
+    tab.innerHTML = '<table class="res"><thead><tr><th>元件</th><th>电压 U</th>'+
+      '<th>电流 I</th><th>功率 P</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+  }else{
+    tab.innerHTML = '<div class="empty">画布上还没有元件。</div>';
+  }
+}
+
+/* ---------- 关卡 ---------- */
+
+function buildLv(){
+  const host = $('#lv');
+  host.innerHTML = '';
+  LEVELS.forEach((L,i)=>{
+    const b = document.createElement('button');
+    b.innerHTML = '<span>关卡 '+L.n+'</span><span'+(LDONE[L.n]?' class="dn"':'')+'>'+
+                  (LDONE[L.n] ? '✓ 已完成' : L.tab)+'</span>';
+    if(i===CV.level) b.classList.add('on');
+    b.addEventListener('click',()=>{ CV.level=i; applyLock(); refresh(); });
+    host.appendChild(b);
+  });
+}
+
+// 切关卡时把电源电压摆回这一关该有的起点：
+// 关卡3 锁 12V，切回别的关卡如果还留着 12V，一通电就把 6V 的灯烧掉。
+function applyLock(){
+  const L = LEVELS[CV.level];
+  const sl = $('#vsl'), note = $('#lockn');
+  CV.srcV = L.lockV || L.startV || 6;
+  sl.value = CV.srcV;
+  if(L.lockV){
+    sl.disabled = true;
+    note.hidden = false; note.textContent = '这一关电源固定在 '+L.lockV+'V，滑杆已锁。';
+  }else{
+    sl.disabled = false; note.hidden = true;
+  }
+  $('#vvv').textContent = fmt(CV.srcV,1)+' V';
+}
+
+function checkLevel(){
+  const L = LEVELS[CV.level];
+  const t = $('#task');
+  let st;
+  if(!CV.powered){
+    st = '<div class="st">点「通电」后自动判定。</div>';
+  }else{
+    const r = L.check();
+    if(r.ok){
+      st = '<div class="st ok">✓ 完成了</div>';
+      if(!LDONE[L.n]){
+        LDONE[L.n] = 1;
+        try{ localStorage.setItem(LKEY, JSON.stringify(LDONE)); }catch(e){}
+        buildLv();
+        setTimeout(()=>showWhy(L), 320);
+      }
+    }else{
+      st = '<div class="st">还没完成：'+r.msg+'</div>';
+    }
+  }
+  t.innerHTML = '<div class="tt">关卡 '+L.n+'　'+L.tab+'</div><div>'+L.task+'</div>'+
+                '<div class="st">'+L.need+'</div>'+st+
+                (LDONE[L.n] ? '<div class="st"><button class="btn" id="rewhy" style="font-size:.78rem">再看一遍原理说明</button></div>' : '');
+  const rw = $('#rewhy');
+  if(rw) rw.addEventListener('click',()=>showWhy(L));
+}
+
+function showWhy(L){
+  const s = $('#sheet');
+  s.innerHTML = '<h3><span class="tick">✓</span>关卡 '+L.n+' 完成 —— '+L.why.title+'</h3>'+
+    L.why.body.map(p=>'<p>'+p+'</p>').join('')+
+    '<div class="foot"><button class="btn pri" id="okw">知道了</button></div>';
+  $('#ov').classList.add('show');
+  $('#okw').addEventListener('click',()=>$('#ov').classList.remove('show'));
+}
+
+/* ---------- 总刷新 ---------- */
+
+function refresh(){
+  if(CV.powered){
+    CV.res = trySolve({});
+    // 把烧毁结果写回画布状态
+    if(CV.res.burned) CV.res.burned.forEach(id=>{ const e=byId(id); if(e) e.burned = true; });
+  }else{
+    CV.res = null;
+  }
+  rebuild();
+  paintPanel();
+  checkLevel();
+}
+
+function setHint(t){ $('#hint').textContent = t; }
+
+let toastT = null;
+function toast(t){
+  const el = $('#toast');
+  el.textContent = t; el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>el.classList.remove('show'), 1800);
+}
+
+/* ---------- 手势 ---------- */
+
+let drag = null;   // {id, dx, dy, moved}
+
+function nearestPin(cx,cy,exclude){
+  let best=null, bd=30;
+  CV.els.forEach(e=>{
+    ['a','b'].forEach(p=>{
+      const ref = e.id+':'+p;
+      if(ref===exclude) return;
+      const pos = pinPos(ref);
+      const d = Math.hypot(pos.x-cx, pos.y-cy);
+      if(d<bd){ bd=d; best=ref; }
+    });
+  });
+  return best;
+}
+
+function localXY(ev){
+  const r = $('#canvas').getBoundingClientRect();
+  return { x:ev.clientX-r.left, y:ev.clientY-r.top };
+}
+
+function initCanvas(){
+  const cv = $('#canvas');
+
+  cv.addEventListener('pointerdown',ev=>{
+    const pinEl = ev.target.closest('.pin');
+    const elEl  = ev.target.closest('.el');
+
+    if(pinEl){
+      ev.preventDefault(); ev.stopPropagation();
+      const ref = pinEl.dataset.pin;
+      if(CV.pend && CV.pend!==ref){ const p=CV.pend; CV.pend=null; CV.pendXY=null; connect(p,ref); return; }
+      CV.pend = ref; CV.pendXY = localXY(ev); CV.sel = null;
+      drag = { kind:'wire', id:ref, moved:false };
+      try{ cv.setPointerCapture(ev.pointerId); }catch(e){}
+      rebuild();
+      setHint('拖到另一个引脚松手，或者直接点另一个引脚，就接上一根导线。');
+      return;
+    }
+
+    if(elEl){
+      ev.preventDefault();
+      const e = byId(elEl.dataset.id);
+      if(!e) return;
+      const l = localXY(ev);
+      drag = { kind:'el', id:e.id, dx:l.x-e.x, dy:l.y-e.y, moved:false };
+      try{ cv.setPointerCapture(ev.pointerId); }catch(e2){}
+      return;
+    }
+
+    // 空白：取消选择
+    CV.sel = null; CV.pend = null; CV.pendXY = null;
+    rebuild();
+  });
+
+  cv.addEventListener('pointermove',ev=>{
+    if(!drag) return;
+    const l = localXY(ev);
+    if(drag.kind==='wire'){
+      drag.moved = true;
+      CV.pendXY = l;
+      drawWires();
+      return;
+    }
+    const e = byId(drag.id);
+    if(!e) return;
+    const nx = l.x-drag.dx, ny = l.y-drag.dy;
+    if(Math.abs(nx-e.x)>3 || Math.abs(ny-e.y)>3) drag.moved = true;
+    const b = canvasBox();
+    e.x = Math.max(PAD, Math.min(b.w-EW-PAD, nx));
+    e.y = Math.max(10,  Math.min(b.h-EH-10,  ny));
+    const node = cv.querySelector('.el[data-id="'+e.id+'"]');
+    if(node){ node.style.left=e.x+'px'; node.style.top=e.y+'px'; }
+    $$('#canvas .xbtn').forEach(n=>n.remove());
+    drawWires();
+  });
+
+  const up = ev=>{
+    if(!drag) return;
+    const d = drag; drag = null;
+    if(d.kind==='wire'){
+      const l = localXY(ev);
+      if(d.moved){
+        const t = nearestPin(l.x,l.y,d.id);
+        const from = CV.pend;
+        CV.pend = null; CV.pendXY = null;
+        if(t && from) connect(from,t);
+        else { rebuild(); setHint('没接上 —— 要松手在另一个引脚（小圆点）附近。'); }
+      }else{
+        CV.pendXY = null;
+        rebuild();
+      }
+      return;
+    }
+    const e = byId(d.id);
+    if(!e) return;
+    if(!d.moved){
+      // 算作点击
+      if(e.type==='switch'){ e.closed = !e.closed; CV.sel = {kind:'el',id:e.id}; refresh(); return; }
+      CV.sel = (CV.sel && CV.sel.kind==='el' && CV.sel.id===e.id) ? null : {kind:'el',id:e.id};
+      rebuild();
+      if(CV.sel) setHint('点红色 ✕ 可以删掉它；按住本体可以拖动。');
+      return;
+    }
+    refresh();
+  };
+  cv.addEventListener('pointerup',up);
+  cv.addEventListener('pointercancel',()=>{ drag=null; CV.pendXY=null; rebuild(); });
+}
+
+/* ---------- 控件 ---------- */
+
+function initCtl(){
+  const pal = $('#pal');
+  PAL.forEach(spec=>{
+    const b = document.createElement('button');
+    b.textContent = spec.label;
+    b.addEventListener('click',()=>addEl(spec));
+    pal.appendChild(b);
+  });
+  const clr = document.createElement('button');
+  clr.className='gh'; clr.textContent='🗑 清空';
+  clr.addEventListener('click',()=>{
+    if(!CV.els.length) return;
+    CV.els=[]; CV.wires=[]; CV.sel=null; CV.pend=null;
+    addEl({t:'src'});
+    setHint('清空了，留了一个电源。');
+  });
+  pal.appendChild(clr);
+  const fix = document.createElement('button');
+  fix.className='gh'; fix.textContent='🔁 换新灯泡';
+  fix.addEventListener('click',()=>{
+    let n=0;
+    CV.els.forEach(e=>{ if(e.type==='lamp'&&e.burned){ e.burned=false; n++; } });
+    toast(n?('换了 '+n+' 个灯泡'):'没有烧掉的灯泡');
+    refresh();
+  });
+  pal.appendChild(fix);
+
+  $('#pwr').addEventListener('click',()=>{
+    CV.powered = !CV.powered;
+    const b = $('#pwr');
+    b.textContent = CV.powered ? '断电' : '通电';
+    b.className = 'btn ' + (CV.powered ? 'on' : 'pri');
+    refresh();
+  });
+
+  const sl = $('#vsl');
+  sl.addEventListener('input',()=>{
+    CV.srcV = parseFloat(sl.value);
+    $('#vvv').textContent = fmt(CV.srcV,1)+' V';
+    refresh();
+  });
+
+  $('#ov').addEventListener('pointerdown',ev=>{
+    if(ev.target.id==='ov') $('#ov').classList.remove('show');
+  });
+  window.addEventListener('resize',()=>{
+    const b = canvasBox();
+    CV.els.forEach(e=>{
+      e.x = Math.max(PAD, Math.min(b.w-EW-PAD, e.x));
+      e.y = Math.max(10,  Math.min(b.h-EH-10,  e.y));
+    });
+    rebuild();
+  });
+}
+
+/* ---------- 启动 ---------- */
+
+buildCards();
+buildLv();
+initCanvas();
+initCtl();
+applyLock();
+addEl({t:'src'});
+setHint('先点上面的元件加进来，再点引脚之间的小圆点连线，最后「通电」。');
+
+// 供脚本化测试用（不影响页面运行）
+window.__CIRCUIT__ = { solveCircuit, solveOnce, gauss, lampState, CV, LEVELS, CONCEPTS };
+</script>
+</body>
+</html>
