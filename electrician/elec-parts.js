@@ -1,29 +1,52 @@
 /* ==================================================================
-   elec-parts.js —— 实物级元件库（配合 elec-canvas.js 用，全局挂到 EP）
+   elec-parts.js —— 元件库 + 标注排版（统一风格），全局挂到 EP
 
-   为什么要有这一份（2026-08-23 他的要求）：
-   「做的精细点，然后仿真点越真越好，尽量模拟最真实的电路，还有那个元件形态」
+   2026-08-23 第二版：**按他给的「元件库（统一风格）」样式表重做**，
+   同时补上标注的字体层级和引线 —— 他的原话：
+   「不只是元件，标注字体也设计一下，还有文字排版，改的好看点」。
 
-   —— 原来所有场景画的都是**电路符号**（长短线=电池、⊗=灯泡）。符号必须教
-   （上班拿到手的是原理图），但零基础第一眼要先认得出**那是个什么东西**。
-   书上也是这么排的：每张图都是 a) 实物连接图 + b) 电路原理图两张并排。
-   所以课页做成**实物 / 符号两个视图可以切**，这一份负责「实物」那一半。
+   第一版是照片级质感（深蓝干电池、米色色环电阻、胶木闸刀）。两个毛病：
+   小尺寸认不出（色环挤成一团）、几件东西凑一起风格打架。新风格是
 
-   画法约定：
-   - **线性渐变做圆柱感**（暗→亮→暗），径向渐变做玻璃和光晕，
-     再加一道高光描边。不要用 shadowBlur —— 手机上慢。
-   - 每个零件都是「中心点 + 尺寸」调用，方向靠参数，不靠调用方 translate。
-   - **金属色统一**：黄铜 #c9a227 系、镀锌 #b8c0c8 系、塑料外壳 #2b3038 系。
-     六节课共用同一套颜色，看着才像同一批器材。
-   - 元件本身不画导线，导线交给 EC.Path / EP.wire —— 和符号版保持同一个分工。
+     **半扁平 + 柔和渐变 + 细深色描边**
+     - 电阻 / 可变电阻 = 蓝色胶囊（一眼认得出）
+     - 电池 = 圆柱体 + 红色 ＋ 帽
+     - 开关 = 两个圆触点 + 一根刀，断开时斜着
+     - 灯泡 = 玻璃壳 + 灯丝 + 灯座，亮度四档
+     - 导线三档粗细：普通 / 通电高亮 / 粗（大电流）
+     - 电子 = 蓝点（实际方向），电流 = 琥珀色箭头（规定方向）
+
+   **标注按技术制图那一套排**（查过的通行做法：标签紧挨着被标的东西，
+   放不下就用引线牵出去，字一律水平放正，别让标签互相压）：
+     EP.callout()  数值（粗体、带色）在上，名称（小字、灰）在下，一条细引线牵到元件
+     EP.chip()     胶囊底板的小标签，压在图上也读得清
+     EP.TYPE       四档字号：val 数值 / name 名称 / note 注解 / tiny 极小
    ================================================================== */
 (function(global){
 'use strict';
 
 const TAU = Math.PI*2;
-const C = (global.EC && global.EC.C) || {};
 
-/* 小工具：圆角矩形路径（不描不填，交给调用方） */
+/* 统一色板 —— 六节课共用，看着才像同一套器材 */
+const P = {
+  ink:'#2b3038', inkL:'#5b6672', inkLL:'#8b949e',
+  blue:'#4a90d9', blueD:'#2f6fb0', blueL:'#cfe0f5',
+  hot:'#1e6fd0',
+  amber:'#f0a020', ele:'#2a86d8',
+  brass:'#c9a227', brassD:'#8a6d12',
+  green:'#2f9e44', red:'#d5342a',
+  panel:'#e7ebf0', panelD:'#c3cad2',
+  lcd:'#111a16', lcdInk:'#5ce08a'
+};
+
+/* 字体层级：画布上所有文字只准从这四档里挑 */
+const TYPE = {
+  val:  {sz:12.5, b:1},                 /* 数值：E = 1.5 V */
+  name: {sz:9.5,  c:P.inkL},            /* 名称：电池电动势 */
+  note: {sz:10,   c:P.inkLL},           /* 注解、图例 */
+  tiny: {sz:8.5,  c:P.inkLL}            /* 极小：COM、V */
+};
+
 function rr(g, x, y, w, h, r){
   const k = Math.min(r, w/2, h/2);
   g.beginPath();
@@ -34,62 +57,145 @@ function rr(g, x, y, w, h, r){
   g.arcTo(x, y, x+w, y, k);
   g.closePath();
 }
-/* 圆柱渐变：沿着 across 方向暗→亮→暗 */
-function cyl(g, x0, y0, x1, y1, dark, mid, light){
-  const gr = g.createLinearGradient(x0, y0, x1, y1);
+function cyl(g, y0, y1, dark, mid, light){
+  const gr = g.createLinearGradient(0, y0, 0, y1);
   gr.addColorStop(0,    dark);
-  gr.addColorStop(0.34, light || mid);
-  gr.addColorStop(0.55, mid);
+  gr.addColorStop(0.32, light || mid);
+  gr.addColorStop(0.62, mid);
   gr.addColorStop(1,    dark);
   return gr;
 }
-function txt(g, s, x, y, o){ global.EC.txt(g, s, x, y, o); }
-
-/* ================= 导线（带绝缘皮）=================
-   wire(g, path, {color, w, core})
-   外皮 + 一道高光；core:true 时两头露出铜芯 */
-function wire(g, path, o){
-  o = o || {};
-  const w = o.w || 7;
-  path.stroke(g, w, o.dark || shade(o.color || '#c0392b', -0.35));
-  path.stroke(g, w-2.4, o.color || '#c0392b');
-  g.save(); g.globalAlpha = 0.35;
-  path.stroke(g, Math.max(1, w*0.24), '#ffffff');
-  g.restore();
-}
-/* 颜色加深/提亮 */
 function shade(hex, k){
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if(!m) return hex;
-  let r = parseInt(m[1],16), gg = parseInt(m[2],16), b = parseInt(m[3],16);
   const f = (v)=> Math.max(0, Math.min(255, Math.round(k<0 ? v*(1+k) : v+(255-v)*k)));
-  return 'rgb('+f(r)+','+f(gg)+','+f(b)+')';
+  return 'rgb('+f(parseInt(m[1],16))+','+f(parseInt(m[2],16))+','+f(parseInt(m[3],16))+')';
 }
+function txt(g, s, x, y, o){ global.EC.txt(g, s, x, y, o); }
+function tw(g, s, sz, b){ return global.EC.tw(g, s, sz, b); }
 
-/* ================= 接线柱 =================
-   真接线端子：黄铜底座 + 压线螺钉 */
-function terminal(g, x, y, r, o){
+/* ================= 标注 =================
+   callout(g, ax, ay, tx, ty, value, name, {color, al, dot})
+     (ax,ay) 元件上的锚点，(tx,ty) 文字位置。
+     数值粗体在上、名称小字在下，中间一条细引线。
+     al:'left' 文字在锚点右边（默认）；'right' 在左边。 */
+function callout(g, ax, ay, tx, ty, value, name, o){
   o = o || {};
-  r = r || 7;
+  const col = o.color || P.ink;
+  const al = o.al || 'left';
+  /* 引线：先横后斜的一段折线，末端不带箭头（技术制图的习惯） */
   g.save();
-  const gr = g.createRadialGradient(x-r*0.4, y-r*0.4, r*0.15, x, y, r);
-  gr.addColorStop(0, '#f3e2a0'); gr.addColorStop(0.6, '#c9a227'); gr.addColorStop(1, '#8a6d12');
-  g.fillStyle = gr;
-  g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
-  g.strokeStyle = '#6f5710'; g.lineWidth = 1; g.stroke();
-  /* 一字螺钉槽 */
-  g.strokeStyle = '#6f5710'; g.lineWidth = Math.max(1.2, r*0.28); g.lineCap = 'round';
+  g.strokeStyle = o.line || 'rgba(91,102,114,.55)';
+  g.lineWidth = 1; g.setLineDash(o.dash || []);
   g.beginPath();
-  const a = o.slot == null ? -0.5 : o.slot;
-  g.moveTo(x - Math.cos(a)*r*0.55, y - Math.sin(a)*r*0.55);
-  g.lineTo(x + Math.cos(a)*r*0.55, y + Math.sin(a)*r*0.55);
+  g.moveTo(ax, ay);
+  const midx = al === 'left' ? tx - 8 : tx + 8;
+  g.lineTo(midx, ty);
+  g.lineTo(tx, ty);
   g.stroke();
   g.restore();
+  if(o.dot !== false){
+    g.save(); g.fillStyle = col;
+    g.beginPath(); g.arc(ax, ay, 2.4, 0, TAU); g.fill(); g.restore();
+  }
+  txt(g, value, tx, ty - 6, {sz:TYPE.val.sz, b:1, c:col, al:al});
+  if(name) txt(g, name, tx, ty + 8, {sz:TYPE.name.sz, c:TYPE.name.c, al:al});
 }
 
-/* ================= 干电池 =================
-   cell(g, x, y, len, dia, {horiz, label, flip})
-   横放时正极（金属帽）在右；flip 反过来 */
+/* 胶囊底板小标签：压在图形上也读得清 */
+function chip(g, s, x, y, o){
+  o = o || {};
+  const sz = o.sz || 10.5;
+  const w = tw(g, s, sz, o.b) + 14, h = sz + 9;
+  let bx = x - w/2;
+  if(o.al === 'left') bx = x;
+  if(o.al === 'right') bx = x - w;
+  g.save();
+  rr(g, bx, y - h/2, w, h, h/2);
+  g.fillStyle = o.fill || 'rgba(255,255,255,.92)'; g.fill();
+  if(o.line !== false){ g.strokeStyle = o.line || 'rgba(139,148,158,.5)'; g.lineWidth = 1; g.stroke(); }
+  g.restore();
+  txt(g, s, bx + w/2, y, {sz:sz, b:o.b, c:o.c || P.ink});
+  return {x:bx, y:y-h/2, w:w, h:h};
+}
+
+/* 图例行：一排「色块 + 文字」，居中排 */
+function legend(g, cx, y, items){
+  let total = 0;
+  items.forEach(function(it){ total += 16 + tw(g, it[0], TYPE.note.sz) + 20; });
+  let x = cx - total/2;
+  items.forEach(function(it){
+    const kind = it[2] || 'dot';
+    g.save();
+    if(kind === 'arrow'){
+      global.EC.head(g, x+5, y, 1, 0, 5, it[1]);
+    }else if(kind === 'bar'){
+      g.fillStyle = it[1]; g.fillRect(x, y-1.6, 14, 3.2);
+    }else{
+      g.fillStyle = it[1];
+      g.beginPath(); g.arc(x+5, y, 3.6, 0, TAU); g.fill();
+    }
+    g.restore();
+    txt(g, it[0], x + 16, y, {sz:TYPE.note.sz, c:TYPE.note.c, al:'left'});
+    x += 16 + tw(g, it[0], TYPE.note.sz) + 20;
+  });
+}
+
+/* 画布上的小标题：粗体主标 + 灰色补充，左对齐 */
+function heading(g, x, y, title, sub){
+  txt(g, title, x, y, {sz:11.5, b:1, c:P.ink, al:'left'});
+  if(sub) txt(g, sub, x + tw(g, title, 11.5, true) + 10, y,
+              {sz:TYPE.note.sz, c:TYPE.note.c, al:'left'});
+}
+
+/* ================= 导线 ================= */
+const WIRE_W = { normal:2.8, hot:3.4, thick:5.4 };
+function wire(g, path, o){
+  o = o || {};
+  const kind = o.kind || 'normal';
+  const w = o.w || WIRE_W[kind] || 2.8;
+  const col = o.color || (kind === 'normal' ? P.ink : P.hot);
+  path.stroke(g, w + 2, 'rgba(43,48,56,.10)');
+  path.stroke(g, w, col);
+  if(kind !== 'normal'){
+    g.save(); g.globalAlpha = 0.4;
+    path.stroke(g, Math.max(1, w*0.32), '#ffffff');
+    g.restore();
+  }
+}
+function node(g, x, y, r){
+  g.save(); g.fillStyle = P.ink;
+  g.beginPath(); g.arc(x, y, r || 3.4, 0, TAU); g.fill(); g.restore();
+}
+
+/* ================= 电子 / 电流 =================
+   电子：蓝点（实际方向）；电流：琥珀箭头（规定方向）。
+   两者故意错开半个间距，免得叠在一起看成一串珠子。 */
+function flow(g, path, o){
+  o = o || {};
+  const gap = o.gap || 26, dir = (o.dir === -1) ? -1 : 1;
+  const skip = o.skip || [];
+  let ph = (o.phase || 0) * dir;
+  ph = ph % gap; if(ph < 0) ph += gap;
+  for(let s = ph; s <= path.len; s += gap){
+    let hid = false;
+    for(let i=0;i<skip.length;i++) if(s > skip[i][0] && s < skip[i][1]){ hid = true; break; }
+    if(hid) continue;
+    const p = path.at(s), d = path.dir(s);
+    if(o.kind === 'cur'){
+      global.EC.head(g, p[0], p[1], d[0]*dir, d[1]*dir, o.size || 5.4, o.color || P.amber);
+    }else{
+      g.save();
+      g.fillStyle = o.color || P.ele;
+      g.beginPath(); g.arc(p[0], p[1], o.r || 3.6, 0, TAU); g.fill();
+      g.globalAlpha = 0.6; g.fillStyle = '#fff';
+      g.beginPath(); g.arc(p[0]-1, p[1]-1, (o.r || 3.6)*0.38, 0, TAU); g.fill();
+      g.restore();
+    }
+  }
+}
+
+/* ================= 电池 ================= */
 function cell(g, x, y, len, dia, o){
   o = o || {};
   const horiz = o.horiz !== false;
@@ -98,388 +204,319 @@ function cell(g, x, y, len, dia, o){
   g.translate(x, y);
   if(!horiz) g.rotate(-Math.PI/2);
   if(flip < 0) g.scale(-1, 1);
-
   const L = len, D = dia, half = L/2, hd = D/2;
-  /* 外壳 */
-  rr(g, -half, -hd, L, D, 3);
-  g.fillStyle = cyl(g, 0, -hd, 0, hd, '#1f2a35', '#41566b', '#6e879e');
+
+  /* 主体（深蓝灰圆柱） */
+  rr(g, -half, -hd, L, D, D*0.26);
+  g.fillStyle = cyl(g, -hd, hd, '#25313d', '#4f6478', '#8fa3b6');
   g.fill();
-  /* 标签环带 */
+  /* 白色标签环 */
   g.save();
-  rr(g, -half+L*0.14, -hd, L*0.62, D, 2); g.clip();
-  g.fillStyle = cyl(g, 0, -hd, 0, hd, '#8a6a12', '#e0b93a', '#f7dd86');
+  rr(g, -half+L*0.42, -hd, L*0.40, D, 2); g.clip();
+  g.fillStyle = cyl(g, -hd, hd, '#c9ced4', '#f7fafc', '#ffffff');
   g.fillRect(-half, -hd, L, D);
   g.restore();
-  /* 负极端盖 */
-  rr(g, -half, -hd, L*0.1, D, 2);
-  g.fillStyle = cyl(g, 0, -hd, 0, hd, '#20262c', '#4a545e', '#78838e');
+  /* 正极红帽 + 小凸头 */
+  rr(g, half-L*0.10, -hd*0.86, L*0.10, D*0.86, 3);
+  g.fillStyle = cyl(g, -hd*0.86, hd*0.86, '#8e231b', '#d5342a', '#f5837a');
   g.fill();
-  /* 正极凸帽 */
-  rr(g, half-2, -hd*0.42, 6, hd*0.84, 2);
-  g.fillStyle = cyl(g, 0, -hd*0.42, 0, hd*0.42, '#8d949c', '#d7dde3', '#f2f5f8');
-  g.fill();
-  /* 外框 */
-  rr(g, -half, -hd, L, D, 3);
-  g.strokeStyle = '#141a20'; g.lineWidth = 1.2; g.stroke();
-  /* 顶部高光 */
+  rr(g, half-1.5, -hd*0.3, 5, hd*0.6, 2);
+  g.fillStyle = '#c3cad2'; g.fill();
+  /* 描边 + 高光 */
+  rr(g, -half, -hd, L, D, D*0.26);
+  g.strokeStyle = P.ink; g.lineWidth = 1.4; g.stroke();
   g.save(); g.globalAlpha = 0.5;
-  g.strokeStyle = '#ffffff'; g.lineWidth = 1.4;
-  g.beginPath(); g.moveTo(-half+4, -hd+3.2); g.lineTo(half-6, -hd+3.2); g.stroke();
+  g.strokeStyle = '#fff'; g.lineWidth = 1.8; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(-half+D*0.32, -hd+3.4); g.lineTo(half-D*0.5, -hd+3.4); g.stroke();
   g.restore();
   g.restore();
 
-  /* ± 标记与文字（不跟着旋转，免得躺倒） */
-  const px = horiz ? half*flip : 0, py = horiz ? 0 : -half*flip;
-  const nx = horiz ? -half*flip : 0, ny = horiz ? 0 : half*flip;
   if(o.pm !== false){
-    txt(g, '＋', x + (horiz ? px+12 : px), y + (horiz ? py-hd-8 : py-12), {sz:12, b:1, c:'#c0392b'});
-    txt(g, '−',  x + (horiz ? nx-12 : nx), y + (horiz ? ny-hd-8 : ny+12), {sz:13, b:1, c:'#333b44'});
+    const s = horiz ? 1 : 0;
+    txt(g, '＋', x + (s ? (half*flip+13) : 0), y + (s ? 0 : -half*flip-13), {sz:13, b:1, c:P.red});
+    txt(g, '−', x + (s ? (-half*flip-13) : 0), y + (s ? 0 : half*flip+13), {sz:14, b:1, c:P.inkL});
   }
-  if(o.label) txt(g, o.label, x + (o.lx||0), y + (o.ly != null ? o.ly : (horiz ? hd+13 : 0)),
-                  {sz:o.lsz||10.5, b:1, c:'#3a3f46'});
+  if(o.label) txt(g, o.label, x + (o.lx||0), y + (o.ly != null ? o.ly : (horiz ? dia/2+14 : 0)),
+                  {sz:o.lsz||TYPE.val.sz, b:1, c:P.ink});
 }
 
-/* ================= 白炽灯泡 =================
-   bulb(g, x, y, R, b, {socket})  b = 亮度 0..1
-   玻璃壳 + 灯丝 + 螺口，亮起来时灯丝发白、玻璃透出暖光 */
-function bulb(g, x, y, R, b, o){
-  o = o || {};
-  b = Math.max(0, Math.min(1, b || 0));
-
-  /* 外光晕 */
-  if(b > 0.02){
-    const gr = g.createRadialGradient(x, y, R*0.3, x, y, R*3.2);
-    gr.addColorStop(0, 'rgba(255,214,120,'+(0.55*b).toFixed(3)+')');
-    gr.addColorStop(0.45,'rgba(255,205,90,'+(0.20*b).toFixed(3)+')');
-    gr.addColorStop(1, 'rgba(255,205,90,0)');
-    g.save(); g.fillStyle = gr;
-    g.beginPath(); g.arc(x, y, R*3.2, 0, TAU); g.fill(); g.restore();
-  }
-
-  /* 螺口（在下方） */
-  const bw = R*0.86, bh = R*0.72, by = y + R*0.72;
-  g.save();
-  rr(g, x-bw/2, by, bw, bh, 2);
-  g.fillStyle = cyl(g, x-bw/2, 0, x+bw/2, 0, '#7d6a2e', '#c9a227', '#efdc95');
-  g.fill();
-  g.strokeStyle = '#5e4f22'; g.lineWidth = 0.9; g.stroke();
-  /* 螺纹 */
-  g.strokeStyle = 'rgba(80,66,26,.55)'; g.lineWidth = 1;
-  for(let i=1;i<4;i++){
-    const yy = by + bh*i/4;
-    g.beginPath(); g.moveTo(x-bw/2+1, yy); g.lineTo(x+bw/2-1, yy); g.stroke();
-  }
-  /* 底部触点 */
-  g.fillStyle = '#3a3f46';
-  g.beginPath(); g.ellipse(x, by+bh+1.5, bw*0.3, 2.6, 0, 0, TAU); g.fill();
-  g.restore();
-
-  /* 玻璃壳 */
-  g.save();
-  g.beginPath();
-  g.moveTo(x-R*0.44, by+2);
-  g.quadraticCurveTo(x-R*1.02, y+R*0.42, x-R*0.98, y-R*0.12);
-  g.arc(x, y-R*0.12, R*0.98, Math.PI, 0);
-  g.quadraticCurveTo(x+R*1.02, y+R*0.42, x+R*0.44, by+2);
-  g.closePath();
-  const gg = g.createRadialGradient(x-R*0.3, y-R*0.45, R*0.1, x, y, R*1.25);
-  if(b > 0.02){
-    gg.addColorStop(0, 'rgba(255,247,214,'+(0.55+0.45*b).toFixed(2)+')');
-    gg.addColorStop(0.6,'rgba(255,226,150,'+(0.35+0.4*b).toFixed(2)+')');
-    gg.addColorStop(1, 'rgba(250,206,110,'+(0.25+0.3*b).toFixed(2)+')');
-  }else{
-    gg.addColorStop(0, 'rgba(255,255,255,.92)');
-    gg.addColorStop(0.6,'rgba(226,234,241,.80)');
-    gg.addColorStop(1, 'rgba(198,210,221,.75)');
-  }
-  g.fillStyle = gg; g.fill();
-  g.strokeStyle = b>0.02 ? 'rgba(200,150,40,.9)' : 'rgba(150,164,178,.9)';
-  g.lineWidth = 1.2; g.stroke();
-  g.restore();
-
-  /* 灯丝：两根支架 + 螺旋 */
-  g.save();
-  const fy = y + R*0.1;
-  g.strokeStyle = b>0.02 ? '#8a6a20' : '#98a1ab'; g.lineWidth = 1.1;
-  g.beginPath();
-  g.moveTo(x-R*0.22, by); g.lineTo(x-R*0.22, fy);
-  g.moveTo(x+R*0.22, by); g.lineTo(x+R*0.22, fy);
-  g.stroke();
-  g.lineWidth = b>0.02 ? 2.2 : 1.6;
-  g.strokeStyle = b>0.02
-    ? 'rgb(255,'+Math.round(220+30*b)+','+Math.round(120+110*b)+')'
-    : '#8f99a3';
-  g.beginPath();
-  for(let i=0;i<=10;i++){
-    const px = x - R*0.22 + (R*0.44)*i/10;
-    g.lineTo(px, fy - ((i%2) ? R*0.2 : 0));
-  }
-  g.stroke();
-  if(b > 0.15){                       /* 灯丝自发光 */
-    g.save(); g.globalAlpha = 0.55*b; g.lineWidth = 5.5;
-    g.strokeStyle = 'rgba(255,236,170,1)';
-    g.beginPath();
-    for(let i=0;i<=10;i++){
-      const px = x - R*0.22 + (R*0.44)*i/10;
-      g.lineTo(px, fy - ((i%2) ? R*0.2 : 0));
-    }
-    g.stroke(); g.restore();
-  }
-  g.restore();
-
-  /* 玻璃高光 */
-  g.save(); g.globalAlpha = 0.75;
-  g.strokeStyle = '#ffffff'; g.lineWidth = 2.2; g.lineCap = 'round';
-  g.beginPath();
-  g.arc(x, y-R*0.12, R*0.72, Math.PI*1.15, Math.PI*1.45);
-  g.stroke(); g.restore();
-
-  if(o.label) txt(g, o.label, x, y + R*2.1, {sz:o.lsz||10.5, c:'#4b545d'});
-}
-
-/* 灯座（灯泡装在上面才像真的装置） */
-function lampHolder(g, x, y, w, h){
-  g.save();
-  rr(g, x-w/2, y, w, h, 3);
-  g.fillStyle = cyl(g, x-w/2, 0, x+w/2, 0, '#20262c', '#3d464f', '#5b6672');
-  g.fill();
-  g.strokeStyle = '#171c21'; g.lineWidth = 1; g.stroke();
-  g.restore();
-  terminal(g, x-w/2+5, y+h-5, 3.4);
-  terminal(g, x+w/2-5, y+h-5, 3.4);
-}
-
-/* ================= 闸刀开关 =================
-   knife(g, x, y, on, {w,h}) —— 胶木底板 + 黄铜刀片 + 手柄 */
-function knife(g, x, y, on, o){
-  o = o || {};
-  const w = o.w || 62, h = o.h || 26;
-  /* 底板 */
-  g.save();
-  rr(g, x-w/2, y-h/2, w, h, 3);
-  g.fillStyle = cyl(g, 0, y-h/2, 0, y+h/2, '#171b20', '#2b3038', '#3c434c');
-  g.fill();
-  g.strokeStyle = '#0f1317'; g.lineWidth = 1; g.stroke();
-  g.restore();
-  /* 两个静触头 */
-  const x0 = x-w/2+9, x1 = x+w/2-9;
-  terminal(g, x0, y, 5.6);
-  terminal(g, x1, y, 5.6);
-  /* 刀片 */
-  const ang = on ? 0 : -0.62;
-  g.save();
-  g.translate(x0, y); g.rotate(ang);
-  const bl = x1 - x0;
-  rr(g, 0, -3.4, bl, 6.8, 2);
-  g.fillStyle = cyl(g, 0, -3.4, 0, 3.4, '#8a6d12', '#d9b63b', '#f6e79a');
-  g.fill();
-  g.strokeStyle = '#6f5710'; g.lineWidth = 0.9; g.stroke();
-  /* 手柄 */
-  rr(g, bl-4, -8.5, 12, 17, 4);
-  g.fillStyle = cyl(g, 0, -8.5, 0, 8.5, '#5a1410', '#a5352c', '#d1665c');
-  g.fill();
-  g.strokeStyle = '#3d0d0a'; g.lineWidth = 1; g.stroke();
-  g.restore();
-  if(o.label) txt(g, o.label, x, y + h/2 + 13, {sz:10.5, b:1, c: on ? '#1c8348' : '#c32f2f'});
-}
-
-/* ================= 色环电阻 =================
-   resistor(g, x, y, {horiz, len, dia, bands:[色,色,色,金]}) */
-const BAND = {0:'#1b1b1b',1:'#6b4423',2:'#c0392b',3:'#e07b2a',4:'#e0c020',
-              5:'#2f9e44',6:'#1e6fd0',7:'#7b2fbe',8:'#8d97a2',9:'#f2f5f8',
-              gold:'#c9a227', silver:'#c6ced6'};
+/* ================= 电阻（蓝色胶囊）================= */
 function resistor(g, x, y, o){
   o = o || {};
   const horiz = o.horiz !== false;
-  const L = o.len || 42, D = o.dia || 16;
+  const L = o.len || 44, D = o.dia || 17;
   g.save();
   g.translate(x, y);
   if(!horiz) g.rotate(-Math.PI/2);
-  /* 引脚 */
-  g.strokeStyle = '#b8c0c8'; g.lineWidth = 2.2; g.lineCap = 'round';
+  g.strokeStyle = P.ink; g.lineWidth = 2.4; g.lineCap = 'round';
   g.beginPath();
-  g.moveTo(-L/2-9, 0); g.lineTo(-L/2+2, 0);
-  g.moveTo(L/2-2, 0);  g.lineTo(L/2+9, 0);
+  g.moveTo(-L/2-10, 0); g.lineTo(-L/2+2, 0);
+  g.moveTo(L/2-2, 0);   g.lineTo(L/2+10, 0);
   g.stroke();
-  /* 本体 */
-  rr(g, -L/2, -D/2, L, D, D*0.42);
-  g.fillStyle = cyl(g, 0, -D/2, 0, D/2, '#9c7c50', '#d8bb8c', '#f0dcbb');
+  rr(g, -L/2, -D/2, L, D, D/2);
+  g.fillStyle = cyl(g, -D/2, D/2, P.blueD, P.blue, '#e2effb');
   g.fill();
-  g.strokeStyle = '#7a5f38'; g.lineWidth = 0.9; g.stroke();
-  /* 色环 */
-  const bands = o.bands || ['#6b4423', '#1b1b1b', '#c0392b', BAND.gold];
-  g.save();
-  rr(g, -L/2, -D/2, L, D, D*0.42); g.clip();
-  bands.forEach(function(c, i){
-    const bx = -L/2 + L*(0.18 + i*0.16);
-    g.fillStyle = c;
-    g.fillRect(bx, -D/2, L*0.075, D);
-  });
-  g.restore();
-  /* 高光 */
-  g.save(); g.globalAlpha = 0.45;
-  g.strokeStyle = '#fff'; g.lineWidth = 1.6;
-  g.beginPath(); g.moveTo(-L/2+4, -D/2+3.4); g.lineTo(L/2-4, -D/2+3.4); g.stroke();
+  g.strokeStyle = P.blueD; g.lineWidth = 1.2; g.stroke();
+  g.save(); g.globalAlpha = 0.65;
+  g.strokeStyle = '#fff'; g.lineWidth = 1.7; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(-L/2+D*0.45, -D/2+3.4); g.lineTo(L/2-D*0.45, -D/2+3.4); g.stroke();
   g.restore();
   g.restore();
-  if(o.label) txt(g, o.label, x + (o.lx||0), y + (o.ly != null ? o.ly : (horiz ? -D/2-11 : 0)),
-                  {sz:o.lsz||10.5, b:1, c:'#3a3f46'});
+  if(o.label) txt(g, o.label, x + (o.lx||0), y + (o.ly != null ? o.ly : (horiz ? -D/2-12 : 0)),
+                  {sz:o.lsz||TYPE.val.sz, b:1, c:o.lc || P.ink});
 }
 
-/* ================= 墙壁开关（拨钮）================= */
-function wallSwitch(g, x, y, on, o){
+/* 可变电阻：胶囊 + 滑块，t=0..1 */
+function rheostat(g, x, y, t, o){
   o = o || {};
-  const w = o.w || 34, h = o.h || 46;
+  const L = o.len || 62, D = o.dia || 17;
+  const horiz = o.horiz !== false;
   g.save();
-  rr(g, x-w/2, y-h/2, w, h, 4);
-  g.fillStyle = cyl(g, x-w/2, 0, x+w/2, 0, '#c9ced4', '#f2f5f8', '#ffffff');
+  g.translate(x, y);
+  if(!horiz) g.rotate(-Math.PI/2);
+  g.strokeStyle = P.ink; g.lineWidth = 2.4; g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(-L/2-10, 0); g.lineTo(-L/2+2, 0);
+  g.moveTo(L/2-2, 0);   g.lineTo(L/2+10, 0);
+  g.stroke();
+  rr(g, -L/2, -D/2, L, D, D/2);
+  g.fillStyle = cyl(g, -D/2, D/2, '#aeb7c1', '#e7ebf0', '#ffffff');
   g.fill();
-  g.strokeStyle = '#9aa4ae'; g.lineWidth = 1; g.stroke();
-  /* 按键 */
-  const kh = h*0.52;
-  rr(g, x-w*0.3, y - kh/2 - (on ? 3 : -3), w*0.6, kh, 3);
-  g.fillStyle = on
-    ? cyl(g, 0, y-kh/2, 0, y+kh/2, '#c9ced4', '#eef2f6', '#ffffff')
-    : cyl(g, 0, y-kh/2, 0, y+kh/2, '#8d97a2', '#c3cad2', '#e2e8ee');
-  g.fill();
-  g.strokeStyle = '#9aa4ae'; g.lineWidth = 0.9; g.stroke();
+  g.strokeStyle = P.inkL; g.lineWidth = 1.2; g.stroke();
+  const tt = Math.max(0, Math.min(1, t == null ? 0.5 : t));
+  g.save();
+  rr(g, -L/2, -D/2, L, D, D/2); g.clip();
+  g.fillStyle = cyl(g, -D/2, D/2, P.blueD, P.blue, '#e2effb');
+  g.fillRect(-L/2, -D/2, L*tt, D);
   g.restore();
-  txt(g, on ? 'ON' : 'OFF', x, y + h/2 + 11, {sz:9, b:1, c: on ? '#1c8348' : '#8b949e'});
+  const kx = -L/2 + L*tt;
+  g.save();
+  const kg = g.createRadialGradient(kx-3, -3, 1.5, kx, 0, D*0.6);
+  kg.addColorStop(0, '#bfe0ff'); kg.addColorStop(0.55, P.blue); kg.addColorStop(1, P.blueD);
+  g.fillStyle = kg;
+  g.beginPath(); g.arc(kx, 0, D*0.6, 0, TAU); g.fill();
+  g.strokeStyle = P.blueD; g.lineWidth = 1.2; g.stroke();
+  g.restore();
+  g.restore();
+  if(o.label) txt(g, o.label, x + (o.lx||0), y + (o.ly != null ? o.ly : (horiz ? -D/2-13 : 0)),
+                  {sz:o.lsz||TYPE.val.sz, b:1, c:P.ink});
 }
 
-/* ================= 指针电流表（表体）================= */
+/* ================= 开关 ================= */
+function knife(g, x, y, on, o){
+  o = o || {};
+  const w = o.w || 52;
+  const x0 = x - w/2, x1 = x + w/2;
+  g.save();
+  g.strokeStyle = P.ink; g.lineWidth = 2.4; g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(x0-10, y); g.lineTo(x0, y);
+  g.moveTo(x1, y);    g.lineTo(x1+10, y);
+  g.stroke();
+  g.beginPath();
+  g.moveTo(x0, y);
+  if(on) g.lineTo(x1, y);
+  else   g.lineTo(x0 + w*0.9, y - w*0.42);
+  g.lineWidth = 3.2; g.strokeStyle = on ? P.green : P.ink;
+  g.stroke();
+  g.restore();
+  [x0, x1].forEach(function(px){
+    g.save();
+    g.beginPath(); g.arc(px, y, 4.4, 0, TAU);
+    g.fillStyle = on ? '#e6f4ec' : '#fff'; g.fill();
+    g.strokeStyle = on ? P.green : P.ink; g.lineWidth = 1.8; g.stroke();
+    g.restore();
+  });
+  if(o.label) txt(g, o.label, x, y + (o.ly || -18),
+                  {sz:10.5, b:1, c: on ? P.green : P.red});
+}
+
+/* ================= 灯泡 ================= */
+function bulb(g, x, y, R, b, o){
+  o = o || {};
+  b = Math.max(0, Math.min(1, b || 0));
+  const lit = b > 0.02;
+  if(lit){
+    const gr = g.createRadialGradient(x, y, R*0.3, x, y, R*3.0);
+    gr.addColorStop(0, 'rgba(255,206,90,'+(0.50*b).toFixed(3)+')');
+    gr.addColorStop(0.5,'rgba(255,206,90,'+(0.18*b).toFixed(3)+')');
+    gr.addColorStop(1, 'rgba(255,206,90,0)');
+    g.save(); g.fillStyle = gr;
+    g.beginPath(); g.arc(x, y, R*3.0, 0, TAU); g.fill(); g.restore();
+  }
+  const bw = R*0.80, bh = R*0.62, by = y + R*0.78;
+  g.save();
+  rr(g, x-bw/2, by, bw, bh, 2);
+  g.fillStyle = cyl(g, by, by+bh, '#4a545e', '#8b949e', '#c3cad2');
+  g.fill();
+  g.strokeStyle = P.ink; g.lineWidth = 1; g.stroke();
+  g.strokeStyle = 'rgba(43,48,56,.4)'; g.lineWidth = 0.9;
+  for(let i=1;i<3;i++){
+    const yy = by + bh*i/3;
+    g.beginPath(); g.moveTo(x-bw/2+1, yy); g.lineTo(x+bw/2-1, yy); g.stroke();
+  }
+  g.restore();
+
+  g.save();
+  g.beginPath();
+  g.moveTo(x-R*0.40, by+1);
+  g.quadraticCurveTo(x-R*1.00, y+R*0.40, x-R*0.96, y-R*0.10);
+  g.arc(x, y-R*0.10, R*0.96, Math.PI, 0);
+  g.quadraticCurveTo(x+R*1.00, y+R*0.40, x+R*0.40, by+1);
+  g.closePath();
+  const gg = g.createRadialGradient(x-R*0.28, y-R*0.42, R*0.1, x, y, R*1.2);
+  if(lit){
+    gg.addColorStop(0, 'rgba(255,248,220,'+(0.62+0.38*b).toFixed(2)+')');
+    gg.addColorStop(0.62,'rgba(255,224,140,'+(0.42+0.4*b).toFixed(2)+')');
+    gg.addColorStop(1, 'rgba(249,200,96,'+(0.34+0.3*b).toFixed(2)+')');
+  }else{
+    gg.addColorStop(0, 'rgba(255,255,255,.95)');
+    gg.addColorStop(0.62,'rgba(232,239,245,.88)');
+    gg.addColorStop(1, 'rgba(206,217,227,.82)');
+  }
+  g.fillStyle = gg; g.fill();
+  g.strokeStyle = lit ? 'rgba(190,140,30,.95)' : 'rgba(120,134,148,.9)';
+  g.lineWidth = 1.3; g.stroke();
+  g.restore();
+
+  g.save();
+  const fy = y + R*0.06;
+  g.strokeStyle = lit ? '#8a6a20' : '#9aa4ae'; g.lineWidth = 1.1;
+  g.beginPath();
+  g.moveTo(x-R*0.20, by); g.lineTo(x-R*0.20, fy);
+  g.moveTo(x+R*0.20, by); g.lineTo(x+R*0.20, fy);
+  g.stroke();
+  const coilPath = function(){
+    g.beginPath();
+    for(let i=0;i<=10;i++){
+      const px = x - R*0.20 + (R*0.40)*i/10;
+      g.lineTo(px, fy - ((i%2) ? R*0.19 : 0));
+    }
+  };
+  if(lit){
+    g.save(); g.globalAlpha = 0.5*b; g.lineWidth = 6;
+    g.strokeStyle = 'rgba(255,236,170,1)'; coilPath(); g.stroke(); g.restore();
+  }
+  g.lineWidth = lit ? 2.1 : 1.5;
+  g.strokeStyle = lit
+    ? 'rgb(255,'+Math.round(214+38*b)+','+Math.round(110+120*b)+')'
+    : '#98a1ab';
+  coilPath(); g.stroke();
+  g.restore();
+
+  g.save(); g.globalAlpha = 0.8;
+  g.strokeStyle = '#fff'; g.lineWidth = 2.2; g.lineCap = 'round';
+  g.beginPath(); g.arc(x, y-R*0.10, R*0.70, Math.PI*1.12, Math.PI*1.42);
+  g.stroke(); g.restore();
+
+  if(o.label) txt(g, o.label, x, y + R*2.0, {sz:o.lsz||TYPE.name.sz, c:TYPE.name.c});
+}
+
+function lampHolder(g, x, y, w, h){
+  g.save();
+  rr(g, x-w/2, y, w, h, 3);
+  g.fillStyle = cyl(g, y, y+h, '#39424d', '#6b747e', '#98a1ab');
+  g.fill();
+  g.strokeStyle = P.ink; g.lineWidth = 1.1; g.stroke();
+  g.restore();
+  node(g, x-w/2+5, y+h-4, 2.8);
+  node(g, x+w/2-5, y+h-4, 2.8);
+}
+
+function terminal(g, x, y, r){
+  r = r || 5;
+  g.save();
+  const gr = g.createRadialGradient(x-r*0.4, y-r*0.4, r*0.15, x, y, r);
+  gr.addColorStop(0, '#f6ecc0'); gr.addColorStop(0.6, P.brass); gr.addColorStop(1, P.brassD);
+  g.fillStyle = gr;
+  g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+  g.strokeStyle = P.brassD; g.lineWidth = 1; g.stroke();
+  g.restore();
+}
+
+/* ================= 表计 ================= */
+function meterInline(g, x, y, r, ch, o){
+  o = o || {};
+  const col = (ch === 'V') ? P.green : P.blue;
+  g.save();
+  g.beginPath(); g.arc(x, y, r, 0, TAU);
+  const gr = g.createRadialGradient(x-r*0.35, y-r*0.35, r*0.15, x, y, r);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#eef3f8');
+  g.fillStyle = gr; g.fill();
+  g.strokeStyle = col; g.lineWidth = 2; g.stroke();
+  g.restore();
+  txt(g, ch, x, y, {sz:r*1.05, b:1, c:col});
+  if(o.val != null) txt(g, o.val, x, y - r - 11, {sz:TYPE.val.sz, b:1, c:col});
+  if(o.label) txt(g, o.label, x, y + r + 12, {sz:TYPE.name.sz, c:TYPE.name.c});
+}
+
+function readout(g, x, y, w, h, text, o){
+  o = o || {};
+  g.save();
+  rr(g, x, y, w, h, 6);
+  g.fillStyle = P.lcd; g.fill();
+  g.strokeStyle = '#0a0f0c'; g.lineWidth = 1.2; g.stroke();
+  g.save();
+  rr(g, x+2, y+2, w-4, h-4, 5); g.clip();
+  g.globalAlpha = 0.3; g.strokeStyle = P.lcdInk; g.lineWidth = 1.4;
+  g.beginPath();
+  for(let i=0;i<=40;i++){
+    const px = x + 4 + (w-8)*i/40;
+    const py = y + h/2 + Math.sin(i*0.55 + (o.t||0)) * (h*0.16);
+    i ? g.lineTo(px, py) : g.moveTo(px, py);
+  }
+  g.stroke(); g.restore();
+  g.restore();
+  txt(g, text, x + w/2, y + h/2, {sz:o.sz || (h*0.46), b:1, c:P.lcdInk});
+  if(o.label) txt(g, o.label, x + w/2, y - 10, {sz:TYPE.name.sz, c:TYPE.name.c});
+}
+
 function panelMeter(g, x, y, w, h, o){
   o = o || {};
   g.save();
-  rr(g, x, y, w, h, 5);
-  g.fillStyle = cyl(g, x, 0, x+w, 0, '#20262c', '#3d464f', '#59636e');
+  rr(g, x, y, w, h, 6);
+  g.fillStyle = cyl(g, y, y+h, '#39424d', '#6b747e', '#98a1ab');
   g.fill();
-  g.strokeStyle = '#161b20'; g.lineWidth = 1.2; g.stroke();
+  g.strokeStyle = P.ink; g.lineWidth = 1.3; g.stroke();
   g.restore();
   if(global.EC.dial){
     const inner = {}; for(const k in o) inner[k] = o[k];
-    inner.label = null;                       /* 表名放到壳外面画，压在壳边上很难看 */
+    inner.label = null;
     global.EC.dial(g, x+5, y+5, w-10, h-10, inner);
   }
-  if(o.label) txt(g, o.label, x + w/2, y + h + 10, {sz:10, c:'#4b545d'});
+  if(o.label) txt(g, o.label, x + w/2, y + h + 10, {sz:TYPE.name.sz, c:TYPE.name.c});
 }
 
-/* ================= 线圈（漆包线）=================
-   coil(g, cx, cy, half, r, n, {front}) 分前后两半画，
-   前半盖在别的东西上面 —— 磁铁才像真的从线圈里穿过去 */
-function coil(g, cx, cy, half, r, n, front){
-  const step = (2*half)/(n-1);
-  for(let i=0;i<n;i++){
-    const x = cx - half + i*step;
-    g.save();
-    g.lineWidth = 4.2; g.lineCap = 'round';
-    g.strokeStyle = front ? '#b8791f' : '#8a5714';
-    g.beginPath();
-    g.ellipse(x, cy, 8, r, 0, front ? 0 : Math.PI, front ? Math.PI : TAU);
-    g.stroke();
-    if(front){
-      g.globalAlpha = 0.5; g.lineWidth = 1.4; g.strokeStyle = '#f2c87a';
-      g.beginPath();
-      g.ellipse(x-1.2, cy, 8, r, 0, 0.35, Math.PI-0.35);
-      g.stroke();
-    }
-    g.restore();
-  }
-}
-
-/* ================= 条形磁铁 ================= */
-function magnet(g, x, y, w, h, nRight){
-  const half = w/2;
-  [[-half, nRight ? '#1667d6' : '#c0392b', nRight ? 'S' : 'N'],
-   [0,     nRight ? '#c0392b' : '#1667d6', nRight ? 'N' : 'S']].forEach(function(a){
-    g.save();
-    rr(g, x+a[0], y-h/2, half, h, 3);
-    g.fillStyle = cyl(g, 0, y-h/2, 0, y+h/2, shade(a[1], -0.45), a[1], shade(a[1], 0.35));
-    g.fill();
-    g.strokeStyle = '#10161c'; g.lineWidth = 1.2; g.stroke();
-    g.restore();
-    txt(g, a[2], x + a[0] + half/2, y, {sz:Math.min(14, h*0.6), b:1, c:'#fff'});
-  });
-  g.save(); g.globalAlpha = 0.4;
-  g.strokeStyle = '#fff'; g.lineWidth = 1.6;
-  g.beginPath(); g.moveTo(x-half+4, y-h/2+3); g.lineTo(x+half-4, y-h/2+3); g.stroke();
-  g.restore();
-}
-
-/* ================= 家电小图标（1.3 电费那一屏用）================= */
-function appliance(g, x, y, s, kind){
-  const S = s || 1;
-  g.save(); g.translate(x, y); g.scale(S, S);
-  g.lineWidth = 1.4; g.strokeStyle = '#4b545d';
-  if(kind === 'led'){
-    g.fillStyle = '#f7e08a';
-    g.beginPath(); g.arc(0, -2, 7, 0, TAU); g.fill(); g.stroke();
-    g.fillStyle = '#9aa4ae'; g.fillRect(-4, 5, 8, 5);
-  }else if(kind === 'tv'){
-    g.fillStyle = '#2b3038'; rr(g, -12, -9, 24, 16, 2); g.fill(); g.stroke();
-    g.fillStyle = '#5aa9e6'; g.fillRect(-10, -7, 20, 12);
-    g.fillStyle = '#4b545d'; g.fillRect(-3, 7, 6, 3);
-  }else if(kind === 'rice'){
-    g.fillStyle = '#e2e8ee'; rr(g, -11, -7, 22, 16, 4); g.fill(); g.stroke();
-    g.fillStyle = '#c3cad2'; rr(g, -12, -10, 24, 5, 2); g.fill(); g.stroke();
-  }else if(kind === 'ac'){
-    g.fillStyle = '#f2f5f8'; rr(g, -14, -7, 28, 13, 3); g.fill(); g.stroke();
-    g.strokeStyle = '#9aa4ae';
-    for(let i=-1;i<=1;i++){ g.beginPath(); g.moveTo(-10, i*3); g.lineTo(10, i*3); g.stroke(); }
-  }else{                                   /* kettle 电热水壶 */
-    g.fillStyle = '#e2e8ee'; rr(g, -9, -8, 18, 17, 3); g.fill(); g.stroke();
-    g.beginPath(); g.moveTo(9, -4); g.quadraticCurveTo(16, 0, 9, 5); g.stroke();
-    g.fillStyle = '#c3cad2'; rr(g, -10, -11, 20, 4, 2); g.fill(); g.stroke();
-  }
-  g.restore();
-}
-
-/* ================= 数字万用表 =================
-   multimeter(g, x, y, w, h, {reading, mode})
-   深色机身 + 绿底 LCD + 旋钮档位 + 两个表笔插孔。
-   1.1 量电压那一屏用它，第 3 章讲万用表时还会用同一台。 */
 function multimeter(g, x, y, w, h, o){
   o = o || {};
-  /* 机身 */
   g.save();
-  rr(g, x, y, w, h, 8);
-  g.fillStyle = cyl(g, x, 0, x+w, 0, '#171c22', '#2f3841', '#454f5a');
+  rr(g, x, y, w, h, 9);
+  g.fillStyle = cyl(g, y, y+h, '#39424d', '#6b747e', '#98a1ab');
   g.fill();
-  g.strokeStyle = '#0d1116'; g.lineWidth = 1.4; g.stroke();
-  /* 侧边橡胶护套 */
-  g.fillStyle = '#8a3b1e';
+  g.strokeStyle = P.ink; g.lineWidth = 1.4; g.stroke();
+  g.fillStyle = '#c0562e';
   rr(g, x+2, y+h*0.30, 5, h*0.42, 3); g.fill();
   rr(g, x+w-7, y+h*0.30, 5, h*0.42, 3); g.fill();
   g.restore();
 
-  /* LCD */
-  const lw = w*0.72, lh = h*0.26, lx = x + (w-lw)/2, ly = y + h*0.07;
-  g.save();
-  rr(g, lx, ly, lw, lh, 3);
-  g.fillStyle = '#9fbf6a'; g.fill();
-  g.strokeStyle = '#4a5a2e'; g.lineWidth = 1; g.stroke();
-  g.restore();
-  txt(g, o.reading || '0.00', lx + lw - 8, ly + lh/2,
-      {sz:Math.max(12, lh*0.62), b:1, c:'#1c2410', al:'right'});
-  if(o.unit) txt(g, o.unit, lx + 8, ly + lh/2, {sz:9.5, b:1, c:'#3a4a22', al:'left'});
+  const lw = w*0.74, lh = h*0.24, lx = x + (w-lw)/2, ly = y + h*0.08;
+  readout(g, lx, ly, lw, lh, (o.reading || '0.00') + (o.unit ? ' ' + o.unit : ''),
+          {sz:Math.max(12, lh*0.56)});
 
-  /* 旋钮 */
-  const kx = x + w/2, ky = y + h*0.58, kr = Math.min(w, h)*0.19;
+  const kx = x + w/2, ky = y + h*0.58, kr = Math.min(w, h)*0.18;
   g.save();
   const kg = g.createRadialGradient(kx-kr*0.4, ky-kr*0.4, kr*0.2, kx, ky, kr);
-  kg.addColorStop(0, '#6e7884'); kg.addColorStop(0.6, '#3b444e'); kg.addColorStop(1, '#1b2027');
+  kg.addColorStop(0, '#c9ced4'); kg.addColorStop(0.6, '#6b747e'); kg.addColorStop(1, '#39424d');
   g.fillStyle = kg;
   g.beginPath(); g.arc(kx, ky, kr, 0, TAU); g.fill();
-  g.strokeStyle = '#11151a'; g.lineWidth = 1.2; g.stroke();
-  /* 指示白条：默认指向左上（直流电压档） */
+  g.strokeStyle = P.ink; g.lineWidth = 1.2; g.stroke();
   const a = (o.knob == null ? -2.2 : o.knob);
-  g.strokeStyle = '#e8e2d0'; g.lineWidth = 2.4; g.lineCap = 'round';
+  g.strokeStyle = '#fff'; g.lineWidth = 2.4; g.lineCap = 'round';
   g.beginPath(); g.moveTo(kx, ky);
-  g.lineTo(kx + Math.cos(a)*kr*0.82, ky + Math.sin(a)*kr*0.82);
+  g.lineTo(kx + Math.cos(a)*kr*0.8, ky + Math.sin(a)*kr*0.8);
   g.stroke();
   g.restore();
-  /* 档位刻度点 */
-  g.save(); g.fillStyle = '#8d97a2';
+  g.save(); g.fillStyle = '#c9ced4';
   for(let i=0;i<8;i++){
     const aa = -Math.PI*1.25 + i*(Math.PI*1.5/7);
     g.beginPath();
@@ -487,28 +524,97 @@ function multimeter(g, x, y, w, h, o){
     g.fill();
   }
   g.restore();
-  txt(g, o.mode || 'V⎓', kx + kr + 13, ky, {sz:10, b:1, c:'#c9ced4'});
+  txt(g, o.mode || 'V⎓', kx + kr + 13, ky, {sz:10, b:1, c:'#f2f5f8'});
 
-  /* 表笔插孔 */
   const jy = y + h - 12;
-  [[x + w*0.32, '#2f353c', 'COM'], [x + w*0.62, '#8c2f26', 'V']].forEach(function(a2){
+  [[x + w*0.32, '#2b3038', 'COM'], [x + w*0.62, '#8c2f26', 'V']].forEach(function(a2){
     g.save();
     g.beginPath(); g.arc(a2[0], jy, 5.5, 0, TAU);
     g.fillStyle = a2[1]; g.fill();
-    g.strokeStyle = '#0d1116'; g.lineWidth = 1.2; g.stroke();
+    g.strokeStyle = '#1b2027'; g.lineWidth = 1.2; g.stroke();
     g.beginPath(); g.arc(a2[0], jy, 2.2, 0, TAU);
     g.fillStyle = '#0b0e12'; g.fill();
     g.restore();
-    txt(g, a2[2], a2[0], jy - 11, {sz:8, c:'#98a1ab'});
+    txt(g, a2[2], a2[0], jy - 11, {sz:TYPE.tiny.sz, c:'#e2e8ee'});
   });
   return { com:[x + w*0.32, jy], hot:[x + w*0.62, jy] };
 }
 
+/* ================= 线圈 / 磁铁 ================= */
+function coil(g, cx, cy, half, r, n, front){
+  const step = (2*half)/(n-1);
+  for(let i=0;i<n;i++){
+    const x = cx - half + i*step;
+    g.save();
+    g.lineWidth = 4; g.lineCap = 'round';
+    g.strokeStyle = front ? '#c9862a' : '#96601b';
+    g.beginPath();
+    g.ellipse(x, cy, 8, r, 0, front ? 0 : Math.PI, front ? Math.PI : TAU);
+    g.stroke();
+    if(front){
+      g.globalAlpha = 0.55; g.lineWidth = 1.4; g.strokeStyle = '#f7d79a';
+      g.beginPath(); g.ellipse(x-1.2, cy, 8, r, 0, 0.35, Math.PI-0.35); g.stroke();
+    }
+    g.restore();
+  }
+}
+function magnet(g, x, y, w, h, nRight){
+  const half = w/2;
+  [[-half, nRight ? '#1e6fd0' : '#d5342a', nRight ? 'S' : 'N'],
+   [0,     nRight ? '#d5342a' : '#1e6fd0', nRight ? 'N' : 'S']].forEach(function(a){
+    g.save();
+    rr(g, x+a[0], y-h/2, half, h, 3);
+    g.fillStyle = cyl(g, y-h/2, y+h/2, shade(a[1], -0.4), a[1], shade(a[1], 0.4));
+    g.fill();
+    g.strokeStyle = P.ink; g.lineWidth = 1.2; g.stroke();
+    g.restore();
+    txt(g, a[2], x + a[0] + half/2, y, {sz:Math.min(14, h*0.6), b:1, c:'#fff'});
+  });
+  g.save(); g.globalAlpha = 0.45;
+  g.strokeStyle = '#fff'; g.lineWidth = 1.6;
+  g.beginPath(); g.moveTo(x-half+4, y-h/2+3); g.lineTo(x+half-4, y-h/2+3); g.stroke();
+  g.restore();
+}
+
+/* ================= 家电小图标 ================= */
+function appliance(g, x, y, s, kind){
+  g.save(); g.translate(x, y); g.scale(s || 1, s || 1);
+  g.lineWidth = 1.4; g.strokeStyle = P.inkL;
+  if(kind === 'led'){
+    g.fillStyle = '#ffe89a';
+    g.beginPath(); g.arc(0, -2, 7, 0, TAU); g.fill(); g.stroke();
+    g.fillStyle = '#9aa4ae'; g.fillRect(-4, 5, 8, 5);
+  }else if(kind === 'tv'){
+    g.fillStyle = '#39424d'; rr(g, -12, -9, 24, 16, 2); g.fill(); g.stroke();
+    g.fillStyle = '#7fb3e8'; g.fillRect(-10, -7, 20, 12);
+    g.fillStyle = '#5b6672'; g.fillRect(-3, 7, 6, 3);
+  }else if(kind === 'rice'){
+    g.fillStyle = '#e7ebf0'; rr(g, -11, -7, 22, 16, 4); g.fill(); g.stroke();
+    g.fillStyle = '#c3cad2'; rr(g, -12, -10, 24, 5, 2); g.fill(); g.stroke();
+  }else if(kind === 'ac'){
+    g.fillStyle = '#f2f5f8'; rr(g, -14, -7, 28, 13, 3); g.fill(); g.stroke();
+    g.strokeStyle = '#9aa4ae';
+    for(let i=-1;i<=1;i++){ g.beginPath(); g.moveTo(-10, i*3); g.lineTo(10, i*3); g.stroke(); }
+  }else{
+    g.fillStyle = '#e7ebf0'; rr(g, -9, -8, 18, 17, 3); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(9, -4); g.quadraticCurveTo(16, 0, 9, 5); g.stroke();
+    g.fillStyle = '#c3cad2'; rr(g, -10, -11, 20, 4, 2); g.fill(); g.stroke();
+  }
+  g.restore();
+}
+
+const BAND = {0:'#1b1b1b',1:'#6b4423',2:'#c0392b',3:'#e07b2a',4:'#e0c020',
+              5:'#2f9e44',6:'#1e6fd0',7:'#7b2fbe',8:'#8d97a2',9:'#f2f5f8',
+              gold:'#c9a227', silver:'#c6ced6'};
+
 global.EP = {
-  rr:rr, cyl:cyl, shade:shade, BAND:BAND,
-  wire:wire, terminal:terminal, cell:cell, bulb:bulb, lampHolder:lampHolder,
-  knife:knife, resistor:resistor, wallSwitch:wallSwitch, panelMeter:panelMeter,
-  coil:coil, magnet:magnet, appliance:appliance, multimeter:multimeter
+  P:P, TYPE:TYPE, rr:rr, cyl:cyl, shade:shade, BAND:BAND, WIRE_W:WIRE_W,
+  callout:callout, chip:chip, legend:legend, heading:heading,
+  wire:wire, node:node, flow:flow, terminal:terminal,
+  cell:cell, resistor:resistor, rheostat:rheostat, knife:knife,
+  bulb:bulb, lampHolder:lampHolder,
+  meterInline:meterInline, readout:readout, panelMeter:panelMeter, multimeter:multimeter,
+  coil:coil, magnet:magnet, appliance:appliance
 };
 
 })(typeof window!=='undefined' ? window : globalThis);

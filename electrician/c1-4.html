@@ -40,7 +40,7 @@
       <div class="rowlab">直接点画面里的灯泡，可以把它弄坏 / 修好</div>
       <div class="nums three">
         <div class="num"><div class="k">每个灯泡分到</div><div class="v" id="s1u">—</div></div>
-        <div class="num"><div class="k">电流（处处相同）</div><div class="v" id="s1i">—</div></div>
+        <div class="num"><div class="k">电流 I（处处相同）</div><div class="v" id="s1i">—</div></div>
         <div class="num"><div class="k">总电阻</div><div class="v" id="s1r">—</div></div>
       </div>
     </div>
@@ -249,6 +249,7 @@ function calc1(){
 }
 function draw1(dt){
   const g = st1.g; st1.clear();
+  EP.heading(g, 20, 22, '实物接线图', '（点灯泡可以把它弄坏）');
   const v = calc1();
   if(v.ok) S1.ph += v.I * 90 * dt;
 
@@ -269,9 +270,9 @@ function draw1(dt){
   }).concat([[0,10],[P1.len-10,P1.len],
              [segAt(P1,180,RC1.y1)-20, segAt(P1,180,RC1.y1)+20]]);
   dots(g, P1, {phase:v.ok ? S1.ph : 0, gap:24, r:3.8,
-               color:v.ok ? C.cur : '#c9ced4', skip:skip});
+               color:v.ok ? EP.P.amber : '#c9ced4', skip:skip});
 
-  EP.cell(g, RC1.x0, 119, 44, 21, {horiz:false, pm:false, label:'12V', lx:20, ly:0});
+  EP.cell(g, RC1.x0, 119, 44, 21, {horiz:false, pm:false, label:'12V', lx:28, ly:0});
   EP.knife(g, 180, RC1.y1, S1.on, {w:52, h:22});
   txt(g, S1.on ? '开关合上' : '开关断开', 180, RC1.y1-20, {sz:10.5, b:1, c:S1.on?C.ok:C.err});
 
@@ -339,6 +340,7 @@ function calc2(){
 }
 function draw2(dt){
   const g = st2.g; st2.clear();
+  EP.heading(g, 20, 22, '实物接线图', '（弄坏一个看看别的）');
   const v = calc2();
   if(v.It > 0) S2.ph += 60 * dt;
 
@@ -351,11 +353,11 @@ function draw2(dt){
     g.beginPath(); g.moveTo(58, RC2.yTop); g.lineTo(94, RC2.yTop); g.stroke(); g.restore();
   }
   if(v.It > 0){
-    dots(g, main, {phase:S2.ph, gap:22, r:3.8, color:C.cur, skip:[[0,10],[6,44]]});
-    dots(g, back, {phase:-S2.ph, gap:22, r:3.8, color:C.cur, skip:[[back.len-10,back.len]]});
+    dots(g, main, {phase:S2.ph, gap:22, r:3.8, color:EP.P.amber, skip:[[0,10],[6,44]]});
+    dots(g, back, {phase:-S2.ph, gap:22, r:3.8, color:EP.P.amber, skip:[[back.len-10,back.len]]});
   }
 
-  EP.cell(g, RC2.xL, 129, 44, 21, {horiz:false, pm:false, label:'12V', lx:20, ly:0});
+  EP.cell(g, RC2.xL, 129, 44, 21, {horiz:false, pm:false, label:'12V', lx:28, ly:0});
   EP.knife(g, 78, RC2.yTop, S2.on, {w:46, h:20});
   txt(g, S2.on ? '合上' : '断开', 78, RC2.yTop-18, {sz:10, b:1, c:S2.on?C.ok:C.err});
 
@@ -368,7 +370,7 @@ function draw2(dt){
       g.save(); g.strokeStyle = C.bg; g.lineWidth = 6;
       g.beginPath(); g.moveTo(x, 122); g.lineTo(x, 148); g.stroke(); g.restore();
     }
-    if(live) dots(g, br, {phase:S2.ph, gap:20, r:3.4, color:C.cur, skip:[[18,76]]});
+    if(live) dots(g, br, {phase:S2.ph, gap:20, r:3.4, color:EP.P.amber, skip:[[18,76]]});
     node(g, x, RC2.yTop); node(g, x, RC2.yBot);
     EP.lampHolder(g, x, 132, 28, 15);
     EP.bulb(g, x, 114, 13, live ? 1 : 0);
@@ -435,6 +437,7 @@ function calc3(){
 }
 function draw3(dt){
   const g = st3.g; st3.clear();
+  EP.heading(g, 20, 20, '实物接线图', '（书上第 9 页那个结构）');
   const v = calc3();
   if(v.I > 0) S3.ph += v.I * 90 * dt;
 

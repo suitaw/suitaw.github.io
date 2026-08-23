@@ -270,12 +270,13 @@ const P1 = new Path([[L1.x0,88],[L1.x0,L1.y0],[L1.x1,L1.y0],[L1.x1,L1.y1],[L1.x0
 
 function draw1(dt){
   const g = st1.g; st1.clear();
+  EP.heading(g, 20, 20, '固定电阻，只拧电压', '（看电流跟着走）');
   const I = S1.U / 10;
   S1.phase += I * 30 * dt;
 
   P1.stroke(g, 3.2, C.wire);
   const sM = 60, sR = 300;
-  dots(g, P1, {phase:S1.phase, gap:24, r:3.8, color:C.cur,
+  dots(g, P1, {phase:S1.phase, gap:24, r:3.8, color:EP.P.amber,
                skip:[[0,10],[P1.len-10,P1.len],
                      [segAt(P1,180,L1.y0)-34, segAt(P1,180,L1.y0)+34],
                      [segAt(P1,L1.x1,97)-24, segAt(P1,L1.x1,97)+24]]});
@@ -284,7 +285,8 @@ function draw1(dt){
   EP.cell(g, L1.x0, 97, 46, 22, {horiz:false, pm:false});
   txt(g, '＋', L1.x0-15, 82, {sz:11, b:1, c:C.err});
   txt(g, '−',  L1.x0-15, 112, {sz:13, b:1, c:C.tx2});
-  txt(g, 'U = ' + S1.U + ' V', L1.x0+18, 97, {sz:11.5, b:1, c:C.acc, al:'left'});
+  EP.callout(g, L1.x0+10, 97, L1.x0+26, 92, 'U = ' + S1.U + ' V', '电源电压',
+             {al:'left', color:EP.P.blueD});
 
   EP.panelMeter(g, 138, L1.y0-26, 84, 58, {
     val:I, max:3.2, label:'电流表', valText:I.toFixed(2) + ' A', valSz:12, ticks:4
@@ -292,8 +294,8 @@ function draw1(dt){
 
   EP.resistor(g, L1.x1, 97, {horiz:false, len:40, dia:17,
     bands:['#6b4423', '#1b1b1b', '#1b1b1b', EP.BAND.gold]});
-  txt(g, 'R = 10 Ω', L1.x1-16, 97, {sz:11, b:1, c:C.tx, al:'right'});
-  txt(g, '（固定不动）', L1.x1-16, 114, {sz:9.5, c:C.tx3, al:'right'});
+  EP.callout(g, L1.x1-10, 97, L1.x1-24, 92, 'R = 10 Ω', '固定电阻，不动',
+             {al:'right', color:EP.P.ink});
 
   chart(g, {x:46, y:196, w:286, h:84}, {
     x0:0, x1:30, y0:0, y1:3.2, mx:S1.U,
@@ -332,11 +334,12 @@ const st2 = new Stage('cv1', 360, 300);
 
 function draw2(dt){
   const g = st2.g; st2.clear();
+  EP.heading(g, 20, 20, '固定电压，只换电阻', '（阻值越大画得越粗）');
   const I = 25 / S2.R;
   S2.phase += I * 30 * dt;
 
   P1.stroke(g, 3.2, C.wire);
-  dots(g, P1, {phase:S2.phase, gap:24, r:3.8, color:C.cur,
+  dots(g, P1, {phase:S2.phase, gap:24, r:3.8, color:EP.P.amber,
                skip:[[0,10],[P1.len-10,P1.len],
                      [segAt(P1,180,L1.y0)-34, segAt(P1,180,L1.y0)+34],
                      [segAt(P1,L1.x1,97)-24, segAt(P1,L1.x1,97)+24]]});
@@ -344,8 +347,8 @@ function draw2(dt){
   EP.cell(g, L1.x0, 97, 46, 22, {horiz:false, pm:false});
   txt(g, '＋', L1.x0-15, 82, {sz:11, b:1, c:C.err});
   txt(g, '−',  L1.x0-15, 112, {sz:13, b:1, c:C.tx2});
-  txt(g, 'U = 25 V', L1.x0+18, 97, {sz:11.5, b:1, c:C.tx, al:'left'});
-  txt(g, '（固定不动）', L1.x0+18, 114, {sz:9.5, c:C.tx3, al:'left'});
+  EP.callout(g, L1.x0+10, 97, L1.x0+26, 92, 'U = 25 V', '电源电压，不动',
+             {al:'left', color:EP.P.ink});
 
   EP.panelMeter(g, 138, L1.y0-26, 84, 58, {
     val:I, max:5.2, label:'电流表', valText:I.toFixed(2) + ' A', valSz:12, ticks:4
@@ -356,7 +359,8 @@ function draw2(dt){
   const b3 = S2.R < 10 ? '#1b1b1b' : (S2.R < 20 ? '#6b4423' : '#c0392b');
   EP.resistor(g, L1.x1, 97, {horiz:false, len:40, dia:wR,
     bands:['#6b4423', '#1b1b1b', b3, EP.BAND.gold]});
-  txt(g, 'R = ' + S2.R + ' Ω', L1.x1-18, 97, {sz:11.5, b:1, c:C.acc, al:'right'});
+  EP.callout(g, L1.x1-10, 97, L1.x1-26, 92, 'R = ' + S2.R + ' Ω', '拖滑杆换阻值',
+             {al:'right', color:EP.P.blueD});
 
   chart(g, {x:46, y:196, w:286, h:84}, {
     x0:5, x1:30, y0:0, y1:5.2, mx:S2.R,

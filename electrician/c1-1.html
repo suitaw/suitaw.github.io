@@ -99,7 +99,7 @@
       </div>
       <div class="nums three">
         <div class="num"><div class="k">电流 I</div><div class="v" id="s2i">—</div></div>
-        <div class="num hi"><div class="k">路端电压 U路<br><span style="font-size:.68rem">（表能量到的）</span></div><div class="v" id="s2u">—</div></div>
+        <div class="num hi"><div class="k">路端电压 U路</div><div class="v" id="s2u">—</div></div>
         <div class="num"><div class="k">内部损耗 U内</div><div class="v" id="s2ur">—</div></div>
       </div>
     </div>
@@ -314,106 +314,101 @@ function draw1(dt){
 function drawReal1(g){
   const b = S1.on ? 0.42 + 0.12*S1.I : 0;
 
-  /* 台面 */
-  g.save();
-  g.fillStyle = '#f0f2f4';
-  EP.rr(g, 14, 236, 332, 34, 6); g.fill();
-  g.restore();
+  EP.heading(g, 20, 24, '实物接线图', '（电子真实在动）');
 
-  /* 导线：正极那根用红皮，回来那根用黑皮 —— 和实际接线习惯一致 */
-  EP.wire(g, PR1, {color:'#c0392b', w:7});
-  EP.wire(g, PR2, {color:'#2f353c', w:7});
-  EP.wire(g, PR3, {color:'#2f353c', w:7});
+  /* 导线：通电时高亮，断开时普通深色 —— 三档粗细里的两档 */
+  const kind = S1.on ? 'hot' : 'normal';
+  EP.wire(g, PR1, {kind:kind});
+  EP.wire(g, PR2, {kind:kind});
+  EP.wire(g, PR3, {kind:kind});
 
-  /* 电荷小球：整圈一条路径跑，开关和灯座那两段挖掉 */
+  /* 电子（蓝点，实际方向）和电流（琥珀箭头，规定方向）分开画、错开半格 */
   const skip = [GAP1, GAP2];
-  if(S1.cur)
-    dots(g, PALL, {phase:S1.on ? S1.phase : 0, gap:26, r:3.6,
-                   color:S1.on ? '#ffd24a' : '#c9ced4', skip:skip});
   if(S1.ele)
-    dots(g, PALL, {phase:S1.on ? -S1.phase - 13 : 13, gap:26, r:2.6,
-                   color:S1.on ? '#7ec8ff' : '#c9ced4', skip:skip});
+    EP.flow(g, PALL, {phase:S1.on ? -S1.phase : 0, kind:'ele', gap:30, r:3.6,
+                      color:S1.on ? EP.P.ele : '#c3cad2', skip:skip});
+  if(S1.cur)
+    EP.flow(g, PALL, {phase:S1.on ? S1.phase + 15 : 15, kind:'cur', gap:30,
+                      color:S1.on ? EP.P.amber : '#c9ced4', skip:skip});
 
   /* 元件 */
-  EP.cell(g, RB.x, RB.y, RB.len, RB.dia, {horiz:true, label:'1.5V 干电池', ly:RB.dia/2+14});
-  EP.knife(g, RK.x, RK.y, S1.on, {w:RK.w, h:RK.h});
-  txt(g, S1.on ? '闸刀开关（已合上）' : '闸刀开关（断开）', RK.x, RK.y - RK.h/2 - 12,
-      {sz:10.5, b:1, c: S1.on ? C.ok : C.err});
+  EP.cell(g, RB.x, RB.y, RB.len, RB.dia, {horiz:true});
+  EP.callout(g, RB.x - 8, RB.y - RB.dia/2, RB.x - 34, RB.y - 40,
+             '1.5 V', '干电池', {al:'right', color:EP.P.ink});
+
+  EP.knife(g, RK.x, RK.y, S1.on, {w:RK.w});
+  txt(g, '开关', RK.x, RK.y - 22, {sz:10.5, b:1, c:EP.P.inkL});
+  txt(g, S1.on ? '（闭合）' : '（断开）', RK.x, RK.y - 9,
+      {sz:10, b:1, c: S1.on ? EP.P.green : EP.P.red});
+
   EP.lampHolder(g, RH.x, RH.y, RH.w, RH.h);
   EP.bulb(g, RL.x, RL.y, RL.r, b);
-  txt(g, '灯泡', RL.x, RH.y + RH.h + 14, {sz:10.5, c:'#4b545d'});
+  EP.callout(g, RL.x - RL.r*0.8, RL.y - RL.r*0.5, RL.x - 40, RL.y - 34,
+             '灯泡', S1.on ? '正在发光' : '没通电', {al:'right', color:EP.P.ink});
 
-  /* 截面标记：画在下面那根回线上 */
+  /* 截面标记 */
   const cx = 214;
   g.save();
-  g.strokeStyle = S1.on ? C.acc : C.tx3; g.lineWidth = 1.6; g.setLineDash([4,3]);
-  g.beginPath(); g.moveTo(cx, 244); g.lineTo(cx, 268); g.stroke();
+  g.strokeStyle = S1.on ? EP.P.blue : EP.P.inkLL; g.lineWidth = 1.4; g.setLineDash([4,3]);
+  g.beginPath(); g.moveTo(cx, 240); g.lineTo(cx, 272); g.stroke();
   g.restore();
-  txt(g, '截面', cx + 16, 244, {sz:10, c:C.tx3, al:'left'});
-
-  txt(g, '实物接线图', 22, 26, {sz:11, b:1, c:C.tx2, al:'left'});
-  txt(g, '（东西长什么样、线怎么接）', 92, 26, {sz:9.5, c:C.tx3, al:'left'});
+  EP.chip(g, '截面', cx, 236, {sz:9.5, c:EP.P.inkL});
 }
 
 /* ================= 电路原理图 ================= */
 function drawSym1(g){
-  P1.stroke(g, 3.2, C.wire);
+  EP.heading(g, 20, 24, '电路原理图', '（上班拿到手的就是这种）');
+
+  P1.stroke(g, 2.8, EP.P.ink);
   if(!S1.on){
     g.save(); g.strokeStyle = C.bg; g.lineWidth = 5;
     g.beginPath(); g.moveTo(SWX-17, R1.y0); g.lineTo(SWX+17, R1.y0); g.stroke(); g.restore();
   }
   g.save();
-  g.strokeStyle = S1.on ? C.acc : C.tx3; g.lineWidth = 1.6; g.setLineDash([4,3]);
+  g.strokeStyle = S1.on ? EP.P.blue : EP.P.inkLL; g.lineWidth = 1.4; g.setLineDash([4,3]);
   g.beginPath(); g.moveTo(CUTX, R1.y1-12); g.lineTo(CUTX, R1.y1+12); g.stroke();
   g.restore();
-  txt(g, '截面', CUTX, R1.y1+22, {sz:10, c:C.tx3});
+  EP.chip(g, '截面', CUTX, R1.y1+24, {sz:9.5, c:EP.P.inkL});
 
   const skip = [[sSw-18, sSw+18], [sLp-19, sLp+19], [0, 9], [P1.len-9, P1.len]];
-  if(S1.cur)
-    dots(g, P1, {phase:S1.on ? S1.phase : 0, gap:26, r:4.2,
-                 color:S1.on ? C.cur : '#c9ced4', skip:skip});
   if(S1.ele)
-    dots(g, P1, {phase:S1.on ? -S1.phase - 13 : 13, gap:26, r:3,
-                 color:S1.on ? C.ele : '#c9ced4', skip:skip});
+    EP.flow(g, P1, {phase:S1.on ? -S1.phase : 0, kind:'ele', gap:30, r:3.6,
+                    color:S1.on ? EP.P.ele : '#c3cad2', skip:skip});
+  if(S1.cur)
+    EP.flow(g, P1, {phase:S1.on ? S1.phase + 15 : 15, kind:'cur', gap:30,
+                    color:S1.on ? EP.P.amber : '#c9ced4', skip:skip});
 
   battery(g, R1.x0, BY, {horiz:false, long:19, short:10, gap:9, pm:false});
-  txt(g, '＋', 42, BY-11, {sz:11, b:1, c:C.err});
-  txt(g, '−',  42, BY+11, {sz:13, b:1, c:C.tx2});
-  txt(g, '电池 1.5V', R1.x0+16, BY, {sz:10.5, c:C.tx2, al:'left'});
+  txt(g, '＋', 42, BY-11, {sz:11, b:1, c:EP.P.red});
+  txt(g, '−',  42, BY+11, {sz:13, b:1, c:EP.P.inkL});
+  EP.callout(g, R1.x0, BY, R1.x0 + 22, BY, '1.5 V', '电池', {al:'left'});
 
   switchSym(g, SWX, R1.y0, S1.on, {len:34});
-  txt(g, S1.on ? '开关（已合上）' : '开关（断开）', SWX, R1.y0+18,
-      {sz:10.5, c:S1.on ? C.ok : C.err, b:1});
+  txt(g, '开关', SWX, R1.y0 - 22, {sz:10.5, b:1, c:EP.P.inkL});
+  txt(g, S1.on ? '（闭合）' : '（断开）', SWX, R1.y0 - 9,
+      {sz:10, b:1, c: S1.on ? EP.P.green : EP.P.red});
 
   lamp(g, LPX, R1.y0, 15, S1.on ? 0.42 + 0.12*S1.I : 0);
-  txt(g, '灯泡', LPX, R1.y0+34, {sz:10.5, c:C.tx2});
-
-  txt(g, '电路原理图', 22, 26, {sz:11, b:1, c:C.tx2, al:'left'});
-  txt(g, '（上班拿到手的就是这种）', 92, 26, {sz:9.5, c:C.tx3, al:'left'});
+  txt(g, '灯泡 EL', LPX, R1.y0+34, {sz:10, c:EP.P.inkL});
 }
 
 /* ================= 读数面板 + 图例（两个视图共用）================= */
 function panel1(g){
-  box(g, 16, 286, 328, 46, 8, '#eef2f6', C.boxLine, 1);
+  /* 图例：蓝点=电子，琥珀箭头=电流 */
+  const items = [];
+  if(S1.ele) items.push(['电子（真实在动）', EP.P.ele, 'dot']);
+  if(S1.cur) items.push(['电流方向（规定）', EP.P.amber, 'arrow']);
+  if(items.length) EP.legend(g, 180, 278, items);
+
+  box(g, 16, 292, 328, 40, 8, S1.on ? '#eef4fb' : '#f4f6f9', C.boxLine, 1);
   if(S1.on){
-    txt(g, '秒表 ' + S1.t.toFixed(1) + ' 秒　　通过截面 ' + S1.Q.toFixed(1) + ' 库仑',
-        180, 300, {sz:10.5, c:C.tx2});
     txt(g, 'I = ' + S1.Q.toFixed(1) + ' C ÷ ' + S1.t.toFixed(1) + ' s = ' + S1.I + ' A',
-        180, 320, {sz:14, b:1, c:C.cur});
+        180, 306, {sz:13.5, b:1, c:EP.P.blueD});
+    txt(g, '秒表 ' + S1.t.toFixed(1) + ' 秒　·　通过截面 ' + S1.Q.toFixed(1) + ' 库仑',
+        180, 322, {sz:EP.TYPE.name.sz, c:EP.TYPE.name.c});
   }else{
-    txt(g, '圈是断的 —— 整圈电荷原地不动', 180, 300, {sz:11, b:1, c:C.err});
-    txt(g, 'I = 0 A', 180, 320, {sz:14, b:1, c:C.tx3});
-  }
-  const yl = 278, real = S1.view === 'real';
-  if(S1.cur){
-    g.save(); g.fillStyle = real ? '#e8a800' : C.cur;
-    g.beginPath(); g.arc(58, yl, 4, 0, EC.TAU); g.fill(); g.restore();
-    txt(g, '电流方向（规定的）', 68, yl, {sz:10, c:C.tx2, al:'left'});
-  }
-  if(S1.ele){
-    g.save(); g.fillStyle = real ? '#3aa0e8' : C.ele;
-    g.beginPath(); g.arc(196, yl, 3, 0, EC.TAU); g.fill(); g.restore();
-    txt(g, '电子（真正在动）', 205, yl, {sz:10, c:C.tx2, al:'left'});
+    txt(g, '电路是断开的　I = 0 A', 180, 306, {sz:13.5, b:1, c:EP.P.red});
+    txt(g, '整圈电荷原地不动', 180, 322, {sz:EP.TYPE.name.sz, c:EP.TYPE.name.c});
   }
 }
 
@@ -440,7 +435,7 @@ function note1(){
    ================================================================ */
 const S2 = { R:5.0, open:false, phase:0 };
 const E0 = 1.5, r0 = 0.5;
-const st2 = new Stage('cv1', 360, 292);
+const st2 = new Stage('cv1', 360, 306);
 const R2 = { x0:62, x1:300, y0:52, y1:168 };
 const P2 = new Path([[R2.x0,95],[R2.x0,R2.y0],[R2.x1,R2.y0],[R2.x1,R2.y1],[R2.x0,R2.y1],[R2.x0,113]]);
 const SW2 = 180;
@@ -456,66 +451,88 @@ function draw2(dt){
   const v = calc2();
   if(!S2.open) S2.phase += v.I * 46 * dt;
 
-  P2.stroke(g, 3.2, C.wire);
+  EP.heading(g, 20, 24, '电池内部也有电阻', '（看它吃掉多少）');
+
+  /* 导线 */
+  EP.wire(g, P2, {kind: S2.open ? 'normal' : 'hot'});
   if(S2.open){
-    g.save(); g.strokeStyle = C.bg; g.lineWidth = 5;
-    g.beginPath(); g.moveTo(SW2-18, R2.y0); g.lineTo(SW2+18, R2.y0); g.stroke(); g.restore();
+    g.save(); g.strokeStyle = C.bg; g.lineWidth = 6;
+    g.beginPath(); g.moveTo(SW2-20, R2.y0); g.lineTo(SW2+20, R2.y0); g.stroke(); g.restore();
   }
 
+  const sSw2 = segAt(P2, SW2, R2.y0), sR = segAt(P2, R2.x1, 110);
+  const skip = [[0,14],[P2.len-14,P2.len],[sSw2-22,sSw2+22],[sR-26,sR+26]];
   if(!S2.open){
-    const sSw2 = segAt(P2, SW2, R2.y0), sR = segAt(P2, R2.x1, 110);
-    dots(g, P2, {phase:S2.phase, gap:24, r:3.6, color:C.cur,
-                 skip:[[0,12],[P2.len-12,P2.len],[sSw2-20,sSw2+20],[sR-24,sR+24]]});
+    EP.flow(g, P2, {phase:-S2.phase, kind:'ele', gap:30, r:3.4, skip:skip});
+    EP.flow(g, P2, {phase:S2.phase + 15, kind:'cur', gap:30, skip:skip});
   }
 
-  /* 电池内部：虚线框圈住「电动势 + 内阻」*/
+  /* 电池内部：虚线框把「电动势 + 内阻」圈起来 */
   g.save();
-  g.setLineDash([5,4]); g.strokeStyle = C.tx3; g.lineWidth = 1.3;
-  g.strokeRect(38, 78, 54, 80);
+  g.setLineDash([5,4]); g.strokeStyle = 'rgba(74,144,217,.8)'; g.lineWidth = 1.3;
+  EP.rr(g, 36, 74, 56, 96, 8); g.stroke();
   g.restore();
-  txt(g, '电池内部（虚线框里的两样东西）', 106, 38, {sz:10, c:C.tx3});
+  EP.chip(g, '电池内部', 64, 74, {sz:9.5, c:EP.P.blueD, fill:'#eaf2fc', line:'rgba(74,144,217,.6)'});
 
-  EP.cell(g, R2.x0, 104, 40, 19, {horiz:false, pm:false});
-  txt(g, '＋', 46, 92,  {sz:11, b:1, c:C.err});
-  txt(g, '−',  46, 117, {sz:13, b:1, c:C.tx2});
-  txt(g, 'E = 1.5 V', 100, 104, {sz:11, b:1, c:C.tx, al:'left'});
-  EP.resistor(g, R2.x0, 138, {horiz:false, len:26, dia:12,
-    bands:['#e0c020','#c0392b','#1b1b1b',EP.BAND.gold]});
-  txt(g, 'r = 0.5 Ω', 100, 138, {sz:11, b:1, c:C.err, al:'left'});
-  txt(g, '（电池自己的电阻）', 100, 153, {sz:9.5, c:C.tx3, al:'left'});
+  EP.cell(g, R2.x0, 104, 42, 20, {horiz:false, pm:false});
+  txt(g, '＋', 80, 88, {sz:12, b:1, c:EP.P.red});
+  txt(g, '−',  80, 121, {sz:13, b:1, c:EP.P.inkL});
+  EP.callout(g, R2.x0+10, 104, 106, 100, 'E = 1.5 V', '电池电动势', {al:'left'});
 
-  switchSym(g, SW2, R2.y0, !S2.open, {len:36});
-  txt(g, S2.open ? '开关断开' : '开关合上', SW2, R2.y0+18,
-      {sz:10.5, b:1, c:S2.open ? C.err : C.ok});
+  EP.resistor(g, R2.x0, 148, {horiz:false, len:26, dia:13});
+  EP.callout(g, R2.x0+8, 148, 106, 148, 'r = 0.5 Ω', '电池内阻',
+             {al:'left', color:EP.P.red});
 
-  EP.resistor(g, R2.x1, 110, {horiz:false, len:40, dia:16,
-    bands:['#2f9e44','#6b4423','#1b1b1b',EP.BAND.gold]});
-  txt(g, 'R = ' + S2.R.toFixed(1) + ' Ω', 280, 104, {sz:11, b:1, c:C.acc, al:'right'});
-  txt(g, '（外面接的东西）', 280, 122, {sz:9.5, c:C.tx3, al:'right'});
+  /* 开关 + 外部电阻 */
+  EP.knife(g, SW2, R2.y0, !S2.open, {w:46});
+  txt(g, S2.open ? '开关断开' : '开关闭合', SW2, R2.y0 + 18,
+      {sz:10.5, b:1, c: S2.open ? EP.P.red : EP.P.green});
 
-  /* 1.5V 被分成两段 */
-  const bx = 30, bw = 300, by = 200, bh = 22;
-  txt(g, '电动势 E 这 1.5 V 分给了谁', 180, 188, {sz:11, c:C.tx2});
-  box(g, bx, by, bw, bh, 5, '#eef1f5', C.boxLine, 1);
+  EP.resistor(g, R2.x1, 110, {horiz:false, len:44, dia:18});
+  EP.callout(g, R2.x1-10, 110, 276, 106, 'R = ' + S2.R.toFixed(1) + ' Ω', '外部电阻',
+             {al:'right', color:EP.P.blueD});
+
+  /* 1.5V 分给了谁：两段色条，每段两行字 */
+  const bx = 28, bw = 304, by = 198, bh = 34;
+  txt(g, '电动势 E 这 1.5 V 分给了谁', 180, 188, {sz:10.5, c:EP.P.inkL});
+  g.save();
+  EP.rr(g, bx, by, bw, bh, 6); g.fillStyle = '#eef1f5'; g.fill();
+  g.strokeStyle = C.boxLine; g.lineWidth = 1; g.stroke();
+  g.restore();
   if(!S2.open){
-    const wU = bw * (v.Ur/E0), wI = bw * (v.Ui/E0);
-    box(g, bx, by, wU, bh, 5, '#cfe2f8', null);
-    box(g, bx+wU, by, wI, bh, 5, '#f7cfcb', null);
-    g.save(); g.strokeStyle = C.err; g.lineWidth = 1.2;
-    g.beginPath(); g.moveTo(bx+wU, by); g.lineTo(bx+wU, by+bh); g.stroke(); g.restore();
-    if(wU > 74) txt(g, '送出去 ' + v.Ur.toFixed(2) + ' V', bx+wU/2, by+bh/2, {sz:11, b:1, c:C.accD});
-    if(wI > 70) txt(g, '内耗 ' + v.Ui.toFixed(2) + ' V', bx+wU+wI/2, by+bh/2, {sz:11, b:1, c:C.err});
-    else{
-      txt(g, '内耗 ' + v.Ui.toFixed(2) + ' V', 180, 258, {sz:11, b:1, c:C.err});
-      txt(g, '（那一小条红的）', 180, 274, {sz:9.5, c:C.tx3});
+    const wU = bw * (v.Ur/E0), wI = bw - wU;
+    g.save();
+    EP.rr(g, bx, by, bw, bh, 6); g.clip();
+    g.fillStyle = EP.cyl(g, by, by+bh, EP.P.blueD, EP.P.blue, '#7fb3e8');
+    g.fillRect(bx, by, wU, bh);
+    g.fillStyle = EP.cyl(g, by, by+bh, '#c98410', EP.P.amber, '#ffd27a');
+    g.fillRect(bx+wU, by, wI, bh);
+    g.restore();
+    if(wU > 96){
+      txt(g, '送出去 ' + v.Ur.toFixed(2) + ' V', bx+wU/2, by+12, {sz:11.5, b:1, c:'#fff'});
+      txt(g, '外部电路拿到的电压', bx+wU/2, by+25, {sz:9, c:'rgba(255,255,255,.85)'});
+    }
+    if(wI > 92){
+      txt(g, v.Ui.toFixed(2) + ' V', bx+wU+wI/2, by+12, {sz:11.5, b:1, c:'#5a3a00'});
+      txt(g, '电池内部损耗', bx+wU+wI/2, by+25, {sz:9, c:'rgba(60,40,0,.75)'});
+    }else{
+      EP.callout(g, bx+wU+wI/2, by, bx+bw, by-16,
+                 v.Ui.toFixed(2) + ' V', '电池内部损耗', {al:'right', color:'#9a6a00'});
     }
   }else{
-    box(g, bx, by, bw, bh, 5, '#cfe2f8', null);
-    txt(g, '全部 1.5 V 都留在两端', bx+bw/2, by+bh/2, {sz:11, b:1, c:C.accD});
-    txt(g, '没有电流 → 内阻上一点也不损耗', 180, 258, {sz:10.5, c:C.tx2});
+    g.save();
+    EP.rr(g, bx, by, bw, bh, 6); g.clip();
+    g.fillStyle = EP.cyl(g, by, by+bh, EP.P.blueD, EP.P.blue, '#7fb3e8');
+    g.fillRect(bx, by, bw, bh);
+    g.restore();
+    txt(g, '全部 1.5 V 都留在两端', 180, by+12, {sz:11.5, b:1, c:'#fff'});
+    txt(g, '没有电流 → 内阻上一点也不损耗', 180, by+25, {sz:9, c:'rgba(255,255,255,.85)'});
   }
-  txt(g, '0 V', bx+2, by+bh+11, {sz:9.5, c:C.tx3, al:'left'});
-  txt(g, '1.5 V', bx+bw-2, by+bh+11, {sz:9.5, c:C.tx3, al:'right'});
+  txt(g, '0 V', bx+2, by+bh+12, {sz:9, c:EP.P.inkLL, al:'left'});
+  txt(g, '1.5 V', bx+bw-2, by+bh+12, {sz:9, c:EP.P.inkLL, al:'right'});
+
+  EP.legend(g, 180, 286, [['电子（真实在动）', EP.P.ele, 'dot'],
+                          ['电流方向（规定）', EP.P.amber, 'arrow']]);
 }
 
 function note2(){
