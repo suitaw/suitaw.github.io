@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>磁场与磁力线 —— 电工入门</title>
+<style>
+:root{
+  --bg:#f3f5f7; --card:#ffffff; --card2:#f7f9fb; --line:#dde2e8;
+  --tx:#1e2329; --tx2:#5d6773; --tx3:#8b949e;
+  --acc:#1a6fd4; --accbg:#e8f1fc;
+  --ok:#1c8348; --okbg:#e6f4ec;
+  --err:#c32f2f; --errbg:#fdeaea;
+  --warn:#a86200; --warnbg:#fdf2e0;
+  --r:10px; --tap:44px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#14171b; --card:#1d2126; --card2:#232830; --line:#333b44;
+    --tx:#e7eaee; --tx2:#9ba5b1; --tx3:#78828e;
+    --acc:#5da3f0; --accbg:#17293c;
+    --ok:#4dc47e; --okbg:#16301f;
+    --err:#ff7373; --errbg:#3a1c1c;
+    --warn:#e2a53c; --warnbg:#38290f;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  -webkit-text-size-adjust:100%; padding-bottom:28px;
+}
+h1,h2,h3{margin:0;font-weight:600;line-height:1.4}
+p{margin:.6em 0}
+b{font-weight:600}
+.wrap{max-width:760px;margin:0 auto}
+
+/* ---------- 顶栏 + 标签页（吸顶） ---------- */
+.stick{position:sticky;top:0;z-index:20;background:var(--bg);
+  box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.top{display:flex;align-items:center;height:46px;padding:0 12px;
+  background:var(--card);border-bottom:1px solid var(--line)}
+.top h1{flex:1;min-width:0;font-size:.95rem;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line)}
+.tab{flex:1;min-width:0;height:var(--tap);padding:0 2px;
+  font:inherit;font-size:.8rem;color:var(--tx2);background:none;
+  border:none;border-bottom:3px solid transparent;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab.on{color:var(--acc);font-weight:600;border-bottom-color:var(--acc)}
+.tab .n{display:block;font-size:.68rem;color:var(--tx3);line-height:1.1}
+.tab.on .n{color:var(--acc)}
+
+/* ---------- 场景 ---------- */
+.scene{display:none;padding:10px}
+.scene.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden;margin-bottom:10px}
+canvas{display:block;width:100%;background:#fafbfc}
+
+/* ---------- 控件 ---------- */
+.ctrl{padding:10px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns+.btns{margin-top:8px}
+.btn{flex:1 1 auto;min-height:var(--tap);padding:8px 10px;
+  font:inherit;font-size:.85rem;color:var(--tx);background:var(--card2);
+  border:1px solid var(--line);border-radius:9px;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.btn.on{background:var(--accbg);border-color:var(--acc);color:var(--acc);font-weight:600}
+.btn.big{font-size:.95rem;font-weight:600}
+.btn.go{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+.chk{display:flex;align-items:center;gap:8px;min-height:var(--tap);
+  font-size:.85rem;color:var(--tx2);cursor:pointer}
+.chk input{width:20px;height:20px;accent-color:var(--acc);flex:none}
+.rowlab{font-size:.78rem;color:var(--tx3);margin:2px 0 6px}
+.rowlab b{color:var(--tx2)}
+
+/* 滑杆：touch-action 必须给 pan-y，否则页面滚动会被它吃掉 */
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;
+  height:var(--tap);background:none;touch-action:pan-y;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;
+  background:linear-gradient(90deg,#9fb2c4,#1a6fd4)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
+  width:30px;height:30px;margin-top:-11px;border-radius:50%;
+  background:#fff;border:3px solid var(--acc);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+input[type=range]::-moz-range-track{height:8px;border-radius:4px;
+  background:linear-gradient(90deg,#9fb2c4,#1a6fd4)}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;
+  background:#fff;border:3px solid var(--acc)}
+.ticks{display:flex;justify-content:space-between;font-size:.72rem;color:var(--tx3);
+  margin-top:-4px}
+
+/* ---------- 数字面板 ---------- */
+.nums{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.num{background:var(--card2);border:1px solid var(--line);
+  border-radius:8px;padding:7px 9px}
+.num .k{font-size:.72rem;color:var(--tx3)}
+.num .v{font-size:1.05rem;font-weight:700;line-height:1.35}
+.bar-wrap{margin-top:9px;background:var(--card2);border:1px solid var(--line);
+  border-radius:8px;padding:8px 9px}
+.bar-t{display:flex;justify-content:space-between;font-size:.75rem;color:var(--tx2)}
+.bar-bg{height:16px;margin-top:6px;background:var(--line);
+  border-radius:8px;overflow:hidden}
+.bar-in{height:100%;width:0;border-radius:8px;
+  transition:width .35s ease,background .35s ease}
+.bar-n{font-size:.72rem;color:var(--tx3);margin-top:5px}
+
+/* ---------- 折叠说明 ---------- */
+details{background:var(--card2);border:1px solid var(--line);
+  border-radius:8px;margin-top:9px;overflow:hidden}
+summary{min-height:var(--tap);display:flex;align-items:center;
+  padding:0 10px;font-size:.85rem;font-weight:600;color:var(--acc);
+  cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸ ";margin-right:4px}
+details[open] summary::before{content:"▾ "}
+.dbody{padding:0 11px 10px;font-size:.83rem;line-height:1.75;color:var(--tx2)}
+
+/* ---------- 说明区 ---------- */
+.note{background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:11px 13px;font-size:.88rem;line-height:1.75}
+.note .st{font-size:.95rem;font-weight:700;margin-bottom:4px}
+.note .st.bad{color:var(--err)}
+.note .st.good{color:var(--ok)}
+.note .st.warn{color:var(--warn)}
+.note .key{background:var(--accbg);color:var(--acc);
+  border-radius:5px;padding:1px 5px;font-weight:600}
+.note .rd{background:var(--errbg);color:var(--err);
+  border-radius:5px;padding:1px 5px;font-weight:600}
+.note hr{border:none;border-top:1px solid var(--line);margin:9px 0}
+.note .sub{font-size:.8rem;color:var(--tx3)}
+.foot{font-size:.78rem;color:var(--tx3);text-align:center;margin-top:14px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<div class="stick">
+  <div class="top"><h1>磁场与磁力线</h1></div>
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-i="0"><span class="n">1</span>铁粉实验</button>
+    <button class="tab" data-i="1"><span class="n">2</span>内部外部</button>
+    <button class="tab" data-i="2"><span class="n">3</span>通电导线</button>
+    <button class="tab" data-i="3"><span class="n">4</span>为何闭合</button>
+  </div>
+</div>
+
+<!-- ============ 场景 1：铁粉实验 ============ -->
+<section class="scene on" id="sc0">
+  <div class="card">
+    <canvas id="cv0"></canvas>
+    <div class="ctrl">
+      <div class="btns"><button class="btn big go" id="s1go">撒铁粉</button></div>
+      <label class="chk"><input type="checkbox" id="s1line">显示磁力线（带箭头）</label>
+      <label class="chk"><input type="checkbox" id="s1cmp">显示小磁针</label>
+      <div class="rowlab">用手指<b>拖动中间那块磁铁</b>，铁粉会跟着重新排队</div>
+    </div>
+  </div>
+  <div class="note" id="n0"></div>
+</section>
+
+<!-- ============ 场景 2：内部 vs 外部 ============ -->
+<section class="scene" id="sc1">
+  <div class="card">
+    <canvas id="cv1"></canvas>
+    <div class="ctrl">
+      <div class="btns" id="s2mode">
+        <button class="btn on" data-m="all">全部</button>
+        <button class="btn" data-m="out">只看外部</button>
+        <button class="btn" data-m="in">只看内部</button>
+      </div>
+      <div class="btns"><button class="btn big" id="s2trace">追踪一条磁力线</button></div>
+      <details id="s2why">
+        <summary>为什么内部是直的？</summary>
+        <div class="dbody">
+          磁力线走的是<b>好走的路</b>。磁铁内部的材料让磁场特别好通过（这个性质叫<b>磁导率高</b>），
+          就像一条宽敞的直路，磁场当然笔直穿过去，不用绕。<br><br>
+          一出磁铁进了空气，路一下子变得极难走（磁导率低），
+          磁场只能<b>散开</b>，各自挑一条最省事的路兜回 S 极 —— 散开又要兜回来，形状就是弯的。<br><br>
+          <b>关键是这一圈必须接上。</b>磁力线没有起点也没有终点，永远是一个闭合的圈：
+          外面绕出去的那一段，和里面笔直穿回来的那一段，接成同一个圈。
+          第 4 页讲变压器铁芯，用的就是这一条。
+        </div>
+      </details>
+    </div>
+  </div>
+  <div class="note" id="n1"></div>
+</section>
+
+<!-- ============ 场景 3：通电导线 ============ -->
+<section class="scene" id="sc2">
+  <div class="card">
+    <canvas id="cv2"></canvas>
+    <div class="ctrl">
+      <div class="btns" id="s3sub">
+        <button class="btn on" data-s="a">直导线</button>
+        <button class="btn" data-s="b">螺线管（线圈）</button>
+      </div>
+      <div id="s3pa">
+        <div class="rowlab" id="s3ilab">电流大小</div>
+        <input type="range" id="s3i" min="1" max="5" step="1" value="3">
+        <div class="ticks"><span>小</span><span>大</span></div>
+      </div>
+      <div id="s3pb" style="display:none">
+        <div class="rowlab" id="s3nlab">线圈匝数</div>
+        <input type="range" id="s3n" min="4" max="12" step="1" value="6">
+        <div class="ticks"><span>4 匝</span><span>12 匝</span></div>
+        <label class="chk"><input type="checkbox" id="s3core">插入铁芯</label>
+      </div>
+      <div class="btns"><button class="btn" id="s3rev">⇅ 电流反向</button></div>
+      <label class="chk"><input type="checkbox" id="s3hand" checked>显示右手示意图</label>
+    </div>
+  </div>
+  <div class="note" id="n2"></div>
+</section>
+
+<!-- ============ 场景 4：为什么铁芯要闭合 ============ -->
+<section class="scene" id="sc3">
+  <div class="card">
+    <canvas id="cv3"></canvas>
+    <div class="ctrl">
+      <div class="rowlab">在下面那个闭合铁芯上<b>开一道气隙</b>：<span id="s4g">0.0 mm</span></div>
+      <input type="range" id="s4gap" min="0" max="10" step="1" value="0">
+      <div class="ticks"><span>0 mm</span><span>5 mm</span></div>
+      <div class="nums">
+        <div class="num"><div class="k">直条铁芯 · 磁路阻力</div><div class="v" id="s4ra">≈ 400×</div></div>
+        <div class="num"><div class="k">闭合铁芯 · 磁路阻力</div><div class="v" id="s4rb">1.0×</div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-t"><span>同样的电流，能推出多少磁通</span><b id="s4pt">100%</b></div>
+        <div class="bar-bg"><div class="bar-in" id="s4bar"></div></div>
+        <div class="bar-n">以「一点气隙都没有」为 100%。这不是变压器的效率，
+          是同样的线圈电流能在铁芯里推出多少磁通。</div>
+      </div>
+    </div>
+  </div>
+  <div class="note" id="n3"></div>
+</section>
+
+<div class="foot">电工入门 · 磁场与磁力线</div>
+</div>
+
+<script>
+'use strict';
+
+/* =========================================================
+   公共层：颜色 / 折线路径 / 画布适配 / 画笔小工具
+   （这一套跟 circuit-basics.html 是同一套，改动只在 Path.dir 和 flowArrows）
+   ========================================================= */
+const TAU = Math.PI * 2;
+
+/* 尊重「减少动态效果」：流动动画停掉，但用户主动点的追踪照放 */
+const RM = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/* 画布内部固定用浅色：示意图白底最清楚，也省掉一整套深色适配 */
+const C = {
+  bg:'#fafbfc', tx:'#242a31', tx2:'#6c7681', tx3:'#98a1ab',
+  N:'#e0402a', Nd:'#b52a18', S:'#1667d6', Sd:'#0f4ea3',
+  wire:'#39424d', cop:'#c07830',
+  fil:'#3f4a55', iron:'#a7b0ba', iron2:'#7d8792', ironL:'#6b747e',
+  ext:'#e0402a', inn:'#1667d6', leak:'#b8901c',
+  ok:'#1c8348', warn:'#c05a00', err:'#c32f2f',
+  box:'#eef1f5', boxLine:'#b9c2cc',
+  skin:'#f2c79c', skinL:'#a97644'
+};
+
+/* ---- 折线路径：所有流动动画的地基 ---- */
+function Path(pts){
+  this.pts = pts;
+  this.seg = [];
+  let L = 0;
+  for(let i=1;i<pts.length;i++){
+    const a = pts[i-1], b = pts[i];
+    const d = Math.hypot(b[0]-a[0], b[1]-a[1]);
+    if(d > 0){ this.seg.push({a:a, b:b, d:d, s0:L}); L += d; }
+  }
+  this.len = L;
+}
+/* 按弧长取点 */
+Path.prototype.at = function(s){
+  if(this.len <= 0) return [this.pts[0][0], this.pts[0][1]];
+  if(s < 0) s = 0;
+  if(s > this.len) s = this.len;
+  for(let i=0;i<this.seg.length;i++){
+    const g = this.seg[i];
+    if(s <= g.s0 + g.d || i === this.seg.length-1){
+      const t = (s - g.s0) / g.d;
+      return [g.a[0] + (g.b[0]-g.a[0])*t, g.a[1] + (g.b[1]-g.a[1])*t];
+    }
+  }
+  const last = this.pts[this.pts.length-1];
+  return [last[0], last[1]];
+};
+/* 按弧长取切向单位向量 —— 流动箭头的朝向靠它 */
+Path.prototype.dir = function(s){
+  if(!this.seg.length) return [1,0];
+  if(s < 0) s = 0;
+  if(s > this.len) s = this.len;
+  for(let i=0;i<this.seg.length;i++){
+    const g = this.seg[i];
+    if(s <= g.s0 + g.d || i === this.seg.length-1)
+      return [(g.b[0]-g.a[0])/g.d, (g.b[1]-g.a[1])/g.d];
+  }
+  return [1,0];
+};
+/* 描边；upto 只画到某个弧长为止 */
+Path.prototype.stroke = function(g, w, color, upto){
+  const end = (upto == null) ? this.len : upto;
+  if(end <= 0) return;
+  g.save();
+  g.lineWidth = w; g.strokeStyle = color;
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(this.pts[0][0], this.pts[0][1]);
+  let done = 0;
+  for(let i=0;i<this.seg.length;i++){
+    const s = this.seg[i];
+    if(done + s.d <= end){ g.lineTo(s.b[0], s.b[1]); done += s.d; }
+    else { const p = this.at(end); g.lineTo(p[0], p[1]); break; }
+  }
+  g.stroke();
+  g.restore();
+};
+
+/* 三次贝塞尔采样成折线：外部磁力线那些弯曲的弧全靠它 */
+function bez(p0, c1, c2, p3, n){
+  const out = [];
+  for(let i=0;i<=n;i++){
+    const t = i/n, u = 1-t;
+    const a = u*u*u, b = 3*u*u*t, c = 3*u*t*t, d = t*t*t;
+    out.push([a*p0[0]+b*c1[0]+c*c2[0]+d*p3[0],
+              a*p0[1]+b*c1[1]+c*c2[1]+d*p3[1]]);
+  }
+  return out;
+}
+
+/* 箭头头（三角形），ax/ay 是朝向 */
+function head(g, x, y, ax, ay, size, color){
+  const m = Math.hypot(ax, ay) || 1;
+  ax /= m; ay /= m;
+  const px = -ay, py = ax, h = size, w = size*0.62;
+  g.save(); g.fillStyle = color;
+  g.beginPath();
+  g.moveTo(x + ax*h, y + ay*h);
+  g.lineTo(x - ax*h*0.45 + px*w, y - ay*h*0.45 + py*w);
+  g.lineTo(x - ax*h*0.45 - px*w, y - ay*h*0.45 - py*w);
+  g.closePath(); g.fill(); g.restore();
+}
+
+/* 沿路径撒会走的箭头。o = {phase,gap,size,color,dir,upto} */
+function flowArrows(g, path, o){
+  const gap = o.gap || 34, size = o.size || 5;
+  const dir = (o.dir === -1) ? -1 : 1;
+  const upto = (o.upto == null) ? path.len : o.upto;
+  let ph = (o.phase || 0) * dir;
+  ph = ph % gap; if(ph < 0) ph += gap;
+  for(let s = ph; s <= upto; s += gap){
+    const p = path.at(s), d = path.dir(s);
+    head(g, p[0], p[1], d[0]*dir, d[1]*dir, size, o.color);
+  }
+}
+
+/* 沿路径撒圆点 */
+function dots(g, path, o){
+  const gap = o.gap || 24, r = o.r || 3.2;
+  const upto = (o.upto == null) ? path.len : o.upto;
+  const dir = (o.dir === -1) ? -1 : 1;
+  let ph = (o.phase || 0) * dir;
+  ph = ph % gap; if(ph < 0) ph += gap;
+  g.save(); g.fillStyle = o.color || C.warn;
+  for(let s = ph; s <= upto; s += gap){
+    const p = path.at(s);
+    g.beginPath(); g.arc(p[0], p[1], r, 0, TAU); g.fill();
+  }
+  g.restore();
+}
+
+/* 辉光描边：多描几遍，不用 shadowBlur（手机上慢）。
+   最里层刻意半透明，底下那条线本身的颜色要透出来 */
+function glow(g, path, color){
+  g.save();
+  g.globalAlpha = .13; path.stroke(g, 11, color);
+  g.globalAlpha = .24; path.stroke(g, 6.5, color);
+  g.globalAlpha = .5;  path.stroke(g, 2.6, color);
+  g.restore();
+}
+
+function txt(g, s, x, y, o){
+  o = o || {};
+  g.save();
+  g.globalAlpha = (o.a == null) ? 1 : o.a;
+  g.fillStyle = o.c || C.tx;
+  g.font = (o.b ? '700 ' : '') + (o.sz || 11) +
+    'px -apple-system,"PingFang SC","Noto Sans CJK SC",sans-serif';
+  g.textAlign = o.al || 'center';
+  g.textBaseline = o.bl || 'middle';
+  g.fillText(s, x, y);
+  g.restore();
+}
+
+function box(g, x, y, w, h, r, fill, line, lw){
+  g.save();
+  g.beginPath();
+  const rr = Math.min(r, w/2, h/2);
+  g.moveTo(x+rr, y);
+  g.arcTo(x+w, y, x+w, y+h, rr);
+  g.arcTo(x+w, y+h, x, y+h, rr);
+  g.arcTo(x, y+h, x, y, rr);
+  g.arcTo(x, y, x+w, y, rr);
+  g.closePath();
+  if(fill){ g.fillStyle = fill; g.fill(); }
+  if(line){ g.strokeStyle = line; g.lineWidth = lw || 1.4; g.lineJoin = 'round'; g.stroke(); }
+  g.restore();
+}
+
+/* ---- canvas 适配：固定逻辑坐标，整体缩放到容器宽度 ---- */
+function Stage(id, LW, LH){
+  this.cv = document.getElementById(id);
+  this.g = this.cv.getContext('2d');
+  this.LW = LW; this.LH = LH; this.k = 1;
+}
+Stage.prototype.fit = function(){
+  const w = this.cv.clientWidth;
+  if(!w) return false;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const k = w / this.LW;
+  this.k = k;
+  this.cv.width  = Math.round(w * dpr);
+  this.cv.height = Math.round(this.LH * k * dpr);
+  this.cv.style.height = (this.LH * k) + 'px';
+  this.g.setTransform(k*dpr, 0, 0, k*dpr, 0, 0);
+  return true;
+};
+Stage.prototype.clear = function(){
+  this.g.fillStyle = C.bg;
+  this.g.fillRect(0, 0, this.LW, this.LH);
+};
+/* 屏幕坐标 → 逻辑坐标 */
+Stage.prototype.pick = function(ev){
+  const r = this.cv.getBoundingClientRect();
+  const t = (ev.touches && ev.touches[0]) ? ev.touches[0] : ev;
+  const k = r.width / this.LW;
+  return [(t.clientX - r.left) / k, (t.clientY - r.top) / k];
+};
+
+const $ = function(id){ return document.getElementById(id); };
+
+/* ---- 条形磁铁本体（场景 1、2 共用）----
+   左红 N、右蓝 S。alpha<1 时画成半透明，看得见内部 */
+function drawMagnet(g, x1, x2, y1, y2, alpha){
+  const w = x2-x1, h = y2-y1, mid = (x1+x2)/2;
+  g.save();
+  g.globalAlpha = (alpha == null) ? 1 : alpha;
+  g.fillStyle = C.N; g.fillRect(x1, y1, w/2, h);
+  g.fillStyle = C.S; g.fillRect(mid, y1, w/2, h);
+  g.restore();
+  g.save();
+  g.strokeStyle = 'rgba(30,36,44,.55)'; g.lineWidth = 1.6; g.lineJoin = 'round';
+  g.strokeRect(x1, y1, w, h);
+  g.beginPath(); g.moveTo(mid, y1); g.lineTo(mid, y2); g.stroke();
+  g.restore();
+  const fs = Math.min(20, h*0.62);
+  txt(g, 'N', (x1+mid)/2, (y1+y2)/2, {sz:fs, b:1, c:'#fff'});
+  txt(g, 'S', (mid+x2)/2, (y1+y2)/2, {sz:fs, b:1, c:'#fff'});
+}
+
+/* ---- 闭合磁力线：外面一段弯的 + 里面一段直的，首尾接成一个圈 ----
+   场景 2 的条形磁铁和场景 3 的螺线管共用这一个构造。
+   nRight=true 表示 N 极在右边（外部从右端出发绕到左端）。
+   返回 {ext, inn, full, extLen}：ext 外弧、inn 内直线、full 整圈（追踪动画跑在它上面） */
+function makeLoop(xl, xr, y, bulge, side, nRight){
+  const b = bulge * side;                       /* side=-1 向上鼓，+1 向下鼓 */
+  const c1 = [xl - 1.1*bulge - 14, y + 1.35*b];
+  const c2 = [xr + 1.1*bulge + 14, y + 1.35*b];
+  let ep = bez([xl, y], c1, c2, [xr, y], 54);
+  let ip;
+  if(nRight){ ep = ep.slice().reverse(); ip = [[xl, y], [xr, y]]; }
+  else      { ip = [[xr, y], [xl, y]]; }
+  const ext = new Path(ep), inn = new Path(ip);
+  const full = new Path(ep.concat([[ip[1][0], ip[1][1]]]));
+  return { ext:ext, inn:inn, full:full, extLen:ext.len };
+}
+
+/* ---- 右手示意图 ----
+   本地坐标：拇指朝上、掌在下、四指从右侧往右下弯。
+   ang 是拇指要指的方向（0=右, -PI/2=上, PI=左, PI/2=下）。
+   注意只能整体旋转、绝不能镜像 —— 镜像出来就成左手了。 */
+function rightHand(g, x, y, sc, ang){
+  g.save();
+  g.translate(x, y);
+  g.rotate(ang + Math.PI/2);
+  g.scale(sc, sc);
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  /* 拇指 */
+  g.strokeStyle = C.skin; g.lineWidth = 9;
+  g.beginPath(); g.moveTo(-10, -2); g.lineTo(-10, -28); g.stroke();
+  g.strokeStyle = C.skinL; g.lineWidth = 1.2;
+  g.beginPath(); g.moveTo(-14.6, -4); g.lineTo(-14.6, -27);
+  g.arc(-10, -28, 4.6, Math.PI, 0, false); g.lineTo(-5.4, -4); g.stroke();
+  /* 四指：从掌的右缘往右、再往下弯 */
+  for(let i=0;i<4;i++){
+    const y0 = -2 + i*7.6;
+    g.strokeStyle = C.skin; g.lineWidth = 6;
+    g.beginPath(); g.moveTo(8, y0);
+    g.quadraticCurveTo(25, y0, 23, y0 + 11);
+    g.stroke();
+    g.strokeStyle = C.skinL; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(8, y0-3);
+    g.quadraticCurveTo(28, y0-3, 26, y0 + 11);
+    g.stroke();
+  }
+  /* 掌 */
+  box(g, -14.5, -4, 24, 32, 7, C.skin, C.skinL, 1.4);
+  g.restore();
+}
+
+
+/* =========================================================
+   场景 1：铁粉实验 —— 磁力线是怎么「显形」的
+   磁场用磁荷模型算：N 端放 +q、S 端放 -q，每点的场是两个点源叠加。
+   铁粉的角度是真算出来的，所以拖动磁铁它们才会真的跟着重排。
+   ========================================================= */
+const S1 = (function(){
+  const st = new Stage('cv0', 360, 250), g = st.g;
+  const MW = 112, MH = 32;
+  let mx = 180, my = 125;
+  let t0 = -1;          /* 撒铁粉的时刻；-1 = 还没撒 */
+  let moved = false;    /* 拖过没有，拖过就不再显示「拖我」提示 */
+  let LINES = null;     /* 磁力线缓存：磁铁一动就作废，不然每帧积分太贵 */
+  let clock = 0;
+
+  function inMag(x, y, pad){
+    return Math.abs(x-mx) < MW/2 + pad && Math.abs(y-my) < MH/2 + pad;
+  }
+  /* 两个磁荷：+ 在 N 端（左），- 在 S 端（右） */
+  function bAt(x, y){
+    let bx = 0, by = 0;
+    const px = [mx - MW/2 + 15, mx + MW/2 - 15], q = [1, -1];
+    for(let i=0;i<2;i++){
+      const dx = x - px[i], dy = y - my;
+      let r2 = dx*dx + dy*dy;
+      if(r2 < 64) r2 = 64;                 /* 挡住奇点 */
+      const k = q[i] / (r2 * Math.sqrt(r2));
+      bx += k*dx; by += k*dy;
+    }
+    return [bx, by];
+  }
+
+  /* 铁粉：网格 + 抖动，每粒只记位置和当前角度 */
+  const FIL = [];
+  (function(){
+    for(let y=13; y<=240; y+=16){
+      for(let x=12; x<=350; x+=16){
+        FIL.push({
+          x: x + (Math.random()-.5)*7,
+          y: y + (Math.random()-.5)*7,
+          a: Math.random()*Math.PI,
+          d: 0
+        });
+      }
+    }
+  })();
+
+  /* 小磁针：位置固定，磁铁被拖动时它们跟着转 */
+  const CMP = [[34,42],[180,30],[326,42],[34,208],[180,220],[326,208],[34,125],[326,125]];
+  const CA = CMP.map(function(){ return 0; });
+  let cmpInit = false;
+
+  function sprinkle(){
+    t0 = clock;
+    for(let i=0;i<FIL.length;i++){
+      const f = FIL[i];
+      f.a = Math.random()*Math.PI;
+      /* 逐个转向：离磁铁越近越先排好，看着像磁力一圈圈推出去 */
+      f.d = Math.hypot(f.x-mx, f.y-my)/260 + Math.random()*0.35;
+    }
+    note();
+  }
+
+  /* 从磁铁 N 端表面撒种子，沿磁场方向一步一步积分出磁力线 */
+  function trace(sx, sy){
+    const pts = [[sx, sy]];
+    let x = sx, y = sy, out = false;
+    for(let i=0;i<420;i++){
+      const b = bAt(x, y);
+      let m = Math.hypot(b[0], b[1]);
+      if(m < 1e-12) break;
+      let ux = b[0]/m, uy = b[1]/m;
+      const b2 = bAt(x + ux*1.5, y + uy*1.5);        /* RK2：中点再取一次方向 */
+      const m2 = Math.hypot(b2[0], b2[1]);
+      if(m2 > 1e-12){
+        ux = (ux + b2[0]/m2)/2; uy = (uy + b2[1]/m2)/2;
+        const mm = Math.hypot(ux, uy) || 1; ux /= mm; uy /= mm;
+      }
+      x += ux*3; y += uy*3;
+      if(x < -30 || x > 390 || y < -30 || y > 280) break;
+      if(!out){ if(!inMag(x, y, 1)) out = true; }
+      else if(inMag(x, y, 0)){ pts.push([x, y]); break; }  /* 回到磁铁 = 这条画完了 */
+      pts.push([x, y]);
+    }
+    return pts.length > 6 ? new Path(pts) : null;
+  }
+  function buildLines(){
+    LINES = [];
+    const x1 = mx - MW/2, yt = my - MH/2;
+    const seeds = [];
+    for(let i=0;i<4;i++) seeds.push([x1-2, yt + (i+.5)*MH/4]);   /* 左端面（N 极） */
+    for(let i=0;i<3;i++){                                        /* 上下表面靠 N 那一段 */
+      const x = x1 + (i+.5)*(MW*0.30)/3;
+      seeds.push([x, yt-2]); seeds.push([x, my + MH/2 + 2]);
+    }
+    for(let i=0;i<seeds.length;i++){
+      const p = trace(seeds[i][0], seeds[i][1]);
+      if(p) LINES.push(p);
+    }
+  }
+
+  function draw(dt){
+    clock += dt;
+    st.clear();
+
+    /* --- 铁粉转向 --- */
+    const el = (t0 < 0) ? -1 : (clock - t0);
+    const BK = [[], [], [], []];                 /* 按强度分 4 档，一档一次描边（几百次 stroke 手机吃不消） */
+    for(let i=0;i<FIL.length;i++){
+      const f = FIL[i];
+      if(inMag(f.x, f.y, 2)) continue;
+      const b = bAt(f.x, f.y);
+      const m = Math.hypot(b[0], b[1]);
+      if(el >= 0 && el > f.d){
+        const t = Math.atan2(b[1], b[0]);
+        let dA = (t - f.a) % Math.PI;            /* 铁粉是根小棒，没有头尾，只按 π 取最近 */
+        if(dA > Math.PI/2) dA -= Math.PI;
+        if(dA < -Math.PI/2) dA += Math.PI;
+        f.a += dA * (1 - Math.exp(-dt*7));
+      }
+      let v = (Math.log(m) - Math.log(3e-5)) / (Math.log(1.5e-3) - Math.log(3e-5));
+      v = v < 0 ? 0 : (v > 1 ? 1 : v);
+      BK[Math.min(3, Math.floor(v*4))].push(f);
+    }
+    const AL = [.30,.46,.64,.86], LW = [1.3,1.5,1.8,2.1], LN = [4.4,5.8,7.2,8.8];
+    for(let k=0;k<4;k++){
+      if(!BK[k].length) continue;
+      g.save();
+      g.globalAlpha = AL[k]; g.strokeStyle = C.fil;
+      g.lineWidth = LW[k]; g.lineCap = 'round';
+      g.beginPath();
+      for(let i=0;i<BK[k].length;i++){
+        const f = BK[k][i], h = LN[k]/2, ca = Math.cos(f.a)*h, sa = Math.sin(f.a)*h;
+        g.moveTo(f.x-ca, f.y-sa); g.lineTo(f.x+ca, f.y+sa);
+      }
+      g.stroke(); g.restore();
+    }
+
+    /* --- 磁力线（勾选才画，缓存住，磁铁一动才重算） --- */
+    if($('s1line').checked){
+      if(!LINES) buildLines();
+      const ph = RM ? 0 : (clock*26);
+      for(let i=0;i<LINES.length;i++){
+        LINES[i].stroke(g, 1.8, 'rgba(224,64,42,.85)');
+        flowArrows(g, LINES[i], {phase:ph, gap:46, size:5, color:'rgba(224,64,42,.95)'});
+      }
+    }
+
+    /* --- 磁铁 --- */
+    drawMagnet(g, mx-MW/2, mx+MW/2, my-MH/2, my+MH/2, 1);
+    if(!moved){
+      const y = my - MH/2 - 13;
+      txt(g, '◀ 按住我拖 ▶', mx, y, {sz:11, b:1, c:C.tx2});
+    }
+
+    /* --- 小磁针 --- */
+    if($('s1cmp').checked){
+      for(let i=0;i<CMP.length;i++){
+        const p = CMP[i], b = bAt(p[0], p[1]);
+        const t = Math.atan2(b[1], b[0]);
+        if(!cmpInit) CA[i] = t;
+        else {
+          let dA = (t - CA[i]) % TAU;
+          if(dA > Math.PI) dA -= TAU;
+          if(dA < -Math.PI) dA += TAU;
+          CA[i] += dA * (1 - Math.exp(-dt*9));
+        }
+        needle(p[0], p[1], CA[i]);
+      }
+      cmpInit = true;
+    } else cmpInit = false;
+  }
+
+  /* 小磁针：红头指磁场方向 */
+  function needle(x, y, a){
+    g.save();
+    g.beginPath(); g.arc(x, y, 12, 0, TAU);
+    g.fillStyle = '#fff'; g.fill();
+    g.strokeStyle = C.boxLine; g.lineWidth = 1.3; g.stroke();
+    const cx = Math.cos(a), sy = Math.sin(a), px = -sy, py = cx;
+    g.beginPath();
+    g.moveTo(x+cx*10, y+sy*10);
+    g.lineTo(x+px*3.4, y+py*3.4);
+    g.lineTo(x-px*3.4, y-py*3.4);
+    g.closePath(); g.fillStyle = C.N; g.fill();
+    g.beginPath();
+    g.moveTo(x-cx*10, y-sy*10);
+    g.lineTo(x+px*3.4, y+py*3.4);
+    g.lineTo(x-px*3.4, y-py*3.4);
+    g.closePath(); g.fillStyle = C.S; g.fill();
+    g.beginPath(); g.arc(x, y, 1.8, 0, TAU); g.fillStyle = C.tx; g.fill();
+    g.restore();
+  }
+
+  function note(){
+    const on = t0 >= 0;
+    let s = '<div class="st">磁力线是画出来的，不是长在那儿的</div>' +
+      '铁粉本身不带磁。撒到磁铁旁边，每一粒都被磁化成一根<b>小磁针</b>，' +
+      '头尾各朝一边转正。你看见的那些"线"，是几百粒铁粉<b>首尾接龙</b>接出来的。' +
+      '<hr><span class="key">磁力线不是真实存在的线</span>，' +
+      '它是把磁场每一点的方向连起来画出的轨迹 —— 一种画法，不是一样东西。' +
+      '<div class="sub" style="margin-top:6px">看密度：' +
+      '两个极附近铁粉又密又长，说明那里磁场强；越往外越稀越短，磁场就越弱。' +
+      '这条「密＝强」以后看电机、看变压器的图都在用。</div>';
+    if(!on) s += '<hr><b>先点下面那颗「撒铁粉」。</b>现在铁粉是刚倒上去的样子，横七竖八。';
+    else if($('s1line').checked)
+      s += '<hr>红色那些带箭头的曲线，就是把铁粉指的方向<b>连起来</b>的结果。' +
+           '箭头一律<b>从 N 出、回到 S</b> —— 这是规定的画法方向。';
+    $('n0').innerHTML = s;
+  }
+
+  /* --- 拖动：只有按在磁铁上才拦截手势，按在别处照旧滚页面 --- */
+  let drag = false, ox = 0, oy = 0;
+  function setPos(x, y){
+    mx = Math.max(112, Math.min(248, x));
+    my = Math.max(96, Math.min(154, y));
+    LINES = null;
+  }
+  function down(ev){
+    const p = st.pick(ev);
+    if(inMag(p[0], p[1], 16)){
+      drag = true; ox = p[0]-mx; oy = p[1]-my;
+      if(!moved){ moved = true; }
+      return true;
+    }
+    return false;
+  }
+  function move(ev){ const p = st.pick(ev); setPos(p[0]-ox, p[1]-oy); }
+  st.cv.addEventListener('touchstart', function(ev){
+    if(down(ev)) ev.preventDefault();
+  }, {passive:false});
+  st.cv.addEventListener('touchmove', function(ev){
+    if(!drag) return; ev.preventDefault(); move(ev);
+  }, {passive:false});
+  st.cv.addEventListener('touchend', function(){ drag = false; });
+  st.cv.addEventListener('mousedown', function(ev){ down(ev); });
+  window.addEventListener('mousemove', function(ev){ if(drag) move(ev); });
+  window.addEventListener('mouseup', function(){ drag = false; });
+
+  $('s1go').addEventListener('click', function(){
+    sprinkle(); $('s1go').textContent = '重新撒一次';
+  });
+  $('s1line').addEventListener('change', function(){ LINES = null; note(); });
+  $('s1cmp').addEventListener('change', note);
+
+  note();
+  return { st:st, draw:draw };
+})();
+
+
+/* =========================================================
+   场景 2：内部 vs 外部
+   这一页的磁力线不是算出来的，是「构造」出来的：
+   外面一段弯的贝塞尔 + 里面一段直线，首尾接成一个真正闭合的圈。
+   要教的三件事（内直、外弯、方向相反且首尾相接）就是构造保证的，
+   不靠算出来碰巧对；追踪动画也只是让一个点沿这条闭合路径匀速跑。
+   ========================================================= */
+const S2 = (function(){
+  const st = new Stage('cv1', 360, 250), g = st.g;
+  const X1 = 100, X2 = 260, Y1 = 100, Y2 = 150;
+  let mode = 'all', tracing = false, tp = 0, clock = 0;
+
+  /* 内部那条线离中心越近，出去绕得越远 —— 跟真实磁铁的场型一致 */
+  const LOOPS = [
+    makeLoop(X1, X2, 106, 24, -1, false),
+    makeLoop(X1, X2, 113, 52, -1, false),
+    makeLoop(X1, X2, 120, 84, -1, false),
+    makeLoop(X1, X2, 144, 24,  1, false),
+    makeLoop(X1, X2, 137, 52,  1, false),
+    makeLoop(X1, X2, 130, 84,  1, false)
+  ];
+  const TI = 2;                       /* 追踪用哪一条：外面绕得最大的那条最看得清 */
+
+  function hTxt(s, x, y, sz, color){
+    g.save();
+    g.font = '700 ' + sz + 'px -apple-system,"PingFang SC","Noto Sans CJK SC",sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 3.8; g.lineJoin = 'round'; g.strokeStyle = 'rgba(255,255,255,.92)';
+    g.strokeText(s, x, y);
+    g.fillStyle = color; g.fillText(s, x, y);
+    g.restore();
+  }
+
+  function draw(dt){
+    clock += dt;
+    st.clear();
+    const ph = RM ? 0 : clock*30;
+
+    /* --- 图例 --- */
+    txt(g, '红线 = 外部，弯的', 8, 14, {sz:11, b:1, c:C.ext, al:'left'});
+    txt(g, '蓝线 = 内部，直的', 352, 14, {sz:11, b:1, c:C.inn, al:'right'});
+
+    /* --- 磁铁本体：半透明，看得见内部 --- */
+    g.save();
+    g.globalAlpha = .26;
+    g.fillStyle = C.N; g.fillRect(X1, Y1, 80, 50);
+    g.fillStyle = C.S; g.fillRect(180, Y1, 80, 50);
+    g.restore();
+    g.save();
+    g.strokeStyle = 'rgba(30,36,44,.5)'; g.lineWidth = 1.6;
+    g.strokeRect(X1, Y1, 160, 50);
+    g.restore();
+
+    /* --- 六个闭环 --- */
+    for(let i=0;i<LOOPS.length;i++){
+      const L = LOOPS[i];
+      const dim = tracing && i !== TI;
+      g.save();
+      g.globalAlpha = dim ? .18 : 1;
+      if(mode !== 'in'){
+        L.ext.stroke(g, dim ? 1.4 : 2, C.ext);
+        if(!dim) flowArrows(g, L.ext, {phase:ph, gap:44, size:5.2, color:C.ext});
+      }
+      if(mode !== 'out'){
+        L.inn.stroke(g, dim ? 1.6 : 2.4, C.inn);
+        if(!dim) flowArrows(g, L.inn, {phase:ph, gap:40, size:5.2, color:C.inn});
+      }
+      g.restore();
+    }
+
+    /* --- N / S --- */
+    hTxt('N', 116, 125, 19, C.Nd);
+    hTxt('S', 244, 125, 19, C.Sd);
+
+    /* --- 追踪：一个亮点沿整圈跑，外面绕出去、从 S 端进、内部直着回 N 端 --- */
+    if(tracing){
+      const L = LOOPS[TI];
+      tp += dt * 92;
+      if(tp > L.full.len) tp -= L.full.len;
+      const inExt = tp <= L.extLen;
+      glow(g, inExt ? L.ext : L.inn, inExt ? C.ext : C.inn);
+      const p = L.full.at(tp), d = L.full.dir(tp);
+      g.save();
+      g.beginPath(); g.arc(p[0], p[1], 9, 0, TAU);
+      g.fillStyle = 'rgba(255,214,10,.35)'; g.fill();
+      g.beginPath(); g.arc(p[0], p[1], 5, 0, TAU);
+      g.fillStyle = '#ffd60a'; g.fill();
+      g.strokeStyle = '#8a6d00'; g.lineWidth = 1.3; g.stroke();
+      g.restore();
+      head(g, p[0]+d[0]*11, p[1]+d[1]*11, d[0], d[1], 6, '#8a6d00');
+
+      const f = inExt ? tp / L.extLen : 1;
+      let s, col;
+      if(!inExt){ s = '④ 在磁铁内部：笔直穿过，从 S 端走回 N 端'; col = C.inn; }
+      else if(f < .13){ s = '① 从 N 极出来'; col = C.ext; }
+      else if(f < .87){ s = '② 在空气里绕一大圈（弯的）'; col = C.ext; }
+      else { s = '③ 从 S 极钻回磁铁'; col = C.ext; }
+      txt(g, s, 180, 238, {sz:12, b:1, c:col});
+    }
+  }
+
+  function note(){
+    let s;
+    if(mode === 'out'){
+      s = '<div class="st">外部：从 N 出发，弯着绕回 S</div>' +
+        '这是你用铁粉（第 1 页）唯一看得见的那一半。' +
+        '出了磁铁进空气，路难走，磁力线只能<b>散开</b>，各自挑一条最省事的路兜回 S 极 —— 所以是<b>弯的</b>。' +
+        '<hr>只看这一半会以为磁力线<b>断在磁铁上</b>：从 N 冒出来、钻进 S 就没了。' +
+        '切到「只看内部」看看它去哪儿了。';
+    }else if(mode === 'in'){
+      s = '<div class="st">内部：从 S 笔直穿到 N</div>' +
+        '磁铁里面是<b>好走的路</b>，磁场不用绕，一条直线穿过去 —— 所以是<b>直的</b>。' +
+        '<hr>注意方向：外面是 <span class="rd">N → S</span>，' +
+        '里面是 <span class="key">S → N</span>，<b>正好相反</b>。' +
+        '不是画错了 —— 正因为反着，两段才接得上、凑成一个圈。';
+    }else{
+      s = '<div class="st">磁力线是一个闭合的圈，没有起点也没有终点</div>' +
+        '<b>外面弯</b>（红）：空气难走，散开绕回去。' +
+        '<b>里面直</b>（蓝）：磁铁好走，笔直穿过。' +
+        '<b>方向相反</b>：外面 N→S，里面 S→N —— 反着才接得上。' +
+        '<hr>点「追踪一条磁力线」，看那个黄点走完整整一圈：' +
+        '出 N 极 → 空气里绕一大圈 → 从 S 极钻回去 → 内部直着走回 N 极 → 再出来。' +
+        '<div class="sub" style="margin-top:6px">记住这一圈。第 4 页讲变压器铁芯为什么必须做成闭合的框，' +
+        '答案就是这一圈得接上。</div>';
+    }
+    $('n1').innerHTML = s;
+  }
+
+  $('s2mode').addEventListener('click', function(ev){
+    const b = ev.target.closest('button');
+    if(!b) return;
+    mode = b.dataset.m;
+    const bs = $('s2mode').querySelectorAll('button');
+    for(let i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i] === b);
+    note();
+  });
+  $('s2trace').addEventListener('click', function(){
+    tracing = !tracing; tp = 0;
+    $('s2trace').classList.toggle('on', tracing);
+    $('s2trace').textContent = tracing ? '■ 停止追踪' : '追踪一条磁力线';
+    if(tracing && mode !== 'all'){
+      mode = 'all';
+      const bs = $('s2mode').querySelectorAll('button');
+      for(let i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].dataset.m === 'all');
+      note();
+    }
+  });
+
+  note();
+  return { st:st, draw:draw };
+})();
