@@ -203,6 +203,7 @@
 </div>
 
 <script src="elec-canvas.js"></script>
+<script src="elec-parts.js"></script>
 <script src="elec-ui.js"></script>
 <script src="elec-nav.js"></script>
 <script>
@@ -276,21 +277,23 @@ function draw1(dt){
   const sM = 60, sR = 300;
   dots(g, P1, {phase:S1.phase, gap:24, r:3.8, color:C.cur,
                skip:[[0,10],[P1.len-10,P1.len],
-                     [segAt(P1,180,L1.y0)-18, segAt(P1,180,L1.y0)+18],
+                     [segAt(P1,180,L1.y0)-34, segAt(P1,180,L1.y0)+34],
                      [segAt(P1,L1.x1,97)-24, segAt(P1,L1.x1,97)+24]]});
 
-  battery(g, L1.x0, 97, {horiz:false, long:19, short:10, gap:9, pm:false});
-  txt(g, '＋', L1.x0-13, 88, {sz:11, b:1, c:C.err});
-  txt(g, '−',  L1.x0-13, 107, {sz:13, b:1, c:C.tx2});
-  txt(g, 'U = ' + S1.U + ' V', L1.x0+16, 97, {sz:11.5, b:1, c:C.acc, al:'left'});
+  /* 实物元件：可调直流电源（画成电池组）+ 色环电阻 + 指针电流表 */
+  EP.cell(g, L1.x0, 97, 46, 22, {horiz:false, pm:false});
+  txt(g, '＋', L1.x0-15, 82, {sz:11, b:1, c:C.err});
+  txt(g, '−',  L1.x0-15, 112, {sz:13, b:1, c:C.tx2});
+  txt(g, 'U = ' + S1.U + ' V', L1.x0+18, 97, {sz:11.5, b:1, c:C.acc, al:'left'});
 
-  meter(g, 180, L1.y0, 14, 'A');
-  txt(g, I.toFixed(2) + ' A', 180, L1.y0-24, {sz:13, b:1, c:C.cur});
-  txt(g, '电流表', 180, L1.y0+26, {sz:10, c:C.tx3});
+  EP.panelMeter(g, 138, L1.y0-26, 84, 58, {
+    val:I, max:3.2, label:'电流表', valText:I.toFixed(2) + ' A', valSz:12, ticks:4
+  });
 
-  resistor(g, L1.x1, 97, {horiz:false, len:36, w:16});
-  txt(g, 'R = 10 Ω', L1.x1-14, 97, {sz:11, b:1, c:C.tx, al:'right'});
-  txt(g, '（固定不动）', L1.x1-14, 114, {sz:9.5, c:C.tx3, al:'right'});
+  EP.resistor(g, L1.x1, 97, {horiz:false, len:40, dia:17,
+    bands:['#6b4423', '#1b1b1b', '#1b1b1b', EP.BAND.gold]});
+  txt(g, 'R = 10 Ω', L1.x1-16, 97, {sz:11, b:1, c:C.tx, al:'right'});
+  txt(g, '（固定不动）', L1.x1-16, 114, {sz:9.5, c:C.tx3, al:'right'});
 
   chart(g, {x:46, y:196, w:286, h:84}, {
     x0:0, x1:30, y0:0, y1:3.2, mx:S1.U,
@@ -335,22 +338,25 @@ function draw2(dt){
   P1.stroke(g, 3.2, C.wire);
   dots(g, P1, {phase:S2.phase, gap:24, r:3.8, color:C.cur,
                skip:[[0,10],[P1.len-10,P1.len],
-                     [segAt(P1,180,L1.y0)-18, segAt(P1,180,L1.y0)+18],
+                     [segAt(P1,180,L1.y0)-34, segAt(P1,180,L1.y0)+34],
                      [segAt(P1,L1.x1,97)-24, segAt(P1,L1.x1,97)+24]]});
 
-  battery(g, L1.x0, 97, {horiz:false, long:19, short:10, gap:9, pm:false});
-  txt(g, '＋', L1.x0-13, 88, {sz:11, b:1, c:C.err});
-  txt(g, '−',  L1.x0-13, 107, {sz:13, b:1, c:C.tx2});
-  txt(g, 'U = 25 V', L1.x0+16, 97, {sz:11.5, b:1, c:C.tx, al:'left'});
-  txt(g, '（固定不动）', L1.x0+16, 114, {sz:9.5, c:C.tx3, al:'left'});
+  EP.cell(g, L1.x0, 97, 46, 22, {horiz:false, pm:false});
+  txt(g, '＋', L1.x0-15, 82, {sz:11, b:1, c:C.err});
+  txt(g, '−',  L1.x0-15, 112, {sz:13, b:1, c:C.tx2});
+  txt(g, 'U = 25 V', L1.x0+18, 97, {sz:11.5, b:1, c:C.tx, al:'left'});
+  txt(g, '（固定不动）', L1.x0+18, 114, {sz:9.5, c:C.tx3, al:'left'});
 
-  meter(g, 180, L1.y0, 14, 'A');
-  txt(g, I.toFixed(2) + ' A', 180, L1.y0-24, {sz:13, b:1, c:C.cur});
+  EP.panelMeter(g, 138, L1.y0-26, 84, 58, {
+    val:I, max:5.2, label:'电流表', valText:I.toFixed(2) + ' A', valSz:12, ticks:4
+  });
 
-  /* 电阻画得越大越“厚”，看得见“拦得越狠” */
-  const wR = 10 + S2.R*0.55;
-  resistor(g, L1.x1, 97, {horiz:false, len:36, w:wR});
-  txt(g, 'R = ' + S2.R + ' Ω', L1.x1-16, 97, {sz:11.5, b:1, c:C.acc, al:'right'});
+  /* 阻值越大画得越粗，看得见「拦得越狠」；色环也跟着换 */
+  const wR = 12 + S2.R*0.5;
+  const b3 = S2.R < 10 ? '#1b1b1b' : (S2.R < 20 ? '#6b4423' : '#c0392b');
+  EP.resistor(g, L1.x1, 97, {horiz:false, len:40, dia:wR,
+    bands:['#6b4423', '#1b1b1b', b3, EP.BAND.gold]});
+  txt(g, 'R = ' + S2.R + ' Ω', L1.x1-18, 97, {sz:11.5, b:1, c:C.acc, al:'right'});
 
   chart(g, {x:46, y:196, w:286, h:84}, {
     x0:5, x1:30, y0:0, y1:5.2, mx:S2.R,

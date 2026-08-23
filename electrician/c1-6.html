@@ -224,6 +224,7 @@
 </div>
 
 <script src="elec-canvas.js"></script>
+<script src="elec-parts.js"></script>
 <script src="elec-ui.js"></script>
 <script src="elec-nav.js"></script>
 <script>
@@ -428,30 +429,14 @@ function draw2(dt){
 
   /* ---- 舞台：线圈前后分层，磁铁真的从里面穿过去 ---- */
   const nTurn = S2.N === 8 ? 8 : 13;
-  const step = (2*COIL.half) / (nTurn-1);
-  function turns(front){
-    for(let i=0;i<nTurn;i++){
-      const x = COIL.cx - COIL.half + i*step;
-      g.save();
-      g.strokeStyle = front ? C.cop : '#a9793f';
-      g.lineWidth = S2.N === 8 ? 3.4 : 2.6; g.lineCap = 'round';
-      g.beginPath();
-      g.ellipse(x, COIL.cy, 8, COIL.r, 0, front ? 0 : Math.PI, front ? Math.PI : 2*Math.PI);
-      g.stroke(); g.restore();
-    }
-  }
-  turns(false);                       /* 后半（在磁铁背后） */
-
-  const mx = S2.x, my = COIL.cy;
-  const nRight = S2.pol > 0;
-  box(g, mx-34, my-12, 34, 24, 3, nRight ? '#1667d6' : '#e0402a', '#0d151b', 1.2);
-  box(g, mx,    my-12, 34, 24, 3, nRight ? '#e0402a' : '#1667d6', '#0d151b', 1.2);
-  txt(g, nRight ? 'S' : 'N', mx-17, my, {sz:12, b:1, c:'#fff'});
-  txt(g, nRight ? 'N' : 'S', mx+17, my, {sz:12, b:1, c:'#fff'});
-
-  turns(true);                        /* 前半（盖在磁铁上，看着才像穿进去了） */
+  EP.coil(g, COIL.cx, COIL.cy, COIL.half, COIL.r, nTurn, false);   /* 后半 */
+  EP.magnet(g, S2.x, COIL.cy, 68, 24, S2.pol > 0);
+  EP.coil(g, COIL.cx, COIL.cy, COIL.half, COIL.r, nTurn, true);    /* 前半盖上去 */
+  const mx = S2.x;
   txt(g, '线圈 ' + S2.N + ' 匝', COIL.cx, COIL.cy - COIL.r - 12, {sz:10, c:C.tx2});
-  txt(g, '← 拖我 →', mx, COIL.cy - 30, {sz:10, c:C.tx3});
+  /* 磁铁在线圈外面时才提示「拖我」—— 插进去之后这行字会跟线圈标签打架 */
+  if(Math.abs(S2.x - COIL.cx) > COIL.half + 16)
+    txt(g, '← 拖我 →', mx, COIL.cy - 30, {sz:10, c:C.tx3});
 
   /* 引线下到检流计 */
   const lead = new Path([[COIL.cx-COIL.half-8, COIL.cy+COIL.r-4],[COIL.cx-COIL.half-8, 138],
