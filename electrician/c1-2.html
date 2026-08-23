@@ -276,7 +276,7 @@ function draw1(dt){
 
   P1.stroke(g, 3.2, C.wire);
   const sM = 60, sR = 300;
-  dots(g, P1, {phase:S1.phase, gap:24, r:3.8, color:EP.P.amber,
+  EP.flow(g, P1, {phase:S1.phase, gap:52, kind:'cur',
                skip:[[0,10],[P1.len-10,P1.len],
                      [segAt(P1,180,L1.y0)-34, segAt(P1,180,L1.y0)+34],
                      [segAt(P1,L1.x1,97)-24, segAt(P1,L1.x1,97)+24]]});
@@ -339,7 +339,7 @@ function draw2(dt){
   S2.phase += I * 30 * dt;
 
   P1.stroke(g, 3.2, C.wire);
-  dots(g, P1, {phase:S2.phase, gap:24, r:3.8, color:EP.P.amber,
+  EP.flow(g, P1, {phase:S2.phase, gap:52, kind:'cur',
                skip:[[0,10],[P1.len-10,P1.len],
                      [segAt(P1,180,L1.y0)-34, segAt(P1,180,L1.y0)+34],
                      [segAt(P1,L1.x1,97)-24, segAt(P1,L1.x1,97)+24]]});
@@ -430,7 +430,7 @@ function draw3(dt){
   const ex0 = 208, ex1 = 330, ey0 = 62, ey1 = 236;
   const PE = new Path([[ex0,140],[ex0,ey0],[ex1,ey0],[ex1,ey1],[ex0,ey1],[ex0,158]]);
   PE.stroke(g, 3, C.wire);
-  dots(g, PE, {phase:S3.ph, gap:20, r:3.4, color:C.cur,
+  EP.flow(g, PE, {phase:S3.ph, gap:52, kind:'cur',
                skip:[[0,10],[PE.len-10,PE.len],
                      [segAt(PE,ex1,149)-22, segAt(PE,ex1,149)+22]]});
   battery(g, ex0, 149, {horiz:false, long:19, short:10, gap:9, pm:false});

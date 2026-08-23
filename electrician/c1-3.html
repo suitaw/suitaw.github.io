@@ -316,7 +316,7 @@ function draw2(){
   const L = { x0:56, x1:300, y0:44, y1:130 };
   const P2 = new Path([[L.x0,78],[L.x0,L.y0],[L.x1,L.y0],[L.x1,L.y1],[L.x0,L.y1],[L.x0,96]]);
   P2.stroke(g, 3, C.wire);
-  dots(g, P2, {phase:0, gap:22, r:3.4, color:C.cur,
+  EP.flow(g, P2, {phase:0, gap:52, kind:'cur',
                skip:[[0,10],[P2.len-10,P2.len],
                      [segAt(P2,L.x1,87)-22, segAt(P2,L.x1,87)+22]]});
   battery(g, L.x0, 87, {horiz:false, long:19, short:10, gap:9, pm:false});
@@ -375,7 +375,7 @@ function draw3(){
   /* 导线按发热程度上色 */
   const hb = Math.min(1, qb/2.4);
   wire.stroke(g, 5, mixHot(hb));
-  dots(g, wire, {phase:0, gap:22, r:3.2, color:C.cur, skip:[[90,196]]});
+  EP.flow(g, wire, {phase:0, gap:52, kind:'cur', skip:[[90,196]]});
 
   /* 中间那一段是灯泡本体：灯丝就在玻璃壳里 */
   const ha = Math.min(1, qa/900);

@@ -204,6 +204,7 @@
 </div>
 
 <script src="elec-canvas.js"></script>
+<script src="elec-parts.js"></script>
 <script src="elec-ui.js"></script>
 <script src="elec-nav.js"></script>
 <script>
@@ -270,7 +271,7 @@ function draw1(dt){
     phase = (S1.t * 60) % 24;
     arrow = 1;
   }
-  dots(g, wire, {phase:phase, gap:24, r:4, color:C.cur, skip:[[126,162]]});
+  EP.flow(g, wire, {phase:phase, gap:52, kind:'cur', skip:[[126,162]]});
   if(Math.abs(arrow) > 0.06){
     const dir = arrow > 0 ? 1 : -1;
     head(g, 300, y-20, dir, 0, 7, C.cur);

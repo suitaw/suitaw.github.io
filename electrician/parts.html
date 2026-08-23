@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>电路元件设计规范图 —— 电工课</title>
+<link rel="stylesheet" href="elec-page.css">
+<style>
+.sheet{margin:10px}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:12px 12px 6px;margin-bottom:12px}
+.sec>h2{font-size:.95rem;margin:0 0 2px;letter-spacing:.01em}
+.sec>p{font-size:.8rem;color:var(--tx3);margin:0 0 10px;line-height:1.6}
+canvas{display:block;width:100%;background:#fafbfc;border-radius:8px}
+.rule{font-size:.82rem;line-height:1.85;color:var(--tx2);margin:0;padding-left:18px}
+.rule li{margin:2px 0}
+.rule b{color:var(--tx)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<div class="stick">
+  <div class="top">
+    <h1>电路元件设计规范图</h1>
+    <a class="bk" href="index.html">课表</a>
+  </div>
+</div>
+
+<div class="sheet">
+  <div class="lead">
+    <div class="h">这一页是给自己看的</div>
+    全课程的电路元件都从 <b>elec-parts.js</b> 这一个库里取，这页把库里每个元件、
+    每种状态都摆出来对一遍 —— <b>改完元件先看这页，比翻六节课快</b>。
+  </div>
+
+  <div class="sec">
+    <h2>一、元件库</h2>
+    <p>统一规格：线宽（导线 2.8 / 引脚 2.4 / 描边 1.2）、圆角、<b>高光一律在左上、投影一律在右下</b>。</p>
+    <canvas id="c1"></canvas>
+  </div>
+
+  <div class="sec">
+    <h2>二、导线与电流表示</h2>
+    <p><b>导线永远是一条连续干净的深灰线。</b>通电不是把线变颜色，而是在线上加<b>少量</b>蓝色电子粒子；
+       电流方向另用琥珀箭头表示。<b>不能让导线看起来像一串圆点拼出来的。</b></p>
+    <canvas id="c2"></canvas>
+  </div>
+
+  <div class="sec">
+    <h2>三、状态与档位</h2>
+    <p>灯泡四档、开关两态、LED / 蜂鸣器 / 电动机的通断电。</p>
+    <canvas id="c3"></canvas>
+  </div>
+
+  <div class="sec">
+    <h2>四、标注排版</h2>
+    <p>数值粗体在上、名称小字在下，一条细引线牵到元件；字一律水平放正，放不下就把标签挪出去。</p>
+    <canvas id="c4"></canvas>
+  </div>
+
+  <div class="sec">
+    <h2>五、典型电路（把上面的东西拼起来）</h2>
+    <p>元件之间不许互相抢视觉：导线最深、元件次之、粒子和箭头是唯一的亮色。</p>
+    <canvas id="c5"></canvas>
+  </div>
+
+  <div class="sec">
+    <h2>六、这套规范的硬约定</h2>
+    <ul class="rule">
+      <li><b>白/浅灰底</b>，蓝色是主教学强调色，橙黄只留给「规定电流方向」，蓝色小粒子只留给「电子」。</li>
+      <li>深灰只用于<b>导线和结构</b>，不用来强调。</li>
+      <li>半扁平矢量 + 轻微体积感：<b>不要照片质感、不要 3D 渲染、不要复杂纹理和重阴影</b>。</li>
+      <li>面向中学生：<b>不做儿童玩具风，也不做工程软件风</b>。</li>
+      <li>手机上要认得出：最小元件在 390px 宽的屏幕上不小于 12px。</li>
+      <li>画布上的字只准从四档里挑：数值 12.5 粗 / 名称 9.5 灰 / 注解 10 / 极小 8.5。</li>
+    </ul>
+  </div>
+
+  <div class="foot" style="margin-bottom:20px">
+    元件用 canvas 画（不是 SVG）：这套页面有三十多个场景要按帧跑物理动画，
+    canvas 改状态和参与动画最直接；规范要求的「可动态改状态、可参与动画」是满足的。
+  </div>
+</div>
+
+</div>
+
+<script src="elec-canvas.js"></script>
+<script src="elec-parts.js"></script>
+<script>
+'use strict';
+const {Stage, Path, txt, box, loop} = EC;
+
+/* 每个格子：画一件东西 + 底下一行中文名 */
+function cellBox(g, x, y, w, h, name, draw){
+  EP.rr(g, x, y, w, h, 8);
+  g.save(); g.fillStyle = '#ffffff'; g.fill();
+  g.strokeStyle = '#e2e8ee'; g.lineWidth = 1; g.stroke(); g.restore();
+  draw(x + w/2, y + h/2 - 6);
+  txt(g, name, x + w/2, y + h - 12, {sz:10, c:'#5b6672'});
+}
+
+/* ---------------- 一、元件库 ---------------- */
+const s1 = new Stage('c1', 360, 470);
+function draw1(t){
+  const g = s1.g; s1.clear('#fafbfc');
+  const W = 108, H = 84, gx = 8, gy = 8, gap = 6;
+  const at = function(i){ return [gx + (i%3)*(W+gap), gy + Math.floor(i/3)*(H+gap)]; };
+  const items = [
+    ['电池 1.5V',   function(x,y){ EP.cell(g, x, y, 60, 24, {horiz:true, pm:false}); }],
+    ['电阻 R',      function(x,y){ EP.resistor(g, x, y, {len:44, dia:17}); }],
+    ['可变电阻',    function(x,y){ EP.rheostat(g, x, y, 0.55, {len:52, dia:16}); }],
+    ['开关（断开）', function(x,y){ EP.knife(g, x, y, false, {w:44}); }],
+    ['开关（闭合）', function(x,y){ EP.knife(g, x, y, true,  {w:44}); }],
+    ['灯泡',        function(x,y){ EP.bulb(g, x, y-4, 15, 0.85); }],
+    ['二极管',      function(x,y){ EP.diode(g, x, y, {len:34, dia:15}); }],
+    ['LED',         function(x,y){ EP.led(g, x, y-4, {on:true, r:11}); }],
+    ['电容',        function(x,y){ EP.capacitor(g, x, y-4, {w:22, h:28}); }],
+    ['电感线圈',    function(x,y){ EP.inductor(g, x, y+4, {n:4, len:44, r:9}); }],
+    ['电动机',      function(x,y){ EP.motor(g, x-4, y, 16, {spin:t*2}); }],
+    ['蜂鸣器',      function(x,y){ EP.buzzer(g, x, y, 15, {on:true}); }],
+    ['电流表 A',    function(x,y){ EP.meterInline(g, x, y, 15, 'A'); }],
+    ['电压表 V',    function(x,y){ EP.meterInline(g, x, y, 15, 'V'); }],
+    ['接线柱',      function(x,y){ EP.terminal(g, x, y, 8); }]
+  ];
+  items.forEach(function(it, i){
+    const p = at(i);
+    cellBox(g, p[0], p[1], W, H, it[0], it[1]);
+  });
+}
+
+/* ---------------- 二、导线与电流 ---------------- */
+const s2 = new Stage('c2', 360, 250);
+let ph = 0;
+function draw2(dt){
+  const g = s2.g; s2.clear('#fafbfc');
+  ph += dt * 46;
+  const rows = [
+    ['普通导线（没通电）', function(y){
+      const p = new Path([[40,y],[320,y]]);
+      EP.wire(g, p);
+    }],
+    ['通电：导线不变色，加少量蓝色电子', function(y){
+      const p = new Path([[40,y],[320,y]]);
+      EP.wire(g, p);
+      EP.flow(g, p, {phase:-ph, kind:'ele', gap:62});
+    }],
+    ['再叠上电流方向（橙箭头，与电子相反）', function(y){
+      const p = new Path([[40,y],[320,y]]);
+      EP.wire(g, p);
+      EP.flow(g, p, {phase:-ph, kind:'ele', gap:62});
+      EP.flow(g, p, {phase:ph + 31, kind:'cur', gap:62});
+    }],
+    ['粗导线（大电流干路）', function(y){
+      const p = new Path([[40,y],[320,y]]);
+      EP.wire(g, p, {kind:'thick'});
+      EP.flow(g, p, {phase:-ph, kind:'ele', gap:44});
+    }]
+  ];
+  rows.forEach(function(r, i){
+    const y = 34 + i*52;
+    txt(g, r[0], 40, y - 17, {sz:10, c:'#5b6672', al:'left'});
+    r[1](y);
+  });
+  /* 反面教材 */
+  const y2 = 34 + 4*52;
+  txt(g, '✗ 错误画法：把导线画成一串圆点', 40, y2 - 17, {sz:10, c:'#c32f2f', al:'left'});
+  const bad = new Path([[40,y2],[320,y2]]);
+  EP.flow(g, bad, {phase:0, kind:'ele', gap:13, r:3.4});
+}
+
+/* ---------------- 三、状态与档位 ---------------- */
+const s3 = new Stage('c3', 360, 300);
+function draw3(t){
+  const g = s3.g; s3.clear('#fafbfc');
+  txt(g, '灯泡四档', 14, 20, {sz:10.5, b:1, c:'#2b3038', al:'left'});
+  [['熄灭', 0], ['微亮', 0.22], ['正常', 0.55], ['很亮', 1]].forEach(function(a, i){
+    const x = 56 + i*84;
+    EP.bulb(g, x, 62, 16, a[1]);
+    txt(g, a[0], x, 104, {sz:10, c:'#5b6672'});
+  });
+
+  txt(g, '开关两态', 14, 138, {sz:10.5, b:1, c:'#2b3038', al:'left'});
+  EP.knife(g, 92, 172, false, {w:48}); txt(g, '断开', 92, 196, {sz:10, c:'#5b6672'});
+  EP.knife(g, 250, 172, true,  {w:48}); txt(g, '闭合', 250, 196, {sz:10, c:'#5b6672'});
+
+  txt(g, '通电 / 断电', 14, 228, {sz:10.5, b:1, c:'#2b3038', al:'left'});
+  EP.led(g, 60, 262, {on:false, r:11});   txt(g, 'LED 灭', 60, 288, {sz:10, c:'#5b6672'});
+  EP.led(g, 138, 262, {on:true, r:11});   txt(g, 'LED 亮', 138, 288, {sz:10, c:'#5b6672'});
+  EP.motor(g, 216, 258, 15, {spin:t*2});  txt(g, '电动机转', 216, 288, {sz:10, c:'#5b6672'});
+  EP.buzzer(g, 300, 258, 14, {on:true});  txt(g, '蜂鸣器响', 300, 288, {sz:10, c:'#5b6672'});
+}
+
+/* ---------------- 四、标注排版 ---------------- */
+const s4 = new Stage('c4', 360, 200);
+function draw4(){
+  const g = s4.g; s4.clear('#fafbfc');
+  EP.heading(g, 14, 20, '标注示例', '（数值在上、名称在下、引线牵出去）');
+  EP.cell(g, 80, 78, 56, 24, {horiz:true, pm:false});
+  EP.callout(g, 80, 66, 150, 56, 'E = 1.5 V', '电池电动势', {al:'left'});
+  EP.resistor(g, 250, 128, {len:44, dia:17});
+  EP.callout(g, 250, 118, 200, 100, 'R = 5.0 Ω', '外部电阻',
+             {al:'right', color:EP.P.blueD});
+  EP.chip(g, '胶囊标签：压在图上也读得清', 180, 168, {sz:10, c:'#5b6672'});
+  EP.legend(g, 180, 190, [['电子（真实在动）', EP.P.ele, 'dot'],
+                          ['电流方向（规定）', EP.P.amber, 'arrow']]);
+}
+
+/* ---------------- 五、典型电路 ---------------- */
+const s5 = new Stage('c5', 360, 230);
+const P5 = new Path([[56,120],[56,44],[304,44],[304,196],[56,196],[56,140]]);
+function draw5(dt){
+  const g = s5.g; s5.clear('#fafbfc');
+  EP.wire(g, P5);
+  const skip = [[0,14],[P5.len-14,P5.len],[86,132],[300,346]];
+  EP.flow(g, P5, {phase:-ph, kind:'ele', gap:58, skip:skip});
+  EP.flow(g, P5, {phase:ph + 29, kind:'cur', gap:58, skip:skip});
+  EP.cell(g, 56, 130, 44, 20, {horiz:false, pm:false});
+  txt(g, '＋', 74, 116, {sz:12, b:1, c:EP.P.red});
+  txt(g, '−',  74, 145, {sz:13, b:1, c:EP.P.inkL});
+  EP.knife(g, 130, 44, true, {w:44});
+  EP.meterInline(g, 232, 44, 14, 'A');
+  EP.resistor(g, 304, 110, {horiz:false, len:44, dia:17});
+  EP.bulb(g, 180, 182, 16, 0.7);
+  EP.callout(g, 304-10, 110, 268, 96, 'R = 10 Ω', '负载', {al:'right', color:EP.P.blueD});
+  EP.legend(g, 180, 218, [['电子', EP.P.ele, 'dot'], ['电流方向', EP.P.amber, 'arrow']]);
+}
+
+function fit(){ [s1,s2,s3,s4,s5].forEach(function(s){ s.fit(); }); }
+window.addEventListener('resize', fit);
+fit();
+loop(function(dt, t){
+  draw1(t); draw2(dt); draw3(t); draw4(); draw5(dt);
+});
+</script>
+</body>
+</html>
