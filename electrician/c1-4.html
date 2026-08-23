@@ -208,6 +208,7 @@
 </div>
 
 <script src="elec-canvas.js"></script>
+<script src="elec-parts.js"></script>
 <script src="elec-ui.js"></script>
 <script src="elec-nav.js"></script>
 <script>
@@ -270,18 +271,18 @@ function draw1(dt){
   dots(g, P1, {phase:v.ok ? S1.ph : 0, gap:24, r:3.8,
                color:v.ok ? C.cur : '#c9ced4', skip:skip});
 
-  battery(g, RC1.x0, 119, {horiz:false, long:19, short:10, gap:9, pm:false});
-  txt(g, '12V', RC1.x0+16, 119, {sz:11, b:1, c:C.tx, al:'left'});
-  switchSym(g, 180, RC1.y1, S1.on, {len:36});
-  txt(g, S1.on ? '开关合上' : '开关断开', 180, RC1.y1-16, {sz:10.5, b:1, c:S1.on?C.ok:C.err});
+  EP.cell(g, RC1.x0, 119, 44, 21, {horiz:false, pm:false, label:'12V', lx:20, ly:0});
+  EP.knife(g, 180, RC1.y1, S1.on, {w:52, h:22});
+  txt(g, S1.on ? '开关合上' : '开关断开', 180, RC1.y1-20, {sz:10.5, b:1, c:S1.on?C.ok:C.err});
 
   LP1.forEach(function(x, i){
     const dead = S1.dead[i];
     const b = (v.ok && !dead) ? bright(v.I*v.I*RL) : 0;
-    lamp(g, x, RC1.y0, 13, b);
-    txt(g, 'EL' + (i+1), x, RC1.y0-24, {sz:10.5, c:C.tx2});
-    if(dead) txt(g, '✕ 坏了', x, RC1.y0+24, {sz:10, b:1, c:C.err});
-    else if(v.ok) txt(g, v.U.toFixed(1) + ' V', x, RC1.y0+24, {sz:10.5, b:1, c:C.acc});
+    EP.lampHolder(g, x, RC1.y0-8, 30, 16);
+    EP.bulb(g, x, RC1.y0-27, 13, b);
+    txt(g, 'EL' + (i+1), x, RC1.y0+22, {sz:10.5, c:C.tx2});
+    if(dead) txt(g, '✕ 坏了', x, RC1.y0+38, {sz:10, b:1, c:C.err});
+    else if(v.ok) txt(g, v.U.toFixed(1) + ' V', x, RC1.y0+38, {sz:10.5, b:1, c:C.acc});
   });
 
   box(g, 20, 208, 320, 30, 6, v.ok ? '#e6f4ec' : '#fdeaea', C.boxLine, 1);
@@ -354,10 +355,9 @@ function draw2(dt){
     dots(g, back, {phase:-S2.ph, gap:22, r:3.8, color:C.cur, skip:[[back.len-10,back.len]]});
   }
 
-  battery(g, RC2.xL, 129, {horiz:false, long:19, short:10, gap:9, pm:false});
-  txt(g, '12V', RC2.xL+16, 129, {sz:11, b:1, c:C.tx, al:'left'});
-  switchSym(g, 76, RC2.yTop, S2.on, {len:34});
-  txt(g, S2.on ? '合上' : '断开', 76, RC2.yTop-14, {sz:10, b:1, c:S2.on?C.ok:C.err});
+  EP.cell(g, RC2.xL, 129, 44, 21, {horiz:false, pm:false, label:'12V', lx:20, ly:0});
+  EP.knife(g, 78, RC2.yTop, S2.on, {w:46, h:20});
+  txt(g, S2.on ? '合上' : '断开', 78, RC2.yTop-18, {sz:10, b:1, c:S2.on?C.ok:C.err});
 
   /* 三条支路 */
   BR.forEach(function(x, i){
@@ -368,9 +368,10 @@ function draw2(dt){
       g.save(); g.strokeStyle = C.bg; g.lineWidth = 6;
       g.beginPath(); g.moveTo(x, 122); g.lineTo(x, 148); g.stroke(); g.restore();
     }
-    if(live) dots(g, br, {phase:S2.ph, gap:20, r:3.4, color:C.cur, skip:[[26,68]]});
+    if(live) dots(g, br, {phase:S2.ph, gap:20, r:3.4, color:C.cur, skip:[[18,76]]});
     node(g, x, RC2.yTop); node(g, x, RC2.yBot);
-    lamp(g, x, 136, 13, live ? 1 : 0);
+    EP.lampHolder(g, x, 132, 28, 15);
+    EP.bulb(g, x, 114, 13, live ? 1 : 0);
     /* 标签一律放支路右边，别居中——居中会被那根竖导线穿过去 */
     txt(g, 'EL' + (i+1), x+15, 112, {sz:10.5, c:C.tx2, al:'left'});
     if(dead) txt(g, '✕ 坏了', x+15, 160, {sz:10, b:1, c:C.err, al:'left'});
@@ -470,8 +471,7 @@ function draw3(dt){
     if(v.dnOK) dots(g, dnW, {phase:S3.ph, gap:18, r:3, color:C.cur, skip:skB});
   }
 
-  battery(g, M3.xL, 159, {horiz:false, long:19, short:10, gap:9, pm:false});
-  txt(g, '12V', M3.xL+15, 159, {sz:10.5, b:1, c:C.tx, al:'left'});
+  EP.cell(g, M3.xL, 159, 42, 20, {horiz:false, pm:false, label:'12V', lx:19, ly:0});
 
   switchSym(g, 92, M3.yU, S3.s[0], {len:30});
   txt(g, 'S1', 92, M3.yU-15, {sz:10, c:C.tx2});
@@ -510,8 +510,10 @@ function gap(g, x, y, horiz){
   g.stroke(); g.restore();
 }
 function lampAt(g, x, y, b, name, dead, side){
-  lamp(g, x, y, 12, dead ? 0 : b);
-  txt(g, dead ? '✕' : name, x, y + side*22, {sz:10, b:dead?1:0, c:dead ? C.err : C.tx2});
+  EP.lampHolder(g, x, y-7, 24, 13);
+  EP.bulb(g, x, y-23, 11, dead ? 0 : b);
+  txt(g, dead ? '✕ ' + name : name, x, y + (side>0 ? 20 : -40),
+      {sz:10, b:dead?1:0, c:dead ? C.err : C.tx2});
 }
 st3.cv.addEventListener('click', function(ev){
   const p = st3.pick(ev);

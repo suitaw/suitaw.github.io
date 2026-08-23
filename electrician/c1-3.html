@@ -216,6 +216,7 @@
 </div>
 
 <script src="elec-canvas.js"></script>
+<script src="elec-parts.js"></script>
 <script src="elec-ui.js"></script>
 <script src="elec-nav.js"></script>
 <script>
@@ -246,11 +247,11 @@ function segAt(path, x, y){
    场景 1：电费 —— 同样用一小时，谁最费电
    ================================================================ */
 const APP = [
-  {n:'LED 灯',    w:10,   c:'#4a9ad8'},
-  {n:'电视',      w:100,  c:'#4a9ad8'},
-  {n:'电饭煲',    w:800,  c:'#e0731a'},
-  {n:'空调',      w:1200, c:'#e0731a'},
-  {n:'电热水壶',  w:1800, c:'#d5342a'}
+  {n:'LED 灯',    w:10,   c:'#4a9ad8', k:'led'},
+  {n:'电视',      w:100,  c:'#4a9ad8', k:'tv'},
+  {n:'电饭煲',    w:800,  c:'#e0731a', k:'rice'},
+  {n:'空调',      w:1200, c:'#e0731a', k:'ac'},
+  {n:'电热水壶',  w:1800, c:'#d5342a', k:'kettle'}
 ];
 const S1 = { i:0, h:2 };
 const st1 = new Stage('cv0', 360, 250);
@@ -260,7 +261,7 @@ function draw1(){
   txt(g, '每天用 ' + S1.h.toFixed(1) + ' 小时，一个月各要多少度电', 180, 20, {sz:11, c:C.tx2});
 
   const maxKwh = 1.8 * S1.h * 30;               /* 电热水壶那根最长 */
-  const x0 = 78, x1 = 336, top = 40, bh = 26, gap = 10;
+  const x0 = 100, x1 = 340, top = 40, bh = 26, gap = 10;
   APP.forEach(function(a, i){
     const y = top + i*(bh+gap);
     const kwh = a.w/1000 * S1.h * 30;
@@ -268,11 +269,12 @@ function draw1(){
     const on = (i === S1.i);
     box(g, x0, y, x1-x0, bh, 5, '#eef1f5', null);
     box(g, x0, y, w, bh, 5, on ? a.c : a.c + '66', null);
+    EP.appliance(g, 26, y+bh/2, 0.72, a.k);          /* 画个像那么回事的小图标 */
     txt(g, a.n, x0-8, y+bh/2, {sz:10.5, b:on, c:on ? C.tx : C.tx2, al:'right'});
     const s = kwh.toFixed(1) + ' 度';
     if(w > 60) txt(g, s, x0+w-8, y+bh/2, {sz:10.5, b:1, c:'#fff', al:'right'});
     else       txt(g, s, x0+w+6, y+bh/2, {sz:10.5, b:on, c:C.tx2, al:'left'});
-    if(on) head(g, x0-52, y+bh/2, 1, 0, 5, a.c);   /* 左边一个小三角指着选中那行 */
+    if(on) head(g, x0-58, y+bh/2, 1, 0, 5, a.c);   /* 左边一个小三角指着选中那行 */
   });
 
   const a = APP[S1.i];
@@ -375,25 +377,12 @@ function draw3(){
   wire.stroke(g, 5, mixHot(hb));
   dots(g, wire, {phase:0, gap:22, r:3.2, color:C.cur, skip:[[90,196]]});
 
-  /* 灯丝那一段（画成弹簧状） */
-  g.save();
+  /* 中间那一段是灯泡本体：灯丝就在玻璃壳里 */
   const ha = Math.min(1, qa/900);
-  g.strokeStyle = mixHot(ha); g.lineWidth = 3.4; g.lineJoin='round'; g.lineCap='round';
-  g.beginPath();
-  for(let i=0;i<=22;i++){
-    const x = 132 + i*2.6;
-    g.lineTo(x, y + ((i%2) ? -10 : 10));
-  }
-  g.stroke(); g.restore();
-  if(ha > 0.25){
-    const gr = g.createRadialGradient(160, y, 4, 160, y, 46);
-    gr.addColorStop(0, 'rgba(255,190,80,'+(0.5*ha).toFixed(2)+')');
-    gr.addColorStop(1, 'rgba(255,190,80,0)');
-    g.save(); g.fillStyle = gr; g.beginPath(); g.arc(160, y, 46, 0, EC.TAU); g.fill(); g.restore();
-  }
-
-  txt(g, '灯丝 R = 400 Ω', 160, y-34, {sz:10.5, b:1, c:C.tx});
-  txt(g, '导线 R = 0.2 Ω', 36, y+30, {sz:10.5, c:C.tx2, al:'left'});
+  EP.lampHolder(g, 160, y-6, 30, 15);
+  EP.bulb(g, 160, y-26, 15, ha);
+  txt(g, '灯泡（灯丝 R = 400 Ω）', 196, y-34, {sz:10.5, b:1, c:C.tx, al:'left'});
+  txt(g, '导线 R = 0.2 Ω', 36, y+26, {sz:10.5, c:C.tx2, al:'left'});
   txt(g, '同一根回路，电流处处相同：I = ' + S3.I.toFixed(1) + ' A', 180, 40, {sz:11.5, b:1, c:C.cur});
   txt(g, '（电流一样，热量却差 2000 倍 —— 差在电阻上）', 180, 60, {sz:10, c:C.tx3});
 

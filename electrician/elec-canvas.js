@@ -437,8 +437,11 @@ function dial(g, x, y, w, h, o){
   }
   g.restore();
 
-  /* 端点标记 */
-  if(bip){
+  /* 端点标记。**表盘小于 52px 高时省掉端点数字** —— 实测 44px 的小表上
+     「0」「3.2」会跟指针和读数糊成一团（1.2 那块电流表抓到的） */
+  const small = h < 52;
+  if(small){ /* 小表只留刻度 */ }
+  else if(bip){
     txt(g, '−', cx - R + 3, cy - 8, {sz:11, b:1, c:o.ink || '#6b6350'});
     txt(g, '＋', cx + R - 5, cy - 8, {sz:9, b:1, c:o.ink || '#6b6350'});
     txt(g, '0', cx, cy - R + 2, {sz:9, c:o.ink || '#6b6350'});
