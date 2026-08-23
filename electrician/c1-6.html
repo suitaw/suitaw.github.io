@@ -87,10 +87,16 @@
         <button class="btn" data-mv="fast">快速插入</button>
         <button class="btn" data-mv="out">抽出来</button>
       </div>
-      <div class="rowlab">也可以<b>直接用手指拖动那块磁铁</b></div>
-      <div class="nums">
-        <div class="num"><div class="k">磁铁移动速度</div><div class="v" id="s2v">0</div></div>
-        <div class="num hi"><div class="k">感应电流</div><div class="v" id="s2i">0</div></div>
+      <div class="btns">
+        <button class="btn" id="s2auto">▶ 自动来回</button>
+        <button class="btn" id="s2flip">⇄ 磁极对调</button>
+        <button class="btn" id="s2turns">匝数 ×2</button>
+      </div>
+      <div class="rowlab">也可以<b>直接用手指拖动那块磁铁</b>　（线圈 <b id="s2nlab">8 匝</b>）</div>
+      <div class="nums three">
+        <div class="num"><div class="k">磁铁速度</div><div class="v" id="s2v">0</div></div>
+        <div class="num"><div class="k">穿过线圈的磁通 Φ</div><div class="v" id="s2phi">0</div></div>
+        <div class="num hi"><div class="k">感应电动势 e</div><div class="v" id="s2e">0</div></div>
       </div>
     </div>
   </div>
@@ -374,90 +380,168 @@ function note1(){
 }
 
 /* ================================================================
-   场景 2：磁生电（拖磁铁）
+   场景 2：磁生电 —— 拖磁铁 + 检流计 + 走纸记录仪
+   物理是真算的：Φ 用高斯模型近似穿过线圈的磁通，e = −N·dΦ/dt。
+   像素换算 1000 px/m（线圈直径约 5cm），所以读数是真的 mWb 和 mV，
+   不是无量纲的示意值 —— 这门课的规矩是每个数都带单位、都能核对。
    ================================================================ */
-const S2 = { x:40, v:0, drag:false, anim:null, lastT:0 };
-const st2 = new Stage('cv1', 360, 280);
-const COIL = { cx:222, cy:126, half:56, r:34 };
+const S2 = { x:60, v:0, drag:false, anim:null, auto:false, at:0,
+             pol:1, N:8, lastT:0, phi:0, e:0, buf:[] };
+const st2 = new Stage('cv1', 360, 306);
+const COIL = { cx:214, cy:84, half:50, r:32 };
+const PXM = 1000;                 /* 1000 像素 = 1 米 */
+const SIG = 34;                   /* 磁通的“胖瘦”，像素 */
+const PHI0 = 0.5;                 /* 峰值磁通 mWb（8 匝时） */
+const BUFN = 150;
+
+function fluxAt(x){
+  const d = (x - COIL.cx) / SIG;
+  return S2.pol * PHI0 * (S2.N/8) * Math.exp(-d*d/2);
+}
 
 function draw2(dt){
   const g = st2.g; st2.clear();
 
-  /* 速度衰减：手停下来，电流立刻回零 */
-  if(!S2.drag && !S2.anim) S2.v *= Math.max(0, 1 - dt*9);
-  if(S2.anim){
+  /* ---- 位置更新 ---- */
+  if(S2.auto){
+    S2.at += dt;
+    const nx = COIL.cx + 118*Math.sin(S2.at*1.5);
+    S2.v = (nx - S2.x)/Math.max(dt, 0.001); S2.x = nx;
+  }else if(S2.anim){
     const a = S2.anim;
-    const nx = S2.x + a.dir * a.spd * dt;
-    S2.v = a.dir * a.spd;
-    S2.x = nx;
-    if((a.dir > 0 && S2.x > a.to) || (a.dir < 0 && S2.x < a.to)){ S2.x = a.to; S2.anim = null; S2.v = 0; }
+    S2.x += a.dir * a.spd * dt; S2.v = a.dir * a.spd;
+    if((a.dir>0 && S2.x>a.to) || (a.dir<0 && S2.x<a.to)){ S2.x = a.to; S2.anim = null; S2.v = 0; }
+  }else if(!S2.drag){
+    S2.v *= Math.max(0, 1 - dt*9);
   }
-  S2.x = Math.max(-30, Math.min(300, S2.x));
+  S2.x = Math.max(-10, Math.min(330, S2.x));
 
-  /* 线圈 */
-  for(let i=0;i<7;i++){
-    const x = COIL.cx - COIL.half + (2*COIL.half)*(i+0.5)/7;
-    g.save(); g.strokeStyle = C.cop; g.lineWidth = 3.2;
-    g.beginPath(); g.ellipse(x, COIL.cy, 10, COIL.r, 0, 0, EC.TAU); g.stroke(); g.restore();
+  /* ---- 真算：Φ(mWb) 与 e(mV) ---- */
+  const phi = fluxAt(S2.x);
+  const dphidx = (fluxAt(S2.x+0.5) - fluxAt(S2.x-0.5));          /* mWb / 像素 */
+  const vms = S2.v / PXM;                                        /* m/s */
+  const e = -S2.N * dphidx * PXM * vms;                          /* mV */
+  S2.phi = phi;
+  S2.e += (e - S2.e) * Math.min(1, dt*14);                       /* 指针有惯性，平滑一下 */
+  S2.buf.push([phi, S2.e]);
+  while(S2.buf.length > BUFN) S2.buf.shift();
+
+  /* ---- 舞台：线圈前后分层，磁铁真的从里面穿过去 ---- */
+  const nTurn = S2.N === 8 ? 8 : 13;
+  const step = (2*COIL.half) / (nTurn-1);
+  function turns(front){
+    for(let i=0;i<nTurn;i++){
+      const x = COIL.cx - COIL.half + i*step;
+      g.save();
+      g.strokeStyle = front ? C.cop : '#a9793f';
+      g.lineWidth = S2.N === 8 ? 3.4 : 2.6; g.lineCap = 'round';
+      g.beginPath();
+      g.ellipse(x, COIL.cy, 8, COIL.r, 0, front ? 0 : Math.PI, front ? Math.PI : 2*Math.PI);
+      g.stroke(); g.restore();
+    }
   }
-  txt(g, '线圈', COIL.cx, COIL.cy - COIL.r - 14, {sz:10.5, c:C.tx2});
+  turns(false);                       /* 后半（在磁铁背后） */
 
-  /* 磁铁（可拖） */
   const mx = S2.x, my = COIL.cy;
-  box(g, mx-34, my-13, 34, 26, 3, '#e0402a', '#b52a18', 1.2);
-  box(g, mx,    my-13, 34, 26, 3, '#1667d6', '#0f4ea3', 1.2);
-  txt(g, 'N', mx-17, my, {sz:12, b:1, c:'#fff'});
-  txt(g, 'S', mx+17, my, {sz:12, b:1, c:'#fff'});
-  txt(g, '← 拖我 →', mx, COIL.cy + COIL.r + 18, {sz:10, c:C.tx3});
+  const nRight = S2.pol > 0;
+  box(g, mx-34, my-12, 34, 24, 3, nRight ? '#1667d6' : '#e0402a', '#0d151b', 1.2);
+  box(g, mx,    my-12, 34, 24, 3, nRight ? '#e0402a' : '#1667d6', '#0d151b', 1.2);
+  txt(g, nRight ? 'S' : 'N', mx-17, my, {sz:12, b:1, c:'#fff'});
+  txt(g, nRight ? 'N' : 'S', mx+17, my, {sz:12, b:1, c:'#fff'});
 
-  /* 引线到检流计 */
-  const w = new Path([[COIL.cx-COIL.half-10, COIL.cy+COIL.r],[COIL.cx-COIL.half-10, 214],
-                      [66, 214],[66, 176]]);
-  w.stroke(g, 2.6, C.wire);
+  turns(true);                        /* 前半（盖在磁铁上，看着才像穿进去了） */
+  txt(g, '线圈 ' + S2.N + ' 匝', COIL.cx, COIL.cy - COIL.r - 12, {sz:10, c:C.tx2});
+  txt(g, '← 拖我 →', mx, COIL.cy - 30, {sz:10, c:C.tx3});
 
-  /* 检流计 */
-  const gx = 66, gy = 152;
-  g.save();
-  g.beginPath(); g.arc(gx, gy, 26, 0, EC.TAU);
-  g.fillStyle = '#fff'; g.fill(); g.strokeStyle = C.wire; g.lineWidth = 2; g.stroke();
-  g.restore();
-  /* 刻度 */
-  g.save(); g.strokeStyle = '#c3cad2'; g.lineWidth = 1;
-  for(let a=-60;a<=60;a+=20){
-    const rad = (a-90)*Math.PI/180;
+  /* 引线下到检流计 */
+  const lead = new Path([[COIL.cx-COIL.half-8, COIL.cy+COIL.r-4],[COIL.cx-COIL.half-8, 138],
+                         [70, 138],[70, 158]]);
+  lead.stroke(g, 2.4, '#8a6a44');
+  const lead2 = new Path([[COIL.cx+COIL.half+8, COIL.cy+COIL.r-4],[COIL.cx+COIL.half+8, 140],
+                          [300, 140]]);
+  lead2.stroke(g, 2.4, '#8a6a44');
+
+  /* 电流方向箭头：跟着 e 的符号亮 */
+  const mag = Math.min(1, Math.abs(S2.e)/12);
+  if(mag > 0.06){
+    const dir = S2.e >= 0 ? 1 : -1;
+    g.save(); g.globalAlpha = mag;
+    head(g, 120, 138, dir, 0, 6, C.cur);
+    head(g, 268, 140, -dir, 0, 6, C.cur);
+    g.restore();
+  }
+
+  /* ---- 检流计：真表盘 + 刻度 ---- */
+  box(g, 12, 158, 116, 112, 5, '#e8e2d0', '#b9ae8e', 1.4);
+  const gx = 70, gy = 246, R = 54;
+  g.save(); g.strokeStyle = '#6b6350'; g.lineWidth = 1.2;
+  g.beginPath(); g.arc(gx, gy, R, Math.PI*1.22, Math.PI*1.78); g.stroke();
+  for(let k=-5;k<=5;k++){
+    const a = (k/5)*(Math.PI/2.4) - Math.PI/2;
+    const r2 = (k%5===0) ? R-11 : R-6;
     g.beginPath();
-    g.moveTo(gx+Math.cos(rad)*19, gy+Math.sin(rad)*19);
-    g.lineTo(gx+Math.cos(rad)*24, gy+Math.sin(rad)*24);
+    g.moveTo(gx+Math.cos(a)*R, gy+Math.sin(a)*R);
+    g.lineTo(gx+Math.cos(a)*r2, gy+Math.sin(a)*r2);
     g.stroke();
   }
   g.restore();
-  /* 指针：偏转角随速度 */
-  const defl = Math.max(-1, Math.min(1, S2.v/180));
-  const na = (-90 + defl*58) * Math.PI/180;
+  txt(g, '0', gx, gy-R+2, {sz:9, c:'#6b6350'});
+  txt(g, '−', gx-R+4, gy-8, {sz:11, b:1, c:'#6b6350'});
+  txt(g, '＋', gx+R-6, gy-8, {sz:9, b:1, c:'#6b6350'});
+  const defl = Math.max(-1, Math.min(1, S2.e/22));
+  const na = defl*(Math.PI/2.4) - Math.PI/2;
   g.save();
-  g.strokeStyle = Math.abs(defl) > 0.04 ? C.err : '#5b6672'; g.lineWidth = 2.2; g.lineCap='round';
-  g.beginPath(); g.moveTo(gx, gy); g.lineTo(gx+Math.cos(na)*20, gy+Math.sin(na)*20); g.stroke();
+  g.strokeStyle = '#c8422f'; g.lineWidth = 2.2; g.lineCap='round';
+  g.beginPath(); g.moveTo(gx, gy); g.lineTo(gx+Math.cos(na)*(R-6), gy+Math.sin(na)*(R-6)); g.stroke();
   g.restore();
-  node(g, gx, gy, {r:3});
-  txt(g, '检流计', gx, gy+38, {sz:10, c:C.tx2});
-  txt(g, '0', gx, gy-30, {sz:9, c:C.tx3});
+  g.save(); g.fillStyle = '#3a3527';
+  g.beginPath(); g.arc(gx, gy, 4.5, 0, EC.TAU); g.fill(); g.restore();
+  txt(g, '检流计', gx, gy+16, {sz:9, c:'#6b6350'});
 
-  /* 状态条 */
-  const moving = Math.abs(S2.v) > 8;
-  box(g, 20, 236, 320, 36, 6, moving ? '#e6f4ec' : '#f4f6f9', C.boxLine, 1);
+  /* ---- 走纸记录仪：Φ 和 e 两条曲线 ---- */
+  const cb = {x:140, y:158, w:208, h:88};
+  box(g, cb.x, cb.y, cb.w, cb.h, 4, '#f2f5f8', C.boxLine, 1);
+  g.save(); g.strokeStyle = '#cfd6dd'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(cb.x, cb.y+cb.h/2); g.lineTo(cb.x+cb.w, cb.y+cb.h/2); g.stroke();
+  g.restore();
+  const stepx = cb.w / BUFN;
+  let eMax = 8;
+  S2.buf.forEach(function(p){ eMax = Math.max(eMax, Math.abs(p[1])); });
+  [[0, '#2f86c9', 1/(PHI0*(S2.N/8)*1.15)], [1, '#e0731a', 1/(eMax*1.1)]].forEach(function(a){
+    if(S2.buf.length < 2) return;
+    g.save(); g.strokeStyle = a[1]; g.lineWidth = 1.8; g.lineJoin='round';
+    g.beginPath();
+    S2.buf.forEach(function(p, i){
+      const px = cb.x + i*stepx;
+      const vv = Math.max(-1, Math.min(1, p[a[0]]*a[2]));
+      const py = cb.y + cb.h/2 - vv*(cb.h/2 - 4);
+      i ? g.lineTo(px, py) : g.moveTo(px, py);
+    });
+    g.stroke(); g.restore();
+  });
+  txt(g, '走纸记录 · 左旧 → 右新', cb.x+cb.w, cb.y-6, {sz:9, c:C.tx3, al:'right'});
+  g.save(); g.fillStyle = '#2f86c9'; g.fillRect(cb.x+2, 254, 12, 2.4); g.restore();
+  txt(g, '磁通 Φ', cb.x+18, 255, {sz:9.5, c:C.tx2, al:'left'});
+  g.save(); g.fillStyle = '#e0731a'; g.fillRect(cb.x+72, 254, 12, 2.4); g.restore();
+  txt(g, '电动势 e', cb.x+88, 255, {sz:9.5, c:C.tx2, al:'left'});
+
+  /* ---- 底部状态 ---- */
+  const moving = Math.abs(S2.v) > 6;
+  box(g, 12, 268, 336, 32, 5, moving ? '#e6f4ec' : '#f4f6f9', C.boxLine, 1);
   txt(g, moving
-        ? (S2.v > 0 ? '磁铁在往里插 → 指针往一边偏' : '磁铁在往外抽 → 指针往另一边偏')
-        : '磁铁没动 → 指针停在 0，一点电流都没有',
-      180, 248, {sz:11, b:1, c: moving ? C.ok : C.tx2});
-  txt(g, moving ? ('速度越快，指针偏得越大　（现在 ' + Math.abs(S2.v).toFixed(0) + ' 单位）')
-                : '这一条是整节最要紧的：产生电流的是「变化」，不是磁场本身',
-      180, 265, {sz:10, c:C.tx3});
+        ? 'Φ = ' + phi.toFixed(3) + ' mWb　e = ' + (S2.e<0?'−':'') + Math.abs(S2.e).toFixed(1) + ' mV'
+        : 'Φ = ' + phi.toFixed(3) + ' mWb　e = 0.0 mV　（磁铁没动）',
+      180, 279, {sz:11, b:1, c: moving ? C.ok : C.tx2});
+  txt(g, moving ? '注意蓝线到最高点的那一刻，橙线正好穿过 0'
+                : '磁通再大也没用 —— 它得「在变」才有电动势',
+      180, 294, {sz:9.5, c:C.tx3});
 }
-function pickMag(p){ return Math.abs(p[0]-S2.x) < 44 && Math.abs(p[1]-COIL.cy) < 28; }
+
+function pickMag(p){ return Math.abs(p[0]-S2.x) < 44 && Math.abs(p[1]-COIL.cy) < 30; }
 st2.cv.addEventListener('pointerdown', function(ev){
   const p = st2.pick(ev);
   if(pickMag(p)){
-    S2.drag = true; S2.anim = null; S2.lastT = performance.now();
+    S2.drag = true; S2.anim = null; setAuto(false); S2.lastT = performance.now();
     st2.cv.setPointerCapture(ev.pointerId); ev.preventDefault();
   }
 });
@@ -465,37 +549,57 @@ st2.cv.addEventListener('pointermove', function(ev){
   if(!S2.drag) return;
   const p = st2.pick(ev);
   const now = performance.now(), dtm = Math.max(8, now - S2.lastT);
-  const nx = Math.max(-30, Math.min(300, p[0]));
+  const nx = Math.max(-10, Math.min(330, p[0]));
   S2.v = (nx - S2.x) / (dtm/1000);
   S2.x = nx; S2.lastT = now;
-  note2(); ev.preventDefault();
+  ev.preventDefault();
 });
 function endDrag2(){ S2.drag = false; }
 st2.cv.addEventListener('pointerup', endDrag2);
 st2.cv.addEventListener('pointercancel', endDrag2);
+
 document.querySelectorAll('[data-mv]').forEach(function(b){
   b.addEventListener('click', function(){
+    setAuto(false);
     const m = b.dataset.mv;
-    if(m === 'in')        { S2.x = 40;  S2.anim = {dir:1,  spd:80,  to:230}; }
-    else if(m === 'fast') { S2.x = 40;  S2.anim = {dir:1,  spd:260, to:230}; }
-    else                  { S2.x = 230; S2.anim = {dir:-1, spd:160, to:40}; }
+    if(m === 'in')        { S2.x = 60;  S2.anim = {dir:1,  spd:90,  to:220}; }
+    else if(m === 'fast') { S2.x = 60;  S2.anim = {dir:1,  spd:300, to:220}; }
+    else                  { S2.x = 220; S2.anim = {dir:-1, spd:200, to:60}; }
   });
 });
+function setAuto(v){
+  S2.auto = v; S2.at = 0; if(v) S2.anim = null;
+  const b = $('s2auto');
+  b.textContent = v ? '⏸ 停下' : '▶ 自动来回';
+  b.classList.toggle('on', v);
+}
+$('s2auto').addEventListener('click', function(){ setAuto(!S2.auto); });
+$('s2flip').addEventListener('click', function(){ S2.pol *= -1; });
+$('s2turns').addEventListener('click', function(){
+  S2.N = (S2.N === 8) ? 16 : 8;
+  $('s2turns').textContent = (S2.N === 8) ? '匝数 ×2' : '匝数 ÷2';
+  $('s2nlab').textContent = S2.N + ' 匝';
+});
+
 let lastMoving = null;
 function note2(force){
-  const moving = Math.abs(S2.v) > 8;
-  if(!force && moving === lastMoving && !moving) return;   /* 静止时不用反复重画 */
+  const moving = Math.abs(S2.v) > 6;
+  $('s2v').textContent   = moving ? (Math.abs(S2.v)/PXM).toFixed(2) + ' m/s' : '0（没动）';
+  $('s2phi').textContent = S2.phi.toFixed(3) + ' mWb';
+  $('s2e').textContent   = (S2.e<0?'−':'') + Math.abs(S2.e).toFixed(1) + ' mV';
+  if(!force && moving === lastMoving && !moving) return;
   lastMoving = moving;
-  $('s2v').textContent = moving ? Math.abs(S2.v).toFixed(0) : '0（没动）';
-  $('s2i').textContent = moving ? (S2.v > 0 ? '→ 有' : '← 有（反向）') : '0';
   $('n1').innerHTML = moving
-    ? '<div class="st good">正在产生电流</div>'+
-      '磁铁一动，穿过线圈的磁场就在变，线圈里立刻出现<b>感应电流</b>，检流计指针偏转。<br>'+
-      '<b>动得越快，偏得越大</b>；插入和抽出，偏转方向相反。'
+    ? '<div class="st good">正在发电</div>'+
+      '磁铁一动，穿过线圈的<b>磁通 Φ</b>就在变，线圈两端立刻出现<b>电动势 e</b>。<br>'+
+      '<b>盯住那张走纸图</b>：蓝线（Φ）爬到最高点的那一刻，橙线（e）正好穿过 0 —— '+
+      '因为那一瞬间磁通<b>不再变化</b>了。<span class="sub">'+
+      '按「匝数 ×2」再拖一次，同样的速度，电动势会大一倍。</span>'
     : '<div class="st">磁铁不动 = 一点电流都没有</div>'+
-      '试试把磁铁停在线圈正中间 —— 磁场明明最强，指针却是 0。<br>'+
-      '<b>产生感应电流的条件是「穿过线圈的磁场在变化」</b>，'+
-      '静止的强磁场什么也发不出来。<span class="sub">现在拖动磁铁试试。</span>';
+      '把磁铁停在线圈正中间 —— Φ 是最大的 '+Math.abs(fluxAt(COIL.cx)).toFixed(2)+' mWb，'+
+      '可指针纹丝不动，停在 0。<br>'+
+      '<b>产生电动势的是「Φ 在变」，不是 Φ 本身。</b>'+
+      '<span class="sub">现在拖动磁铁，或者按「自动来回」看它连续发电。</span>';
 }
 
 /* ================================================================
