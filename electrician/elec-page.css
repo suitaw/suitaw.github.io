@@ -128,3 +128,55 @@ details[open] summary::before{content:"▾ "}
 .pager a.next{background:var(--accbg);border-color:var(--acc);color:var(--acc);font-weight:600}
 .pager span{opacity:.45}
 .foot{font-size:.76rem;color:var(--tx3);text-align:center;margin-top:12px;line-height:1.7}
+
+/* ==================================================================
+   2026-08-23 排版第二版：按那张统一风格样式表调
+   （他的话：「标注字体也设计一下，还有文字排版，改的好看点」）
+   查过的技术制图通行做法：标签紧挨被标物、放不下用引线牵出去、
+   字一律水平放正、数值和名称分两级 —— 画布里的规矩在 elec-parts.js，
+   这里管 HTML 那一半。
+   ================================================================== */
+
+/* 引导卡：左边加一枚灯泡徽标，标题和正文拉开层级 */
+.lead{padding:13px 14px 13px 13px}
+.lead .h{display:flex;align-items:center;gap:8px;font-size:1rem;letter-spacing:.01em;margin-bottom:5px}
+.lead .h::before{
+  content:'';flex:none;width:22px;height:22px;border-radius:50%;
+  background:var(--acc) url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' \
+stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'>\
+<path d='M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z'/></svg>") center/13px no-repeat;
+}
+
+/* 数字卡：左边一颗彩点分色，数值用等宽数字（动画时不跳） */
+.num .k{letter-spacing:.01em}
+.num .k::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--dot,#9aa4ae);margin-right:6px;vertical-align:1px}
+.num .v{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.nums .num:nth-child(1){--dot:#4a90d9}
+.nums .num:nth-child(2){--dot:#2f9e44}
+.nums .num:nth-child(3){--dot:#f0a020}
+.num.hi{box-shadow:0 0 0 1px var(--acc) inset}
+
+/* 说明卡：标题左边一道色条，正文行距拉开一点 */
+.note{line-height:1.8}
+.note .st{position:relative;padding-left:11px;font-size:.97rem;letter-spacing:.01em}
+.note .st::before{content:'';position:absolute;left:0;top:.24em;bottom:.24em;width:3px;
+  border-radius:2px;background:var(--acc)}
+.note .st.bad::before{background:var(--err)}
+.note .st.good::before{background:var(--ok)}
+.note .st.warn::before{background:var(--warn)}
+.note .key,.note .rd{font-variant-numeric:tabular-nums;padding:1px 6px}
+
+/* 提示条：警示用琥珀，中性说明用淡蓝 */
+.tip{border-left:3px solid var(--warn);border-radius:0 8px 8px 0}
+.tip.info{background:var(--accbg);border-left-color:var(--acc)}
+.tip.info b{color:var(--acc)}
+
+/* 控件区的行标题：小字、字距略开，和正文区分开 */
+.rowlab{letter-spacing:.02em}
+.rowlab b{font-variant-numeric:tabular-nums}
+.ticks{letter-spacing:.02em}
+
+/* 按钮：选中态更明确一点 */
+.btn.on{box-shadow:0 0 0 1px var(--acc) inset}
