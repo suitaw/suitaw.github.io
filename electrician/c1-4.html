@@ -359,7 +359,7 @@ function draw2(dt){
 
   EP.cell(g, RC2.xL, 129, 44, 21, {horiz:false, pm:false, label:'12V', lx:28, ly:0});
   EP.knife(g, 78, RC2.yTop, S2.on, {w:46, h:20});
-  txt(g, S2.on ? '合上' : '断开', 78, RC2.yTop-18, {sz:10, b:1, c:S2.on?C.ok:C.err});
+  txt(g, S2.on ? '合上' : '断开', 78, RC2.yTop-18, {sz:10, c:EP.P.inkL});
 
   /* 三条支路 */
   BR.forEach(function(x, i){

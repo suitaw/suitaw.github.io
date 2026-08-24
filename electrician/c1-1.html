@@ -316,11 +316,11 @@ function drawReal1(g){
 
   EP.heading(g, 20, 24, '实物接线图', '（电子真实在动）');
 
-  /* 导线：通电时高亮，断开时普通深色 —— 三档粗细里的两档 */
-  const kind = S1.on ? 'hot' : 'normal';
-  EP.wire(g, PR1, {kind:kind});
-  EP.wire(g, PR2, {kind:kind});
-  EP.wire(g, PR3, {kind:kind});
+  /* 导线用实验室里的真实颜色：接正极那根红、回负极那根黑。
+     通电不改变导线颜色 —— 通电只体现在粒子和灯丝上（设计规范定死的） */
+  EP.wire(g, PR1, {c:'red'});
+  EP.wire(g, PR2, {c:'black'});
+  EP.wire(g, PR3, {c:'black'});
 
   /* 电子（蓝点，实际方向）和电流（琥珀箭头，规定方向）分开画、错开半格 */
   const skip = [GAP1, GAP2];
@@ -338,12 +338,12 @@ function drawReal1(g){
 
   EP.knife(g, RK.x, RK.y, S1.on, {w:RK.w});
   txt(g, '开关', RK.x, RK.y - 22, {sz:10.5, b:1, c:EP.P.inkL});
-  txt(g, S1.on ? '（闭合）' : '（断开）', RK.x, RK.y - 9,
-      {sz:10, b:1, c: S1.on ? EP.P.green : EP.P.red});
+  txt(g, S1.on ? '（闭合 · 拨杆接实）' : '（断开 · 留着空气间隙）', RK.x, RK.y - 9,
+      {sz:9.5, c: EP.P.inkL});
 
   EP.lampHolder(g, RH.x, RH.y, RH.w, RH.h);
   EP.bulb(g, RL.x, RL.y, RL.r, b);
-  EP.callout(g, RL.x - RL.r*0.7, RL.y + RL.r*0.6, RL.x - 34, RL.y + 46,
+  EP.callout(g, RL.x - RL.r*0.7, RL.y + RL.r*0.6, RL.x - 54, RL.y + 46,
              '灯泡', S1.on ? '正在发光' : '没通电', {al:'right', color:EP.P.ink});
 
   /* 截面标记 */
@@ -386,7 +386,7 @@ function drawSym1(g){
   switchSym(g, SWX, R1.y0, S1.on, {len:34});
   txt(g, '开关', SWX, R1.y0 - 22, {sz:10.5, b:1, c:EP.P.inkL});
   txt(g, S1.on ? '（闭合）' : '（断开）', SWX, R1.y0 - 9,
-      {sz:10, b:1, c: S1.on ? EP.P.green : EP.P.red});
+      {sz:10, c: EP.P.inkL});
 
   lamp(g, LPX, R1.y0, 15, S1.on ? 0.42 + 0.12*S1.I : 0);
   txt(g, '灯泡 EL', LPX, R1.y0+34, {sz:10, c:EP.P.inkL});
@@ -454,7 +454,7 @@ function draw2(dt){
   EP.heading(g, 20, 24, '电池内部也有电阻', '（看它吃掉多少）');
 
   /* 导线 */
-  EP.wire(g, P2, {kind: S2.open ? 'normal' : 'hot'});
+  EP.wire(g, P2, {c:'black'});
   if(S2.open){
     g.save(); g.strokeStyle = C.bg; g.lineWidth = 6;
     g.beginPath(); g.moveTo(SW2-20, R2.y0); g.lineTo(SW2+20, R2.y0); g.stroke(); g.restore();
@@ -486,7 +486,7 @@ function draw2(dt){
   /* 开关 + 外部电阻 */
   EP.knife(g, SW2, R2.y0, !S2.open, {w:46});
   txt(g, S2.open ? '开关断开' : '开关闭合', SW2, R2.y0 + 18,
-      {sz:10.5, b:1, c: S2.open ? EP.P.red : EP.P.green});
+      {sz:10.5, c: EP.P.inkL});
 
   EP.resistor(g, R2.x1, 110, {horiz:false, len:44, dia:18});
   EP.callout(g, R2.x1-10, 110, 276, 106, 'R = ' + S2.R.toFixed(1) + ' Ω', '外部电阻',
