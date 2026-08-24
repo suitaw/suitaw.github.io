@@ -30,6 +30,17 @@ const TAU = Math.PI*2;
 /* 统一色板 —— 六节课共用，看着才像同一套器材 */
 const P = {
   ink:'#2b3038', inkL:'#5b6672', inkLL:'#8b949e',
+  /* ---- 真实材料色（元件本体只能用这些，蓝/橙/红/绿是教学语义色，不许拿来给元件上色）---- */
+  steel:'#c3cad2', steelD:'#8b949e', steelDD:'#5b6672',   /* 镀镍/不锈钢 */
+  chrome:'#eef2f6',                                        /* 高光金属 */
+  copper:'#b87333', copperD:'#8a5418', copperL:'#e0a56a',  /* 铜、电阻丝 */
+  bakelite:'#23272c', bakeliteL:'#3a4048',                 /* 胶木/塑料底座 */
+  body:'#3a4048', bodyD:'#20242a', bodyL:'#6b737d',        /* 深灰机身 */
+  cream:'#e8dcc0', creamD:'#c9b98f',                       /* 电阻米黄本体 */
+  ceramic:'#efe9dc',                                       /* 瓷管 */
+  glass:'#eaf0f5',                                         /* 玻璃 */
+  tungsten:'#9aa0a6',                                      /* 钨丝（不亮时）*/
+  warm:'#ffd08a', warmHot:'#fff3d6',                       /* 灯丝发光 */
   blue:'#4a90d9', blueD:'#2f6fb0', blueL:'#cfe0f5',
   hot:'#1e6fd0',
   amber:'#f0a020', ele:'#2a86d8',
@@ -161,17 +172,23 @@ function heading(g, x, y, title, sub){
 
 /* ================= 导线 ================= */
 const WIRE_W = { normal:S.wire, hot:S.wire, thick:5.2 };
-/* **导线永远是一条连续、干净的深灰线** —— 设计规范里特别强调过：
-   通电不是把线变蓝，而是在线上加少量蓝色电子粒子。
-   把线画成一串圆点是明确要避免的做法。 */
+/* 实验导线的常见颜色：黑（默认/接负极）、红（接正极）、蓝、黄 */
+const WIRE_C = { black:'#23272c', red:'#c0392b', blue:'#1e5fa8', yellow:'#d9a520' };
+/* **导线永远是一条连续、干净的线**，通电不改变导线颜色，只在上面加少量蓝色电子粒子。
+   把导线画成一串圆点是明确禁止的做法。 */
 function wire(g, path, o){
   o = o || {};
   const w = o.w || WIRE_W[o.kind || 'normal'] || S.wire;
-  /* 右下方向的极淡投影，全库统一 */
+  const col = o.color || WIRE_C[o.c || 'black'] || P.ink;
+  /* 右下淡投影 */
   g.save(); g.translate(0.8, 1.1);
-  path.stroke(g, w, 'rgba(43,48,56,'+S.shA+')');
+  path.stroke(g, w, 'rgba(20,23,27,'+S.shA+')');
   g.restore();
-  path.stroke(g, w, o.color || P.ink);
+  path.stroke(g, w, shade(col, -0.25));          /* 外皮暗边 */
+  path.stroke(g, w - 1.4, col);                  /* 橡胶外皮 */
+  g.save(); g.globalAlpha = 0.28;                /* 左上一道细高光，像塑料 */
+  path.stroke(g, Math.max(0.8, w*0.22), '#ffffff');
+  g.restore();
 }
 
 function node(g, x, y, r){
@@ -206,7 +223,9 @@ function flow(g, path, o){
   }
 }
 
-/* ================= 电池 ================= */
+/* ================= 电池 =================
+   真实干电池：深灰/黑机身、白色标签环、**银色正极帽**，红色只用来做正极标识。
+   规范里写死了：不许把整节电池染成蓝色，正负极要一眼认得出。 */
 function cell(g, x, y, len, dia, o){
   o = o || {};
   const horiz = o.horiz !== false;
@@ -217,41 +236,65 @@ function cell(g, x, y, len, dia, o){
   if(flip < 0) g.scale(-1, 1);
   const L = len, D = dia, half = L/2, hd = D/2;
 
-  /* 主体（深蓝灰圆柱） */
-  rr(g, -half, -hd, L, D, D*0.26);
-  g.fillStyle = cyl(g, -hd, hd, '#25313d', '#4f6478', '#8fa3b6');
+  /* 机身：深灰金属 */
+  rr(g, -half, -hd, L, D, D*0.24);
+  g.fillStyle = cyl(g, -hd, hd, P.bodyD, P.body, P.bodyL);
   g.fill();
-  /* 白色标签环 */
+  /* 白色标签环（印电压的地方） */
   g.save();
-  rr(g, -half+L*0.42, -hd, L*0.40, D, 2); g.clip();
-  g.fillStyle = cyl(g, -hd, hd, '#c9ced4', '#f7fafc', '#ffffff');
+  rr(g, -half+L*0.24, -hd, L*0.44, D, 2); g.clip();
+  g.fillStyle = cyl(g, -hd, hd, '#c9ced4', '#ffffff', '#ffffff');
   g.fillRect(-half, -hd, L, D);
   g.restore();
-  /* 正极红帽 + 小凸头 */
-  rr(g, half-L*0.10, -hd*0.86, L*0.10, D*0.86, 3);
-  g.fillStyle = cyl(g, -hd*0.86, hd*0.86, '#8e231b', '#d5342a', '#f5837a');
-  g.fill();
-  rr(g, half-1.5, -hd*0.3, 5, hd*0.6, 2);
-  g.fillStyle = '#c3cad2'; g.fill();
-  /* 描边 + 高光 */
-  rr(g, -half, -hd, L, D, D*0.26);
-  g.strokeStyle = P.ink; g.lineWidth = 1.4; g.stroke();
-  g.save(); g.globalAlpha = 0.5;
-  g.strokeStyle = '#fff'; g.lineWidth = 1.8; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(-half+D*0.32, -hd+3.4); g.lineTo(half-D*0.5, -hd+3.4); g.stroke();
+  /* 负极端：深黑一小段 */
+  g.save();
+  rr(g, -half, -hd, L*0.16, D, D*0.24); g.clip();
+  g.fillStyle = cyl(g, -hd, hd, '#0e1013', '#23272c', '#3d444c');
+  g.fillRect(-half, -hd, L*0.16, D);
   g.restore();
+  /* 正极：银色帽 + 一圈红色标识环 */
+  g.save();
+  rr(g, half-L*0.14, -hd, L*0.14, D, D*0.24); g.clip();
+  g.fillStyle = cyl(g, -hd, hd, P.steelDD, P.steel, P.chrome);
+  g.fillRect(half-L*0.14, -hd, L*0.14, D);
+  g.fillStyle = '#c0392b';
+  g.fillRect(half-L*0.14, -hd, 3, D);         /* 红色标识环 */
+  g.restore();
+  /* 正极凸头（银） */
+  rr(g, half-1.5, -hd*0.32, 5.5, hd*0.64, 2);
+  g.fillStyle = cyl(g, -hd*0.32, hd*0.32, P.steelD, P.chrome, '#ffffff');
+  g.fill();
+  /* 描边 + 左上高光 */
+  rr(g, -half, -hd, L, D, D*0.24);
+  g.strokeStyle = '#171b20'; g.lineWidth = S.edge; g.stroke();
+  g.save(); g.globalAlpha = S.hiA;
+  g.strokeStyle = '#fff'; g.lineWidth = 1.8; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(-half+D*0.3, -hd+3.2); g.lineTo(half-D*0.45, -hd+3.2); g.stroke();
+  g.restore();
+  /* 标签上印电压 */
+  if(o.volt !== false && L > 40){
+    g.save();
+    if(!horiz) g.rotate(Math.PI/2);
+    txt(g, o.volt || '1.5V', 0, horiz ? 0 : 0, {sz:Math.min(11, D*0.5), b:1, c:'#2b3038'});
+    g.restore();
+  }
   g.restore();
 
+  /* ± 标识：红＋、黑− */
   if(o.pm !== false){
-    const s = horiz ? 1 : 0;
-    txt(g, '＋', x + (s ? (half*flip+13) : 0), y + (s ? 0 : -half*flip-13), {sz:13, b:1, c:P.red});
-    txt(g, '−', x + (s ? (-half*flip-13) : 0), y + (s ? 0 : half*flip+13), {sz:14, b:1, c:P.inkL});
+    const sgn = horiz ? 1 : 0;
+    txt(g, '＋', x + (sgn ? (half*flip+13) : 0), y + (sgn ? 0 : -half*flip-13),
+        {sz:13, b:1, c:'#c0392b'});
+    txt(g, '−', x + (sgn ? (-half*flip-13) : 0), y + (sgn ? 0 : half*flip+13),
+        {sz:14, b:1, c:'#23272c'});
   }
   if(o.label) txt(g, o.label, x + (o.lx||0), y + (o.ly != null ? o.ly : (horiz ? dia/2+14 : 0)),
                   {sz:o.lsz||TYPE.val.sz, b:1, c:P.ink});
 }
 
-/* ================= 电阻（蓝色胶囊）================= */
+/* ================= 电阻 =================
+   真实色环电阻：米黄本体、银灰引脚、四道色环（默认 棕-黑-金-金 ≈ 1 Ω 级别的样子）。
+   规范：不许做成统一蓝色胶囊。 */
 function resistor(g, x, y, o){
   o = o || {};
   const horiz = o.horiz !== false;
@@ -259,126 +302,182 @@ function resistor(g, x, y, o){
   g.save();
   g.translate(x, y);
   if(!horiz) g.rotate(-Math.PI/2);
-  g.strokeStyle = P.ink; g.lineWidth = 2.4; g.lineCap = 'round';
+  /* 银色引脚 */
+  g.strokeStyle = P.steelD; g.lineWidth = S.lead; g.lineCap = 'round';
   g.beginPath();
-  g.moveTo(-L/2-10, 0); g.lineTo(-L/2+2, 0);
-  g.moveTo(L/2-2, 0);   g.lineTo(L/2+10, 0);
+  g.moveTo(-L/2-11, 0); g.lineTo(-L/2+2, 0);
+  g.moveTo(L/2-2, 0);   g.lineTo(L/2+11, 0);
   g.stroke();
-  rr(g, -L/2, -D/2, L, D, D/2);
-  g.fillStyle = cyl(g, -D/2, D/2, P.blueD, P.blue, '#e2effb');
+  g.save(); g.globalAlpha = 0.55;
+  g.strokeStyle = P.chrome; g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(-L/2-11, -0.9); g.lineTo(-L/2+2, -0.9);
+  g.moveTo(L/2-2, -0.9);   g.lineTo(L/2+11, -0.9);
+  g.stroke(); g.restore();
+  /* 米黄本体 */
+  rr(g, -L/2, -D/2, L, D, D*0.42);
+  g.fillStyle = cyl(g, -D/2, D/2, P.creamD, P.cream, '#f8f1de');
   g.fill();
-  g.strokeStyle = P.blueD; g.lineWidth = 1.2; g.stroke();
-  g.save(); g.globalAlpha = 0.65;
+  g.strokeStyle = '#9c8a5e'; g.lineWidth = S.edge; g.stroke();
+  /* 色环 */
+  const bands = o.bands || ['#6b4423', '#1b1b1b', BAND.gold, BAND.gold];
+  g.save();
+  rr(g, -L/2, -D/2, L, D, D*0.42); g.clip();
+  bands.forEach(function(c, i2){
+    const bw = L*0.075;
+    const bx = -L/2 + L*(0.20 + i2*0.155);
+    g.fillStyle = c;
+    g.fillRect(bx, -D/2, bw, D);
+    g.save(); g.globalAlpha = 0.22; g.fillStyle = '#000';
+    g.fillRect(bx, D*0.18, bw, D*0.32); g.restore();      /* 环也跟着圆柱变暗 */
+  });
+  g.restore();
+  /* 左上高光 */
+  g.save(); g.globalAlpha = S.hiA;
   g.strokeStyle = '#fff'; g.lineWidth = 1.7; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(-L/2+D*0.45, -D/2+3.4); g.lineTo(L/2-D*0.45, -D/2+3.4); g.stroke();
+  g.beginPath(); g.moveTo(-L/2+D*0.42, -D/2+3.2); g.lineTo(L/2-D*0.42, -D/2+3.2); g.stroke();
   g.restore();
   g.restore();
   if(o.label) txt(g, o.label, x + (o.lx||0), y + (o.ly != null ? o.ly : (horiz ? -D/2-12 : 0)),
                   {sz:o.lsz||TYPE.val.sz, b:1, c:o.lc || P.ink});
 }
 
-/* 可变电阻：胶囊 + 滑块，t=0..1 */
+/* 可变电阻（小型）：陶瓷管 + 铜电阻丝 + 银滑片。t = 0..1 */
 function rheostat(g, x, y, t, o){
   o = o || {};
   const L = o.len || 62, D = o.dia || 17;
   const horiz = o.horiz !== false;
+  const tt = Math.max(0, Math.min(1, t == null ? 0.5 : t));
   g.save();
   g.translate(x, y);
   if(!horiz) g.rotate(-Math.PI/2);
-  g.strokeStyle = P.ink; g.lineWidth = 2.4; g.lineCap = 'round';
+  g.strokeStyle = P.steelD; g.lineWidth = S.lead; g.lineCap = 'round';
   g.beginPath();
-  g.moveTo(-L/2-10, 0); g.lineTo(-L/2+2, 0);
-  g.moveTo(L/2-2, 0);   g.lineTo(L/2+10, 0);
+  g.moveTo(-L/2-11, 0); g.lineTo(-L/2+2, 0);
+  g.moveTo(L/2-2, 0);   g.lineTo(L/2+11, 0);
   g.stroke();
-  rr(g, -L/2, -D/2, L, D, D/2);
-  g.fillStyle = cyl(g, -D/2, D/2, '#aeb7c1', '#e7ebf0', '#ffffff');
+  /* 瓷管 */
+  rr(g, -L/2, -D/2, L, D, D*0.3);
+  g.fillStyle = cyl(g, -D/2, D/2, '#cbc3b1', P.ceramic, '#fdfaf3');
   g.fill();
-  g.strokeStyle = P.inkL; g.lineWidth = 1.2; g.stroke();
-  const tt = Math.max(0, Math.min(1, t == null ? 0.5 : t));
+  g.strokeStyle = '#a89f8b'; g.lineWidth = S.edge; g.stroke();
+  /* 铜电阻丝：一圈圈绕在管上 */
   g.save();
-  rr(g, -L/2, -D/2, L, D, D/2); g.clip();
-  g.fillStyle = cyl(g, -D/2, D/2, P.blueD, P.blue, '#e2effb');
-  g.fillRect(-L/2, -D/2, L*tt, D);
+  rr(g, -L/2, -D/2, L, D, D*0.3); g.clip();
+  g.lineWidth = 1.5;
+  for(let i2=0;i2<22;i2++){
+    const px = -L/2 + 3 + i2*((L-6)/21);
+    g.strokeStyle = (px + L/2) < L*tt ? P.copperD : P.copper;   /* 接入的那段颜色深一点 */
+    g.beginPath(); g.moveTo(px, -D/2); g.lineTo(px, D/2); g.stroke();
+  }
   g.restore();
+  /* 银滑片 */
   const kx = -L/2 + L*tt;
   g.save();
-  const kg = g.createRadialGradient(kx-3, -3, 1.5, kx, 0, D*0.6);
-  kg.addColorStop(0, '#bfe0ff'); kg.addColorStop(0.55, P.blue); kg.addColorStop(1, P.blueD);
-  g.fillStyle = kg;
-  g.beginPath(); g.arc(kx, 0, D*0.6, 0, TAU); g.fill();
-  g.strokeStyle = P.blueD; g.lineWidth = 1.2; g.stroke();
+  g.strokeStyle = P.steelDD; g.lineWidth = 2.4;
+  g.beginPath(); g.moveTo(kx, -D/2-9); g.lineTo(kx, -D/2+2); g.stroke();
+  rr(g, kx-7, -D/2-17, 14, 9, 2);
+  g.fillStyle = cyl(g, -D/2-17, -D/2-8, P.steelDD, P.steel, P.chrome);
+  g.fill();
+  g.strokeStyle = P.steelDD; g.lineWidth = S.edge; g.stroke();
   g.restore();
   g.restore();
-  if(o.label) txt(g, o.label, x + (o.lx||0), y + (o.ly != null ? o.ly : (horiz ? -D/2-13 : 0)),
+  if(o.label) txt(g, o.label, x + (o.lx||0), y + (o.ly != null ? o.ly : (horiz ? -D/2-22 : 0)),
                   {sz:o.lsz||TYPE.val.sz, b:1, c:P.ink});
 }
 
-/* ================= 开关 ================= */
+/* ================= 开关 =================
+   黑色胶木底座 + 银色接线柱 + 银色拨杆。
+   **状态只靠机械结构表现**：断开＝看得见空气间隙，闭合＝拨杆和两端接实。
+   规范明确禁止「红＝断开、绿＝闭合」那种靠颜色判断的做法。 */
 function knife(g, x, y, on, o){
   o = o || {};
   const w = o.w || 52;
   const x0 = x - w/2, x1 = x + w/2;
+  /* 胶木底座 */
   g.save();
-  g.strokeStyle = P.ink; g.lineWidth = 2.4; g.lineCap = 'round';
-  g.beginPath();
-  g.moveTo(x0-10, y); g.lineTo(x0, y);
-  g.moveTo(x1, y);    g.lineTo(x1+10, y);
-  g.stroke();
-  g.beginPath();
-  g.moveTo(x0, y);
-  if(on) g.lineTo(x1, y);
-  else   g.lineTo(x0 + w*0.9, y - w*0.42);
-  g.lineWidth = 3.4; g.strokeStyle = '#8b949e';       /* 金属拨杆 */
-  g.stroke();
-  g.lineWidth = 1.2; g.strokeStyle = '#c9ced4';
-  g.stroke();
+  rr(g, x0-9, y-3, w+18, 13, 3);
+  g.fillStyle = cyl(g, y-3, y+10, '#14171b', P.bakelite, P.bakeliteL);
+  g.fill();
+  g.strokeStyle = '#0d1013'; g.lineWidth = S.edge; g.stroke();
   g.restore();
+  /* 引出线 */
+  g.save();
+  g.strokeStyle = P.ink; g.lineWidth = S.lead; g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(x0-12, y); g.lineTo(x0-9, y);
+  g.moveTo(x1+9, y);  g.lineTo(x1+12, y);
+  g.stroke();
+  /* 拨杆：银色金属，断开时抬起 —— 间隙必须看得见 */
+  g.translate(x0, y);
+  if(!on) g.rotate(-0.55);
+  g.lineCap = 'round';
+  g.strokeStyle = P.steelDD; g.lineWidth = 4.6;
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(w, 0); g.stroke();
+  g.strokeStyle = P.steel; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(w, 0); g.stroke();
+  g.save(); g.globalAlpha = 0.7;
+  g.strokeStyle = P.chrome; g.lineWidth = 1.1;
+  g.beginPath(); g.moveTo(2, -1.1); g.lineTo(w-3, -1.1); g.stroke();
+  g.restore();
+  /* 手柄 */
+  rr(g, w-3, -5, 9, 10, 3);
+  g.fillStyle = cyl(g, -5, 5, '#14171b', '#3a4048', '#6b737d');
+  g.fill();
+  g.strokeStyle = '#0d1013'; g.lineWidth = 1; g.stroke();
+  g.restore();
+  /* 两个银色接线柱（闭合时拨杆压在右柱上）*/
   [x0, x1].forEach(function(px){
     g.save();
-    g.beginPath(); g.arc(px, y, 4.4, 0, TAU);
-    g.fillStyle = '#fff'; g.fill();
-    g.strokeStyle = on ? P.blueD : P.ink; g.lineWidth = 1.8; g.stroke();
+    const gr = g.createRadialGradient(px-1.6, y-1.6, 0.8, px, y, 5.4);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.55, P.steel); gr.addColorStop(1, P.steelDD);
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(px, y, 5.4, 0, TAU); g.fill();
+    g.strokeStyle = '#5b6672'; g.lineWidth = 1.1; g.stroke();
     g.restore();
   });
-  if(o.label) txt(g, o.label, x, y + (o.ly || -18),
-                  {sz:10.5, b:1, c: on ? P.blueD : P.inkL});
+  if(o.label) txt(g, o.label, x, y + (o.ly || -20), {sz:10.5, b:1, c:P.inkL});
 }
 
-/* ================= 灯泡 ================= */
-/* 灯泡四档：熄灭（灰白无光晕）/ 微亮（淡黄）/ 正常（明显黄）/ 很亮（黄白）
-   b 是连续值，这里按 0 / .01~.35 / .35~.7 / .7~1 折成四档的观感 */
+/* ================= 灯泡 =================
+   透明玻璃球 + 钨丝 + 银灰灯座。
+   规范：**不要把整个灯泡染成黄色** —— 亮度只由「灯丝亮度 + 轻微暖光晕」表现；
+   熄灭时玻璃透明、灯丝暗、没有光晕。四档：熄灭/微亮/正常/很亮。 */
 function bulbLevel(b){ return b < 0.02 ? 0 : (b < 0.35 ? 1 : (b < 0.7 ? 2 : 3)); }
 function bulb(g, x, y, R, b, o){
   o = o || {};
   b = Math.max(0, Math.min(1, b || 0));
   const lv = bulbLevel(b);
   const lit = lv > 0;
+
+  /* 暖色光晕：克制，只在灯丝周围一小圈 */
   if(lit){
-    const spec = [null,
-      {rad:2.0, a:0.30, c:'255,214,120'},   /* 微亮：淡黄，晕小 */
-      {rad:2.7, a:0.46, c:'255,200,80'},    /* 正常：明显黄 */
-      {rad:3.3, a:0.60, c:'255,226,150'}    /* 很亮：偏白的强黄 */
-    ][lv];
-    const gr = g.createRadialGradient(x, y, R*0.3, x, y, R*spec.rad);
-    gr.addColorStop(0, 'rgba('+spec.c+','+spec.a.toFixed(2)+')');
-    gr.addColorStop(0.5,'rgba('+spec.c+','+(spec.a*0.36).toFixed(2)+')');
-    gr.addColorStop(1, 'rgba('+spec.c+',0)');
+    const spec = [null, {rad:1.5, a:0.18}, {rad:2.0, a:0.30}, {rad:2.5, a:0.42}][lv];
+    const gr = g.createRadialGradient(x, y+R*0.06, R*0.15, x, y+R*0.06, R*spec.rad);
+    gr.addColorStop(0, 'rgba(255,214,150,'+spec.a.toFixed(2)+')');
+    gr.addColorStop(0.45,'rgba(255,206,130,'+(spec.a*0.4).toFixed(2)+')');
+    gr.addColorStop(1, 'rgba(255,206,130,0)');
     g.save(); g.fillStyle = gr;
-    g.beginPath(); g.arc(x, y, R*spec.rad, 0, TAU); g.fill(); g.restore();
+    g.beginPath(); g.arc(x, y+R*0.06, R*spec.rad, 0, TAU); g.fill(); g.restore();
   }
-  const bw = R*0.80, bh = R*0.62, by = y + R*0.78;
+
+  /* 灯座：银灰金属螺纹 + 深灰底 */
+  const bw = R*0.78, bh = R*0.60, by = y + R*0.80;
   g.save();
   rr(g, x-bw/2, by, bw, bh, 2);
-  g.fillStyle = cyl(g, by, by+bh, '#4a545e', '#8b949e', '#c3cad2');
+  g.fillStyle = cyl(g, by, by+bh, P.steelDD, P.steel, P.chrome);
   g.fill();
-  g.strokeStyle = P.ink; g.lineWidth = 1; g.stroke();
-  g.strokeStyle = 'rgba(43,48,56,.4)'; g.lineWidth = 0.9;
-  for(let i=1;i<3;i++){
-    const yy = by + bh*i/3;
+  g.strokeStyle = '#5b6672'; g.lineWidth = S.edge; g.stroke();
+  g.strokeStyle = 'rgba(91,102,114,.55)'; g.lineWidth = 0.9;
+  for(let i2=1;i2<3;i2++){
+    const yy = by + bh*i2/3;
     g.beginPath(); g.moveTo(x-bw/2+1, yy); g.lineTo(x+bw/2-1, yy); g.stroke();
   }
+  rr(g, x-bw*0.34, by+bh, bw*0.68, 3.2, 1.5);
+  g.fillStyle = '#23272c'; g.fill();
   g.restore();
 
+  /* 玻璃壳：始终透明，只有很亮时才带一点点暖色 */
   g.save();
   g.beginPath();
   g.moveTo(x-R*0.40, by+1);
@@ -386,47 +485,45 @@ function bulb(g, x, y, R, b, o){
   g.arc(x, y-R*0.10, R*0.96, Math.PI, 0);
   g.quadraticCurveTo(x+R*1.00, y+R*0.40, x+R*0.40, by+1);
   g.closePath();
-  const gg = g.createRadialGradient(x-R*0.28, y-R*0.42, R*0.1, x, y, R*1.2);
-  if(lit){
-    gg.addColorStop(0, 'rgba(255,248,220,'+(0.62+0.38*b).toFixed(2)+')');
-    gg.addColorStop(0.62,'rgba(255,224,140,'+(0.42+0.4*b).toFixed(2)+')');
-    gg.addColorStop(1, 'rgba(249,200,96,'+(0.34+0.3*b).toFixed(2)+')');
-  }else{
-    gg.addColorStop(0, 'rgba(255,255,255,.95)');
-    gg.addColorStop(0.62,'rgba(232,239,245,.88)');
-    gg.addColorStop(1, 'rgba(206,217,227,.82)');
-  }
+  const gg = g.createRadialGradient(x-R*0.30, y-R*0.42, R*0.1, x, y, R*1.2);
+  const warmA = lit ? [0, .06, .12, .20][lv] : 0;
+  gg.addColorStop(0, 'rgba(255,255,255,.94)');
+  gg.addColorStop(0.55,'rgba(232,240,246,'+(0.72 - warmA*0.6).toFixed(2)+')');
+  gg.addColorStop(1, lit ? 'rgba(255,232,190,'+(0.42+warmA).toFixed(2)+')'
+                         : 'rgba(200,212,222,.62)');
   g.fillStyle = gg; g.fill();
-  g.strokeStyle = lit ? 'rgba(190,140,30,.95)' : 'rgba(120,134,148,.9)';
-  g.lineWidth = 1.3; g.stroke();
+  g.strokeStyle = 'rgba(120,134,148,.85)'; g.lineWidth = 1.2; g.stroke();
   g.restore();
 
+  /* 钨丝：不亮时是金属灰，亮起来才发暖白光 */
   g.save();
   const fy = y + R*0.06;
-  g.strokeStyle = lit ? '#8a6a20' : '#9aa4ae'; g.lineWidth = 1.1;
+  g.strokeStyle = P.steelDD; g.lineWidth = 1.1;
   g.beginPath();
   g.moveTo(x-R*0.20, by); g.lineTo(x-R*0.20, fy);
   g.moveTo(x+R*0.20, by); g.lineTo(x+R*0.20, fy);
   g.stroke();
   const coilPath = function(){
     g.beginPath();
-    for(let i=0;i<=10;i++){
-      const px = x - R*0.20 + (R*0.40)*i/10;
-      g.lineTo(px, fy - ((i%2) ? R*0.19 : 0));
+    for(let i2=0;i2<=10;i2++){
+      const px = x - R*0.20 + (R*0.40)*i2/10;
+      g.lineTo(px, fy - ((i2%2) ? R*0.19 : 0));
     }
   };
   if(lit){
-    g.save(); g.globalAlpha = 0.5*b; g.lineWidth = 6;
-    g.strokeStyle = 'rgba(255,236,170,1)'; coilPath(); g.stroke(); g.restore();
+    g.save();
+    g.globalAlpha = [0, .30, .48, .65][lv]; g.lineWidth = 5.5;
+    g.strokeStyle = P.warmHot; coilPath(); g.stroke(); g.restore();
   }
-  g.lineWidth = lit ? 2.1 : 1.5;
+  g.lineWidth = lit ? 2.0 : 1.5;
   g.strokeStyle = lit
-    ? 'rgb(255,'+Math.round(214+38*b)+','+Math.round(110+120*b)+')'
-    : '#98a1ab';
+    ? ['', '#f5c96a', '#ffdf9c', '#fff6e0'][lv]
+    : P.tungsten;
   coilPath(); g.stroke();
   g.restore();
 
-  g.save(); g.globalAlpha = 0.8;
+  /* 玻璃高光：一律左上 */
+  g.save(); g.globalAlpha = 0.85;
   g.strokeStyle = '#fff'; g.lineWidth = 2.2; g.lineCap = 'round';
   g.beginPath(); g.arc(x, y-R*0.10, R*0.70, Math.PI*1.12, Math.PI*1.42);
   g.stroke(); g.restore();
@@ -434,41 +531,70 @@ function bulb(g, x, y, R, b, o){
   if(o.label) txt(g, o.label, x, y + R*2.0, {sz:o.lsz||TYPE.name.sz, c:TYPE.name.c});
 }
 
+/* 灯座：深灰胶木 + 两个银色接线柱 */
 function lampHolder(g, x, y, w, h){
   g.save();
   rr(g, x-w/2, y, w, h, 3);
-  g.fillStyle = cyl(g, y, y+h, '#39424d', '#6b747e', '#98a1ab');
+  g.fillStyle = cyl(g, y, y+h, '#14171b', P.bakelite, P.bakeliteL);
   g.fill();
-  g.strokeStyle = P.ink; g.lineWidth = 1.1; g.stroke();
+  g.strokeStyle = '#0d1013'; g.lineWidth = S.edge; g.stroke();
   g.restore();
-  node(g, x-w/2+5, y+h-4, 2.8);
-  node(g, x+w/2-5, y+h-4, 2.8);
+  terminal(g, x-w/2+5, y+h-4, 3.2);
+  terminal(g, x+w/2-5, y+h-4, 3.2);
 }
 
-function terminal(g, x, y, r){
+/* 接线柱：银色金属座 + 红（正）/ 黑（负）/ 银（不分极）三种帽 */
+function terminal(g, x, y, r, o){
+  o = o || {};
   r = r || 5;
+  const cap = o.pole === '+' ? ['#e0554a', '#c0392b', '#7e1f16']
+            : o.pole === '-' ? ['#5b6672', '#23272c', '#0d1013']
+            : [P.chrome, P.steel, P.steelDD];
   g.save();
-  const gr = g.createRadialGradient(x-r*0.4, y-r*0.4, r*0.15, x, y, r);
-  gr.addColorStop(0, '#f6ecc0'); gr.addColorStop(0.6, P.brass); gr.addColorStop(1, P.brassD);
+  /* 金属底座 */
+  g.fillStyle = P.steelD;
+  g.beginPath(); g.arc(x, y, r*1.15, 0, TAU); g.fill();
+  /* 帽 */
+  const gr = g.createRadialGradient(x-r*0.38, y-r*0.38, r*0.12, x, y, r);
+  gr.addColorStop(0, cap[0]); gr.addColorStop(0.6, cap[1]); gr.addColorStop(1, cap[2]);
   g.fillStyle = gr;
   g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
-  g.strokeStyle = P.brassD; g.lineWidth = 1; g.stroke();
+  g.strokeStyle = cap[2]; g.lineWidth = 1; g.stroke();
+  g.restore();
+}
+
+/* ================= 交互高亮 =================
+   规范：点中一个元件时**不许改它的真实颜色**，只加一圈细蓝描边 + 柔和蓝光晕。
+   highlight(g, x, y, w, h, {r}) —— 圈住元件的外接矩形 */
+function highlight(g, x, y, w, h, o){
+  o = o || {};
+  const rad = o.r || 10;
+  g.save();
+  g.globalAlpha = 0.16;
+  g.strokeStyle = P.blue; g.lineWidth = 7;
+  rr(g, x-4, y-4, w+8, h+8, rad+3); g.stroke();
+  g.globalAlpha = 1;
+  g.strokeStyle = P.blue; g.lineWidth = 1.6;
+  rr(g, x-4, y-4, w+8, h+8, rad+3); g.stroke();
   g.restore();
 }
 
 /* ================= 表计 ================= */
+/* 表计：白色表盘 + 深灰金属圈 + 黑色字母（真实仪表的样子，
+   不用蓝/绿上色 —— 那两个颜色在这套规范里是教学语义色） */
 function meterInline(g, x, y, r, ch, o){
   o = o || {};
-  const col = (ch === 'V') ? P.green : P.blue;
   g.save();
+  g.beginPath(); g.arc(x, y, r+1.6, 0, TAU);
+  g.fillStyle = P.steelD; g.fill();                 /* 金属外圈 */
   g.beginPath(); g.arc(x, y, r, 0, TAU);
   const gr = g.createRadialGradient(x-r*0.35, y-r*0.35, r*0.15, x, y, r);
-  gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#eef3f8');
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#e8ecf1');
   g.fillStyle = gr; g.fill();
-  g.strokeStyle = col; g.lineWidth = 2; g.stroke();
+  g.strokeStyle = P.steelDD; g.lineWidth = 1.4; g.stroke();
   g.restore();
-  txt(g, ch, x, y, {sz:r*1.05, b:1, c:col});
-  if(o.val != null) txt(g, o.val, x, y - r - 11, {sz:TYPE.val.sz, b:1, c:col});
+  txt(g, ch, x, y, {sz:r*1.05, b:1, c:'#23272c'});
+  if(o.val != null) txt(g, o.val, x, y - r - 11, {sz:TYPE.val.sz, b:1, c:P.blueD});
   if(o.label) txt(g, o.label, x, y + r + 12, {sz:TYPE.name.sz, c:TYPE.name.c});
 }
 
@@ -497,7 +623,7 @@ function panelMeter(g, x, y, w, h, o){
   o = o || {};
   g.save();
   rr(g, x, y, w, h, 6);
-  g.fillStyle = cyl(g, y, y+h, '#39424d', '#6b747e', '#98a1ab');
+  g.fillStyle = cyl(g, y, y+h, '#14171b', P.body, P.bodyL);
   g.fill();
   g.strokeStyle = P.ink; g.lineWidth = 1.3; g.stroke();
   g.restore();
@@ -513,10 +639,10 @@ function multimeter(g, x, y, w, h, o){
   o = o || {};
   g.save();
   rr(g, x, y, w, h, 9);
-  g.fillStyle = cyl(g, y, y+h, '#39424d', '#6b747e', '#98a1ab');
+  g.fillStyle = cyl(g, y, y+h, '#14171b', P.body, P.bodyL);   /* 深灰黑机身 */
   g.fill();
-  g.strokeStyle = P.ink; g.lineWidth = 1.4; g.stroke();
-  g.fillStyle = '#c0562e';
+  g.strokeStyle = '#0d1013'; g.lineWidth = 1.4; g.stroke();
+  g.fillStyle = '#a8432a';                                     /* 侧边橡胶护套 */
   rr(g, x+2, y+h*0.30, 5, h*0.42, 3); g.fill();
   rr(g, x+w-7, y+h*0.30, 5, h*0.42, 3); g.fill();
   g.restore();
@@ -528,7 +654,7 @@ function multimeter(g, x, y, w, h, o){
   const kx = x + w/2, ky = y + h*0.58, kr = Math.min(w, h)*0.18;
   g.save();
   const kg = g.createRadialGradient(kx-kr*0.4, ky-kr*0.4, kr*0.2, kx, ky, kr);
-  kg.addColorStop(0, '#c9ced4'); kg.addColorStop(0.6, '#6b747e'); kg.addColorStop(1, '#39424d');
+  kg.addColorStop(0, '#6b737d'); kg.addColorStop(0.6, '#23272c'); kg.addColorStop(1, '#0d1013');
   g.fillStyle = kg;
   g.beginPath(); g.arc(kx, ky, kr, 0, TAU); g.fill();
   g.strokeStyle = P.ink; g.lineWidth = 1.2; g.stroke();
@@ -549,7 +675,7 @@ function multimeter(g, x, y, w, h, o){
   txt(g, o.mode || 'V⎓', kx + kr + 13, ky, {sz:10, b:1, c:'#f2f5f8'});
 
   const jy = y + h - 12;
-  [[x + w*0.32, '#2b3038', 'COM'], [x + w*0.62, '#8c2f26', 'V']].forEach(function(a2){
+  [[x + w*0.32, '#14171b', 'COM'], [x + w*0.62, '#a8302a', 'V']].forEach(function(a2){
     g.save();
     g.beginPath(); g.arc(a2[0], jy, 5.5, 0, TAU);
     g.fillStyle = a2[1]; g.fill();
@@ -890,7 +1016,8 @@ const BAND = {0:'#1b1b1b',1:'#6b4423',2:'#c0392b',3:'#e07b2a',4:'#e0c020',
 
 global.EP = {
   P:P, TYPE:TYPE, rr:rr, cyl:cyl, shade:shade, BAND:BAND, WIRE_W:WIRE_W,
-  callout:callout, chip:chip, legend:legend, heading:heading,
+  callout:callout, chip:chip, legend:legend, heading:heading, highlight:highlight,
+  WIRE_C:WIRE_C,
   wire:wire, node:node, flow:flow, terminal:terminal,
   cell:cell, resistor:resistor, rheostat:rheostat, knife:knife,
   bulb:bulb, lampHolder:lampHolder,

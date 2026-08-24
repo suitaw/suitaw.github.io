@@ -67,10 +67,21 @@ canvas{display:block;width:100%;background:#fafbfc;border-radius:8px}
   </div>
 
   <div class="sec">
-    <h2>六、这套规范的硬约定</h2>
+    <h2>六、颜色语义（这一条最要紧）</h2>
+    <p><b>元件本身一律用现实里的真实颜色和材质</b>；下面这几种颜色是<b>教学语义</b>，
+       只在表达意思的时候用，不许拿去给元件上色。</p>
+    <canvas id="c6"></canvas>
+  </div>
+
+  <div class="sec">
+    <h2>七、这套规范的硬约定</h2>
     <ul class="rule">
-      <li><b>白/浅灰底</b>，蓝色是主教学强调色，橙黄只留给「规定电流方向」，蓝色小粒子只留给「电子」。</li>
-      <li>深灰只用于<b>导线和结构</b>，不用来强调。</li>
+      <li><b>元件优先用现实颜色</b>：电池深灰+银正极、电阻米黄色环、开关黑座银杆、
+          灯泡透明玻璃+银灯座、导线黑/红、接线柱红黑。<b>不为了统一配色去改元件真实颜色。</b></li>
+      <li><b>开关状态只靠机械结构表现</b>：断开＝看得见空气间隙，闭合＝拨杆接实。
+          <b>不许用红＝断开、绿＝闭合。</b></li>
+      <li><b>灯泡不要整体染黄</b>：亮度只由灯丝亮度 + 轻微暖光晕表现，玻璃始终透明。</li>
+      <li>点中元件时<b>不改它的真实颜色</b>，只加一圈细蓝描边和柔和蓝光晕（<code>EP.highlight</code>）。</li>
       <li>半扁平矢量 + 轻微体积感：<b>不要照片质感、不要 3D 渲染、不要复杂纹理和重阴影</b>。</li>
       <li>面向中学生：<b>不做儿童玩具风，也不做工程软件风</b>。</li>
       <li>手机上要认得出：最小元件在 390px 宽的屏幕上不小于 12px。</li>
@@ -122,7 +133,10 @@ function draw1(t){
     ['蜂鸣器',      function(x,y){ EP.buzzer(g, x, y, 15, {on:true}); }],
     ['电流表 A',    function(x,y){ EP.meterInline(g, x, y, 15, 'A'); }],
     ['电压表 V',    function(x,y){ EP.meterInline(g, x, y, 15, 'V'); }],
-    ['接线柱',      function(x,y){ EP.terminal(g, x, y, 8); }]
+    ['接线柱 红/黑', function(x,y){
+        EP.terminal(g, x-11, y, 8, {pole:'+'});
+        EP.terminal(g, x+11, y, 8, {pole:'-'});
+      }]
   ];
   items.forEach(function(it, i){
     const p = at(i);
@@ -207,12 +221,36 @@ function draw4(){
                           ['电流方向（规定）', EP.P.amber, 'arrow']]);
 }
 
+/* ---------------- 六、颜色语义 ---------------- */
+const s6 = new Stage('c6', 360, 176);
+function draw6(){
+  const g = s6.g; s6.clear('#fafbfc');
+  const rows = [
+    ['#c0392b', '红', '正极 · 警告 · 错误 · 危险'],
+    ['#23272c', '黑 / 深灰', '普通导线 · 负极 · 正文 · 金属结构'],
+    ['#2a86d8', '蓝', '电子运动 · 选中高亮 · 电位等教学信息'],
+    ['#f0a020', '橙', '规定电流方向（只此一处）'],
+    ['#2f9e44', '绿', '成功 · 正常 · 操作完成'],
+    ['#ffd08a', '暖黄', '灯泡实际发光']
+  ];
+  rows.forEach(function(r, i){
+    const y = 20 + i*26;
+    g.save();
+    EP.rr(g, 16, y-8, 26, 16, 4);
+    g.fillStyle = r[0]; g.fill();
+    g.strokeStyle = 'rgba(43,48,56,.25)'; g.lineWidth = 1; g.stroke();
+    g.restore();
+    txt(g, r[1], 50, y, {sz:11, b:1, c:'#2b3038', al:'left'});
+    txt(g, r[2], 116, y, {sz:10, c:'#5b6672', al:'left'});
+  });
+}
+
 /* ---------------- 五、典型电路 ---------------- */
 const s5 = new Stage('c5', 360, 230);
 const P5 = new Path([[56,120],[56,44],[304,44],[304,196],[56,196],[56,140]]);
 function draw5(dt){
   const g = s5.g; s5.clear('#fafbfc');
-  EP.wire(g, P5);
+  EP.wire(g, P5, {c:'black'});
   const skip = [[0,14],[P5.len-14,P5.len],[86,132],[300,346]];
   EP.flow(g, P5, {phase:-ph, kind:'ele', gap:58, skip:skip});
   EP.flow(g, P5, {phase:ph + 29, kind:'cur', gap:58, skip:skip});
@@ -227,11 +265,11 @@ function draw5(dt){
   EP.legend(g, 180, 218, [['电子', EP.P.ele, 'dot'], ['电流方向', EP.P.amber, 'arrow']]);
 }
 
-function fit(){ [s1,s2,s3,s4,s5].forEach(function(s){ s.fit(); }); }
+function fit(){ [s1,s2,s3,s4,s5,s6].forEach(function(s){ s.fit(); }); }
 window.addEventListener('resize', fit);
 fit();
 loop(function(dt, t){
-  draw1(t); draw2(dt); draw3(t); draw4(); draw5(dt);
+  draw1(t); draw2(dt); draw3(t); draw4(); draw5(dt); draw6();
 });
 </script>
 </body>
