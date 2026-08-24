@@ -253,6 +253,7 @@ function draw1(dt){
   const g = st1.g; st1.clear();
   S1.ph += dt * 40 * S1.dir;
 
+  EP.heading(g, 14, 16, S1.sub === 'a' ? '直导线周围的磁场' : '线圈就是电磁铁');
   if(S1.sub === 'a'){
     /* ---- 直导线：用课本那张「截面图」，最不容易看岔 ---- */
     const into = S1.dir > 0;                 /* 电流穿进纸面 */
@@ -402,6 +403,7 @@ function fluxAt(x){
 
 function draw2(dt){
   const g = st2.g; st2.clear();
+  EP.heading(g, 14, 16, '磁铁一动才有电');
 
   /* ---- 位置更新 ---- */
   if(S2.auto){
@@ -556,6 +558,7 @@ const st3 = new Stage('cv2', 360, 288);
 
 function draw3(){
   const g = st3.g; st3.clear();
+  EP.heading(g, 14, 16, '右手定则判方向');
 
   /* 磁极 */
   const nOnLeft = S3.bDir > 0;

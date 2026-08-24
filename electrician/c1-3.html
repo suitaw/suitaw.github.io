@@ -258,7 +258,8 @@ const st1 = new Stage('cv0', 360, 250);
 
 function draw1(){
   const g = st1.g; st1.clear();
-  txt(g, '每天用 ' + S1.h.toFixed(1) + ' 小时，一个月各要多少度电', 180, 20, {sz:11, c:C.tx2});
+  EP.heading(g, 14, 18, '一个月要多少度电',
+             '（每天用 ' + S1.h.toFixed(1) + ' 小时）');
 
   const maxKwh = 1.8 * S1.h * 30;               /* 电热水壶那根最长 */
   const x0 = 100, x1 = 340, top = 40, bh = 26, gap = 10;
@@ -310,6 +311,7 @@ const st2 = new Stage('cv1', 360, 268);
 
 function draw2(){
   const g = st2.g; st2.clear();
+  EP.heading(g, 14, 18, '同一个功率，三种算法');
   const I = S2.U / S2.R, P = S2.U * I;
 
   /* 电路 */
@@ -319,11 +321,13 @@ function draw2(){
   EP.flow(g, P2, {phase:0, gap:52, kind:'cur',
                skip:[[0,10],[P2.len-10,P2.len],
                      [segAt(P2,L.x1,87)-22, segAt(P2,L.x1,87)+22]]});
-  battery(g, L.x0, 87, {horiz:false, long:19, short:10, gap:9, pm:false});
-  txt(g, 'U = ' + S2.U + ' V', L.x0+16, 87, {sz:11, b:1, c:C.acc, al:'left'});
-  resistor(g, L.x1, 87, {horiz:false, len:34, w:16});
-  txt(g, 'R = ' + S2.R + ' Ω', L.x1-16, 87, {sz:11, b:1, c:C.tx, al:'right'});
-  txt(g, 'I = ' + I.toFixed(2) + ' A', 178, L.y0-16, {sz:11.5, b:1, c:C.cur});
+  EP.cell(g, L.x0, 87, 40, 19, {horiz:false, pm:false, volt:false});
+  EP.callout(g, L.x0+9, 87, L.x0+24, 82, 'U = ' + S2.U + ' V', '电源电压',
+             {al:'left', color:EP.P.blueD});
+  EP.resistor(g, L.x1, 87, {horiz:false, len:38, dia:16});
+  EP.callout(g, L.x1-9, 87, L.x1-24, 108, 'R = ' + S2.R + ' Ω', '负载电阻',
+             {al:'right', color:EP.P.ink});
+  EP.chip(g, 'I = ' + I.toFixed(2) + ' A', 178, L.y0-14, {sz:11, b:1, c:EP.P.amber});
 
   /* 三行算式，各占一行，绝不并排 */
   const rows = [
@@ -367,6 +371,7 @@ const st3 = new Stage('cv2', 360, 276);
 
 function draw3(){
   const g = st3.g; st3.clear();
+  EP.heading(g, 14, 18, '同一根回路，谁烫谁不烫');
   const qa = S3.I*S3.I*RA, qb = S3.I*S3.I*RB;
 
   /* 一条串联电路：电源 — 导线 — 灯丝 — 导线 */
@@ -427,26 +432,27 @@ function note3(){
 const S4 = { U:220 };
 const PN = 1200, UN = 220;
 const R4 = UN*UN/PN;                 /* ≈ 40.33 Ω */
-const st4 = new Stage('cv3', 360, 262);
+const st4 = new Stage('cv3', 360, 272);
 
 function draw4(){
   const g = st4.g; st4.clear();
   const P = S4.U*S4.U/R4, pct = P/PN;
+  EP.heading(g, 14, 14, '铭牌功率 vs 实际功率');
 
   /* 铭牌 */
-  box(g, 22, 20, 150, 92, 6, '#f4f6f9', C.metalD, 1.6);
-  txt(g, '产 品 铭 牌', 97, 36, {sz:10, c:C.tx3});
+  box(g, 22, 28, 150, 92, 6, '#f4f6f9', C.metalD, 1.6);
+  txt(g, '产 品 铭 牌', 97, 44, {sz:10, c:C.tx3});
   g.save(); g.strokeStyle = C.boxLine; g.lineWidth = 1;
-  g.beginPath(); g.moveTo(32, 45); g.lineTo(162, 45); g.stroke(); g.restore();
-  txt(g, '额定电压  220 V', 34, 60, {sz:11, c:C.tx, al:'left'});
-  txt(g, '额定功率  1200 W', 34, 78, {sz:11, b:1, c:C.tx, al:'left'});
-  txt(g, '（电热类，电阻约 40 Ω）', 34, 96, {sz:9, c:C.tx3, al:'left'});
+  g.beginPath(); g.moveTo(32, 53); g.lineTo(162, 53); g.stroke(); g.restore();
+  txt(g, '额定电压  220 V', 34, 68, {sz:11, c:C.tx, al:'left'});
+  txt(g, '额定功率  1200 W', 34, 86, {sz:11, b:1, c:C.tx, al:'left'});
+  txt(g, '（电热类，电阻约 40 Ω）', 34, 104, {sz:9, c:C.tx3, al:'left'});
 
   /* 右边：实际电压表 */
-  box(g, 190, 20, 150, 92, 6, '#20262c', '#20262c', 1);
-  txt(g, '实际电压', 265, 38, {sz:10, c:C.tx3});
-  txt(g, S4.U + ' V', 265, 62, {sz:21, b:1, c:'#5ce08a'});
-  txt(g, '实际功率 ' + P.toFixed(0) + ' W', 265, 92, {sz:11.5, b:1, c:'#f0b429'});
+  box(g, 190, 28, 150, 92, 6, '#20262c', '#20262c', 1);
+  txt(g, '实际电压', 265, 46, {sz:10, c:C.tx3});
+  txt(g, S4.U + ' V', 265, 70, {sz:21, b:1, c:'#5ce08a'});
+  txt(g, '实际功率 ' + P.toFixed(0) + ' W', 265, 100, {sz:11.5, b:1, c:'#f0b429'});
 
   /* 功率条 */
   const bx = 30, bw = 300, by = 138, bh = 24;

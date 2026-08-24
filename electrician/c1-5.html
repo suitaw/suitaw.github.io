@@ -252,6 +252,7 @@ const st1 = new Stage('cv0', 360, 300);
 
 function draw1(dt){
   const g = st1.g; st1.clear();
+  EP.heading(g, 14, 16, '方向变不变');
   S1.t += dt;
 
   /* ---- 上半：一根导线 + 小球，看方向 ---- */
@@ -337,6 +338,7 @@ const st2 = new Stage('cv1', 360, 300);
 
 function draw2(dt){
   const g = st2.g; st2.clear();
+  EP.heading(g, 14, 16, '转子转一圈 = 一个周期');
   if(S2.run) S2.ang = (S2.ang + dt * S2.spd * 40) % 360;
   const rad = S2.ang * Math.PI/180;
   const e = Math.sin(rad);
@@ -426,6 +428,7 @@ const st3 = new Stage('cv2', 360, 306);
 
 function draw3(dt){
   const g = st3.g; st3.clear();
+  EP.heading(g, 14, 16, '三相错开 120°');
   S3.t += dt;
 
   /* ---- 上：三相波形 ---- */
@@ -446,7 +449,7 @@ function draw3(dt){
       if(i===0) g.moveTo(x, py(v)); else g.lineTo(x, py(v));
     }
     g.stroke(); g.restore();
-    txt(g, names[k], bx.x + 8 + k*26, bx.y - 9, {sz:10, b:1, c:cols[k], al:'left'});
+    txt(g, names[k], bx.x + bx.w - 86 + k*26, bx.y - 9, {sz:10, b:1, c:cols[k], al:'left'});
   }
   /* 选中的那条差值波形 */
   if(S3.p === 'AB'){
@@ -477,7 +480,7 @@ function draw3(dt){
   });
   node(g, cx, cy, {r:5, color:'#5b6672'});
   txt(g, 'N 中性点', cx, cy+18, {sz:10, c:C.tx2});
-  txt(g, '三相绕组星形接法', cx, cy-r-16, {sz:10, c:C.tx3});
+  txt(g, '三相绕组星形接法', 20, cy-r-16, {sz:10, c:C.tx3, al:'left'});
 
   /* 右边说明 */
   const on = S3.p === 'AN';
@@ -532,7 +535,7 @@ const st4 = new Stage('cv3', 360, 278);
 function draw4(){
   const g = st4.g; st4.clear();
   const s = SYS[S4.i];
-  txt(g, s.n, 180, 22, {sz:12.5, b:1, c:C.tx});
+  EP.heading(g, 14, 16, s.n, '（数线、认颜色）');
 
   /* 左：配电箱 */
   box(g, 22, 42, 62, 152, 6, '#e7ebf0', C.metalD, 1.6);
