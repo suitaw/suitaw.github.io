@@ -1,0 +1,117 @@
+/* 军队文职考试笔记 · 共享样式
+   十个小节页面 + index.html 共用这一份，改一处全站变。
+   配色/字体的设计意图见仓库 CLAUDE.md「junwenzhi/」一节。 */
+:root{
+  --bg:#f3ede0;
+  --surface:#fbf8f0;
+  --surface-2:#eee5d0;
+  --ink:#22283a;
+  --ink-soft:#5b6178;
+  --navy:#1f3a63;
+  --crimson:#9c3a34;
+  --brass:#8f7333;
+  --line:#ddd0af;
+  --line-soft:#e8ddc0;
+  --nav-h:54px;
+  --font-display:"Noto Serif SC","Source Han Serif SC","Songti SC",serif;
+  --font-body:"PingFang SC","Noto Sans SC","Microsoft YaHei",-apple-system,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14171f;--surface:#1b1f2a;--surface-2:#232838;--ink:#e9e4d4;--ink-soft:#a7ab9e;
+    --navy:#8fb2e0;--crimson:#e0958c;--brass:#d4b573;--line:#333a4d;--line-soft:#2a3040;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--font-body);
+  line-height:1.75;font-size:15px;-webkit-text-size-adjust:100%;
+  padding-bottom:calc(28px + env(safe-area-inset-bottom,0px));
+}
+::selection{background:var(--brass);color:#fff;}
+a{color:var(--navy);}
+strong{color:var(--crimson);font-weight:700;}
+.term{font-weight:700;color:var(--navy);}
+p{margin:0 0 12px;}
+ul,ol{margin:0 0 12px;padding-left:1.3em;}
+li{margin-bottom:5px;}
+
+/* ── 顶栏 ── */
+.top{
+  position:sticky;top:0;z-index:20;
+  background:var(--bg);border-bottom:1px solid var(--line);
+  padding:10px 16px 9px;display:flex;align-items:center;gap:10px;
+  min-height:var(--nav-h);
+}
+.top .grow{flex:1;min-width:0;}
+.top .eyebrow{
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--brass);margin:0 0 1px;
+}
+.top h1{
+  font-family:var(--font-display);font-size:1.08rem;font-weight:700;
+  margin:0;color:var(--navy);line-height:1.3;
+}
+.top .bk{
+  flex:none;font-size:.82rem;color:var(--ink-soft);text-decoration:none;
+  border:1px solid var(--line);border-radius:999px;padding:7px 13px;
+  min-height:32px;display:inline-flex;align-items:center;white-space:nowrap;
+}
+
+.wrap{max-width:720px;margin:0 auto;padding:18px 18px 10px;}
+
+/* ── 章节结构 ── */
+.section h3{
+  font-family:var(--font-display);font-size:1.08rem;color:var(--navy);
+  margin:0 0 4px;display:flex;align-items:center;gap:8px;
+}
+.section h3::before{content:"";width:4px;height:1.05em;background:var(--brass);border-radius:2px;flex:none;}
+.section .lead{color:var(--ink-soft);font-size:.85rem;margin:0 0 14px;}
+h4{font-family:var(--font-body);font-weight:700;font-size:.95rem;color:var(--ink);margin:20px 0 8px;}
+
+/* ── 卡片（机构信息块） ── */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:14px 0;}
+.card-title{font-weight:700;color:var(--navy);font-size:.98rem;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.card-title .badge{font-family:var(--font-mono);font-size:.72rem;font-weight:400;color:var(--brass);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:2px 9px;}
+.card-row{display:grid;grid-template-columns:5.4em 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--line-soft);font-size:.88rem;}
+.card-row:first-of-type{border-top:none;}
+.card-row .k{color:var(--ink-soft);font-size:.8rem;padding-top:1px;}
+.card-row .v{color:var(--ink);}
+.card-row .v ul{margin:0;padding-left:1.1em;}
+.card-row .v li{margin-bottom:3px;}
+
+/* ── 表格 ── */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:14px 0;border:1px solid var(--line);border-radius:10px;}
+table{width:100%;border-collapse:collapse;font-size:.83rem;background:var(--surface);}
+th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line-soft);vertical-align:top;}
+th{background:var(--surface-2);color:var(--navy);font-weight:700;font-size:.78rem;}
+tr:last-child td{border-bottom:none;}
+td:first-child,th:first-child{white-space:nowrap;font-weight:700;color:var(--ink);}
+
+/* ── 标签组 ── */
+.taglist{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0;}
+.taglist span{font-size:.78rem;background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:4px 9px;color:var(--ink);}
+
+/* ── 提示条 ── */
+.callout{background:var(--surface-2);border-left:3px solid var(--brass);border-radius:0 8px 8px 0;padding:10px 14px;margin:14px 0;font-size:.85rem;color:var(--ink-soft);}
+.callout strong{color:var(--brass);}
+.callout.link{border-left-color:var(--navy);}
+.callout.link strong{color:var(--navy);}
+.callout.link a{font-weight:700;text-decoration:none;}
+
+.num-highlight{font-family:var(--font-mono);font-weight:700;color:var(--crimson);}
+
+/* ── 页内翻页 ── */
+.pager{display:flex;gap:10px;margin:34px 0 6px;}
+.pager a{
+  flex:1;min-height:52px;border:1px solid var(--line);border-radius:10px;
+  background:var(--surface);text-decoration:none;color:var(--ink);
+  display:flex;flex-direction:column;justify-content:center;padding:8px 14px;
+}
+.pager a .d{font-size:.72rem;color:var(--ink-soft);}
+.pager a .t{font-size:.88rem;font-weight:700;margin-top:1px;}
+.pager a.next{text-align:right;}
+
+footer.pagefoot{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink-soft);font-size:.75rem;}
