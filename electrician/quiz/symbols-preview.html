@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>图形符号题预览</title>
+<style>
+body{font-family:-apple-system,"PingFang SC",sans-serif;background:#f4f6f8;margin:0;padding:16px;color:#222}
+h2{font-size:15px;margin:22px 0 8px}
+.q{background:#fff;border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.q h3{margin:0 0 10px;font-size:14.5px;line-height:1.5}
+.opts{display:flex;gap:10px}
+.opt{flex:1;text-align:center;border:2px solid #e3e7eb;border-radius:8px;padding:6px 2px}
+.opt.right{border-color:#1a6fd4;background:#eef4fc}
+.opt .lbl{font-weight:700;color:#555;font-size:13px;margin-bottom:2px}
+canvas{display:block;margin:0 auto}
+.all{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#fff;border-radius:12px;padding:12px}
+.all .cell{text-align:center;border:1px solid #e3e7eb;border-radius:8px;padding:6px 2px}
+.all .cell b{display:block;font-size:11px;color:#1a6fd4;margin-bottom:2px;font-weight:700}
+</style>
+</head>
+<body>
+<h2>① 八道题按题库顺序（蓝框＝正确答案）</h2>
+<div id="root"></div>
+
+<h2>② SYMS 全集（18 个符号，逐个核对画法）</h2>
+<div class="all" id="all"></div>
+
+<script src="../elec-symbols.js"></script>
+<script src="quiz-data.js"></script>
+<script>
+/* 题面/选项/答案全部从 quiz-data.js 读，不再在这里抄一份 —— 抄了就会跟题库对不上 */
+var QS=[];
+QUIZ_CHAPTERS.forEach(function(c){c.groups.forEach(function(g){g.items.forEach(function(q){
+  if(q.graphic)QS.push(q);
+})})});
+QS.sort(function(a,b){return a.id-b.id});
+
+function cv(sym,W,H){
+  var c=document.createElement('canvas'),d=window.devicePixelRatio||1;
+  c.width=Math.round(W*d);c.height=Math.round(H*d);
+  c.style.width=W+'px';c.style.height=H+'px';
+  var g=c.getContext('2d');g.scale(d,d);
+  if(!ESYM.drawKey(g,sym,W,H)){g.fillStyle='#c33';g.font='12px sans-serif';g.fillText('无此符号',8,20)}
+  return c;
+}
+var root=document.getElementById('root');
+QS.forEach(function(q){
+  var div=document.createElement('div');div.className='q';
+  div.innerHTML='<h3>'+q.id+'. '+q.question+'</h3><div class="opts">'+
+    ['A','B','C'].map(function(L){return '<div class="opt'+(L===q.answer?' right':'')+'">'+
+      '<div class="lbl">'+L+(L===q.answer?' ✓':'')+'</div></div>'}).join('')+'</div>';
+  root.appendChild(div);
+  div.querySelectorAll('.opt').forEach(function(o,i){
+    o.appendChild(cv(q.options[['A','B','C'][i]],96,108));
+  });
+});
+
+var all=document.getElementById('all');
+Object.keys(ESYM.SYMS).forEach(function(k){
+  var d=document.createElement('div');d.className='cell';
+  d.innerHTML='<b>'+k+'</b>';
+  d.appendChild(cv(k,96,108));
+  all.appendChild(d);
+});
+</script>
+</body>
+</html>
