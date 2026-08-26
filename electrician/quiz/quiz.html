@@ -188,18 +188,55 @@ ol.num{padding-left:22px;margin:6px 0}
 ol.num li{margin-bottom:7px;font-size:14px;line-height:1.7}
 p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 /* 核心考点 / 记忆要点里嵌的小表 */
-.key .tbl-wrap,.tip .tbl-wrap{margin:7px 0 3px}
-.key table,.tip table{min-width:0;font-size:12.5px}
-.key th,.key td,.tip th,.tip td{padding:6px 8px;line-height:1.5;white-space:normal}
-.key th,.tip th{background:rgba(255,255,255,.55)}
+.key .tbl-wrap,.tip .tbl-wrap,.tf-sec .tbl-wrap{margin:7px 0 3px}
+.key table,.tip table,.tf-sec table{min-width:0;font-size:12.5px}
+.key th,.key td,.tip th,.tip td,.tf-sec th,.tf-sec td{padding:6px 8px;line-height:1.5;white-space:normal}
+.key th,.tip th,.tf-sec th{background:rgba(255,255,255,.62)}
 .tip th{background:var(--bg)}
-.key .rt+.tbl-wrap,.tip .rt+.tbl-wrap{margin-top:7px}
-.key .tbl-wrap+.rt,.tip .tbl-wrap+.rt{margin-top:7px;display:block}
+.key .rt+.tbl-wrap,.tip .rt+.tbl-wrap,.tf-sec .rt+.tbl-wrap{margin-top:7px}
+.key .tbl-wrap+.rt,.tip .tbl-wrap+.rt,.tf-sec .tbl-wrap+.rt{margin-top:7px;display:block}
 
 .note{
   background:var(--amber-l);border:1px solid #f0d9ac;border-radius:var(--r);
   padding:11px 13px;font-size:13px;line-height:1.7;color:#6b4a10;margin-bottom:12px;
 }
+/* ── 判断题 ──
+   这批题答案全是「错误」，所以卡片的主角不是答案，是「正确说法」那一块。
+   题干用红底表示「这句话是错的」，正确说法用绿底，两者一眼分得开。 */
+.tf-q{
+  font-size:15px;line-height:1.68;padding:10px 12px;border-radius:9px;
+  background:var(--red-l);border:1px solid #f3c9c5;color:#7a2019;
+}
+.tf-x{
+  display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--red);
+  border-radius:5px;padding:1px 6px;margin-right:7px;vertical-align:2px;white-space:nowrap;
+}
+.tf-sec{margin-top:9px;font-size:13.5px;line-height:1.78;border-radius:9px;padding:9px 11px}
+.tf-sec .lb{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:.3px;
+  border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:1px;
+}
+.tf-w{background:var(--amber-l);border:1px solid #f0d9ac;color:#6b4a10}
+.tf-w .lb{background:#f6e3bf;color:var(--amber)}
+.tf-r{background:var(--green-l);border:1px solid #a9dfc2;color:#0e4b2b}
+.tf-r .lb{background:#c3ead3;color:var(--green)}
+.tf-r b{color:#0a3a20}
+.tf-wn{background:var(--red-l);border:1px solid #f3c9c5;color:#7d2b24}
+.tf-wn .lb{background:#f6cdc8;color:var(--red)}
+/* 盖住答案：只留题干，点「看答案」才翻开这一张 */
+.q.hidden-ans .tf-ans{display:none}
+.q.hidden-ans.show .tf-ans{display:block}
+.q.hidden-ans.show .tip{display:block}
+.q.show .tf-show{display:none}
+.tf-intro{background:#fdf6e9;border-color:#f0dfc0;color:#5c4415}
+.tf-intro .lb{display:inline-block;background:#f4e2c0;color:var(--amber);border-radius:5px;padding:1px 7px;margin-bottom:5px}
+.tf-ask{
+  margin:10px 0 9px;font-size:13.5px;line-height:1.7;color:var(--tx2);
+  background:var(--bg);border:1px dashed var(--line);border-radius:9px;padding:9px 11px;
+}
+.tf-self{text-align:center;font-size:13px;color:var(--tx3);margin:14px 0 6px}
+.tf-btns{display:flex;gap:8px}
+.tf-btns .big{margin:0}
 .empty{text-align:center;color:var(--tx3);font-size:14px;padding:34px 10px}
 </style>
 </head>
@@ -269,8 +306,78 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
     </div>
   </section>
 
+  <!-- 判断题 -->
+  <section class="page" id="pTF">
+    <div id="tfList">
+      <div class="note">
+        这 290 题的<b>正确答案全部是「错误」</b>，一律选「错误」就满分 —— <b>所以别把它当判对错的题来刷</b>。
+        它们的价值在于：<b>每一道都是把正确说法改坏了一个词</b>。
+        所以这一页要背的是绿色那块<b>「正确说法」</b>，不是「这题选错误」。
+        <b id="tfBadN">—</b>
+      </div>
+      <div class="bar">
+        <input class="search" id="tfQ" type="search" placeholder="搜题号 / 关键词，如 188 或 短路环">
+        <button class="tgl" id="tfMaskB">盖住答案</button>
+        <button class="tgl" id="tfTodoB">只看未掌握</button>
+      </div>
+      <button class="big" id="tfDrillB">⚡ 挑错练习</button>
+      <div id="tfRv"></div>
+    </div>
+
+    <div id="tfDrill" style="display:none">
+      <div id="tdSetup">
+        <div class="card pad">
+          <div style="font-size:15px;font-weight:700;margin-bottom:2px">挑错练习</div>
+          <div style="font-size:12.5px;color:var(--tx3);line-height:1.6">
+            给你一句被改错的话，<b>先自己想「错在哪个词、正确说法是什么」</b>，想好了再翻答案，自己判自己。
+            这批题没法判对错，只能这么练。
+          </div>
+          <div class="pick" id="tdScope"></div>
+          <button class="big" id="tdGo">开始</button>
+          <button class="big ghost" id="tdBack">‹ 返回题目列表</button>
+        </div>
+      </div>
+
+      <div id="tdRun" style="display:none">
+        <div class="qz-meta"><span id="tdPos"></span><span id="tdScore"></span></div>
+        <div class="prog"><i id="tdBar" style="width:0"></i></div>
+        <div class="card pad">
+          <div class="q-top">
+            <span class="q-id" id="tdId"></span>
+            <span class="q-warn" id="tdWarnB" style="display:none">存疑 / 原解析有误</span>
+          </div>
+          <div class="tf-q"><span class="tf-x">✗ 这句话是错的</span><span id="tdT"></span></div>
+          <div id="tdAsk">
+            <div class="tf-ask">想一想：<b>错在哪个词？正确的说法是什么？</b></div>
+            <button class="big" id="tdShow">想好了，看答案</button>
+          </div>
+          <div id="tdAfter" style="display:none">
+            <div id="tdBody"></div>
+            <div class="tf-self">刚才想到了吗？</div>
+            <div class="tf-btns">
+              <button class="big" id="tdYes">✓ 想到了</button>
+              <button class="big ghost" id="tdNo">✗ 没想到</button>
+            </div>
+          </div>
+        </div>
+        <button class="big ghost" id="tdQuit">结束本轮</button>
+      </div>
+
+      <div id="tdDone" style="display:none">
+        <div class="card pad">
+          <div class="score"><div class="n" id="tdS"></div><div class="d" id="tdD"></div></div>
+          <button class="big" id="tdAgain">再来一轮</button>
+          <button class="big ghost" id="tdMiss">只练这轮没想到的</button>
+          <button class="big ghost" id="tdBack2">‹ 返回题目列表</button>
+        </div>
+        <div id="tdList"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- 必背表 -->
   <section class="page" id="pTable">
+    <div class="bar" id="tbPick"></div>
     <div id="tb"></div>
   </section>
 </main>
@@ -278,11 +385,13 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 <nav class="nav">
   <button class="on" data-p="pReview"><span class="ic">📖</span>复习</button>
   <button data-p="pQuiz"><span class="ic">✏️</span>刷题</button>
+  <button data-p="pTF"><span class="ic">⚖️</span>判断题</button>
   <button data-p="pTable"><span class="ic">🔢</span>必背表</button>
 </nav>
 
 <script src="../elec-symbols.js"></script>
 <script src="quiz-data.js"></script>
+<script src="quiz-data-tf.js"></script>
 <script>
 /* ══ 基础 ══ */
 var LS='elec_quiz_';
@@ -338,7 +447,23 @@ function isM(id){return !!MASTER[id]}
 function setM(id,v){if(v)MASTER[id]=1;else delete MASTER[id];save('master',MASTER);paintStat()}
 function addW(id){WRONG[id]=(WRONG[id]||0)+1;save('wrong',WRONG)}
 function delW(id){delete WRONG[id];save('wrong',WRONG)}
+var curPage='pReview';
+/* 顶栏那行副标题和右边的计数，跟着当前页签走 —— 两套题库的题号都从 1 开始，
+   混在一起显示会看不出说的是哪一套 */
 function paintStat(){
+  if(curPage==='pTable'){                       // 必背表页两套表都能看，跟着切换条走
+    var nt=(tbWhich==='tf'?TF_CHAPTERS:QUIZ_CHAPTERS).filter(function(c){return c.table}).length;
+    $('#statT').innerHTML='<b>'+nt+'</b> 张表';
+    $('#subT').textContent='必背表 · '+(tbWhich==='tf'?'判断题':'单选题')+'的表';
+    return;
+  }
+  if(curPage==='pTF'){
+    var tm=TFALL.filter(function(q){return tfIsM(q.id)}).length;
+    var tw=Object.keys(TFW).length;
+    $('#statT').innerHTML='掌握 <b>'+tm+'</b>/'+TFALL.length+(tw?' · 没想到 '+tw:'');
+    $('#subT').textContent='判断题 · 共 '+TFALL.length+' 题 · 答案全是「错误」';
+    return;
+  }
   var m=ALL.filter(function(q){return isM(q.id)}).length;
   var w=Object.keys(WRONG).length;
   $('#statT').innerHTML='掌握 <b>'+m+'</b>/'+ALL.length+(w?' · 错 '+w:'');
@@ -351,7 +476,10 @@ $$('.nav button').forEach(function(b){
     $$('.nav button').forEach(function(x){x.classList.toggle('on',x===b)});
     $$('.page').forEach(function(p){p.classList.toggle('on',p.id===b.dataset.p)});
     window.scrollTo(0,0);
-    if(b.dataset.p==='pTable')paintTable();
+    curPage=b.dataset.p; paintStat();
+    if(curPage==='pTable')paintTable();
+    /* 判断题 290 张卡里有一堆表格，头一次进来才渲染，别拖慢首屏 */
+    if(curPage==='pTF'&&!tfPainted){tfPainted=true;paintTFReview()}
   };
 });
 
@@ -448,7 +576,7 @@ var tmr;
 $('#q').oninput=function(){var v=this.value.trim();clearTimeout(tmr);tmr=setTimeout(function(){kw=v;paintReview()},180)};
 
 /* ══ 刷题页 ══ */
-var SCOPES=[{k:'all',t:'全部 '+ALL.length+' 题'},{k:'todo',t:'未掌握的'},{k:'wrong',t:'错题本'},{k:'bad',t:'解析有误的'}];
+var SCOPES=[{k:'all',t:'全部'},{k:'todo',t:'未掌握的'},{k:'wrong',t:'错题本'},{k:'bad',t:'解析有误的'}];
 QUIZ_CHAPTERS.forEach(function(c){SCOPES.push({k:'c'+c.no,t:'第 '+c.no+' 章'})});
 var scope=load('scope','all'), rnd=load('rnd',true);
 function paintPick(){
@@ -533,6 +661,196 @@ $('#qzGo').onclick=function(){start(pool(scope))};
 $('#dAgain').onclick=function(){$('#qzDone').style.display='none';$('#qzSetup').style.display='';paintPick()};
 $('#dWrong').onclick=function(){start(Q.bad.slice())};
 
+/* ══ 判断题 ══
+   和单选题是两套独立的数据：题号都从 1 开始，会撞车，所以
+   掌握状态、错题本、展开状态全部另存一套 key（tf 开头），不能共用。
+   这批题的答案全是「错误」，判对错没有意义 —— 所以只做两件事：
+   ① 按章复习，主角是绿色那块「正确说法」；② 挑错练习，自己想、自己判。 */
+var TFALL=[];
+TF_CHAPTERS.forEach(function(c){c.groups.forEach(function(g){g.items.forEach(function(q){
+  TFALL.push(Object.assign({},q,{chap:c.no,chapT:c.title,grp:g.code,grpT:g.title}));
+})})});
+TFALL.sort(function(a,b){return a.id-b.id});
+var TFBAD=TFALL.filter(function(q){return q.warn}).length;
+$('#tfBadN').textContent='其中 '+TFBAD+' 题标了「存疑 / 原解析有误」——'+
+  '有的是我核不到权威出处，有的是 App 里的 AI 解析自己说反了，点开都写清楚了。';
+
+var TFM=load('tfmaster',{}), TFW=load('tfwrong',{}), tfPainted=false;
+function tfIsM(id){return !!TFM[id]}
+function tfSetM(id,v){if(v)TFM[id]=1;else delete TFM[id];save('tfmaster',TFM);paintStat()}
+function tfAddMiss(id){TFW[id]=(TFW[id]||0)+1;save('tfwrong',TFW)}
+function tfDelMiss(id){delete TFW[id];save('tfwrong',TFW)}
+
+/* 盖住答案默认「开」：这批题的正确用法就是先自己想错在哪，直接看等于白看 */
+var tfMask=load('tfmask',true), tfTodo=load('tftodo',false), tfKw='';
+
+function tfSec(cls,lb,txt){
+  return txt?'<div class="tf-sec '+cls+'"><span class="lb">'+lb+'</span>'+mdRich(txt)+'</div>':'';
+}
+/* 有几道题的错处我没能确认，wrong 里放的是整段说明、right 是空的 —— 标签要跟着换 */
+function tfAns(q){
+  return tfSec('tf-w',q.right?'错在哪':'说明',q.wrong)+
+         tfSec('tf-r','正确说法',q.right)+
+         (q.tip?'<div class="tip"><span class="lb">记忆要点</span>'+mdRich(q.tip)+'</div>':'')+
+         tfSec('tf-wn','存疑 / 原解析有误',q.warn);
+}
+function tfCard(q,forceOpen){
+  var hide=tfMask&&!forceOpen;
+  return '<div class="q'+(tfIsM(q.id)?' masterd':'')+(hide?' hidden-ans':'')+'" data-id="'+q.id+'">'+
+    '<div class="q-top"><span class="q-id">第 '+q.id+' 题</span>'+
+      (q.warn?'<span class="q-warn">存疑 / 解析有误</span>':'')+
+      (TFW[q.id]?'<span class="q-warn">没想到 '+TFW[q.id]+' 次</span>':'')+
+    '</div>'+
+    '<div class="tf-q"><span class="tf-x">✗ 这句话是错的</span>'+esc(q.question)+'</div>'+
+    '<div class="tf-ans">'+tfAns(q)+'</div>'+
+    /* 「看答案」和「标记掌握」放同一行 —— 分成两个块的话手机上会各占一行 */
+    '<div class="q-acts">'+
+      (hide?'<button class="mini tf-show">看答案</button>':'')+
+      '<button class="mini'+(tfIsM(q.id)?' done':'')+'" data-tm="'+q.id+'">'+
+      (tfIsM(q.id)?'✓ 已掌握':'标记掌握')+'</button></div>'+
+  '</div>';
+}
+function tfHit(q){
+  if(tfTodo&&tfIsM(q.id))return false;
+  if(!tfKw)return true;
+  if(String(q.id)===tfKw)return true;
+  var s=q.question+(q.wrong||'')+(q.right||'')+(q.tip||'')+(q.warn||'')+q.grpT;
+  return s.indexOf(tfKw)>=0;
+}
+function paintTFReview(){
+  var open=load('tfopen',{}), html='';
+  TF_CHAPTERS.forEach(function(c){
+    var gs=c.groups.map(function(g){
+      var its=g.items.filter(tfHit); return its.length?{g:g,its:its}:null;
+    }).filter(Boolean);
+    if(!gs.length)return;
+    var n=gs.reduce(function(a,x){return a+x.its.length},0);
+    var fo=(tfKw||tfTodo)?true:!!open['c'+c.no];
+    html+='<details class="chap"'+(fo?' open':'')+' data-c="'+c.no+'"><summary><div class="chap-h">'+
+      '<span class="chap-n">'+c.no+'</span><span class="chap-t">'+esc(c.title)+'</span>'+
+      '<span class="chap-c">'+n+' 题</span><span class="caret">▶</span></div></summary><div class="chap-body">'+
+      /* 章导语是「本章主线 + 那张总表」，价值不比题目低，展开章节就放在最上面 */
+      (c.intro?'<div class="key tf-intro"><span class="lb">本章主线</span>'+mdRich(c.intro)+'</div>':'');
+    gs.forEach(function(x){
+      var go=(tfKw||tfTodo)?true:!!open[x.g.code];
+      html+='<details class="grp"'+(go?' open':'')+' data-g="'+x.g.code+'"><summary><div class="grp-h">'+
+        '<span class="grp-code">'+x.g.code+'</span><span class="grp-t">'+esc(x.g.title)+'</span>'+
+        '<span class="grp-c">'+x.its.length+'</span><span class="caret">▶</span></div></summary>'+
+        (x.g.key?'<div class="key"><span class="lb">核心考点</span>'+mdRich(x.g.key)+'</div>':'')+
+        x.its.map(function(q){return tfCard(q)}).join('')+'</details>';
+    });
+    html+='</div></details>';
+  });
+  $('#tfRv').innerHTML=html||'<div class="empty">没有匹配的题目</div>';
+}
+$('#tfRv').addEventListener('click',function(e){
+  var sh=e.target.closest('.tf-show');
+  if(sh){sh.closest('.q').classList.add('show');return}
+  var b=e.target.closest('button[data-tm]');
+  if(b){var id=+b.dataset.tm;tfSetM(id,!tfIsM(id));
+    var card=b.closest('.q');card.classList.toggle('masterd',tfIsM(id));
+    b.classList.toggle('done',tfIsM(id));b.textContent=tfIsM(id)?'✓ 已掌握':'标记掌握';
+    if(tfTodo&&tfIsM(id))paintTFReview();}
+});
+$('#tfRv').addEventListener('toggle',function(e){
+  var d=e.target; if(d.tagName!=='DETAILS'||tfKw||tfTodo)return;
+  var open=load('tfopen',{}), k=d.dataset.c?('c'+d.dataset.c):d.dataset.g;
+  if(!k)return; if(d.open)open[k]=1;else delete open[k]; save('tfopen',open);
+},true);
+$('#tfMaskB').onclick=function(){tfMask=!tfMask;save('tfmask',tfMask);this.classList.toggle('on',tfMask);paintTFReview()};
+$('#tfTodoB').onclick=function(){tfTodo=!tfTodo;save('tftodo',tfTodo);this.classList.toggle('on',tfTodo);paintTFReview()};
+var tfTmr;
+$('#tfQ').oninput=function(){var v=this.value.trim();clearTimeout(tfTmr);
+  tfTmr=setTimeout(function(){tfKw=v;paintTFReview()},180)};
+
+/* ── 挑错练习 ── */
+var TDS=[{k:'all',t:'全部'},{k:'todo',t:'未掌握的'},
+         {k:'miss',t:'没想到过的'},{k:'warn',t:'带存疑标注的'}];
+TF_CHAPTERS.forEach(function(c){TDS.push({k:'c'+c.no,t:'第 '+c.no+' 章'})});
+var tdScope=load('tdscope','todo');
+function tdPool(k){
+  if(k==='all')return TFALL.slice();
+  if(k==='todo')return TFALL.filter(function(q){return !tfIsM(q.id)});
+  if(k==='miss')return TFALL.filter(function(q){return TFW[q.id]});
+  if(k==='warn')return TFALL.filter(function(q){return q.warn});
+  var n=+k.slice(1);return TFALL.filter(function(q){return q.chap===n});
+}
+function tdPaintPick(){
+  $('#tdScope').innerHTML=TDS.map(function(x){
+    var n=tdPool(x.k).length;
+    return '<button class="tgl'+(tdScope===x.k?' on':'')+'" data-s="'+x.k+'"'+
+      (n?'':' disabled style="opacity:.4"')+'>'+x.t+' '+n+'</button>';
+  }).join('');
+  $('#tdGo').disabled=!tdPool(tdScope).length;
+}
+$('#tdScope').onclick=function(e){var b=e.target.closest('button[data-s]');if(!b||b.disabled)return;
+  tdScope=b.dataset.s;save('tdscope',tdScope);tdPaintPick()};
+
+function tfShowList(){
+  $('#tfDrill').style.display='none';$('#tfList').style.display='';
+  paintTFReview();window.scrollTo(0,0);
+}
+$('#tfDrillB').onclick=function(){
+  $('#tfList').style.display='none';$('#tfDrill').style.display='';
+  $('#tdSetup').style.display='';$('#tdRun').style.display='none';$('#tdDone').style.display='none';
+  tdPaintPick();window.scrollTo(0,0);
+};
+$('#tdBack').onclick=tfShowList;
+$('#tdBack2').onclick=tfShowList;
+
+var D={list:[],i:0,ok:0,miss:[]};
+function tdStart(list){
+  D={list:list,i:0,ok:0,miss:[]};
+  for(var i=D.list.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));
+    var t=D.list[i];D.list[i]=D.list[j];D.list[j]=t}
+  $('#tdSetup').style.display='none';$('#tdDone').style.display='none';$('#tdRun').style.display='';
+  tdShow();
+}
+function tdShow(){
+  var q=D.list[D.i];
+  $('#tdPos').textContent='第 '+(D.i+1)+' / '+D.list.length+' 题　（题库第 '+q.id+' 题）';
+  $('#tdScore').textContent='想到 '+D.ok;
+  $('#tdBar').style.width=(D.i/D.list.length*100)+'%';
+  $('#tdId').textContent='第 '+q.id+' 题';
+  $('#tdWarnB').style.display=q.warn?'':'none';
+  $('#tdT').textContent=q.question;
+  $('#tdAsk').style.display='';$('#tdAfter').style.display='none';
+  window.scrollTo(0,0);
+}
+$('#tdShow').onclick=function(){
+  $('#tdBody').innerHTML=tfAns(D.list[D.i]);
+  $('#tdAsk').style.display='none';$('#tdAfter').style.display='';
+};
+function tdGrade(got){
+  var q=D.list[D.i];
+  if(got){D.ok++;tfDelMiss(q.id);tfSetM(q.id,true)}
+  else{tfAddMiss(q.id);tfSetM(q.id,false);D.miss.push(q)}
+  $('#tdScore').textContent='想到 '+D.ok;
+  D.i++; if(D.i>=D.list.length)tdFinish(); else tdShow();
+}
+$('#tdYes').onclick=function(){tdGrade(true)};
+$('#tdNo').onclick=function(){tdGrade(false)};
+$('#tdQuit').onclick=function(){if(D.i||confirm('这一轮还没开始，确定结束？'))tdFinish()};
+function tdFinish(){
+  $('#tdRun').style.display='none';$('#tdDone').style.display='';
+  var n=D.i||D.list.length;
+  $('#tdS').textContent=D.ok+' / '+n;
+  $('#tdD').textContent=D.miss.length?('有 '+D.miss.length+' 题没想到，正确说法再看一遍'):'全都想到了';
+  $('#tdMiss').style.display=D.miss.length?'':'none';
+  /* 没想到的题在成绩页直接摊开，不再盖住 —— 这时候要的是马上重看正确说法 */
+  $('#tdList').innerHTML=D.miss.length?('<div class="card pad"><div style="font-size:14px;font-weight:700;margin-bottom:8px">这轮没想到的题</div>'+
+    D.miss.map(function(q){return tfCard(q,true)}).join('')+'</div>'):'';
+  tdPaintPick();window.scrollTo(0,0);
+}
+$('#tdList').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-tm]');if(!b)return;
+  var id=+b.dataset.tm;tfSetM(id,!tfIsM(id));
+  b.classList.toggle('done',tfIsM(id));b.textContent=tfIsM(id)?'✓ 已掌握':'标记掌握';
+});
+$('#tdGo').onclick=function(){tdStart(tdPool(tdScope))};
+$('#tdAgain').onclick=function(){$('#tdDone').style.display='none';$('#tdSetup').style.display='';tdPaintPick()};
+$('#tdMiss').onclick=function(){tdStart(D.miss.slice())};
+
 /* ══ 必背表 ══ */
 function mdTable(src){
   var out='',rows=null,lines=src.split('\n');
@@ -565,21 +883,32 @@ function mdTable(src){
   if(out.slice(-5)==='</li>')out+='</ol>';
   return out;
 }
-var tablePainted=false;
+/* 两套题库各有一批章末表，章号是对齐的，但内容不一样，用一个切换条分开看 */
+var tbWhich=load('tbwhich','q');
 function paintTable(){
-  if(tablePainted)return; tablePainted=true;
-  var nT=QUIZ_CHAPTERS.filter(function(c){return c.table}).length;
-  var html='<div class="note">考前一天把这 '+nT+' 张表过一遍。数字类的题在真题里占比很高，而且是唯一能靠死记拿分的部分。<br>表格太宽时可以左右滑动。</div>';
-  QUIZ_CHAPTERS.filter(function(c){return c.table}).forEach(function(c){
+  var src=(tbWhich==='tf')?TF_CHAPTERS:QUIZ_CHAPTERS, has=src.filter(function(c){return c.table});
+  $('#tbPick').innerHTML=
+    '<button class="tgl'+(tbWhich==='q'?' on':'')+'" data-w="q">单选题的表 '+
+      QUIZ_CHAPTERS.filter(function(c){return c.table}).length+' 张</button>'+
+    '<button class="tgl'+(tbWhich==='tf'?' on':'')+'" data-w="tf">判断题的表 '+
+      TF_CHAPTERS.filter(function(c){return c.table}).length+' 张</button>';
+  var html='<div class="note">考前一天把这 '+has.length+' 张表过一遍。数字类的题在真题里占比很高，而且是唯一能靠死记拿分的部分。<br>表格太宽时可以左右滑动。</div>';
+  has.forEach(function(c){
     html+='<div class="card pad"><div class="chap-t" style="margin-bottom:2px">第 '+c.no+' 章 '+esc(c.title)+' · 必背</div>'+
       mdTable(c.table)+'</div>';
   });
   $('#tb').innerHTML=html;
 }
+$('#tbPick').onclick=function(e){
+  var b=e.target.closest('button[data-w]');if(!b||b.dataset.w===tbWhich)return;
+  tbWhich=b.dataset.w;save('tbwhich',tbWhich);paintTable();paintStat();window.scrollTo(0,0);
+};
 
 /* ══ 启动 ══ */
 $('#tMask').classList.toggle('on',mask);
 $('#tTodo').classList.toggle('on',todo);
+$('#tfMaskB').classList.toggle('on',tfMask);
+$('#tfTodoB').classList.toggle('on',tfTodo);
 paintStat();paintReview();paintPick();
 </script>
 </body>
