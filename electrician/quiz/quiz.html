@@ -24,6 +24,7 @@ body{
   -webkit-text-size-adjust:100%;
 }
 b{font-weight:700}
+sub,sup{font-size:.72em;line-height:0}
 code{background:#eef1f5;border-radius:4px;padding:1px 5px;font-size:.9em;font-family:ui-monospace,Menlo,Consolas,monospace}
 
 /* ── 顶栏 ── */
@@ -427,7 +428,9 @@ function mdRich(s){
   return out;
 }
 function md(s){
-  return esc(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\n/g,'<br>');
+  /* 白名单：md 源里用 <sub> 写下标（U<sub>AB</sub>、X<sub>L</sub>），esc 之后要还原，否则原样露出标签 */
+  return esc(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/&lt;(\/?su[bp])&gt;/g,'<$1>').replace(/\n/g,'<br>');
 }
 var $=function(s){return document.querySelector(s)},$$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
 
