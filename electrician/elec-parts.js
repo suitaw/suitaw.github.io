@@ -375,7 +375,11 @@ function resistor(g, x, y, o){
   rr(g, -L/2, -D/2, L, D, D*0.42); g.clip();
   bands.forEach(function(c, i2){
     const bw = L*0.075;
-    const bx = -L/2 + L*(0.20 + i2*0.155);
+    /* o.wide：把最后一环（误差环）往右挪一截。实物上误差环就是离另外三环远的，
+       「把离得远的那一头朝右」正是读色环的第一步 —— 图上不拉开这段距离，
+       教材里那句话就没法对着图讲（2.5 上那一屏抓到的）。不传就跟原来一模一样。 */
+    const wide = (o.wide && i2 === bands.length - 1) ? L*0.13 : 0;
+    const bx = -L/2 + L*(0.20 + i2*0.155) + wide;
     g.fillStyle = c;
     g.fillRect(bx, -D/2, bw, D);
     g.save(); g.globalAlpha = 0.22; g.fillStyle = '#000';
