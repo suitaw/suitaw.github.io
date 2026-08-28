@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>低压电工 · 题库复习</title>
+<!-- 主题要在解析 body 之前定下来，否则选了白天模式也会先闪一下深色 -->
+<script src="../elec-theme.js"></script>
 <style>
 :root{
   --nav-h:58px;
@@ -11,17 +13,33 @@
      的 :root 是同一套颜色，只是这里的变量名不一样（blue/green/red/amber）。
      `-l` 那几个原来是**浅底**（e8f1fd 这种），深底上要换成**暗底**，
      不然整块底板比文字还亮。 */
+  --r:12px;
+}
+/* 每个语义色三档：`色` 文字与描边、`-l` 整块底、`-b` 边框和标签底。
+   **块里的正文一律用 var(--tx)**，语义只由底色和标签表达 ——
+   原来正文写死成 #16324f / #0e4b2b 这种「配浅底的深色字」，
+   底换成暗色之后就和底板糊成一片，整段读不出来（他截图报的「核心考点看不清」）。 */
+:root, :root[data-theme="dark"]{
   --bg:#0c1014; --card:#141a21; --line:#252f3a;
   --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
-  --blue:#4ea3ff; --blue-l:#152536;
-  --green:#3ecf8e; --green-l:#12291f;
-  --red:#ff6b6b; --red-l:#331a1a;
-  --amber:#f0a020; --amber-l:#2e2412;
+  --blue:#4ea3ff;  --blue-l:#152536;  --blue-b:#1e4a7a;
+  --green:#3ecf8e; --green-l:#12291f; --green-b:#1e5c3f;
+  --red:#ff6b6b;   --red-l:#331a1a;   --red-b:#5c2b28;
+  --amber:#f0a020; --amber-l:#2e2412; --amber-b:#5c4520;
+  --code:#1b232d; --th:#1b232d;
   /* 让浏览器原生控件（滑杆轨道、复选框、下拉、滚动条）自己变深 ——
      不写这一行的话，深色页面里那几个原生件还是浅色的一块。 */
   color-scheme: dark;
-
-  --r:12px;
+}
+:root[data-theme="light"]{
+  --bg:#f5f7fa; --card:#ffffff; --line:#e3e8ee;
+  --tx:#242a31; --tx2:#5d6773; --tx3:#98a1ab;
+  --blue:#1a6fd4;  --blue-l:#e8f1fd;  --blue-b:#bcd8f6;
+  --green:#1c8348; --green-l:#e7f6ec; --green-b:#b3ddc3;
+  --red:#c32f2f;   --red-l:#fdecec;   --red-b:#f2c2c2;
+  --amber:#b35a00; --amber-l:#fff3e0; --amber-b:#eed3a4;
+  --code:#eef1f5; --th:#eef1f5;
+  color-scheme: light;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -33,7 +51,7 @@ body{
 }
 b{font-weight:700}
 sub,sup{font-size:.72em;line-height:0}
-code{background:#1b232d;border-radius:4px;padding:1px 5px;font-size:.9em;font-family:ui-monospace,Menlo,Consolas,monospace}
+code{background:var(--code);border-radius:4px;padding:1px 5px;font-size:.9em;font-family:ui-monospace,Menlo,Consolas,monospace}
 
 /* ── 顶栏 ── */
 .top{
@@ -119,7 +137,7 @@ main{padding:12px 12px 20px;max-width:720px;margin:0 auto}
   background:var(--blue-l);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;
   padding:10px 12px;margin:2px 2px 12px;font-size:13.5px;line-height:1.65;
 }
-.key{color:#16324f}
+.key{color:var(--tx)}
 .key .lb{display:block;font-size:11.5px;font-weight:700;color:var(--blue);letter-spacing:.6px;margin-bottom:3px}
 
 /* ── 题卡 ── */
@@ -134,9 +152,9 @@ main{padding:12px 12px 20px;max-width:720px;margin:0 auto}
   font-size:14px;line-height:1.6;border:1px solid transparent;background:var(--bg);
 }
 .opt .k{flex:none;font-weight:700;color:var(--tx2)}
-.opt.right{background:var(--green-l);border-color:#1e5c3f}
+.opt.right{background:var(--green-l);border-color:var(--green-b)}
 .opt.right .k{color:var(--green)}
-.opt.wrong{background:var(--red-l);border-color:#6b2f2b}
+.opt.wrong{background:var(--red-l);border-color:var(--red-b)}
 .opt.wrong .k{color:var(--red)}
 .hidden-ans .opt.right{background:var(--bg);border-color:transparent}
 .hidden-ans .opt.right .k{color:var(--tx2)}
@@ -144,7 +162,7 @@ main{padding:12px 12px 20px;max-width:720px;margin:0 auto}
 .ans{font-size:13.5px;font-weight:700;color:var(--green);margin:8px 0 0}
 .ans .no{color:var(--amber);font-weight:700}
 .tip{
-  margin-top:8px;background:#1a222b;border:1px solid var(--line);border-left:3px solid var(--blue);
+  margin-top:8px;background:var(--code);border:1px solid var(--line);border-left:3px solid var(--blue);
   border-radius:0 8px 8px 0;padding:9px 11px;font-size:13.5px;line-height:1.72;color:var(--tx2);
 }
 .tip .lb{font-weight:700;color:var(--blue);font-size:11.5px;letter-spacing:.6px;display:block;margin-bottom:2px}
@@ -153,7 +171,7 @@ main{padding:12px 12px 20px;max-width:720px;margin:0 auto}
   min-height:44px;padding:0 13px;border:1px solid var(--line);background:var(--card);border-radius:9px;
   font-size:13px;color:var(--tx2);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;
 }
-.mini.done{background:var(--green-l);border-color:#1e5c3f;color:var(--green);font-weight:700}
+.mini.done{background:var(--green-l);border-color:var(--green-b);color:var(--green);font-weight:700}
 .q.masterd{opacity:.55}
 
 /* ── 刷题 ── */
@@ -202,21 +220,21 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 .key .tbl-wrap,.tip .tbl-wrap,.tf-sec .tbl-wrap{margin:7px 0 3px}
 .key table,.tip table,.tf-sec table{min-width:0;font-size:12.5px}
 .key th,.key td,.tip th,.tip td,.tf-sec th,.tf-sec td{padding:6px 8px;line-height:1.5;white-space:normal}
-.key th,.tip th,.tf-sec th{background:rgba(255,255,255,.62)}
+.key th,.tip th,.tf-sec th{background:var(--th)}
 .tip th{background:var(--bg)}
 .key .rt+.tbl-wrap,.tip .rt+.tbl-wrap,.tf-sec .rt+.tbl-wrap{margin-top:7px}
 .key .tbl-wrap+.rt,.tip .tbl-wrap+.rt,.tf-sec .tbl-wrap+.rt{margin-top:7px;display:block}
 
 .note{
-  background:var(--amber-l);border:1px solid #5c4520;border-radius:var(--r);
-  padding:11px 13px;font-size:13px;line-height:1.7;color:#e8b93c;margin-bottom:12px;
+  background:var(--amber-l);border:1px solid var(--amber-b);border-radius:var(--r);
+  padding:11px 13px;font-size:13px;line-height:1.7;color:var(--tx);margin-bottom:12px;
 }
 /* ── 判断题 ──
    这批题答案全是「错误」，所以卡片的主角不是答案，是「正确说法」那一块。
    题干用红底表示「这句话是错的」，正确说法用绿底，两者一眼分得开。 */
 .tf-q{
   font-size:15px;line-height:1.68;padding:10px 12px;border-radius:9px;
-  background:var(--red-l);border:1px solid #5c2b28;color:#7a2019;
+  background:var(--red-l);border:1px solid var(--red-b);color:var(--tx);
 }
 .tf-x{
   display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--red);
@@ -227,20 +245,20 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
   display:inline-block;font-size:11px;font-weight:700;letter-spacing:.3px;
   border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:1px;
 }
-.tf-w{background:var(--amber-l);border:1px solid #5c4520;color:#e8b93c}
-.tf-w .lb{background:#4a3818;color:var(--amber)}
-.tf-r{background:var(--green-l);border:1px solid #1e5c3f;color:#0e4b2b}
-.tf-r .lb{background:#c3ead3;color:var(--green)}
-.tf-r b{color:#0a3a20}
-.tf-wn{background:var(--red-l);border:1px solid #5c2b28;color:#7d2b24}
-.tf-wn .lb{background:#4a2320;color:var(--red)}
+.tf-w{background:var(--amber-l);border:1px solid var(--amber-b);color:var(--tx)}
+.tf-w .lb{background:var(--amber-b);color:var(--amber)}
+.tf-r{background:var(--green-l);border:1px solid var(--green-b);color:var(--tx)}
+.tf-r .lb{background:var(--green-b);color:var(--green)}
+.tf-r b{color:var(--green)}
+.tf-wn{background:var(--red-l);border:1px solid var(--red-b);color:var(--tx)}
+.tf-wn .lb{background:var(--red-b);color:var(--red)}
 /* 盖住答案：只留题干，点「看答案」才翻开这一张 */
 .q.hidden-ans .tf-ans{display:none}
 .q.hidden-ans.show .tf-ans{display:block}
 .q.hidden-ans.show .tip{display:block}
 .q.show .tf-show{display:none}
-.tf-intro{background:#2e2412;border-color:#4a3818;color:#5c4415}
-.tf-intro .lb{display:inline-block;background:#4a3818;color:var(--amber);border-radius:5px;padding:1px 7px;margin-bottom:5px}
+.tf-intro{background:var(--amber-l);border-color:var(--amber-b);color:var(--tx)}
+.tf-intro .lb{display:inline-block;background:var(--amber-b);color:var(--amber);border-radius:5px;padding:1px 7px;margin-bottom:5px}
 .tf-ask{
   margin:10px 0 9px;font-size:13.5px;line-height:1.7;color:var(--tx2);
   background:var(--bg);border:1px dashed var(--line);border-radius:9px;padding:9px 11px;
@@ -410,6 +428,10 @@ document.querySelectorAll('.nav .ic[data-ei]').forEach(function(el){
 </script>
 
 <script src="../elec-symbols.js"></script>
+<script>
+/* elec-symbols.js 是在 elec-theme.js 之后才加载的，所以它错过了开头那次同步 —— 这里补一次 */
+if(window.ESYM && window.ETheme) ESYM.theme(ETheme.get());
+</script>
 <script src="quiz-data.js"></script>
 <script src="quiz-data-tf.js"></script>
 <script>
@@ -932,6 +954,18 @@ $('#tTodo').classList.toggle('on',todo);
 $('#tfMaskB').classList.toggle('on',tfMask);
 $('#tfTodoB').classList.toggle('on',tfTodo);
 paintStat();paintReview();paintPick();
+
+/* ══ 白天 / 夜间 ══
+   按钮挂在顶栏「掌握 N/537」左边。切换后要**重画符号 canvas** ——
+   那 8 道图形题的墨色是画进像素里的，改 CSS 变量动不了它。 */
+(function(){
+  if(!window.ETheme) return;
+  var b = ETheme.mount('.top'), st = $('#statT');
+  if(b && st) st.parentNode.insertBefore(b, st);
+  window.addEventListener('elec:theme', function(){
+    paintSyms($('#rv')); paintSyms($('#qzOpts'));
+  });
+})();
 </script>
 </body>
 </html>
