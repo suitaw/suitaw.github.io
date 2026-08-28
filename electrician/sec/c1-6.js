@@ -248,7 +248,7 @@ function draw1(dt){
     /* 三圈磁力线，圈上带箭头 */
     [42, 64, 86].forEach(function(r, k){
       g.save();
-      g.strokeStyle = '#a06fd8'; g.globalAlpha = 0.9 - k*0.18; g.lineWidth = 1.6;
+      g.strokeStyle = '#c39bf0'; g.globalAlpha = 0.9 - k*0.18; g.lineWidth = 1.6;
       g.beginPath(); g.arc(cx, cy, r, 0, EC.TAU); g.stroke(); g.restore();
       for(let m=0;m<4;m++){
         const th = S1.ph*Math.PI/180*0.25 + m*Math.PI/2;
@@ -256,7 +256,7 @@ function draw1(dt){
         /* 屏幕坐标下 (−sinθ, cosθ) 是顺时针；电流进纸面 → 顺时针 */
         const tx = -Math.sin(th) * (into ? 1 : -1);
         const ty =  Math.cos(th) * (into ? 1 : -1);
-        head(g, px, py, tx, ty, 5.5, '#7b2fbe');
+        head(g, px, py, tx, ty, 5.5, '#b07ce8');
       }
     });
 
@@ -278,7 +278,7 @@ function draw1(dt){
     g.restore();
     txt(g, '导线', cx + 100, cy, {sz:10, c:C.tx2, al:'right'});
 
-    box(g, 62, 246, 236, 34, 6, '#f4f6f9', C.boxLine, 1);
+    box(g, 62, 246, 236, 34, 6, '#1a222b', C.boxLine, 1);
     txt(g, '右手握住导线，拇指顺着电流', 180, 259, {sz:10.5, b:1, c:C.tx});
     txt(g, '四指弯曲的方向，就是这些圆圈的方向', 180, 274, {sz:10, c:C.tx2});
   }else{
@@ -286,7 +286,7 @@ function draw1(dt){
     const cx = 180, cy = 112, half = 96, r = 30;
     if(S1.core){
       box(g, cx-half-14, cy-13, (half+14)*2, 26, 3, '#b9c2cc', '#8d97a2', 1.2);
-      txt(g, '铁芯', cx, cy, {sz:10, c:'#4a545e'});
+      txt(g, '铁芯', cx, cy, {sz:10, c:'#9fadbd'});
     }
     /* 线圈：一圈圈椭圆 */
     for(let i=0;i<S1.n;i++){
@@ -307,7 +307,7 @@ function draw1(dt){
     const strength = (S1.core ? 1.6 : 1) * (0.5 + S1.n/12);
     [[cx-half-30, nLeft ? 'N' : 'S'], [cx+half+30, nLeft ? 'S' : 'N']].forEach(function(a){
       const isN = a[1] === 'N';
-      box(g, a[0]-15, cy-15, 30, 30, 6, isN ? '#e0402a' : '#1667d6', null);
+      box(g, a[0]-15, cy-15, 30, 30, 6, isN ? '#ff6a4a' : '#4ea3ff', null);
       txt(g, a[1], a[0], cy, {sz:15, b:1, c:'#fff'});
     });
     /* 磁力线：从 N 出来绕回 S */
@@ -315,14 +315,14 @@ function draw1(dt){
     for(let k=1;k<=3;k++){
       const bulge = 22 + k*16;
       g.save();
-      g.strokeStyle = '#7b2fbe'; g.globalAlpha = 0.22 + 0.2*strength/2.6; g.lineWidth = 1.6;
+      g.strokeStyle = '#b07ce8'; g.globalAlpha = 0.22 + 0.2*strength/2.6; g.lineWidth = 1.6;
       g.beginPath();
       g.moveTo(nx, cy);
       g.bezierCurveTo(nx + (sx-nx)*0.25, cy-bulge*2, sx - (sx-nx)*0.25, cy-bulge*2, sx, cy);
       g.stroke(); g.restore();
     }
 
-    box(g, 40, 208, 280, 62, 6, '#f4f6f9', C.boxLine, 1);
+    box(g, 40, 208, 280, 62, 6, '#1a222b', C.boxLine, 1);
     txt(g, '右手四指顺着电流绕线圈弯曲，拇指指的那一头就是 N 极', 180, 226, {sz:10.5, b:1, c:C.tx});
     txt(g, '匝数 ' + S1.n + ' 匝' + (S1.core ? ' ＋ 铁芯' : '（没有铁芯）') +
            '　→　磁场强度约 ' + strength.toFixed(1) + ' 份', 180, 246, {sz:10.5, c:C.tx2});
@@ -333,12 +333,12 @@ function draw1(dt){
 function symMag(g, x, y, out){
   g.save();
   g.beginPath(); g.arc(x, y, 8, 0, EC.TAU);
-  g.fillStyle = '#fff'; g.fill();
-  g.strokeStyle = '#7b2fbe'; g.lineWidth = 1.4; g.stroke();
+  g.fillStyle = C.box; g.fill();
+  g.strokeStyle = '#b07ce8'; g.lineWidth = 1.4; g.stroke();
   if(out){
-    g.beginPath(); g.arc(x, y, 2.4, 0, EC.TAU); g.fillStyle = '#7b2fbe'; g.fill();
+    g.beginPath(); g.arc(x, y, 2.4, 0, EC.TAU); g.fillStyle = '#b07ce8'; g.fill();
   }else{
-    g.strokeStyle = '#7b2fbe'; g.lineWidth = 1.6;
+    g.strokeStyle = '#b07ce8'; g.lineWidth = 1.6;
     g.beginPath();
     g.moveTo(x-5, y-5); g.lineTo(x+5, y+5);
     g.moveTo(x-5, y+5); g.lineTo(x+5, y-5);
@@ -426,9 +426,14 @@ function draw2(dt){
   const lead = new Path([[COIL.cx-COIL.half-8, COIL.cy+COIL.r-4],[COIL.cx-COIL.half-8, 138],
                          [70, 138],[70, 158]]);
   lead.stroke(g, 2.4, '#8a6a44');
-  const lead2 = new Path([[COIL.cx+COIL.half+8, COIL.cy+COIL.r-4],[COIL.cx+COIL.half+8, 140],
-                          [300, 140]]);
+  /* 右边这根原来走到 x=300 就停了 —— 回路是**开着**的，
+     而这一节全靠「闭合回路里才有感应电流」立论，图上不能自打嘴巴（截图抓到的）。
+     现在两根都接回检流计顶边的两个接线点。 */
+  const lead2 = new Path([[COIL.cx+COIL.half+8, COIL.cy+COIL.r-4],[COIL.cx+COIL.half+8, 148],
+                          [100, 148],[100, 158]]);
   lead2.stroke(g, 2.4, '#8a6a44');
+  node(g, 70, 158, {r:3, color:'#8a6a44'});
+  node(g, 100, 158, {r:3, color:'#8a6a44'});
 
   /* 电流方向箭头：跟着 e 的符号亮 */
   const mag = Math.min(1, Math.abs(S2.e)/12);
@@ -436,7 +441,7 @@ function draw2(dt){
     const dir = S2.e >= 0 ? 1 : -1;
     g.save(); g.globalAlpha = mag;
     head(g, 120, 138, dir, 0, 6, C.cur);
-    head(g, 268, 140, -dir, 0, 6, C.cur);
+    head(g, 250, 148, -dir, 0, 6, C.cur);
     g.restore();
   }
 
@@ -449,15 +454,15 @@ function draw2(dt){
   /* ---- 走纸记录仪（EC.strip）---- */
   const cb = {x:140, y:158, w:208, h:88};
   strip(g, cb.x, cb.y, cb.w, cb.h, S2.buf, [
-    {i:0, color:'#2f86c9', scale:1/(PHI0*(S2.N/8)*1.15)},
-    {i:1, color:'#e0731a', auto:true, floor:8}
+    {i:0, color:'#4ea3ff', scale:1/(PHI0*(S2.N/8)*1.15)},
+    {i:1, color:'#ff9840', auto:true, floor:8}
   ], {n:BUFN});
   txt(g, '走纸记录 · 左旧 → 右新', cb.x+cb.w, cb.y-6, {sz:9, c:C.tx3, al:'right'});
-  stripLegend(g, cb.x+2, 254, [['磁通 Φ', '#2f86c9'], ['电动势 e', '#e0731a']]);
+  stripLegend(g, cb.x+2, 254, [['磁通 Φ', '#4ea3ff'], ['电动势 e', '#ff9840']]);
 
   /* ---- 底部状态 ---- */
   const moving = Math.abs(S2.v) > 6;
-  box(g, 12, 268, 336, 32, 5, moving ? '#e6f4ec' : '#f4f6f9', C.boxLine, 1);
+  box(g, 12, 268, 336, 32, 5, moving ? '#12291f' : '#1a222b', C.boxLine, 1);
   txt(g, moving
         ? 'Φ = ' + phi.toFixed(3) + ' mWb　e = ' + (S2.e<0?'−':'') + Math.abs(S2.e).toFixed(1) + ' mV'
         : 'Φ = ' + phi.toFixed(3) + ' mWb　e = 0.0 mV　（磁铁没动）',
@@ -544,19 +549,19 @@ function draw3(){
 
   /* 磁极 */
   const nOnLeft = S3.bDir > 0;
-  box(g, 26, 60, 40, 108, 5, nOnLeft ? '#e0402a' : '#1667d6', null);
+  box(g, 26, 60, 40, 108, 5, nOnLeft ? '#ff6a4a' : '#4ea3ff', null);
   txt(g, nOnLeft ? 'N' : 'S', 46, 114, {sz:17, b:1, c:'#fff'});
-  box(g, 232, 60, 40, 108, 5, nOnLeft ? '#1667d6' : '#e0402a', null);
+  box(g, 232, 60, 40, 108, 5, nOnLeft ? '#4ea3ff' : '#ff6a4a', null);
   txt(g, nOnLeft ? 'S' : 'N', 252, 114, {sz:17, b:1, c:'#fff'});
 
   /* 磁力线 */
   for(let i=0;i<4;i++){
     const y = 74 + i*27;
     const ln = new Path([[70,y],[228,y]]);
-    ln.stroke(g, 1.6, '#a06fd8');
-    head(g, nOnLeft ? 196 : 100, y, nOnLeft ? 1 : -1, 0, 5, '#7b2fbe');
+    ln.stroke(g, 1.6, '#c39bf0');
+    head(g, nOnLeft ? 196 : 100, y, nOnLeft ? 1 : -1, 0, 5, '#b07ce8');
   }
-  txt(g, '磁力线：N → S', 149, 48, {sz:10, c:'#7b2fbe'});
+  txt(g, '磁力线：N → S', 149, 48, {sz:10, c:'#b07ce8'});
 
   /* 导体（一根横着的棒），按运动方向上下摆 */
   const y0 = 114 + (S3.mo === 'up' ? -26 : (S3.mo === 'down' ? 26 : 0));
@@ -573,23 +578,23 @@ function draw3(){
     const outward = (d < 0) === (S3.bDir > 0);
     symCur(g, 106, y0, outward);
     symCur(g, 192, y0, outward);
-    box(g, 60, 196, 240, 30, 5, '#e8f1fc', C.acc, 1.3);
+    box(g, 60, 196, 240, 30, 5, '#152536', C.acc, 1.3);
     txt(g, outward ? '感应电流：从纸面里流出来（⊙，朝你）'
                    : '感应电流：流进纸面里去（⊗，背着你）',
         180, 211, {sz:11, b:1, c:C.accD});
   }else{
-    box(g, 60, 196, 240, 30, 5, '#f4f6f9', C.boxLine, 1);
+    box(g, 60, 196, 240, 30, 5, '#1a222b', C.boxLine, 1);
     txt(g, '先点一下「往上切」或「往下切」', 180, 211, {sz:11, c:C.tx2});
   }
 
-  box(g, 40, 234, 280, 46, 6, '#f4f6f9', C.boxLine, 1);
+  box(g, 40, 234, 280, 46, 6, '#1a222b', C.boxLine, 1);
   txt(g, '右手摊平：磁力线穿过掌心，拇指指着导体运动的方向', 180, 250, {sz:10.5, b:1, c:C.tx});
   txt(g, '这时四指指的，就是感应电流在导体里流动的方向', 180, 268, {sz:10.5, c:C.tx2});
 }
 function symCur(g, x, y, out){
   g.save();
   g.beginPath(); g.arc(x, y, 9, 0, EC.TAU);
-  g.fillStyle = '#fff'; g.fill();
+  g.fillStyle = C.box; g.fill();
   g.strokeStyle = C.cur; g.lineWidth = 1.8; g.stroke();
   if(out){
     g.beginPath(); g.arc(x, y, 2.6, 0, EC.TAU); g.fillStyle = C.cur; g.fill();
@@ -648,7 +653,7 @@ function draw4(dt){
   const a = APP4[S4.i];
 
   txt(g, a.n, 180, 26, {sz:14, b:1, c:C.tx});
-  tag(g, '原理：' + a.k, 180, 48, {sz:10.5, b:1, c:C.accD, fill:'#e8f1fc', line:C.acc});
+  tag(g, '原理：' + a.k, 180, 48, {sz:10.5, b:1, c:C.accD, fill:'#152536', line:C.acc});
 
   const cy = 132;
   if(S4.i === 0 || S4.i === 1){
@@ -656,11 +661,11 @@ function draw4(dt){
     const cx = 128;
     g.save();
     g.beginPath(); g.arc(cx, cy, 46, 0, EC.TAU);
-    g.fillStyle = '#eef1f5'; g.fill(); g.strokeStyle = C.metalD; g.lineWidth = 2; g.stroke();
+    g.fillStyle = '#1b232d'; g.fill(); g.strokeStyle = C.metalD; g.lineWidth = 2; g.stroke();
     g.restore();
     g.save(); g.translate(cx, cy); g.rotate(S4.ph*Math.PI/180);
-    box(g, -10, -28, 20, 24, 3, '#e0402a', null);
-    box(g, -10, 4, 20, 24, 3, '#1667d6', null);
+    box(g, -10, -28, 20, 24, 3, '#ff6a4a', null);
+    box(g, -10, 4, 20, 24, 3, '#4ea3ff', null);
     g.restore();
     /* 箭头：能量方向 */
     const rightward = S4.i === 0;
@@ -668,7 +673,7 @@ function draw4(dt){
     arr.stroke(g, 2.4, C.ok);
     head(g, rightward ? 264 : 188, cy, rightward ? 1 : -1, 0, 7, C.ok);
     txt(g, rightward ? '转 → 出电' : '给电 → 转', 226, cy-16, {sz:10.5, b:1, c:C.ok});
-    box(g, 272, cy-18, 56, 36, 5, '#fff', C.boxLine, 1.2);
+    box(g, 272, cy-18, 56, 36, 5, C.box, C.boxLine, 1.2);
     txt(g, rightward ? '电' : '力', 300, cy, {sz:13, b:1, c:C.tx});
   }else if(S4.i === 2){
     /* 变压器：两组线圈夹一个铁芯 */
@@ -688,7 +693,7 @@ function draw4(dt){
   }else{
     /* 接触器：线圈 + 衔铁 + 触点 */
     const on = (Math.floor(S4.ph/120) % 2) === 0;
-    box(g, 56, cy-30, 46, 60, 4, '#e7ebf0', C.metalD, 1.4);
+    box(g, 56, cy-30, 46, 60, 4, '#1e262f', C.metalD, 1.4);
     for(let i=0;i<4;i++){
       g.save(); g.strokeStyle = C.cop; g.lineWidth = 3;
       g.beginPath(); g.ellipse(79, cy-20+i*13, 16, 5, 0, 0, EC.TAU); g.stroke(); g.restore();
@@ -697,7 +702,7 @@ function draw4(dt){
     txt(g, on ? '通电' : '断电', 79, cy-44, {sz:10.5, b:1, c:on ? C.ok : C.tx3});
     /* 衔铁 */
     const ax = on ? 118 : 130;
-    box(g, ax, cy-22, 16, 44, 3, '#9aa4ae', '#6b747e', 1.2);
+    box(g, ax, cy-22, 16, 44, 3, '#9aa4ae', '#8b96a2', 1.2);
     /* 触点 */
     [0,1].forEach(function(k){
       const y = cy - 16 + k*32;
@@ -715,7 +720,7 @@ function draw4(dt){
     txt(g, '小电流控制大电流', 180, cy+62, {sz:10, c:C.tx3});
   }
 
-  box(g, 20, 200, 320, 30, 6, '#eef2f6', C.boxLine, 1);
+  box(g, 20, 200, 320, 30, 6, '#1b232d', C.boxLine, 1);
   txt(g, a.ch, 180, 215, {sz:10.5, c:C.tx2});
 }
 function note4(){

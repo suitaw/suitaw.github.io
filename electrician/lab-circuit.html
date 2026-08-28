@@ -6,23 +6,31 @@
 <title>电路实验室 —— 零基础学电工</title>
 <style>
 :root{
-  --bg:#f3f5f7; --card:#ffffff; --card2:#f7f9fb; --line:#dde2e8;
-  --tx:#1e2329; --tx2:#5d6773; --tx3:#8b949e;
-  --acc:#1a6fd4; --accbg:#e8f1fc;
-  --ok:#1c8348; --okbg:#e6f4ec;
-  --err:#c32f2f; --errbg:#fdeaea;
-  --warn:#a86200; --warnbg:#fdf2e0;
+  /* 2026-08-28 全站改成「深色仪表台」，这一份和 elec-page.css 的 :root 保持一致。
+     恒深色：画布、元件、外壳是一整套，跟着系统亮暗切会让画布和页面对不上。 */
+  --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
+  --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
+  --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
+  --ok:#3ecf8e; --okbg:#12291f;
+  --err:#ff6b6b; --errbg:#331a1a;
+  --warn:#f0a020; --warnbg:#2e2412;
+  --canvas:#111820;
+  /* 让浏览器原生控件（滑杆轨道、复选框、下拉、滚动条）自己变深 ——
+     不写这一行的话，深色页面里那几个原生件还是浅色的一块。 */
+  color-scheme: dark;
+
   --wire:#7a8694; --lamp:#f0b429;
   --r:10px; --tap:44px;
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --bg:#14171b; --card:#1d2126; --card2:#232830; --line:#333b44;
-    --tx:#e7eaee; --tx2:#9ba5b1; --tx3:#78828e;
-    --acc:#5da3f0; --accbg:#17293c;
-    --ok:#4dc47e; --okbg:#16301f;
-    --err:#ff7373; --errbg:#3a1c1c;
-    --warn:#e2a53c; --warnbg:#38290f;
+    --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
+    --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
+    --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
+    --ok:#3ecf8e; --okbg:#12291f;
+    --err:#ff6b6b; --errbg:#331a1a;
+    --warn:#f0a020; --warnbg:#2e2412;
+    --canvas:#111820;
     --wire:#8e9aa8;
   }
 }
@@ -156,6 +164,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .fb .again{margin-top:6px}
 
 /* ---------- 实验室 ---------- */
+/* 调色板按钮里现在是「SVG 图标 + 文字」两段，得并排 */
+#pal button{display:inline-flex;align-items:center;justify-content:center;gap:5px}
+#pal button svg{display:block;flex:none}
 .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px}
 .lv{display:flex;gap:6px;margin-bottom:10px}
 .lv button{
@@ -383,6 +394,7 @@ footer{max-width:1240px;margin:0 auto;padding:6px 14px;font-size:.75rem;color:va
 <div class="ov" id="ov"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="elec-icons.js"></script>
 <script>
 "use strict";
 /* ==================================================================
@@ -1050,13 +1062,16 @@ const LKEY = 'ele_levels_v1';
 let LDONE = {};
 try{ LDONE = JSON.parse(localStorage.getItem(LKEY)||'{}') || {}; }catch(e){ LDONE = {}; }
 
+/* label 里原来直接写 emoji（🔋💡🔘）。换成 ic + 文字两段：
+   emoji 各家系统画得不一样，跟全站那套线性图标也不是一路。 */
 const PAL = [
-  {t:'src',  label:'🔋 电源',    max:1},
-  {t:'lamp', label:'💡 6V/3W',  vr:6,  pr:3},
-  {t:'lamp', label:'💡 12V/6W', vr:12, pr:6},
-  {t:'switch',label:'🔘 开关'},
-  {t:'resistor',label:'电阻 10Ω',  r:10},
-  {t:'resistor',label:'电阻 24Ω',  r:24}
+  {t:'src',  ic:'battery',  label:'电源',    max:1},
+  {t:'lamp', ic:'bulb',     label:'6V/3W',  vr:6,  pr:3},
+  {t:'lamp', ic:'bulb',     label:'12V/6W', vr:12, pr:6},
+  {t:'switch',ic:'sw',      label:'开关'},
+  /* 有电阻图标了，「电阻」两个字就是冗余 —— 去掉才排得下两行 */
+  {t:'resistor',ic:'resistor',label:'10 Ω',  r:10},
+  {t:'resistor',ic:'resistor',label:'24 Ω',  r:24}
 ];
 
 function byId(id){ return CV.els.find(e=>e.id===id); }
@@ -1571,12 +1586,14 @@ function initCtl(){
   const pal = $('#pal');
   PAL.forEach(spec=>{
     const b = document.createElement('button');
-    b.textContent = spec.label;
+    b.innerHTML = (spec.ic && window.EI ? EI.svg(spec.ic, 16) : '') +
+                  '<span>' + spec.label + '</span>';
     b.addEventListener('click',()=>addEl(spec));
     pal.appendChild(b);
   });
   const clr = document.createElement('button');
-  clr.className='gh'; clr.textContent='🗑 清空';
+  clr.className='gh';
+  clr.innerHTML = (window.EI ? EI.svg('trash', 16) : '') + '<span>清空</span>';
   clr.addEventListener('click',()=>{
     if(!CV.els.length) return;
     CV.els=[]; CV.wires=[]; CV.sel=null; CV.pend=null;
@@ -1585,7 +1602,8 @@ function initCtl(){
   });
   pal.appendChild(clr);
   const fix = document.createElement('button');
-  fix.className='gh'; fix.textContent='🔁 换新灯泡';
+  fix.className='gh';
+  fix.innerHTML = (window.EI ? EI.svg('refresh', 16) : '') + '<span>换新灯泡</span>';
   fix.addEventListener('click',()=>{
     let n=0;
     CV.els.forEach(e=>{ if(e.type==='lamp'&&e.burned){ e.burned=false; n++; } });

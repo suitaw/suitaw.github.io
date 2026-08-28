@@ -8,7 +8,10 @@
    （那两个老页面保持内联不动 —— 改动最小化，它们已经验证过了。）
 
    设计约定（别改回去）：
-   - **画布内部固定用浅色**（C.bg）。示意图白底最清楚，也省掉一整套深色适配。
+   - **画布是深色的**（C.bg，2026-08-28 全站改成深色仪表台之后跟着改的）。
+     整套色板在下面 PAL 里，浅色那份留着没删 —— EC.theme('light') 可以切回去。
+     深底上的两条硬规矩：**导线要浅**（深底上深灰线等于没有），
+     **玻璃/灯罩这类透明件不能再用浅色实心**，否则就是一个白球。
    - **描边一律 lineJoin='round'**。掠射时夹角能尖到 1° 以下，miter 尖端
      长度是 lineWidth/sin(θ/2)，会飞出去变成毛刺。
    - **电流小圆点 = 一组沿路径的弧长值**，s += v·dt 取模循环。
@@ -24,22 +27,47 @@ const TAU = Math.PI * 2;
 const RM = !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
 /* ---------------- 调色板 ---------------- */
-const C = {
+const PAL = {
+/* ---------- 深色（现在全站在用的）---------- */
+dark:{
+  bg:'#111820', tx:'#e6edf5', tx2:'#9fadbd', tx3:'#71808f',
+  /* 导线与元件 —— 深底上导线必须浅，否则整条看不见 */
+  wire:'#8b97a5', wireL:'#5a6674', cop:'#d08a3c', copD:'#a06320',
+  metal:'#aeb7c1', metalD:'#7c8590', metalL:'#d7dde3',
+  /* 国标线色：这是要顺带记住的东西，色相别动，深底上只提亮度 */
+  L:'#ff5f52', N:'#4ea3ff', PE:'#4fc04a', PE2:'#e8d34a',
+  /* 状态 */
+  ok:'#3ecf8e', warn:'#f0a020', err:'#ff6b6b', acc:'#4ea3ff', accD:'#2b7fd0',
+  /* 电流 / 电子 / 电压 */
+  cur:'#ff9840', ele:'#5eb0ff', volt:'#b07ce8',
+  lamp:'#f0b429', lampOff:'#5a636d', glow:'#ffd76a',
+  hot:'#ff6a4a',
+  box:'#1b232d', boxLine:'#3a4653', card:'#1a222b',
+  skin:'#e0b088', skinL:'#a97644'
+},
+/* ---------- 浅色（改深色之前那一份，留着好回退）---------- */
+light:{
   bg:'#fafbfc', tx:'#242a31', tx2:'#6c7681', tx3:'#98a1ab',
-  /* 导线与元件 */
   wire:'#39424d', wireL:'#8d97a2', cop:'#c07830', copD:'#8a5418',
   metal:'#aeb7c1', metalD:'#7c8590', metalL:'#d7dde3',
-  /* 国标线色：这是要顺带记住的东西，别乱改 */
   L:'#d5342a', N:'#1e6fd0', PE:'#3f9b35', PE2:'#e0c020',
-  /* 状态 */
   ok:'#1c8348', warn:'#c05a00', err:'#c32f2f', acc:'#1a6fd4', accD:'#12518f',
-  /* 电流 / 电子 / 电压 */
   cur:'#e0731a', ele:'#2a86d8', volt:'#8d4bd0',
   lamp:'#f0b429', lampOff:'#c8cdd3', glow:'#ffd76a',
   hot:'#e0402a',
-  box:'#eef1f5', boxLine:'#b9c2cc',
+  box:'#eef1f5', boxLine:'#b9c2cc', card:'#ffffff',
   skin:'#f2c79c', skinL:'#a97644'
-};
+}};
+
+/* C 是「当前主题」——各节课都直接引 EC.C.xxx，所以换主题只能**就地改这个对象**，
+   不能整个换掉引用（换掉的话已经拿在手里的旧对象还是旧色）。 */
+const C = Object.assign({}, PAL.dark);
+function theme(name){
+  const p = PAL[name] || PAL.dark;
+  Object.keys(C).forEach(function(k){ delete C[k]; });
+  Object.assign(C, p);
+  return C;
+}
 
 /* ================= 折线路径：所有流动动画的地基 ================= */
 function Path(pts){
@@ -219,7 +247,7 @@ function tag(g, s, x, y, o){
   let bx = x - w/2, by = y - h/2;
   if(o.al === 'l') bx = x;
   if(o.al === 'r') bx = x - w;
-  box(g, bx, by, w, h, 5, o.fill || '#fff', o.line || C.boxLine, 1);
+  box(g, bx, by, w, h, 5, o.fill || C.box, o.line || C.boxLine, 1);
   txt(g, s, bx + w/2, by + h/2, {sz:sz, b:o.b, c:o.c || C.tx});
   return {x:bx, y:by, w:w, h:h};
 }
@@ -338,7 +366,7 @@ function resistor(g, x, y, o){
   const horiz = o.horiz !== false;
   const L = o.len || 34, W = o.w || 14;
   const w = horiz ? L : W, h = horiz ? W : L;
-  box(g, x - w/2, y - h/2, w, h, 2.5, o.fill || '#fff', o.color || C.wire, o.lw || 1.8);
+  box(g, x - w/2, y - h/2, w, h, 2.5, o.fill || C.box, o.color || C.wire, o.lw || 1.8);
   if(o.label){
     const lx = o.lx != null ? o.lx : (horiz ? 0 : W/2 + 16);
     const ly = o.ly != null ? o.ly : (horiz ? -W/2 - 10 : 0);
@@ -483,9 +511,11 @@ function dial(g, x, y, w, h, o){
    参数一翻倍（比如线圈匝数 ×2）曲线就削顶成一条平台。 */
 function strip(g, x, y, w, h, buf, defs, o){
   o = o || {};
-  box(g, x, y, w, h, 4, o.bg || '#f2f5f8', o.line || C.boxLine, 1);
+  box(g, x, y, w, h, 4, o.bg || C.box, o.line || C.boxLine, 1);
   g.save();
-  g.strokeStyle = '#cfd6dd'; g.lineWidth = 1;
+  /* 零位基准线：深底上用浅灰（原来是 #cfd6dd）会变成一条抢戏的白线，
+     还把停在零位的那两条曲线整个盖住 —— 它只是刻度，得让位给曲线 */
+  g.strokeStyle = C.boxLine; g.lineWidth = 1;
   g.beginPath(); g.moveTo(x, y + h/2); g.lineTo(x + w, y + h/2); g.stroke();
   g.restore();
   if(!buf || buf.length < 2) return;
@@ -542,7 +572,7 @@ function loop(fn){
 }
 
 global.EC = {
-  TAU:TAU, RM:RM, C:C,
+  TAU:TAU, RM:RM, C:C, PAL:PAL, theme:theme,
   Path:Path, bez:bez, Stage:Stage, loop:loop,
   head:head, flowArrows:flowArrows, dots:dots, glow:glow,
   txt:txt, tw:tw, box:box, tag:tag,

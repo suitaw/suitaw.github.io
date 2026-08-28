@@ -29,16 +29,20 @@ const TAU = Math.PI*2;
 
 /* 统一色板 —— 六节课共用，看着才像同一套器材 */
 const P = {
-  ink:'#2b3038', inkL:'#5b6672', inkLL:'#8b949e',
+  /* 2026-08-28 全站改深色仪表台：ink 这一组同时管**画布文字**和**符号版元件的引脚线**，
+     深底上两者都得浅。改深色之前是 #2b3038 / #5b6672 / #8b949e。 */
+  ink:'#dfe7f0', inkL:'#9fadbd', inkLL:'#74828f',
   /* ---- 真实材料色（元件本体只能用这些，蓝/橙/红/绿是教学语义色，不许拿来给元件上色）---- */
   steel:'#c3cad2', steelD:'#8b949e', steelDD:'#5b6672',   /* 镀镍/不锈钢 */
   chrome:'#eef2f6',                                        /* 高光金属 */
   copper:'#b87333', copperD:'#8a5418', copperL:'#e0a56a',  /* 铜、电阻丝 */
-  bakelite:'#23272c', bakeliteL:'#3a4048',                 /* 胶木/塑料底座 */
-  body:'#3a4048', bodyD:'#20242a', bodyL:'#6b737d',        /* 深灰机身 */
+  /* 胶木和机身：深底上原来那两个值（#23272c / #3a4048）几乎和背景一个色，
+     整个元件轮廓就没了，所以往上提了两档。 */
+  bakelite:'#2f353d', bakeliteL:'#454d57',                 /* 胶木/塑料底座 */
+  body:'#454d57', bodyD:'#2b3138', bodyL:'#78818c',        /* 深灰机身 */
   cream:'#e8dcc0', creamD:'#c9b98f',                       /* 电阻米黄本体 */
   ceramic:'#efe9dc',                                       /* 瓷管 */
-  glass:'#eaf0f5',                                         /* 玻璃 */
+  glass:'#eaf0f5',        /* 只剩兼容用；深底上的玻璃走 bulb 里那套半透明渐变 */
   tungsten:'#9aa0a6',                                      /* 钨丝（不亮时）*/
   warm:'#ffd08a', warmHot:'#fff3d6',                       /* 灯丝发光 */
   blue:'#4a90d9', blueD:'#2f6fb0', blueL:'#cfe0f5',
@@ -107,7 +111,7 @@ function callout(g, ax, ay, tx, ty, value, name, o){
   const al = o.al || 'left';
   /* 引线：先横后斜的一段折线，末端不带箭头（技术制图的习惯） */
   g.save();
-  g.strokeStyle = o.line || 'rgba(91,102,114,.55)';
+  g.strokeStyle = o.line || 'rgba(159,173,189,.5)';
   g.lineWidth = 1; g.setLineDash(o.dash || []);
   g.beginPath();
   g.moveTo(ax, ay);
@@ -134,8 +138,9 @@ function chip(g, s, x, y, o){
   if(o.al === 'right') bx = x - w;
   g.save();
   rr(g, bx, y - h/2, w, h, h/2);
-  g.fillStyle = o.fill || 'rgba(255,255,255,.92)'; g.fill();
-  if(o.line !== false){ g.strokeStyle = o.line || 'rgba(139,148,158,.5)'; g.lineWidth = 1; g.stroke(); }
+  /* 深底：底板是一块比画布稍亮的深色，不是白胶囊 */
+  g.fillStyle = o.fill || 'rgba(26,34,43,.93)'; g.fill();
+  if(o.line !== false){ g.strokeStyle = o.line || 'rgba(122,138,154,.55)'; g.lineWidth = 1; g.stroke(); }
   g.restore();
   txt(g, s, bx + w/2, y, {sz:sz, b:o.b, c:o.c || P.ink});
   return {x:bx, y:y-h/2, w:w, h:h};
@@ -173,7 +178,10 @@ function heading(g, x, y, title, sub){
 /* ================= 导线 ================= */
 const WIRE_W = { normal:S.wire, hot:S.wire, thick:5.2 };
 /* 实验导线的常见颜色：黑（默认/接负极）、红（接正极）、蓝、黄 */
-const WIRE_C = { black:'#23272c', red:'#c0392b', blue:'#1e5fa8', yellow:'#d9a520' };
+/* 深底上「黑皮线」画成真黑等于隐形 —— 黑仍然是它的语义（默认/接负极），
+   但落到像素上得是中灰。红蓝也各提了一档亮度。改之前：
+   black #23272c / red #c0392b / blue #1e5fa8 */
+const WIRE_C = { black:'#7d8896', red:'#e0554a', blue:'#3b82d8', yellow:'#d9a520' };
 /* **导线永远是一条连续、干净的线**，通电不改变导线颜色，只在上面加少量蓝色电子粒子。
    把导线画成一串圆点是明确禁止的做法。 */
 function wire(g, path, o){
@@ -182,7 +190,7 @@ function wire(g, path, o){
   const col = o.color || WIRE_C[o.c || 'black'] || P.ink;
   /* 右下淡投影 */
   g.save(); g.translate(0.8, 1.1);
-  path.stroke(g, w, 'rgba(20,23,27,'+S.shA+')');
+  path.stroke(g, w, 'rgba(0,0,0,'+(S.shA*1.6).toFixed(3)+')');
   g.restore();
   path.stroke(g, w, shade(col, -0.25));          /* 外皮暗边 */
   path.stroke(g, w - 1.4, col);                  /* 橡胶外皮 */
@@ -485,14 +493,25 @@ function bulb(g, x, y, R, b, o){
   g.arc(x, y-R*0.10, R*0.96, Math.PI, 0);
   g.quadraticCurveTo(x+R*1.00, y+R*0.40, x+R*0.40, by+1);
   g.closePath();
+  /* 深底上玻璃**不能再用浅色实心**，那样就是一个白球。改成几乎透明：
+     只留左上一块反光、边缘一圈亮描边，灯丝和背景直接透过去。 */
   const gg = g.createRadialGradient(x-R*0.30, y-R*0.42, R*0.1, x, y, R*1.2);
-  const warmA = lit ? [0, .06, .12, .20][lv] : 0;
-  gg.addColorStop(0, 'rgba(255,255,255,.94)');
-  gg.addColorStop(0.55,'rgba(232,240,246,'+(0.72 - warmA*0.6).toFixed(2)+')');
-  gg.addColorStop(1, lit ? 'rgba(255,232,190,'+(0.42+warmA).toFixed(2)+')'
-                         : 'rgba(200,212,222,.62)');
+  const warmA = lit ? [0, .05, .10, .16][lv] : 0;
+  /* 透明度是试出来的：再低一档（中心 .30 / 边缘 .15）熄灭的灯泡在深底上
+     整个球就没了，只剩灯座和一条弧线（1.4 三个并联灯泡实测）。 */
+  gg.addColorStop(0,   'rgba(226,240,252,.34)');
+  gg.addColorStop(0.42,'rgba(150,178,205,.15)');
+  gg.addColorStop(1, lit ? 'rgba(255,226,170,'+(0.18+warmA).toFixed(2)+')'
+                         : 'rgba(132,155,180,.24)');
   g.fillStyle = gg; g.fill();
-  g.strokeStyle = 'rgba(120,134,148,.85)'; g.lineWidth = 1.2; g.stroke();
+  g.strokeStyle = 'rgba(190,209,228,.92)'; g.lineWidth = 1.25; g.stroke();
+  /* 左上一道月牙高光 —— 玻璃的「玻璃感」几乎全靠它 */
+  g.save();
+  g.beginPath();
+  g.arc(x - R*0.34, y - R*0.30, R*0.46, Math.PI*0.86, Math.PI*1.62);
+  g.strokeStyle = 'rgba(255,255,255,.42)'; g.lineWidth = R*0.13; g.lineCap = 'round';
+  g.stroke();
+  g.restore();
   g.restore();
 
   /* 钨丝：不亮时是金属灰，亮起来才发暖白光 */
@@ -672,7 +691,20 @@ function multimeter(g, x, y, w, h, o){
     g.fill();
   }
   g.restore();
-  txt(g, o.mode || 'V⎓', kx + kr + 13, ky, {sz:10, b:1, c:'#f2f5f8'});
+  /* 直流档记号原来直接写 U+2393 那个字符「⎓」——**字体里没有就是一个豆腐块**
+     （截图环境实测渲染成 ⊠，安卓上也不保证有）。改成自己画：
+     一条实线 + 下面三段短虚线，这才是国标里直流的画法。 */
+  const mx = kx + kr + 13, my = ky;
+  txt(g, o.mode || 'V', mx - 6, my, {sz:10, b:1, c:'#f2f5f8'});
+  if(!o.mode){
+    g.save();
+    g.strokeStyle = '#f2f5f8'; g.lineWidth = 1.3; g.lineCap = 'butt';
+    g.beginPath(); g.moveTo(mx, my - 2.6); g.lineTo(mx + 9, my - 2.6); g.stroke();
+    g.beginPath();
+    for(let i2=0;i2<3;i2++){ g.moveTo(mx + i2*3.5, my + 1.4); g.lineTo(mx + i2*3.5 + 2.2, my + 1.4); }
+    g.stroke();
+    g.restore();
+  }
 
   const jy = y + h - 12;
   [[x + w*0.32, '#14171b', 'COM'], [x + w*0.62, '#a8302a', 'V']].forEach(function(a2){

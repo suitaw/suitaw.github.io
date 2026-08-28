@@ -6,22 +6,30 @@
 <title>回路、大地与触电原理 —— 电工入门</title>
 <style>
 :root{
-  --bg:#f3f5f7; --card:#ffffff; --card2:#f7f9fb; --line:#dde2e8;
-  --tx:#1e2329; --tx2:#5d6773; --tx3:#8b949e;
-  --acc:#1a6fd4; --accbg:#e8f1fc;
-  --ok:#1c8348; --okbg:#e6f4ec;
-  --err:#c32f2f; --errbg:#fdeaea;
-  --warn:#a86200; --warnbg:#fdf2e0;
+  /* 2026-08-28 全站改成「深色仪表台」，这一份和 elec-page.css 的 :root 保持一致。
+     恒深色：画布、元件、外壳是一整套，跟着系统亮暗切会让画布和页面对不上。 */
+  --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
+  --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
+  --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
+  --ok:#3ecf8e; --okbg:#12291f;
+  --err:#ff6b6b; --errbg:#331a1a;
+  --warn:#f0a020; --warnbg:#2e2412;
+  --canvas:#111820;
+  /* 让浏览器原生控件（滑杆轨道、复选框、下拉、滚动条）自己变深 ——
+     不写这一行的话，深色页面里那几个原生件还是浅色的一块。 */
+  color-scheme: dark;
+
   --r:10px; --tap:44px;
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --bg:#14171b; --card:#1d2126; --card2:#232830; --line:#333b44;
-    --tx:#e7eaee; --tx2:#9ba5b1; --tx3:#78828e;
-    --acc:#5da3f0; --accbg:#17293c;
-    --ok:#4dc47e; --okbg:#16301f;
-    --err:#ff7373; --errbg:#3a1c1c;
-    --warn:#e2a53c; --warnbg:#38290f;
+    --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
+    --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
+    --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
+    --ok:#3ecf8e; --okbg:#12291f;
+    --err:#ff6b6b; --errbg:#331a1a;
+    --warn:#f0a020; --warnbg:#2e2412;
+    --canvas:#111820;
   }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -57,7 +65,7 @@ b{font-weight:600}
 .scene.on{display:block}
 .card{background:var(--card);border:1px solid var(--line);
   border-radius:var(--r);overflow:hidden;margin-bottom:10px}
-canvas{display:block;width:100%;background:#fafbfc}
+canvas{display:block;width:100%;background:var(--canvas)}
 
 /* ---------- 控件 ---------- */
 .ctrl{padding:10px}
@@ -236,12 +244,16 @@ input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;
 const TAU = Math.PI * 2;
 
 /* 画布内部固定用浅色：电路图白底最清楚，也省掉一整套深色适配 */
+/* 2026-08-28 深色仪表台：这一份和 elec-canvas.js 的 PAL.dark 同一套规矩 ——
+   **导线要浅**（深底上深灰线等于没有）、国标线色只提亮度不动色相、
+   大地是「比画布底稍亮的暗土棕」（原来是浅土黄 #cdae74，深底上会变成一整块亮斑，
+   而这一页的重点是电流在地下走的那一段，土不能比线还抢眼）。 */
 const C = {
-  bg:'#fafbfc', wire:'#39424d', tx:'#242a31', tx2:'#6c7681', tx3:'#98a1ab',
-  L:'#e02020', N:'#1667d6', PEg:'#2f9e2f', PEy:'#e8c400',
-  hot:'#ff9f0a', hot2:'#ffd60a',
-  earth:'#cdae74', earth2:'#a98a52', earthLine:'#8d7038',
-  danger:'#e02020', ok:'#1c8348', box:'#eef1f5', boxLine:'#b9c2cc'
+  bg:'#111820', wire:'#8b97a5', tx:'#e6edf5', tx2:'#9fadbd', tx3:'#71808f',
+  L:'#ff5f52', N:'#4ea3ff', PEg:'#4fc04a', PEy:'#e8d34a',
+  hot:'#ffb340', hot2:'#ffe066',
+  earth:'#332a1c', earth2:'#6b5a3c', earthLine:'#a8894f',
+  danger:'#ff5f52', ok:'#3ecf8e', box:'#1b232d', boxLine:'#3a4653'
 };
 
 /* ---- 折线路径：一切电流动画的地基 ---- */
@@ -689,7 +701,7 @@ const S2 = (function(){
     g.save();
     if(flash) g.globalAlpha = .55;
     const w = s.length * 11 + 22;
-    box(g, x - w/2, y - 13, w, 26, 13, '#ffffff', color);
+    box(g, x - w/2, y - 13, w, 26, 13, C.box, color);
     txt(g, s, x, y, {sz:12, b:1, c:color});
     g.restore();
   }
@@ -925,7 +937,7 @@ const S3 = (function(){
   function coil(g, x, y){
     /* 变压器符号：两个相交的圆 */
     g.save();
-    g.strokeStyle = C.wire; g.lineWidth = 2.2; g.fillStyle = '#fff';
+    g.strokeStyle = C.wire; g.lineWidth = 2.2; g.fillStyle = C.box;
     g.beginPath(); g.arc(x, y-8, 11, 0, TAU); g.fill(); g.stroke();
     g.beginPath(); g.arc(x, y+8, 11, 0, TAU); g.stroke();
     g.restore();
@@ -1052,7 +1064,7 @@ const S4 = (function(){
     for(let i=0;i<3;i++){
       const y0 = PY[i] - 12, y1 = PY[i+1] + 12;
       g.save();
-      g.fillStyle = '#fff'; g.strokeStyle = C.wire; g.lineWidth = 2;
+      g.fillStyle = C.box; g.strokeStyle = C.wire; g.lineWidth = 2;
       g.fillRect(x-9, y1, 18, y0-y1); g.strokeRect(x-9, y1, 18, y0-y1);
       g.restore();
       txt(g, '0.5V', x+14, (y0+y1)/2, {sz:10, c:C.tx3, al:'left'});
@@ -1131,7 +1143,7 @@ const S4 = (function(){
     g.beginPath(); g.moveTo(SX+8, ya); g.lineTo(ax, ya);
     g.moveTo(SX+8, yd); g.lineTo(ax, yd); g.stroke();
     g.restore();
-    box(g, ax + 5, (ya+yd)/2 - 11, 46, 22, 6, '#fff', C.danger);
+    box(g, ax + 5, (ya+yd)/2 - 11, 46, 22, 6, C.box, C.danger);
     txt(g, 'A↔D', ax + 28, (ya+yd)/2 - 4, {sz:9.5, c:C.tx3});
     txt(g, '1.5V', ax + 28, (ya+yd)/2 + 6, {sz:11, b:1, c:C.danger});
   }

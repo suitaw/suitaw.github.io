@@ -229,11 +229,11 @@ function segAt(path, x, y){
    场景 1：电费 —— 同样用一小时，谁最费电
    ================================================================ */
 const APP = [
-  {n:'LED 灯',    w:10,   c:'#4a9ad8', k:'led'},
-  {n:'电视',      w:100,  c:'#4a9ad8', k:'tv'},
-  {n:'电饭煲',    w:800,  c:'#e0731a', k:'rice'},
-  {n:'空调',      w:1200, c:'#e0731a', k:'ac'},
-  {n:'电热水壶',  w:1800, c:'#d5342a', k:'kettle'}
+  {n:'LED 灯',    w:10,   c:'#5eb0ff', k:'led'},
+  {n:'电视',      w:100,  c:'#5eb0ff', k:'tv'},
+  {n:'电饭煲',    w:800,  c:'#ff9840', k:'rice'},
+  {n:'空调',      w:1200, c:'#ff9840', k:'ac'},
+  {n:'电热水壶',  w:1800, c:'#ff6b6b', k:'kettle'}
 ];
 const S1 = { i:0, h:2 };
 const st1 = new Stage('cv0', 360, 250);
@@ -250,8 +250,11 @@ function draw1(){
     const kwh = a.w/1000 * S1.h * 30;
     const w = Math.max(3, (x1-x0) * kwh / maxKwh);
     const on = (i === S1.i);
-    box(g, x0, y, x1-x0, bh, 5, '#eef1f5', null);
-    box(g, x0, y, w, bh, 5, on ? a.c : a.c + '66', null);
+    box(g, x0, y, x1-x0, bh, 5, '#1b232d', null);
+    /* 未选中那几根**不能压到 40% 不透明度**：浅底上混出来是淡橙，
+       深底上混出来是暗棕，五根柱子看着像生锈了。深底上要保住色相，
+       弱化靠的是「比选中的暗一档」而不是「透出背景」。 */
+    box(g, x0, y, w, bh, 5, on ? a.c : a.c + 'bf', null);
     EP.appliance(g, 26, y+bh/2, 0.72, a.k);          /* 画个像那么回事的小图标 */
     txt(g, a.n, x0-8, y+bh/2, {sz:10.5, b:on, c:on ? C.tx : C.tx2, al:'right'});
     const s = kwh.toFixed(1) + ' 度';
@@ -262,7 +265,7 @@ function draw1(){
 
   const a = APP[S1.i];
   const kwh = a.w/1000 * S1.h * 30;
-  box(g, 20, 212, 320, 30, 6, '#eef2f6', C.boxLine, 1);
+  box(g, 20, 212, 320, 30, 6, '#1b232d', C.boxLine, 1);
   txt(g, a.n + '　' + a.w + ' W × ' + S1.h.toFixed(1) + ' h × 30 天 = ' +
          kwh.toFixed(1) + ' 度 ≈ ' + yuan(kwh*0.6) + ' 元',
       180, 227, {sz:11.5, b:1, c:C.tx});
@@ -319,7 +322,7 @@ function draw2(){
   ];
   rows.forEach(function(r, i){
     const y = 158 + i*32;
-    box(g, 20, y, 320, 26, 5, i===0 ? '#e8f1fc' : '#f4f6f9', C.boxLine, 1);
+    box(g, 20, y, 320, 26, 5, i===0 ? '#152536' : '#1a222b', C.boxLine, 1);
     txt(g, r[0], 30, y+13, {sz:11, b:1, c:C.accD, al:'left'});
     txt(g, r[1], 152, y+13, {sz:11, c:C.tx2, al:'left'});
     txt(g, '= ' + fmtP(P), 330, y+13, {sz:11.5, b:1, c:C.cur, al:'right'});
@@ -375,10 +378,10 @@ function draw3(){
 
   /* 两根热量条 */
   const bx = 96, bw = 214, hmax = Math.max(qa, 1);
-  [['灯丝', qa, '#d5342a'], ['导线', qb, '#4a9ad8']].forEach(function(r, i){
+  [['灯丝', qa, '#ff6b6b'], ['导线', qb, '#5eb0ff']].forEach(function(r, i){
     const yy = 156 + i*38;
     txt(g, r[0], bx-8, yy+11, {sz:10.5, c:C.tx2, al:'right'});
-    box(g, bx, yy, bw, 22, 5, '#eef1f5', null);
+    box(g, bx, yy, bw, 22, 5, '#1b232d', null);
     const w = Math.max(2, bw * r[1]/hmax);
     box(g, bx, yy, w, 22, 5, r[2], null);
     const s = r[1] >= 10 ? r[1].toFixed(0) + ' J/s' : r[1].toFixed(2) + ' J/s';
@@ -422,7 +425,7 @@ function draw4(){
   EP.heading(g, 14, 14, '铭牌功率 vs 实际功率');
 
   /* 铭牌 */
-  box(g, 22, 28, 150, 92, 6, '#f4f6f9', C.metalD, 1.6);
+  box(g, 22, 28, 150, 92, 6, '#1a222b', C.metalD, 1.6);
   txt(g, '产 品 铭 牌', 97, 44, {sz:10, c:C.tx3});
   g.save(); g.strokeStyle = C.boxLine; g.lineWidth = 1;
   g.beginPath(); g.moveTo(32, 53); g.lineTo(162, 53); g.stroke(); g.restore();
@@ -439,9 +442,9 @@ function draw4(){
   /* 功率条 */
   const bx = 30, bw = 300, by = 138, bh = 24;
   txt(g, '实际功率占额定功率的比例', 180, 128, {sz:10.5, c:C.tx2});
-  box(g, bx, by, bw, bh, 5, '#eef1f5', C.boxLine, 1);
+  box(g, bx, by, bw, bh, 5, '#1b232d', C.boxLine, 1);
   const w = Math.min(bw, bw * pct / 1.4);
-  const col = pct < 0.85 ? '#4a9ad8' : (pct > 1.12 ? '#d5342a' : '#1c8348');
+  const col = pct < 0.85 ? '#5eb0ff' : (pct > 1.12 ? '#ff6b6b' : '#3ecf8e');
   box(g, bx, by, w, bh, 5, col, null);
   txt(g, (pct*100).toFixed(0) + '%', bx + Math.min(bw-30, w) - 8, by+bh/2,
       {sz:11.5, b:1, c:w > 50 ? '#fff' : C.tx2, al:'right'});
@@ -459,7 +462,15 @@ function draw4(){
   txt(g, s, 180, 204, {sz:11, b:1, c:c});
   txt(g, 'P = U² ÷ R = ' + S4.U + '² ÷ ' + R4.toFixed(1) + ' = ' + P.toFixed(0) + ' W',
       180, 228, {sz:11, c:C.tx2});
-  txt(g, '电压掉 14%（220→190），功率掉了 25% —— 平方关系', 180, 248, {sz:9.5, c:C.tx3});
+  /* 这一句原来是写死的「220→190」—— 滑杆停在 220V 时屏幕上就在说一件没发生的事。
+     现在按当前电压实算（190V 时仍然是 14% / 25%，和书上对得上）。*/
+  const dU = Math.round(Math.abs(S4.U - 220) / 220 * 100);
+  const dP = Math.round(Math.abs(pct - 1) * 100);
+  txt(g, S4.U === 220
+        ? '电压每偏离 1%，功率就偏离约 2% —— 平方关系'
+        : '电压' + (S4.U < 220 ? '掉' : '高') + '了 ' + dU + '%（220 → ' + S4.U + '），功率'
+          + (S4.U < 220 ? '掉' : '涨') + '了 ' + dP + '% —— 平方关系',
+      180, 248, {sz:9.5, c:C.tx3});
 }
 
 function note4(){

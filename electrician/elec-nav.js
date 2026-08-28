@@ -106,6 +106,11 @@ const CSS = `
   border:1px solid transparent;background:none;color:inherit;font:inherit;text-decoration:none}
 .en-sec .en-i{flex:none;font-size:.75rem;font-weight:700;color:var(--acc,#1a6fd4);
   font-family:ui-monospace,Menlo,Consolas,monospace;width:26px}
+.en-sec .en-si{flex:none;width:28px;height:28px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--card,#fff);color:var(--tx2,#5d6773);border:1px solid var(--line,#dde2e8)}
+.en-sec.cur .en-si{color:var(--acc,#1a6fd4);border-color:var(--acc,#1a6fd4)}
+.en-ch .en-n svg{display:block}
 .en-sec .en-t{display:block;font-size:.84rem;font-weight:600}
 .en-sec .en-d{display:block;font-size:.73rem;color:var(--tx3,#8b949e);margin-top:1px;line-height:1.4}
 .en-sec.cur{background:var(--accbg,#e8f1fc);border-color:var(--acc,#1a6fd4)}
@@ -137,7 +142,9 @@ function init(host){
     P.chs.forEach(ch=>{
       const done = !!(ch.secs && ch.secs.some(s=>s.f));
       const cur  = ch.n === chNo;
-      const inner = '<span class="en-n">'+ch.n+'</span>'+
+      /* 有 elec-icons.js 就画图标，没引也不会坏 —— 退回原来的章号数字 */
+      const chIc = window.EI ? EI.svg(EI.forChapter(ch.n), 15) : ch.n;
+      const inner = '<span class="en-n">'+chIc+'</span>'+
         '<span style="flex:1;min-width:0"><span class="en-t">'+ch.t+'</span>'+
         '<span class="en-d">'+ch.d+'</span></span>'+
         '<span class="en-p">P'+ch.p+'</span>';
@@ -145,7 +152,9 @@ function init(host){
       if(cur && ch.secs){
         html += '<div class="en-secs">';
         ch.secs.forEach(s=>{
-          const si = '<span class="en-i">'+s.id+'</span>'+
+          const sIc = window.EI
+            ? '<span class="en-si">'+EI.svg(EI.forSection(s.id), 16)+'</span>' : '';
+          const si = sIc+'<span class="en-i">'+s.id+'</span>'+
             '<span style="flex:1;min-width:0"><span class="en-t">'+s.t+'</span>'+
             '<span class="en-d">'+s.d+'</span></span>';
           if(!s.f)            html += '<div class="en-sec off">'+si+'</div>';

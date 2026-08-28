@@ -207,9 +207,9 @@ document.getElementById('tabs').addEventListener('click', function(e){
 /* ---------- 小折线图：两屏共用 ----------
    box = {x,y,w,h}，f(x) 给曲线，mark 是当前那个点 */
 function chart(g, bx, o){
-  box(g, bx.x, bx.y, bx.w, bx.h, 6, '#fff', C.boxLine, 1);
+  box(g, bx.x, bx.y, bx.w, bx.h, 6, C.box, C.boxLine, 1);
   /* 网格 */
-  g.save(); g.strokeStyle = '#e8ecf1'; g.lineWidth = 1;
+  g.save(); g.strokeStyle = '#1b232d'; g.lineWidth = 1;
   for(let i=1;i<4;i++){
     const y = bx.y + bx.h*i/4;
     g.beginPath(); g.moveTo(bx.x, y); g.lineTo(bx.x+bx.w, y); g.stroke();
@@ -264,15 +264,19 @@ function draw1(dt){
                      [segAt(P1,L1.x1,97)-24, segAt(P1,L1.x1,97)+24]]});
 
   /* 实物元件：可调直流电源（画成电池组）+ 色环电阻 + 指针电流表 */
-  EP.cell(g, L1.x0, 97, 46, 22, {horiz:false, pm:false});
+  /* volt 必须跟着滑杆走：不传的话元件默认印「1.5V」，
+     而这一屏电压 5~30V 可调，屏幕上就会一边写 1.5V 一边标 U=25V（截图抓到的）*/
+  EP.cell(g, L1.x0, 97, 46, 22, {horiz:false, pm:false, volt:S1.U + 'V'});
   txt(g, '＋', L1.x0-15, 82, {sz:11, b:1, c:C.err});
   txt(g, '−',  L1.x0-15, 112, {sz:13, b:1, c:C.tx2});
-  EP.callout(g, L1.x0+10, 97, L1.x0+26, 92, 'U = ' + S1.U + ' V', '电源电压',
+  EP.callout(g, L1.x0+10, 97, L1.x0+26, 92, 'U = ' + S1.U + ' V', '可调直流电源',
              {al:'left', color:EP.P.blueD});
 
-  EP.panelMeter(g, 176, L1.y0-26, 84, 58, {
-    val:I, max:3.2, label:'电流表', valText:I.toFixed(2) + ' A', valSz:12, ticks:4
-  });
+  /* 读数不印在表盘上：这块表只有 48px 高，数字正好压在刻度弧顶上（截图抓到的）。
+     改成粗体数值在表下、名称再下一行 —— 和 EP.callout 一个排法。 */
+  EP.panelMeter(g, 176, L1.y0-26, 84, 58, {val:I, max:3.2, ticks:4, show:false});
+  txt(g, I.toFixed(2) + ' A', 218, L1.y0+43, {sz:12.5, b:1, c:EP.P.ink});
+  txt(g, '电流表', 218, L1.y0+57, {sz:9.5, c:EP.P.inkL});
 
   EP.resistor(g, L1.x1, 97, {horiz:false, len:40, dia:17,
     bands:['#6b4423', '#1b1b1b', '#1b1b1b', EP.BAND.gold]});
@@ -326,19 +330,19 @@ function draw2(dt){
                      [segAt(P1,218,L1.y0)-36, segAt(P1,218,L1.y0)+36],
                      [segAt(P1,L1.x1,97)-24, segAt(P1,L1.x1,97)+24]]});
 
-  EP.cell(g, L1.x0, 97, 46, 22, {horiz:false, pm:false});
+  EP.cell(g, L1.x0, 97, 46, 22, {horiz:false, pm:false, volt:'25V'});
   txt(g, '＋', L1.x0-15, 82, {sz:11, b:1, c:C.err});
   txt(g, '−',  L1.x0-15, 112, {sz:13, b:1, c:C.tx2});
   EP.callout(g, L1.x0+10, 97, L1.x0+26, 92, 'U = 25 V', '电源电压，不动',
              {al:'left', color:EP.P.ink});
 
-  EP.panelMeter(g, 176, L1.y0-26, 84, 58, {
-    val:I, max:5.2, label:'电流表', valText:I.toFixed(2) + ' A', valSz:12, ticks:4
-  });
+  EP.panelMeter(g, 176, L1.y0-26, 84, 58, {val:I, max:5.2, ticks:4, show:false});
+  txt(g, I.toFixed(2) + ' A', 218, L1.y0+43, {sz:12.5, b:1, c:EP.P.ink});
+  txt(g, '电流表', 218, L1.y0+57, {sz:9.5, c:EP.P.inkL});
 
   /* 阻值越大画得越粗，看得见「拦得越狠」；色环也跟着换 */
   const wR = 12 + S2.R*0.5;
-  const b3 = S2.R < 10 ? '#1b1b1b' : (S2.R < 20 ? '#6b4423' : '#c0392b');
+  const b3 = S2.R < 10 ? '#1b1b1b' : (S2.R < 20 ? '#6b4423' : '#c0392b');  /* 色环红：真实材质色，不跟语义色走 */
   EP.resistor(g, L1.x1, 97, {horiz:false, len:40, dia:wR,
     bands:['#6b4423', '#1b1b1b', b3, EP.BAND.gold]});
   EP.callout(g, L1.x1-10, 108, L1.x1-26, 126, 'R = ' + S2.R + ' Ω', '拖滑杆换阻值',
@@ -377,18 +381,18 @@ function draw3(dt){
 
   txt(g, '水这边', 92, 20, {sz:11, b:1, c:C.tx2});
   txt(g, '电这边', 270, 20, {sz:11, b:1, c:C.tx2});
-  g.save(); g.strokeStyle = '#e2e7ec'; g.lineWidth = 1.2;
+  g.save(); g.strokeStyle = '#1e262f'; g.lineWidth = 1.2;
   g.beginPath(); g.moveTo(182, 28); g.lineTo(182, 286); g.stroke(); g.restore();
 
   /* ---- 左：水塔 + 管子 ---- */
   const gy = 234;                       /* 地面 */
   const hh = 20 + S3.U * 4.2;           /* 水塔高度随 U */
   const tx0 = 34, tw0 = 46;
-  g.save(); g.fillStyle = '#c9d6e2';
+  g.save(); g.fillStyle = '#2a3644';
   g.fillRect(tx0, gy-hh, tw0, hh); g.restore();
-  g.save(); g.fillStyle = '#4a9ad8';
+  g.save(); g.fillStyle = '#5eb0ff';
   g.fillRect(tx0+3, gy-hh+8, tw0-6, hh-11); g.restore();
-  box(g, tx0, gy-hh, tw0, hh, 3, null, '#8fa3b5', 1.4);
+  box(g, tx0, gy-hh, tw0, hh, 3, null, '#8b98a6', 1.4);
   txt(g, S3.U + ' V', tx0+tw0/2, gy-hh-11, {sz:10.5, b:1, c:C.acc});
   txt(g, '水塔越高＝电压越大', 92, gy-hh-26, {sz:9.5, c:C.tx3});
 
@@ -396,13 +400,13 @@ function draw3(dt){
   const pipeW = Math.max(5, 26 - S3.R*0.62);
   const py0 = gy - 26;
   const pipeL = 88;
-  g.save(); g.fillStyle = '#dfe6ec';
+  g.save(); g.fillStyle = '#1e262f';
   g.fillRect(tx0+tw0, py0-pipeW/2, pipeL, pipeW); g.restore();
-  g.save(); g.strokeStyle = '#a8b6c3'; g.lineWidth = 1.2;
+  g.save(); g.strokeStyle = '#7c8a98'; g.lineWidth = 1.2;
   g.strokeRect(tx0+tw0, py0-pipeW/2, pipeL, pipeW); g.restore();
   /* 水流小球 */
   const pipe = new Path([[tx0+tw0+4, py0],[tx0+tw0+pipeL, py0]]);
-  dots(g, pipe, {phase:S3.ph, gap:16, r:Math.min(3.4, pipeW/2-0.8), color:'#2f86c9'});
+  dots(g, pipe, {phase:S3.ph, gap:16, r:Math.min(3.4, pipeW/2-0.8), color:'#4ea3ff'});
   txt(g, '管子越细＝电阻越大', 104, gy+14, {sz:9.5, c:C.tx3});
 
   g.save(); g.strokeStyle = '#b9a184'; g.lineWidth = 2;
@@ -421,7 +425,7 @@ function draw3(dt){
   txt(g, S3.R + ' Ω', ex1-16, 149, {sz:10.5, b:1, c:C.tx, al:'right'});
 
   /* 底部读数 */
-  box(g, 20, 262, 320, 30, 6, '#eef2f6', C.boxLine, 1);
+  box(g, 20, 262, 320, 30, 6, '#1b232d', C.boxLine, 1);
   txt(g, '水流量 ＝ 电流 I ＝ ' + S3.U + ' ÷ ' + S3.R + ' ＝ ' + I.toFixed(2) + ' A',
       180, 277, {sz:12, b:1, c:C.cur});
 }
@@ -455,7 +459,7 @@ function draw4(){
   const ax = 180, ay = 44, bx = 84, by = 210, cx = 276, cy = 210;
   g.save();
   g.beginPath(); g.moveTo(ax,ay); g.lineTo(bx,by); g.lineTo(cx,cy); g.closePath();
-  g.fillStyle = '#f2f6fa'; g.fill();
+  g.fillStyle = '#1a222b'; g.fill();
   g.strokeStyle = C.boxLine; g.lineWidth = 1.6; g.lineJoin='round'; g.stroke();
   /* 中间横线 + 竖线：U 在上，I × R 在下 */
   g.strokeStyle = C.boxLine; g.lineWidth = 1.4;
@@ -466,7 +470,7 @@ function draw4(){
   ['U','I','R'].forEach(function(k){
     const t = TRI[k], hide = (k === S4.k);
     if(hide){
-      box(g, t.x-24, t.y-20, 48, 40, 8, '#d8e4f2', C.acc, 2);
+      box(g, t.x-24, t.y-20, 48, 40, 8, '#1d2c3d', C.acc, 2);
       txt(g, '?', t.x, t.y, {sz:20, b:1, c:C.acc});
     }else{
       txt(g, k, t.x, t.y, {sz:26, b:1, c:C.tx});
@@ -476,7 +480,7 @@ function draw4(){
   /* 结论条 */
   const f = S4.k === 'I' ? 'I = U ÷ R' : (S4.k === 'U' ? 'U = I × R' : 'R = U ÷ I');
   const w = tw(g, f, 17, true) + 34;
-  box(g, 180-w/2, 222, w, 24, 6, C.accbg==='#e8f1fc'?'#e8f1fc':'#e8f1fc', C.acc, 1.4);
+  box(g, 180-w/2, 222, w, 24, 6, C.accbg==='#152536'?'#152536':'#152536', C.acc, 1.4);
   txt(g, f, 180, 234, {sz:15, b:1, c:C.accD});
 
   txt(g, '盖住要求的那个，剩下的样子就是算法', 180, 24, {sz:10.5, c:C.tx2});

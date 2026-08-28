@@ -31,7 +31,11 @@
 .sd-part{font-size:.72rem;color:var(--tx3);letter-spacing:.08em;
   padding:12px 14px 4px;font-weight:600}
 .sd-ch{padding:7px 14px;font-size:.82rem;color:var(--tx2);font-weight:600;
-  display:flex;gap:6px;align-items:baseline}
+  display:flex;gap:8px;align-items:center}
+.sd-ch .cic{flex:none;width:26px;height:26px;border-radius:8px;color:var(--acc);
+  background:rgba(78,163,255,.12);border:1px solid rgba(78,163,255,.22);
+  display:flex;align-items:center;justify-content:center}
+.sd-ch.off .cic{color:var(--tx3);background:var(--card2);border-color:var(--line)}
 .sd-ch .no{flex:none;color:var(--tx3);font-weight:400;font-size:.74rem}
 .sd-ch.off{color:var(--tx3);font-weight:400}
 .sd-ch.off .no{opacity:.6}
@@ -44,19 +48,31 @@
   text-decoration:none;border-left:3px solid transparent;cursor:pointer}
 .sd-sec:active{background:var(--card2)}
 .sd-sec.cur{background:var(--accbg);border-left-color:var(--acc);color:var(--acc);font-weight:600}
-.sd-sec .id{flex:none;font-size:.74rem;color:var(--tx3);width:26px}
+.sd-sec .sic{flex:none;width:28px;height:28px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--card2);color:var(--tx2);border:1px solid var(--line)}
+.sd-sec.cur .sic{color:var(--acc);border-color:var(--accln);background:rgba(78,163,255,.12)}
+.sd-sec .id{flex:none;font-size:.7rem;color:var(--tx3);
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;
+  letter-spacing:.04em;margin-right:5px}
 .sd-sec.cur .id{color:var(--acc)}
+/* 配套那几行没有节号，图标照样对齐 */
+.sd-sec .sic svg{display:block}
 .sd-sec .t{flex:1;min-width:0}
 .sd-sec .t small{display:block;font-size:.7rem;color:var(--tx3);font-weight:400;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* 进度点：看过一部分是空心，四屏都看过才实心勾 */
 .sd-sec .pg{flex:none;width:16px;text-align:center;font-size:.72rem;color:var(--tx3)}
 .sd-sec .pg.done{color:var(--ok)}
+.sd-sec .pg{display:flex;align-items:center;justify-content:center}
+.sd-sec .pg .ring{width:9px;height:9px;border-radius:50%;
+  border:1.6px solid var(--tx3);display:block}
 
 .sd-extra{border-top:1px solid var(--line);margin-top:10px;padding-top:6px}
 
 /* ===== 顶栏的 ☰ ===== */
-.mb{flex:none;width:30px;height:var(--tap);margin-left:-6px;
+.mb{flex:none;display:flex;align-items:center;justify-content:center;
+  width:30px;height:var(--tap);margin-left:-6px;
   background:none;border:0;font-size:1.05rem;color:var(--tx2);cursor:pointer;
   display:flex;align-items:center;justify-content:center}
 
@@ -87,7 +103,7 @@
 <div class="wrap">
   <div class="stick">
     <div class="top">
-      <button class="mb" id="menuBtn" aria-label="目录">☰</button>
+      <button class="mb" id="menuBtn" aria-label="目录"></button>
       <h1 id="secTitle">零基础学电工</h1>
       <a class="bk" href="index.html">课表</a>
     </div>
@@ -96,11 +112,13 @@
   <div id="secBody"><div class="ld">正在载入…</div></div>
 </div>
 
+<script src="elec-icons.js"></script>
 <script src="elec-canvas.js"></script>
 <script src="elec-parts.js"></script>
 <script src="elec-ui.js"></script>
 <script src="elec-nav.js"></script>
 <script src="elec-book.js"></script>
+<script src="elec-page.js"></script>
 <script>
 'use strict';
 
@@ -137,6 +155,7 @@ function buildSide(){
     P.chs.forEach(function(ch){
       const has = ch.secs && ch.secs.length;
       h += '<div class="sd-ch' + (has ? '' : ' off') + '">' +
+             '<span class="cic">' + EI.svg(EI.forChapter(ch.n), 16) + '</span>' +
              '<span class="no">第' + ch.n + '章</span>' +
              '<span>' + ch.t + '</span>' +
              (has ? '' : '<span class="soon">未做</span>') +
@@ -145,8 +164,9 @@ function buildSide(){
       ch.secs.forEach(function(s){
         if(!s.f) return;
         h += '<a class="sd-sec" data-id="' + s.id + '" href="#' + s.id + '">' +
-               '<span class="id">' + s.id + '</span>' +
-               '<span class="t">' + s.t + '<small>' + s.d + '</small></span>' +
+               '<span class="sic">' + EI.svg(EI.forSection(s.id), 17) + '</span>' +
+               '<span class="t"><span class="id">' + s.id + '</span>' + s.t +
+                 '<small>' + s.d + '</small></span>' +
                '<span class="pg" data-pg="' + s.id + '"></span>' +
              '</a>';
       });
@@ -156,13 +176,13 @@ function buildSide(){
 
   document.getElementById('sdExtra').innerHTML =
     '<div class="sd-part">配套</div>' +
-    '<a class="sd-sec" href="c00.html"><span class="id">0</span>' +
+    '<a class="sd-sec" href="c00.html"><span class="sic">' + EI.svg('symbol',17) + '</span>' +
       '<span class="t">读懂符号<small>物理量符号和单位符号</small></span></a>' +
-    '<a class="sd-sec" href="lab-circuit.html"><span class="id">🔬</span>' +
+    '<a class="sd-sec" href="lab-circuit.html"><span class="sic">' + EI.svg('lab',17) + '</span>' +
       '<span class="t">电路实验室<small>自己搭电路、求解器算给你看</small></span></a>' +
-    '<a class="sd-sec" href="parts.html"><span class="id">⚙</span>' +
+    '<a class="sd-sec" href="parts.html"><span class="sic">' + EI.svg('target',17) + '</span>' +
       '<span class="t">元件对照图<small>这门课用到的元件长什么样</small></span></a>' +
-    '<a class="sd-sec" href="quiz/quiz.html"><span class="id">📖</span>' +
+    '<a class="sd-sec" href="quiz/quiz.html"><span class="sic">' + EI.svg('quiz',17) + '</span>' +
       '<span class="t">考证题库<small>低压电工作业证 · 单选 537 + 判断 290</small></span></a>';
 }
 
@@ -171,8 +191,8 @@ function paintProgress(){
   const seen = loadSeen();
   document.querySelectorAll('[data-pg]').forEach(function(el){
     const a = seen[el.getAttribute('data-pg')] || [];
-    if(a.length >= 4){ el.textContent = '✓'; el.className = 'pg done'; }
-    else if(a.length){ el.textContent = '○'; el.className = 'pg'; }
+    if(a.length >= 4){ el.innerHTML = EI.svg('check', 15); el.className = 'pg done'; }
+    else if(a.length){ el.innerHTML = '<i class="ring"></i>'; el.className = 'pg'; }
     else { el.textContent = ''; el.className = 'pg'; }
   });
 }
@@ -187,7 +207,9 @@ function markCur(id){
 const side = document.getElementById('side'), mask = document.getElementById('mask');
 function openSide(){ side.classList.add('on'); mask.classList.add('on'); }
 function closeSide(){ side.classList.remove('on'); mask.classList.remove('on'); }
-document.getElementById('menuBtn').addEventListener('click', openSide);
+const menuBtn = document.getElementById('menuBtn');
+menuBtn.innerHTML = EI.svg('menu', 20);
+menuBtn.addEventListener('click', openSide);
 mask.addEventListener('click', closeSide);
 
 /* ---------------- 切节 ---------------- */
