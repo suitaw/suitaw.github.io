@@ -1,22 +1,38 @@
 /* 电工课 · 课页外壳样式（第 1 章各节共用，后面 28 课照用）
    —— 从 c1-1.html 抽出来的，改一处六个页面一起变。
    组件样式（公式拆解 / 先猜一下 / 练习题）在 elec-ui.js 里自带，不在这儿。 */
-:root{
-  /* 2026-08-28 全站改成「深色仪表台」。原来是浅色 + 一个 prefers-color-scheme 深色块，
-     现在**恒深色**：画布、元件、外壳是一整套，跟着系统亮暗切会让画布和页面对不上。
-     画布那一份同色板在 elec-canvas.js 的 PAL.dark 里，两边要一起改。 */
+:root{ --r:12px; --tap:44px; }
+/* 2026-08-28 全站改成「深色仪表台」，当晚又加了白天模式。
+   **这不是「换个背景色」**：画布、元件、外壳是一整套，只翻 HTML 这一半
+   会让画布和页面对不上。切换由 elec-theme.js 统一做，一次翻四套色板：
+   这里的 :root / 画布 EC.PAL / 元件 EP.THEMED / 符号 ESYM。
+   **`--canvas` 必须和 EC.PAL.<同名>.bg 一模一样**，否则画布和它的卡片底之间会有一道边。 */
+:root, :root[data-theme="dark"]{
   --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
   --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
   --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
   --ok:#3ecf8e; --okbg:#12291f;
   --err:#ff6b6b; --errbg:#331a1a;
   --warn:#f0a020; --warnbg:#2e2412;
-  --canvas:#111820;                 /* 画布底：比页面底亮一档，画布区才分得出来 */
-  --r:12px; --tap:44px;
+  --canvas:#111820;                 /* = EC.PAL.dark.bg。比页面底亮一档，画布区才分得出来 */
+  /* 滑杆是自定义样式，不吃 color-scheme —— 轨道和滑块得自己给两套 */
+  --trk:#2b3742; --knob:#e9eff6;
+  --knob-sh:0 1px 5px rgba(0,0,0,.6),0 0 10px rgba(78,163,255,.45);
   /* 让浏览器原生控件（滑杆轨道、复选框、下拉、滚动条）自己变深 ——
      不写这一行的话，深色页面里那几个原生件还是浅色的一块。 */
   color-scheme: dark;
-
+}
+:root[data-theme="light"]{
+  --bg:#f5f7fa; --card:#ffffff; --card2:#f2f5f8; --line:#e3e8ee; --line2:#eef1f5;
+  --tx:#242a31; --tx2:#5d6773; --tx3:#98a1ab;
+  --acc:#1a6fd4; --accbg:#e8f1fc; --accln:rgba(26,111,212,.30);
+  --ok:#1c8348; --okbg:#e7f6ec;
+  --err:#c32f2f; --errbg:#fdecec;
+  --warn:#b35a00; --warnbg:#fff3e0;
+  --canvas:#fafbfc;                 /* = EC.PAL.light.bg */
+  --trk:#d5dde5; --knob:#ffffff;
+  --knob-sh:0 1px 4px rgba(31,45,61,.22),0 0 8px rgba(26,111,212,.20);
+  color-scheme: light;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -31,6 +47,8 @@ b{font-weight:600}
 /* ---------- 吸顶：顶栏 + 标签页 ---------- */
 .stick{position:sticky;top:0;z-index:20;background:var(--bg);
   box-shadow:0 6px 18px rgba(0,0,0,.55)}
+/* 深色下那道投影是靠「更黑」拉开层次的，照搬到白底上就是一块脏灰 */
+:root[data-theme="light"] .stick{box-shadow:0 4px 14px rgba(31,45,61,.10)}
 .top{display:flex;align-items:center;gap:8px;height:46px;padding:0 12px;
   background:var(--card);border-bottom:1px solid var(--line)}
 .top h1{flex:1;min-width:0;font-size:.95rem;white-space:nowrap;
@@ -73,15 +91,15 @@ canvas{display:block;width:100%;background:var(--canvas);touch-action:none}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;
   height:var(--tap);background:none;touch-action:pan-y;cursor:pointer}
 input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;
-  background:linear-gradient(90deg,#2b3742,var(--acc))}
+  background:linear-gradient(90deg,var(--trk),var(--acc))}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
   width:30px;height:30px;margin-top:-11px;border-radius:50%;
-  background:#e9eff6;border:3px solid var(--acc);
-  box-shadow:0 1px 5px rgba(0,0,0,.6),0 0 10px rgba(78,163,255,.45)}
+  background:var(--knob);border:3px solid var(--acc);
+  box-shadow:var(--knob-sh)}
 input[type=range]::-moz-range-track{height:8px;border-radius:4px;
-  background:linear-gradient(90deg,#2b3742,var(--acc))}
+  background:linear-gradient(90deg,var(--trk),var(--acc))}
 input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;
-  background:#e9eff6;border:3px solid var(--acc)}
+  background:var(--knob);border:3px solid var(--acc)}
 .ticks{display:flex;justify-content:space-between;font-size:.72rem;color:var(--tx3);margin-top:-4px}
 
 /* ---------- 数字面板 ---------- */

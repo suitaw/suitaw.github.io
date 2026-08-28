@@ -384,7 +384,7 @@ function panel1(g){
   if(S1.cur) items.push(['电流方向（规定）', EP.P.amber, 'arrow']);
   if(items.length) EP.legend(g, 180, 278, items);
 
-  box(g, 16, 292, 328, 40, 8, S1.on ? '#17293c' : '#1a222b', C.boxLine, 1);
+  box(g, 16, 292, 328, 40, 8, S1.on ? C.accbg : C.card, C.boxLine, 1);
   if(S1.on){
     txt(g, 'I = ' + S1.Q.toFixed(1) + ' C ÷ ' + S1.t.toFixed(1) + ' s = ' + S1.I + ' A',
         180, 306, {sz:13.5, b:1, c:EP.P.blueD});
@@ -456,7 +456,7 @@ function draw2(dt){
   g.setLineDash([5,4]); g.strokeStyle = 'rgba(74,144,217,.8)'; g.lineWidth = 1.3;
   EP.rr(g, 36, 74, 56, 96, 8); g.stroke();
   g.restore();
-  EP.chip(g, '电池内部', 64, 74, {sz:9.5, c:EP.P.blueD, fill:'#152536', line:'rgba(74,144,217,.6)'});
+  EP.chip(g, '电池内部', 64, 74, {sz:9.5, c:EP.P.blueD, fill:C.accbg, line:'rgba(74,144,217,.6)'});
 
   /* 旁边那条 callout 已经写了 E = 1.5 V，元件身上再印一遍就是同一个数出现两次 */
   EP.cell(g, R2.x0, 104, 42, 20, {horiz:false, pm:false, volt:false});
@@ -481,7 +481,7 @@ function draw2(dt){
   const bx = 28, bw = 304, by = 198, bh = 34;
   txt(g, '电动势 E 这 1.5 V 分给了谁', 180, 188, {sz:10.5, c:EP.P.inkL});
   g.save();
-  EP.rr(g, bx, by, bw, bh, 6); g.fillStyle = '#1b232d'; g.fill();
+  EP.rr(g, bx, by, bw, bh, 6); g.fillStyle = C.box; g.fill();
   g.strokeStyle = C.boxLine; g.lineWidth = 1; g.stroke();
   g.restore();
   if(!S2.open){

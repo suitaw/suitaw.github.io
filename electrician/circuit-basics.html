@@ -6,31 +6,9 @@
 <title>回路、大地与触电原理 —— 电工入门</title>
 <style>
 :root{
-  /* 2026-08-28 全站改成「深色仪表台」，这一份和 elec-page.css 的 :root 保持一致。
-     恒深色：画布、元件、外壳是一整套，跟着系统亮暗切会让画布和页面对不上。 */
-  --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
-  --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
-  --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
-  --ok:#3ecf8e; --okbg:#12291f;
-  --err:#ff6b6b; --errbg:#331a1a;
-  --warn:#f0a020; --warnbg:#2e2412;
-  --canvas:#111820;
-  /* 让浏览器原生控件（滑杆轨道、复选框、下拉、滚动条）自己变深 ——
-     不写这一行的话，深色页面里那几个原生件还是浅色的一块。 */
-  color-scheme: dark;
-
+  /* 颜色全部交给 elec-page.css —— 那边现在是深浅两套（:root[data-theme]），
+     这里再抄一份的话白天模式会被这份深色盖回去。只留这一页自己的尺寸变量。 */
   --r:10px; --tap:44px;
-}
-@media (prefers-color-scheme:dark){
-  :root{
-    --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
-    --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
-    --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
-    --ok:#3ecf8e; --okbg:#12291f;
-    --err:#ff6b6b; --errbg:#331a1a;
-    --warn:#f0a020; --warnbg:#2e2412;
-    --canvas:#111820;
-  }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -140,6 +118,8 @@ input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;
 .note hr{border:none;border-top:1px solid var(--line);margin:9px 0}
 .note .sub{font-size:.8rem;color:var(--tx3)}
 </style>
+<!-- 主题要在解析 body 之前定下来，否则选了白天模式也会先闪一下深色 -->
+<script src="elec-theme.js"></script>
 </head>
 <body>
 
@@ -248,13 +228,32 @@ const TAU = Math.PI * 2;
    **导线要浅**（深底上深灰线等于没有）、国标线色只提亮度不动色相、
    大地是「比画布底稍亮的暗土棕」（原来是浅土黄 #cdae74，深底上会变成一整块亮斑，
    而这一页的重点是电流在地下走的那一段，土不能比线还抢眼）。 */
-const C = {
+const PAL = {
+dark:{
   bg:'#111820', wire:'#8b97a5', tx:'#e6edf5', tx2:'#9fadbd', tx3:'#71808f',
   L:'#ff5f52', N:'#4ea3ff', PEg:'#4fc04a', PEy:'#e8d34a',
   hot:'#ffb340', hot2:'#ffe066',
   earth:'#332a1c', earth2:'#6b5a3c', earthLine:'#a8894f',
   danger:'#ff5f52', ok:'#3ecf8e', box:'#1b232d', boxLine:'#3a4653'
-};
+},
+/* 白天模式。土色回到「浅土黄」那一套 —— 深底上它得压暗（不然一整块亮斑抢戏），
+   白底上反过来，浅土黄才像土。 */
+light:{
+  bg:'#fafbfc', wire:'#39424d', tx:'#242a31', tx2:'#6c7681', tx3:'#98a1ab',
+  L:'#d5342a', N:'#1e6fd0', PEg:'#3f9b35', PEy:'#c9a81e',
+  hot:'#e0731a', hot2:'#e8a020',
+  earth:'#efe3cb', earth2:'#cdae74', earthLine:'#8a6d3b',
+  danger:'#c32f2f', ok:'#1c8348', box:'#eef1f5', boxLine:'#b9c2cc'
+}};
+/* **就地改键值，不能换引用** —— 底下所有画法都是直接引 C.xxx 拿在手里的 */
+const C = Object.assign({}, PAL.dark);
+function setTheme(name){
+  const p = PAL[name] || PAL.dark;
+  Object.keys(C).forEach(function(k){ delete C[k]; });
+  Object.assign(C, p);
+}
+if(window.ETheme) setTheme(ETheme.get());
+window.addEventListener('elec:theme', function(e){ setTheme(e.detail.theme); });
 
 /* ---- 折线路径：一切电流动画的地基 ---- */
 function Path(pts){

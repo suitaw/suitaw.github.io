@@ -211,7 +211,7 @@ document.getElementById('tabs').addEventListener('click', function(e){
 function grid(g, bx, y0, y1, zeroLab){
   box(g, bx.x, bx.y, bx.w, bx.h, 6, C.box, C.boxLine, 1);
   const py = function(v){ return bx.y + bx.h * (1 - (v-y0)/(y1-y0)); };
-  g.save(); g.strokeStyle = '#1b232d'; g.lineWidth = 1;
+  g.save(); g.strokeStyle = C.box; g.lineWidth = 1;
   for(let i=1;i<6;i++){
     const x = bx.x + bx.w*i/6;
     g.beginPath(); g.moveTo(x, bx.y); g.lineTo(x, bx.y+bx.h); g.stroke();
@@ -291,7 +291,7 @@ function draw1(dt){
     pdc: ['脉动直流：起伏，但从不越过 0 线', '大小在变，方向始终没变 —— 所以它仍然是直流。', '#f0a020'],
     ac:  ['交流：过零、反向、周而复始', '每 20 毫秒（50Hz）走完一整圈：正半周 → 0 → 负半周 → 0。', C.acc]
   }[S1.m];
-  box(g, 20, 248, 320, 42, 6, '#1b232d', C.boxLine, 1);
+  box(g, 20, 248, 320, 42, 6, C.box, C.boxLine, 1);
   txt(g, info[0], 180, 264, {sz:11.5, b:1, c:info[2]});
   txt(g, info[1], 180, 281, {sz:10, c:C.tx2});
 }
@@ -329,7 +329,7 @@ function draw2(dt){
   const cx = 84, cy = 108, R = 56;
   g.save();
   g.beginPath(); g.arc(cx, cy, R, 0, EC.TAU);
-  g.fillStyle = '#1b232d'; g.fill();
+  g.fillStyle = C.box; g.fill();
   g.strokeStyle = C.metalD; g.lineWidth = 2; g.stroke();
   g.beginPath(); g.arc(cx, cy, R-16, 0, EC.TAU);
   g.strokeStyle = '#c3cad2'; g.lineWidth = 1.2; g.stroke();
@@ -374,7 +374,7 @@ function draw2(dt){
   txt(g, '输出电动势', bx.x, bx.y-9, {sz:10, c:C.tx3, al:'left'});
 
   /* ---- 下：读数与说明 ---- */
-  box(g, 20, 188, 320, 44, 6, '#1b232d', C.boxLine, 1);
+  box(g, 20, 188, 320, 44, 6, C.box, C.boxLine, 1);
   txt(g, '转过 ' + S2.ang.toFixed(0) + '°　　这一刻电动势 = ' +
          (e<0?'−':'') + Math.abs(e*PK).toFixed(0) + ' V（峰值 ' + PK.toFixed(0) + ' V）',
       180, 204, {sz:11, b:1, c:C.tx});
@@ -467,7 +467,7 @@ function draw3(dt){
 
   /* 右边说明 */
   const on = S3.p === 'AN';
-  box(g, 176, 168, 164, 92, 6, on ? '#152536' : '#241a33', on ? C.acc : '#b07ce8', 1.4);
+  box(g, 176, 168, 164, 92, 6, on ? C.accbg : C.voltbg, on ? C.acc : '#b07ce8', 1.4);
   txt(g, on ? '相电压 U相' : '线电压 U线', 258, 186, {sz:11, b:1, c:on ? C.accD : '#8e5cc8'});
   txt(g, on ? '相线 L1 ↔ 零线 N' : '相线 L1 ↔ 相线 L2', 258, 204, {sz:10, c:C.tx2});
   txt(g, on ? '220 V' : '380 V', 258, 228, {sz:21, b:1, c:on ? C.accD : '#8e5cc8'});

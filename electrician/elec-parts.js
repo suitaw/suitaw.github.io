@@ -28,16 +28,45 @@
 const TAU = Math.PI*2;
 
 /* 统一色板 —— 六节课共用，看着才像同一套器材 */
+/* 2026-08-28 傍晚加白天模式：色板拆成两套。
+   **真实材质色（钢/铜/米黄/瓷/黄铜/绿红色环…）两套完全一样** ——
+   那是元件本来的颜色，不该跟着主题变（第四版定的规矩）。
+   两套之间只差三类：①文字和引脚墨色 ②胶木/机身（深底上要提亮才看得见轮廓）
+   ③压在画布上的浅色底板、玻璃、引线这些「跟背景打交道」的东西。 */
+const THEMED = {
+dark:{
+  ink:'#dfe7f0', inkL:'#9fadbd', inkLL:'#74828f',
+  bakelite:'#2f353d', bakeliteL:'#454d57',
+  chipFill:'rgba(26,34,43,.93)', chipLine:'rgba(122,138,154,.55)',
+  leadLine:'rgba(159,173,189,.5)',
+  wireBlack:'#7d8896', wireRed:'#e0554a', wireBlue:'#3b82d8', wireYellow:'#d9a520',
+  /* 玻璃：深底上不能用浅色实心（那是个白球），只留反光和亮描边 */
+  glassA:'rgba(226,240,252,.34)', glassB:'rgba(150,178,205,.15)',
+  glassC:'rgba(132,155,180,.24)', glassEdge:'rgba(190,209,228,.92)',
+  gloss:'rgba(255,255,255,.42)'
+},
+light:{
+  ink:'#2b3038', inkL:'#5b6672', inkLL:'#8b949e',
+  bakelite:'#23272c', bakeliteL:'#3a4048',
+  chipFill:'rgba(255,255,255,.94)', chipLine:'rgba(140,155,170,.55)',
+  leadLine:'rgba(110,125,140,.55)',
+  wireBlack:'#23272c', wireRed:'#c0392b', wireBlue:'#1e5fa8', wireYellow:'#b8860b',
+  /* 浅底上反过来：玻璃要**淡蓝灰半透明 + 深一点的描边**，
+     否则白底上一个白球什么都看不见 */
+  glassA:'rgba(255,255,255,.86)', glassB:'rgba(222,233,244,.62)',
+  glassC:'rgba(186,203,220,.62)', glassEdge:'rgba(118,138,160,.9)',
+  gloss:'rgba(255,255,255,.95)'
+}};
+
 const P = {
-  /* 2026-08-28 全站改深色仪表台：ink 这一组同时管**画布文字**和**符号版元件的引脚线**，
-     深底上两者都得浅。改深色之前是 #2b3038 / #5b6672 / #8b949e。 */
+  /* ink 这一组同时管**画布文字**和**符号版元件的引脚线**，由 EP.theme() 换值 */
   ink:'#dfe7f0', inkL:'#9fadbd', inkLL:'#74828f',
   /* ---- 真实材料色（元件本体只能用这些，蓝/橙/红/绿是教学语义色，不许拿来给元件上色）---- */
   steel:'#c3cad2', steelD:'#8b949e', steelDD:'#5b6672',   /* 镀镍/不锈钢 */
   chrome:'#eef2f6',                                        /* 高光金属 */
   copper:'#b87333', copperD:'#8a5418', copperL:'#e0a56a',  /* 铜、电阻丝 */
-  /* 胶木和机身：深底上原来那两个值（#23272c / #3a4048）几乎和背景一个色，
-     整个元件轮廓就没了，所以往上提了两档。 */
+  /* 胶木：深底上真黑（#23272c）几乎和背景一个色，元件轮廓就没了，所以提了两档；
+     浅底上再换回去。这两个值由 EP.theme() 管。 */
   bakelite:'#2f353d', bakeliteL:'#454d57',                 /* 胶木/塑料底座 */
   body:'#454d57', bodyD:'#2b3138', bodyL:'#78818c',        /* 深灰机身 */
   cream:'#e8dcc0', creamD:'#c9b98f',                       /* 电阻米黄本体 */
@@ -111,7 +140,7 @@ function callout(g, ax, ay, tx, ty, value, name, o){
   const al = o.al || 'left';
   /* 引线：先横后斜的一段折线，末端不带箭头（技术制图的习惯） */
   g.save();
-  g.strokeStyle = o.line || 'rgba(159,173,189,.5)';
+  g.strokeStyle = o.line || P.leadLine;
   g.lineWidth = 1; g.setLineDash(o.dash || []);
   g.beginPath();
   g.moveTo(ax, ay);
@@ -138,9 +167,9 @@ function chip(g, s, x, y, o){
   if(o.al === 'right') bx = x - w;
   g.save();
   rr(g, bx, y - h/2, w, h, h/2);
-  /* 深底：底板是一块比画布稍亮的深色，不是白胶囊 */
-  g.fillStyle = o.fill || 'rgba(26,34,43,.93)'; g.fill();
-  if(o.line !== false){ g.strokeStyle = o.line || 'rgba(122,138,154,.55)'; g.lineWidth = 1; g.stroke(); }
+  /* 底板跟着主题走：深色下是比画布稍亮的深色块，浅色下才是白胶囊 */
+  g.fillStyle = o.fill || P.chipFill; g.fill();
+  if(o.line !== false){ g.strokeStyle = o.line || P.chipLine; g.lineWidth = 1; g.stroke(); }
   g.restore();
   txt(g, s, bx + w/2, y, {sz:sz, b:o.b, c:o.c || P.ink});
   return {x:bx, y:y-h/2, w:w, h:h};
@@ -182,6 +211,19 @@ const WIRE_W = { normal:S.wire, hot:S.wire, thick:5.2 };
    但落到像素上得是中灰。红蓝也各提了一档亮度。改之前：
    black #23272c / red #c0392b / blue #1e5fa8 */
 const WIRE_C = { black:'#7d8896', red:'#e0554a', blue:'#3b82d8', yellow:'#d9a520' };
+/* 换主题：**就地改键值，不能换引用** —— 各节课都是直接引 EP.P.xxx / EP.WIRE_C.xxx
+   拿在手里的（和 elec-canvas.js 的 C 同一个道理）。 */
+function theme(name){
+  const t = THEMED[name === 'light' ? 'light' : 'dark'];
+  P.ink = t.ink; P.inkL = t.inkL; P.inkLL = t.inkLL;
+  P.bakelite = t.bakelite; P.bakeliteL = t.bakeliteL;
+  P.chipFill = t.chipFill; P.chipLine = t.chipLine; P.leadLine = t.leadLine;
+  P.glassA = t.glassA; P.glassB = t.glassB; P.glassC = t.glassC;
+  P.glassEdge = t.glassEdge; P.gloss = t.gloss;
+  WIRE_C.black = t.wireBlack; WIRE_C.red = t.wireRed;
+  WIRE_C.blue = t.wireBlue;   WIRE_C.yellow = t.wireYellow;
+}
+theme('dark');            /* 默认值也从同一张表来，免得两处各写一份 */
 /* **导线永远是一条连续、干净的线**，通电不改变导线颜色，只在上面加少量蓝色电子粒子。
    把导线画成一串圆点是明确禁止的做法。 */
 function wire(g, path, o){
@@ -499,17 +541,16 @@ function bulb(g, x, y, R, b, o){
   const warmA = lit ? [0, .05, .10, .16][lv] : 0;
   /* 透明度是试出来的：再低一档（中心 .30 / 边缘 .15）熄灭的灯泡在深底上
      整个球就没了，只剩灯座和一条弧线（1.4 三个并联灯泡实测）。 */
-  gg.addColorStop(0,   'rgba(226,240,252,.34)');
-  gg.addColorStop(0.42,'rgba(150,178,205,.15)');
-  gg.addColorStop(1, lit ? 'rgba(255,226,170,'+(0.18+warmA).toFixed(2)+')'
-                         : 'rgba(132,155,180,.24)');
+  gg.addColorStop(0,    P.glassA);
+  gg.addColorStop(0.42, P.glassB);
+  gg.addColorStop(1, lit ? 'rgba(255,226,170,'+(0.18+warmA).toFixed(2)+')' : P.glassC);
   g.fillStyle = gg; g.fill();
-  g.strokeStyle = 'rgba(190,209,228,.92)'; g.lineWidth = 1.25; g.stroke();
+  g.strokeStyle = P.glassEdge; g.lineWidth = 1.25; g.stroke();
   /* 左上一道月牙高光 —— 玻璃的「玻璃感」几乎全靠它 */
   g.save();
   g.beginPath();
   g.arc(x - R*0.34, y - R*0.30, R*0.46, Math.PI*0.86, Math.PI*1.62);
-  g.strokeStyle = 'rgba(255,255,255,.42)'; g.lineWidth = R*0.13; g.lineCap = 'round';
+  g.strokeStyle = P.gloss; g.lineWidth = R*0.13; g.lineCap = 'round';
   g.stroke();
   g.restore();
   g.restore();
@@ -1057,7 +1098,7 @@ global.EP = {
   coil:coil, magnet:magnet, appliance:appliance,
   diode:diode, led:led, capacitor:capacitor, inductor:inductor,
   motor:motor, buzzer:buzzer, slideRheostat:slideRheostat, internalR:internalR,
-  bulbLevel:bulbLevel, S:S
+  bulbLevel:bulbLevel, S:S, theme:theme
 };
 
 })(typeof window!=='undefined' ? window : globalThis);
