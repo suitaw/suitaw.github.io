@@ -523,17 +523,22 @@ function stripLegend(g, x, y, items){
 
 /* ================= 主循环 ================= */
 /* 只画当前这一页。fn(dt, t) —— dt 是秒 */
+/* 返回一个句柄 {stop()}：单页站切走一节时要停掉它的 rAF，
+   否则六节的循环会一直在后台跑（耗电、手机发烫）。
+   旧的六个薄壳页照旧忽略返回值，向后兼容。 */
 function loop(fn){
-  let last = 0;
+  let last = 0, alive = true, id = 0;
   function step(ts){
+    if(!alive) return;
     const t = ts / 1000;
     let dt = last ? (t - last) : 0;
     last = t;
     if(dt > 0.1) dt = 0.1;          /* 切回前台时别跳一大步 */
     fn(dt, t);
-    global.requestAnimationFrame(step);
+    id = global.requestAnimationFrame(step);
   }
-  global.requestAnimationFrame(step);
+  id = global.requestAnimationFrame(step);
+  return { stop(){ alive = false; if(id) global.cancelAnimationFrame(id); } };
 }
 
 global.EC = {
