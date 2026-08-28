@@ -51,7 +51,7 @@ ELEC.reg({
 
   <div class="bet" data-bet="c15-dc" data-q="手机充电器插在 220V 插座上，输出给手机的是什么电？"
        data-opts="还是 220V 交流|5V 左右的直流|交流，只是电压低了" data-right="1"
-       data-after="充电器内部先用变压器把 220V 交流降到低压交流，再用整流二极管变成脉动直流，最后靠电容滤波变成平稳直流。输出标的「5V⎓2A」那个「⎓」符号就是直流的意思。"></div>
+       data-after="充电器内部先用变压器把 220V 交流降到低压交流，再用整流二极管变成脉动直流，最后靠电容滤波变成平稳直流。输出标的「5V⎓2A」里那个符号 ——「一条实线，底下三段短横」—— 就是直流的意思（万一你的手机显示成一个方框，就是字体里没有这个符号，它长的就是这个样子）。"></div>
 </section>
 
 <!-- ================= 场景 2 ================= -->
@@ -209,9 +209,9 @@ document.getElementById('tabs').addEventListener('click', function(e){
 
 /* 画一块坐标纸：返回把数值换成像素的两个函数 */
 function grid(g, bx, y0, y1, zeroLab){
-  box(g, bx.x, bx.y, bx.w, bx.h, 6, '#fff', C.boxLine, 1);
+  box(g, bx.x, bx.y, bx.w, bx.h, 6, C.box, C.boxLine, 1);
   const py = function(v){ return bx.y + bx.h * (1 - (v-y0)/(y1-y0)); };
-  g.save(); g.strokeStyle = '#e8ecf1'; g.lineWidth = 1;
+  g.save(); g.strokeStyle = '#1b232d'; g.lineWidth = 1;
   for(let i=1;i<6;i++){
     const x = bx.x + bx.w*i/6;
     g.beginPath(); g.moveTo(x, bx.y); g.lineTo(x, bx.y+bx.h); g.stroke();
@@ -219,7 +219,7 @@ function grid(g, bx, y0, y1, zeroLab){
   g.restore();
   /* 0 线 */
   if(y0 < 0){
-    g.save(); g.strokeStyle = '#aab3bd'; g.lineWidth = 1.2;
+    g.save(); g.strokeStyle = '#78828d'; g.lineWidth = 1.2;
     g.beginPath(); g.moveTo(bx.x, py(0)); g.lineTo(bx.x+bx.w, py(0)); g.stroke(); g.restore();
     txt(g, zeroLab || '0', bx.x-6, py(0), {sz:9.5, c:C.tx3, al:'right'});
   }
@@ -269,7 +269,7 @@ function draw1(dt){
   const isAC = S1.m === 'ac';
   const py = grid(g, bx, isAC ? -1.25 : -0.25, 1.25, '0');
   g.save();
-  g.strokeStyle = isAC ? C.acc : (S1.m === 'pdc' ? '#c05a00' : C.ok);
+  g.strokeStyle = isAC ? C.acc : (S1.m === 'pdc' ? '#f0a020' : C.ok);
   g.lineWidth = 2.6; g.lineJoin='round'; g.lineCap='round';
   g.beginPath();
   for(let i=0;i<=200;i++){
@@ -288,10 +288,10 @@ function draw1(dt){
 
   const info = {
     dc:  ['恒定直流：一条平线', '大小不变、方向不变。干电池、蓄电池就是这样。', C.ok],
-    pdc: ['脉动直流：起伏，但从不越过 0 线', '大小在变，方向始终没变 —— 所以它仍然是直流。', '#c05a00'],
+    pdc: ['脉动直流：起伏，但从不越过 0 线', '大小在变，方向始终没变 —— 所以它仍然是直流。', '#f0a020'],
     ac:  ['交流：过零、反向、周而复始', '每 20 毫秒（50Hz）走完一整圈：正半周 → 0 → 负半周 → 0。', C.acc]
   }[S1.m];
-  box(g, 20, 248, 320, 42, 6, '#eef2f6', C.boxLine, 1);
+  box(g, 20, 248, 320, 42, 6, '#1b232d', C.boxLine, 1);
   txt(g, info[0], 180, 264, {sz:11.5, b:1, c:info[2]});
   txt(g, info[1], 180, 281, {sz:10, c:C.tx2});
 }
@@ -329,7 +329,7 @@ function draw2(dt){
   const cx = 84, cy = 108, R = 56;
   g.save();
   g.beginPath(); g.arc(cx, cy, R, 0, EC.TAU);
-  g.fillStyle = '#eef1f5'; g.fill();
+  g.fillStyle = '#1b232d'; g.fill();
   g.strokeStyle = C.metalD; g.lineWidth = 2; g.stroke();
   g.beginPath(); g.arc(cx, cy, R-16, 0, EC.TAU);
   g.strokeStyle = '#c3cad2'; g.lineWidth = 1.2; g.stroke();
@@ -341,9 +341,9 @@ function draw2(dt){
   /* 转子磁极 */
   g.save();
   g.translate(cx, cy); g.rotate(rad);
-  box(g, -12, -34, 24, 30, 4, '#e0402a', '#b52a18', 1.2);
+  box(g, -12, -34, 24, 30, 4, '#ff6a4a', '#e05540', 1.2);
   txt(g, 'N', 0, -19, {sz:12, b:1, c:'#fff'});
-  box(g, -12, 4, 24, 30, 4, '#1667d6', '#0f4ea3', 1.2);
+  box(g, -12, 4, 24, 30, 4, '#4ea3ff', '#2b7fd0', 1.2);
   txt(g, 'S', 0, 19, {sz:12, b:1, c:'#fff'});
   g.restore();
   txt(g, '转子（磁极）', cx, cy+R+14, {sz:10, c:C.tx3});
@@ -374,7 +374,7 @@ function draw2(dt){
   txt(g, '输出电动势', bx.x, bx.y-9, {sz:10, c:C.tx3, al:'left'});
 
   /* ---- 下：读数与说明 ---- */
-  box(g, 20, 188, 320, 44, 6, '#eef2f6', C.boxLine, 1);
+  box(g, 20, 188, 320, 44, 6, '#1b232d', C.boxLine, 1);
   txt(g, '转过 ' + S2.ang.toFixed(0) + '°　　这一刻电动势 = ' +
          (e<0?'−':'') + Math.abs(e*PK).toFixed(0) + ' V（峰值 ' + PK.toFixed(0) + ' V）',
       180, 204, {sz:11, b:1, c:C.tx});
@@ -416,7 +416,7 @@ function draw3(dt){
   /* ---- 上：三相波形 ---- */
   const bx = {x:44, y:34, w:290, h:104};
   const py = grid(g, bx, -1.9, 1.9, '0');
-  const cols = ['#c9960a', '#2f9e44', '#d5342a'];   /* 国标：L1 黄 L2 绿 L3 红 */
+  const cols = ['#e8b93c', '#4fc04a', '#ff6b6b'];   /* 国标：L1 黄 L2 绿 L3 红 */
   const names = ['L1', 'L2', 'L3'];
   for(let k=0;k<3;k++){
     g.save();
@@ -436,7 +436,7 @@ function draw3(dt){
   /* 选中的那条差值波形 */
   if(S3.p === 'AB'){
     g.save();
-    g.strokeStyle = '#7b2fbe'; g.lineWidth = 2.8; g.lineJoin='round';
+    g.strokeStyle = '#b07ce8'; g.lineWidth = 2.8; g.lineJoin='round';
     g.setLineDash([]);
     g.beginPath();
     for(let i=0;i<=240;i++){
@@ -446,7 +446,7 @@ function draw3(dt){
       if(i===0) g.moveTo(x, py(v)); else g.lineTo(x, py(v));
     }
     g.stroke(); g.restore();
-    txt(g, 'L1−L2 的差', bx.x + bx.w - 4, bx.y - 9, {sz:10, b:1, c:'#7b2fbe', al:'right'});
+    txt(g, 'L1−L2 的差', bx.x + bx.w - 4, bx.y - 9, {sz:10, b:1, c:'#b07ce8', al:'right'});
   }
 
   /* ---- 下：星形接线 ---- */
@@ -462,14 +462,15 @@ function draw3(dt){
   });
   node(g, cx, cy, {r:5, color:'#5b6672'});
   txt(g, 'N 中性点', cx, cy+18, {sz:10, c:C.tx2});
-  txt(g, '三相绕组星形接法', 20, cy-r-16, {sz:10, c:C.tx3, al:'left'});
+  /* 标题只能到 x≈85 —— 再长就撞上正上方那个 L1 标签（截图抓到的）*/
+  txt(g, '星形接法', 20, cy-r-16, {sz:10, c:C.tx3, al:'left'});
 
   /* 右边说明 */
   const on = S3.p === 'AN';
-  box(g, 176, 168, 164, 92, 6, on ? '#e8f1fc' : '#f3ecfb', on ? C.acc : '#7b2fbe', 1.4);
-  txt(g, on ? '相电压 U相' : '线电压 U线', 258, 186, {sz:11, b:1, c:on ? C.accD : '#5c2394'});
+  box(g, 176, 168, 164, 92, 6, on ? '#152536' : '#241a33', on ? C.acc : '#b07ce8', 1.4);
+  txt(g, on ? '相电压 U相' : '线电压 U线', 258, 186, {sz:11, b:1, c:on ? C.accD : '#8e5cc8'});
   txt(g, on ? '相线 L1 ↔ 零线 N' : '相线 L1 ↔ 相线 L2', 258, 204, {sz:10, c:C.tx2});
-  txt(g, on ? '220 V' : '380 V', 258, 228, {sz:21, b:1, c:on ? C.accD : '#5c2394'});
+  txt(g, on ? '220 V' : '380 V', 258, 228, {sz:21, b:1, c:on ? C.accD : '#8e5cc8'});
   txt(g, on ? '家里插座就是这个' : '= 220 × √3 = 380', 258, 250, {sz:10, c:C.tx2});
 
   txt(g, '两条正弦错开 120°，所以差值的幅值是单相的 √3 倍，不是 2 倍',
@@ -496,18 +497,18 @@ function note3(){
    场景 4：供电制式
    ================================================================ */
 const SYS = [
-  { n:'单相两线制', lines:[['L','相线（火线）',C.L],['N','零线（淡蓝）','#5aa9e6']],
+  { n:'单相两线制', lines:[['L','相线（火线）',C.L],['N','零线（淡蓝）','#6fb8ff']],
     d:'最简单的一种：一根相线 + 一根零线，取得 220V。老房子的照明线路常见。',
     warn:'没有 PE 线，设备外壳没法接地 —— 一旦漏电，外壳就带电。现在新装线路不允许这么做。' },
-  { n:'单相三线制', lines:[['L','相线（火线）',C.L],['N','零线（淡蓝）','#5aa9e6'],['PE','保护地线',C.PE]],
+  { n:'单相三线制', lines:[['L','相线（火线）',C.L],['N','零线（淡蓝）','#6fb8ff'],['PE','保护地线',C.PE]],
     d:'在两线基础上加一根 PE 保护地线，接到设备金属外壳。这是现在住宅插座的标准做法。',
     warn:'三孔插座上面那个孔就是 PE。它平时不通电流，专门给漏电电流一条回大地的路，配合漏保跳闸。' },
-  { n:'三相四线制', lines:[['L1','相线 1（黄）','#c9960a'],['L2','相线 2（绿）','#2f9e44'],
-                          ['L3','相线 3（红）','#d5342a'],['N','零线（淡蓝）','#5aa9e6']],
+  { n:'三相四线制', lines:[['L1','相线 1（黄）','#e8b93c'],['L2','相线 2（绿）','#4fc04a'],
+                          ['L3','相线 3（红）','#ff6b6b'],['N','零线（淡蓝）','#6fb8ff']],
     d:'三根相线 + 一根零线。相线之间 380V，相线对零线 220V —— 动力和照明可以混合供电。',
     warn:'零线过长、阻抗过大或者断线时，零线会带上危险电位。书上第 15 页专门警示过这一条。' },
-  { n:'三相五线制', lines:[['L1','相线 1（黄）','#c9960a'],['L2','相线 2（绿）','#2f9e44'],
-                          ['L3','相线 3（红）','#d5342a'],['N','工作零线','#5aa9e6'],['PE','保护零线',C.PE]],
+  { n:'三相五线制', lines:[['L1','相线 1（黄）','#e8b93c'],['L2','相线 2（绿）','#4fc04a'],
+                          ['L3','相线 3（红）','#ff6b6b'],['N','工作零线','#6fb8ff'],['PE','保护零线',C.PE]],
     d:'把零线的两个作用彻底分开：N 只负责走工作电流，PE 只负责保护接地。',
     warn:'这是目前施工现场和新建工程的强制要求。PE 与 N 分开之后，N 上的压降不会串到设备外壳上。' }
 ];
@@ -520,13 +521,13 @@ function draw4(){
   EP.heading(g, 14, 16, s.n, '（数线、认颜色）');
 
   /* 左：配电箱 */
-  box(g, 22, 42, 62, 152, 6, '#e7ebf0', C.metalD, 1.6);
+  box(g, 22, 42, 62, 152, 6, '#1e262f', C.metalD, 1.6);
   txt(g, '配', 53, 96, {sz:12, b:1, c:C.tx2});
   txt(g, '电', 53, 118, {sz:12, b:1, c:C.tx2});
   txt(g, '箱', 53, 140, {sz:12, b:1, c:C.tx2});
 
   /* 右：用电设备 */
-  box(g, 268, 62, 72, 118, 6, '#e7ebf0', C.metalD, 1.6);
+  box(g, 268, 62, 72, 118, 6, '#1e262f', C.metalD, 1.6);
   txt(g, '用电', 304, 106, {sz:11, c:C.tx2});
   txt(g, '设备', 304, 128, {sz:11, c:C.tx2});
 
@@ -547,7 +548,7 @@ function draw4(){
       g.beginPath(); g.moveTo(84, y); g.lineTo(268, y); g.stroke();
     }
     g.restore();
-    txt(g, L[0], 176, y-9, {sz:10, b:1, c:L[0]==='PE' ? '#3f9b35' : L[2]});
+    txt(g, L[0], 176, y-9, {sz:10, b:1, c:L[0]==='PE' ? '#4fc04a' : L[2]});
   });
 
   /* 图例 */

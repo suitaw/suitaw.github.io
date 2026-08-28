@@ -12,7 +12,12 @@
 (function(global){
 'use strict';
 
-const INK = '#242a31';
+/* 2026-08-28 全站深色仪表台：这套符号原来是画在白底上的（墨 #242a31、
+   元件内部填白）。题库那 8 道图形题现在的底是深色，黑符号等于看不见，
+   所以墨改成浅色、内部填充改成和卡片同色的深灰。
+   —— 白底那份留在下面注释里，万一要做打印版再切回去。 */
+const INK  = '#dfe7f0';   /* 白底版：#242a31 */
+const FILL = '#141a21';   /* 白底版：#fff  —— 元件内部（表盘、灯泡）的填充 */
 const LW = 1.9;
 
 function line(g,x0,y0,x1,y1){
@@ -34,7 +39,7 @@ function meter(g, x, y, ch, r){
   r = r || 20;
   setup(g);
   g.beginPath(); g.arc(x, y, r, 0, Math.PI*2);
-  g.fillStyle = '#fff'; g.fill();
+  g.fillStyle = FILL; g.fill();
   g.strokeStyle = INK; g.stroke();
   g.fillStyle = INK;
   g.font = '600 ' + Math.round(r*1.05) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
@@ -55,7 +60,7 @@ function switch3(g, x, y, variant){
     if(variant === 'fuse'){
       /* 顶端空心圆（铰接点） */
       g.beginPath(); g.arc(px, y0 + 7, 3.4, 0, Math.PI*2);
-      g.fillStyle = '#fff'; g.fill(); g.strokeStyle = INK; g.stroke();
+      g.fillStyle = FILL; g.fill(); g.strokeStyle = INK; g.stroke();
       line(g, px, y0 + 10.4, px, yLink);
     } else {
       line(g, px, y0, px, yLink);
@@ -117,7 +122,7 @@ function contact(g, x, y, variant, label){
     line(g, x, y0, x, y1);
     dashLine(g, x, (y0+y1)/2, x + 26, y0 + 6);
     g.beginPath(); g.arc(x + 32, y0, 6.5, 0, Math.PI*2);
-    g.fillStyle = '#fff'; g.fill(); g.strokeStyle = INK; g.stroke();
+    g.fillStyle = FILL; g.fill(); g.strokeStyle = INK; g.stroke();
   } else if(variant === 'label'){
     g.strokeRect(x - 22, y - 14, 15, 12);
     g.font = '600 11px "PingFang SC","Microsoft YaHei",sans-serif';

@@ -311,7 +311,7 @@ function drawReal1(g){
                       color:S1.on ? EP.P.ele : '#c3cad2', skip:skip});
   if(S1.cur)
     EP.flow(g, PALL, {phase:S1.on ? S1.phase + 28 : 15, kind:'cur', gap:56,
-                      color:S1.on ? EP.P.amber : '#c9ced4', skip:skip});
+                      color:S1.on ? EP.P.amber : '#3a4551', skip:skip});
 
   /* 元件 */
   EP.cell(g, RB.x, RB.y, RB.len, RB.dia, {horiz:true});
@@ -319,9 +319,11 @@ function drawReal1(g){
              '1.5 V', '干电池', {al:'right', color:EP.P.ink});
 
   EP.knife(g, RK.x, RK.y, S1.on, {w:RK.w});
-  txt(g, '开关', RK.x, RK.y - 22, {sz:10.5, b:1, c:EP.P.inkL});
-  txt(g, S1.on ? '（闭合 · 拨杆接实）' : '（断开 · 留着空气间隙）', RK.x, RK.y - 9,
-      {sz:9.5, c: EP.P.inkL});
+  /* 标签放开关**下方**：断开时拨杆往右上抬，放上面必被穿过去（截图抓到的）。
+     下面压着那根竖导线，所以用 tag —— 它自带深色底板，压在线上也读得清。 */
+  tag(g, '开关', RK.x, RK.y + 22, {sz:10.5, b:1, c:EP.P.inkL});
+  tag(g, S1.on ? '闭合 · 拨杆接实' : '断开 · 留着空气间隙', RK.x, RK.y + 42,
+      {sz:9.5, c:EP.P.inkLL});
 
   EP.lampHolder(g, RH.x, RH.y, RH.w, RH.h);
   EP.bulb(g, RL.x, RL.y, RL.r, b);
@@ -358,7 +360,7 @@ function drawSym1(g){
                     color:S1.on ? EP.P.ele : '#c3cad2', skip:skip});
   if(S1.cur)
     EP.flow(g, P1, {phase:S1.on ? S1.phase + 28 : 15, kind:'cur', gap:56,
-                    color:S1.on ? EP.P.amber : '#c9ced4', skip:skip});
+                    color:S1.on ? EP.P.amber : '#3a4551', skip:skip});
 
   battery(g, R1.x0, BY, {horiz:false, long:19, short:10, gap:9, pm:false});
   txt(g, '＋', 42, BY-11, {sz:11, b:1, c:EP.P.red});
@@ -382,7 +384,7 @@ function panel1(g){
   if(S1.cur) items.push(['电流方向（规定）', EP.P.amber, 'arrow']);
   if(items.length) EP.legend(g, 180, 278, items);
 
-  box(g, 16, 292, 328, 40, 8, S1.on ? '#eef4fb' : '#f4f6f9', C.boxLine, 1);
+  box(g, 16, 292, 328, 40, 8, S1.on ? '#17293c' : '#1a222b', C.boxLine, 1);
   if(S1.on){
     txt(g, 'I = ' + S1.Q.toFixed(1) + ' C ÷ ' + S1.t.toFixed(1) + ' s = ' + S1.I + ' A',
         180, 306, {sz:13.5, b:1, c:EP.P.blueD});
@@ -454,9 +456,10 @@ function draw2(dt){
   g.setLineDash([5,4]); g.strokeStyle = 'rgba(74,144,217,.8)'; g.lineWidth = 1.3;
   EP.rr(g, 36, 74, 56, 96, 8); g.stroke();
   g.restore();
-  EP.chip(g, '电池内部', 64, 74, {sz:9.5, c:EP.P.blueD, fill:'#eaf2fc', line:'rgba(74,144,217,.6)'});
+  EP.chip(g, '电池内部', 64, 74, {sz:9.5, c:EP.P.blueD, fill:'#152536', line:'rgba(74,144,217,.6)'});
 
-  EP.cell(g, R2.x0, 104, 42, 20, {horiz:false, pm:false});
+  /* 旁边那条 callout 已经写了 E = 1.5 V，元件身上再印一遍就是同一个数出现两次 */
+  EP.cell(g, R2.x0, 104, 42, 20, {horiz:false, pm:false, volt:false});
   txt(g, '＋', 80, 88, {sz:12, b:1, c:EP.P.red});
   txt(g, '−',  80, 121, {sz:13, b:1, c:EP.P.inkL});
   EP.callout(g, R2.x0+10, 104, 106, 100, 'E = 1.5 V', '电池电动势', {al:'left'});
@@ -478,7 +481,7 @@ function draw2(dt){
   const bx = 28, bw = 304, by = 198, bh = 34;
   txt(g, '电动势 E 这 1.5 V 分给了谁', 180, 188, {sz:10.5, c:EP.P.inkL});
   g.save();
-  EP.rr(g, bx, by, bw, bh, 6); g.fillStyle = '#eef1f5'; g.fill();
+  EP.rr(g, bx, by, bw, bh, 6); g.fillStyle = '#1b232d'; g.fill();
   g.strokeStyle = C.boxLine; g.lineWidth = 1; g.stroke();
   g.restore();
   if(!S2.open){
@@ -487,7 +490,7 @@ function draw2(dt){
     EP.rr(g, bx, by, bw, bh, 6); g.clip();
     g.fillStyle = EP.cyl(g, by, by+bh, EP.P.blueD, EP.P.blue, '#7fb3e8');
     g.fillRect(bx, by, wU, bh);
-    g.fillStyle = EP.cyl(g, by, by+bh, '#c98410', EP.P.amber, '#ffd27a');
+    g.fillStyle = EP.cyl(g, by, by+bh, '#e8a030', EP.P.amber, '#ffd27a');
     g.fillRect(bx+wU, by, wI, bh);
     g.restore();
     if(wU > 96){
@@ -499,7 +502,7 @@ function draw2(dt){
       txt(g, '电池内部损耗', bx+wU+wI/2, by+25, {sz:9, c:'rgba(60,40,0,.75)'});
     }else{
       EP.callout(g, bx+wU+wI/2, by, bx+bw, by-16,
-                 v.Ui.toFixed(2) + ' V', '电池内部损耗', {al:'right', color:'#9a6a00'});
+                 v.Ui.toFixed(2) + ' V', '电池内部损耗', {al:'right', color:'#d09828'});
     }
   }else{
     g.save();
@@ -561,7 +564,6 @@ function draw3(){
   EP.cell(g, BX3, 145, 42, 19, {horiz:false, pm:false});
   txt(g, '＋', BX3+15, 132, {sz:11, b:1, c:C.err});
   txt(g, '−',  BX3+15, 159, {sz:13, b:1, c:C.tx2});
-  txt(g, '1.5V', BX3-14, 145, {sz:10.5, c:C.tx2, al:'right'});
 
   [['R1',PY.D,PY.C],['R2',PY.C,PY.B],['R3',PY.B,PY.A]].forEach(function(a){
     const my = (a[1]+a[2])/2;
@@ -592,7 +594,7 @@ function draw3(){
     const sv = (v>0?'+':'') + v.toFixed(1) + ' V';
     tag(g, isRef ? sv + ' ← 0 点' : sv, PX+26, y,
         {al:'l', sz:11, b:1, c:isRef ? '#fff' : C.tx,
-         fill:isRef ? C.acc : '#fff', line:isRef ? C.acc : C.boxLine});
+         fill:isRef ? C.acc : C.box, line:isRef ? C.acc : C.boxLine});
   });
 
   txt(g, '换参考点：四个数一起平移，谁比谁高多少没变', 180, 262, {sz:10.5, c:C.tx2});
@@ -633,7 +635,6 @@ function draw4(){
   EP.cell(g, LX4, 168, 46, 21, {horiz:false, pm:false});
   txt(g, '＋', LX4+16, 154, {sz:11, b:1, c:C.err});
   txt(g, '−',  LX4+16, 183, {sz:13, b:1, c:C.tx2});
-  txt(g, '1.5V', LX4, 196, {sz:10.5, c:C.tx2});
 
   EP.resistor(g, Q4.C.x, 132, {horiz:false, len:36, dia:15,
     bands:['#6b4423','#1b1b1b','#e0c020',EP.BAND.gold]});
@@ -653,14 +654,16 @@ function draw4(){
   const rp = S4.rp || rest(S4.red, -1);
   const bp = S4.bp || rest(S4.blk, 1);
   /* 表笔线从万用表的两个插孔拉出来 */
-  lead4(g, [16+96*0.62, 14+128-12], rp, '#c0392b');
-  lead4(g, [16+96*0.32, 14+128-12], bp, '#2f353c');
+  lead4(g, [16+96*0.62, 14+128-12], rp, '#e0554a');
+  lead4(g, [16+96*0.32, 14+128-12], bp, '#3d444d');
   probe(g, rp.x, rp.y, Q4[S4.red], C.err, '红');
-  probe(g, bp.x, bp.y, Q4[S4.blk], '#31383f', '黑');
+  probe(g, bp.x, bp.y, Q4[S4.blk], '#3d444d', '黑');
 
   const U = Q4[S4.red].v - Q4[S4.blk].v;
   EP.multimeter(g, 16, 14, 96, 128, {
-    reading:(U>=0?'':'−') + Math.abs(U).toFixed(2), unit:'V', mode:'V⎓'
+    /* 不传 mode：让 multimeter 自己**画**直流记号。
+       传 'V⎓' 的话那个字符字体里没有就是豆腐块。 */
+    reading:(U>=0?'':'−') + Math.abs(U).toFixed(2), unit:'V'
   });
   txt(g, '数字万用表', 20, 154, {sz:9.5, c:C.tx3, al:'left'});
   txt(g, '直流电压档', 20, 167, {sz:9.5, c:C.tx3, al:'left'});

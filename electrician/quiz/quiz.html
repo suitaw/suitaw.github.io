@@ -7,12 +7,20 @@
 <style>
 :root{
   --nav-h:58px;
-  --bg:#f4f6f9; --card:#fff; --line:#e3e8ef;
-  --tx:#1b2430; --tx2:#5a6676; --tx3:#8994a4;
-  --blue:#1f6fd4; --blue-l:#e8f1fd;
-  --green:#12924f; --green-l:#e6f6ed;
-  --red:#d0342c; --red-l:#fdecea;
-  --amber:#b06a00; --amber-l:#fdf3e2;
+  /* 2026-08-28 跟着全站改成「深色仪表台」。这一份和 electrician/elec-page.css
+     的 :root 是同一套颜色，只是这里的变量名不一样（blue/green/red/amber）。
+     `-l` 那几个原来是**浅底**（e8f1fd 这种），深底上要换成**暗底**，
+     不然整块底板比文字还亮。 */
+  --bg:#0c1014; --card:#141a21; --line:#252f3a;
+  --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
+  --blue:#4ea3ff; --blue-l:#152536;
+  --green:#3ecf8e; --green-l:#12291f;
+  --red:#ff6b6b; --red-l:#331a1a;
+  --amber:#f0a020; --amber-l:#2e2412;
+  /* 让浏览器原生控件（滑杆轨道、复选框、下拉、滚动条）自己变深 ——
+     不写这一行的话，深色页面里那几个原生件还是浅色的一块。 */
+  color-scheme: dark;
+
   --r:12px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -25,7 +33,7 @@ body{
 }
 b{font-weight:700}
 sub,sup{font-size:.72em;line-height:0}
-code{background:#eef1f5;border-radius:4px;padding:1px 5px;font-size:.9em;font-family:ui-monospace,Menlo,Consolas,monospace}
+code{background:#1b232d;border-radius:4px;padding:1px 5px;font-size:.9em;font-family:ui-monospace,Menlo,Consolas,monospace}
 
 /* ── 顶栏 ── */
 .top{
@@ -52,7 +60,9 @@ code{background:#eef1f5;border-radius:4px;padding:1px 5px;font-size:.9em;font-fa
   font-size:12px;color:var(--tx3);display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:3px;font-family:inherit;padding:0;
 }
-.nav button .ic{font-size:19px;line-height:1}
+.nav button .ic{font-size:19px;line-height:1;
+  display:flex;align-items:center;justify-content:center;height:21px}
+.nav button .ic svg{display:block}
 .nav button.on{color:var(--blue);font-weight:700}
 
 main{padding:12px 12px 20px;max-width:720px;margin:0 auto}
@@ -124,9 +134,9 @@ main{padding:12px 12px 20px;max-width:720px;margin:0 auto}
   font-size:14px;line-height:1.6;border:1px solid transparent;background:var(--bg);
 }
 .opt .k{flex:none;font-weight:700;color:var(--tx2)}
-.opt.right{background:var(--green-l);border-color:#a9dfc2}
+.opt.right{background:var(--green-l);border-color:#1e5c3f}
 .opt.right .k{color:var(--green)}
-.opt.wrong{background:var(--red-l);border-color:#f3b8b3}
+.opt.wrong{background:var(--red-l);border-color:#6b2f2b}
 .opt.wrong .k{color:var(--red)}
 .hidden-ans .opt.right{background:var(--bg);border-color:transparent}
 .hidden-ans .opt.right .k{color:var(--tx2)}
@@ -134,7 +144,7 @@ main{padding:12px 12px 20px;max-width:720px;margin:0 auto}
 .ans{font-size:13.5px;font-weight:700;color:var(--green);margin:8px 0 0}
 .ans .no{color:var(--amber);font-weight:700}
 .tip{
-  margin-top:8px;background:#fbfcfe;border:1px solid var(--line);border-left:3px solid var(--blue);
+  margin-top:8px;background:#1a222b;border:1px solid var(--line);border-left:3px solid var(--blue);
   border-radius:0 8px 8px 0;padding:9px 11px;font-size:13.5px;line-height:1.72;color:var(--tx2);
 }
 .tip .lb{font-weight:700;color:var(--blue);font-size:11.5px;letter-spacing:.6px;display:block;margin-bottom:2px}
@@ -143,7 +153,7 @@ main{padding:12px 12px 20px;max-width:720px;margin:0 auto}
   min-height:44px;padding:0 13px;border:1px solid var(--line);background:var(--card);border-radius:9px;
   font-size:13px;color:var(--tx2);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;
 }
-.mini.done{background:var(--green-l);border-color:#a9dfc2;color:var(--green);font-weight:700}
+.mini.done{background:var(--green-l);border-color:#1e5c3f;color:var(--green);font-weight:700}
 .q.masterd{opacity:.55}
 
 /* ── 刷题 ── */
@@ -198,15 +208,15 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 .key .tbl-wrap+.rt,.tip .tbl-wrap+.rt,.tf-sec .tbl-wrap+.rt{margin-top:7px;display:block}
 
 .note{
-  background:var(--amber-l);border:1px solid #f0d9ac;border-radius:var(--r);
-  padding:11px 13px;font-size:13px;line-height:1.7;color:#6b4a10;margin-bottom:12px;
+  background:var(--amber-l);border:1px solid #5c4520;border-radius:var(--r);
+  padding:11px 13px;font-size:13px;line-height:1.7;color:#e8b93c;margin-bottom:12px;
 }
 /* ── 判断题 ──
    这批题答案全是「错误」，所以卡片的主角不是答案，是「正确说法」那一块。
    题干用红底表示「这句话是错的」，正确说法用绿底，两者一眼分得开。 */
 .tf-q{
   font-size:15px;line-height:1.68;padding:10px 12px;border-radius:9px;
-  background:var(--red-l);border:1px solid #f3c9c5;color:#7a2019;
+  background:var(--red-l);border:1px solid #5c2b28;color:#7a2019;
 }
 .tf-x{
   display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--red);
@@ -217,20 +227,20 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
   display:inline-block;font-size:11px;font-weight:700;letter-spacing:.3px;
   border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:1px;
 }
-.tf-w{background:var(--amber-l);border:1px solid #f0d9ac;color:#6b4a10}
-.tf-w .lb{background:#f6e3bf;color:var(--amber)}
-.tf-r{background:var(--green-l);border:1px solid #a9dfc2;color:#0e4b2b}
+.tf-w{background:var(--amber-l);border:1px solid #5c4520;color:#e8b93c}
+.tf-w .lb{background:#4a3818;color:var(--amber)}
+.tf-r{background:var(--green-l);border:1px solid #1e5c3f;color:#0e4b2b}
 .tf-r .lb{background:#c3ead3;color:var(--green)}
 .tf-r b{color:#0a3a20}
-.tf-wn{background:var(--red-l);border:1px solid #f3c9c5;color:#7d2b24}
-.tf-wn .lb{background:#f6cdc8;color:var(--red)}
+.tf-wn{background:var(--red-l);border:1px solid #5c2b28;color:#7d2b24}
+.tf-wn .lb{background:#4a2320;color:var(--red)}
 /* 盖住答案：只留题干，点「看答案」才翻开这一张 */
 .q.hidden-ans .tf-ans{display:none}
 .q.hidden-ans.show .tf-ans{display:block}
 .q.hidden-ans.show .tip{display:block}
 .q.show .tf-show{display:none}
-.tf-intro{background:#fdf6e9;border-color:#f0dfc0;color:#5c4415}
-.tf-intro .lb{display:inline-block;background:#f4e2c0;color:var(--amber);border-radius:5px;padding:1px 7px;margin-bottom:5px}
+.tf-intro{background:#2e2412;border-color:#4a3818;color:#5c4415}
+.tf-intro .lb{display:inline-block;background:#4a3818;color:var(--amber);border-radius:5px;padding:1px 7px;margin-bottom:5px}
 .tf-ask{
   margin:10px 0 9px;font-size:13.5px;line-height:1.7;color:var(--tx2);
   background:var(--bg);border:1px dashed var(--line);border-radius:9px;padding:9px 11px;
@@ -383,12 +393,21 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
   </section>
 </main>
 
+<!-- 图标由 elec-icons.js 在下面填进 .ic 里。原来这四个是 emoji，
+     各家系统画得不一样、和全站那套线性图标也不是一路 —— 换成 SVG。 -->
 <nav class="nav">
-  <button class="on" data-p="pReview"><span class="ic">📖</span>复习</button>
-  <button data-p="pQuiz"><span class="ic">✏️</span>刷题</button>
-  <button data-p="pTF"><span class="ic">⚖️</span>判断题</button>
-  <button data-p="pTable"><span class="ic">🔢</span>必背表</button>
+  <button class="on" data-p="pReview"><span class="ic" data-ei="book"></span>复习</button>
+  <button data-p="pQuiz"><span class="ic" data-ei="pencil"></span>刷题</button>
+  <button data-p="pTF"><span class="ic" data-ei="scale"></span>判断题</button>
+  <button data-p="pTable"><span class="ic" data-ei="table"></span>必背表</button>
 </nav>
+<script src="../elec-icons.js"></script>
+<script>
+/* 底部四个页签的图标：写 data-ei，这里统一填 */
+document.querySelectorAll('.nav .ic[data-ei]').forEach(function(el){
+  el.innerHTML = EI.svg(el.dataset.ei, 21);
+});
+</script>
 
 <script src="../elec-symbols.js"></script>
 <script src="quiz-data.js"></script>

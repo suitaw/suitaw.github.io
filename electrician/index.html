@@ -6,137 +6,164 @@
 <title>跟着《零基础学电工》学 —— 课程首页</title>
 <link rel="stylesheet" href="elec-page.css">
 <style>
-/* 首页自己的一点样式，别的课页用不到，就不放进公共 css */
-.hero{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  padding:14px 14px 12px;margin:10px 10px 12px}
-.hero h2{font-size:1.05rem;margin-bottom:6px}
-.hero p{font-size:.87rem;line-height:1.75;color:var(--tx2);margin:.4em 0}
-.hero .bk{display:inline-block;font-size:.78rem;color:var(--tx3);
-  background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;margin-top:6px}
-.sec{margin:0 10px 12px}
-.sec-h{display:flex;align-items:baseline;gap:8px;margin:0 2px 8px}
-.sec-h .t{font-size:.95rem;font-weight:700}
-.sec-h .d{font-size:.76rem;color:var(--tx3)}
-.chap{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-.chap-t{display:flex;align-items:center;gap:9px;padding:11px 12px;background:var(--accbg);
+/* 首页自己的版式（2026-08-28 深色仪表台改版）
+   —— 别的课页用不到，就不进 elec-page.css。
+   色板全部走 elec-page.css 的 :root 变量，改一处两边一起变。
+
+   版式用的是**电气单线图**那套隐喻：一章是一条母线（.bus 那条竖线），
+   一节是挂在母线上的一条分支回路（.item 左边那个节点 + 一小段横线）。
+   学过的节点亮绿、正在学的琥珀色呼吸闪 —— 一眼看出走到哪儿了。
+   这不只是好看：母线图本身就是第 4 章「电工识图」要认的东西。 */
+svg{display:block}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+
+/* ---------- 顶部：仪表面板 ---------- */
+.hd{position:relative;overflow:hidden;padding:16px 15px 18px;
+  background:linear-gradient(180deg,#121a24,var(--bg));
   border-bottom:1px solid var(--line)}
-.chap-t .n{flex:none;width:26px;height:26px;border-radius:7px;background:var(--acc);color:#fff;
-  font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center}
-.chap-t .t{flex:1;min-width:0;font-size:.92rem;font-weight:700;color:var(--acc)}
-.chap-t .p{flex:none;font-size:.72rem;color:var(--tx3)}
-.item{display:flex;align-items:center;gap:10px;min-height:60px;padding:10px 12px;
-  border-bottom:1px solid var(--line);text-decoration:none;color:inherit}
-.item:last-child{border-bottom:none}
-.item .id{flex:none;width:30px;font-family:ui-monospace,Menlo,Consolas,monospace;
-  font-size:.82rem;font-weight:700;color:var(--acc)}
+/* 背景一条淡正弦，像示波器余晖 */
+.hd::before{content:'';position:absolute;left:0;right:0;top:56px;height:90px;opacity:.15;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='90' viewBox='0 0 240 90'><path d='M0 45c15-40 30-40 45 0s30 40 45 0 30-40 45 0 30 40 45 0 30-40 45 0' fill='none' stroke='%234ea3ff' stroke-width='2'/></svg>") repeat-x center/240px 90px}
+.hd>*{position:relative;z-index:1}
+.hd .kick{display:flex;align-items:center;gap:6px;
+  font-size:.7rem;letter-spacing:.16em;color:var(--acc);font-weight:600}
+.hd .kick::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--acc);
+  box-shadow:0 0 8px var(--acc);animation:blink 2.4s infinite}
+@keyframes blink{0%,72%,100%{opacity:1}80%,92%{opacity:.28}}
+.hd h1{margin:6px 0 0;font-size:1.3rem;font-weight:700}
+.hd .sub{margin-top:4px;font-size:.78rem;color:var(--tx3);line-height:1.6}
+
+.gauge{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.gauge .g{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 9px}
+.gauge .k{font-size:.66rem;color:var(--tx3);letter-spacing:.06em}
+.gauge .v{font-size:1.12rem;font-weight:700;color:var(--acc);line-height:1.35}
+.gauge .g.amb .v{color:var(--warn)}
+.gauge .g.ok .v{color:var(--ok)}
+.gauge .u{font-size:.7rem;color:var(--tx3);font-weight:400;margin-left:2px}
+
+.go{display:flex;align-items:center;gap:11px;margin-top:10px;padding:12px 13px;
+  background:linear-gradient(90deg,rgba(78,163,255,.16),rgba(78,163,255,.05));
+  border:1px solid var(--accln);border-radius:12px;
+  text-decoration:none;color:var(--tx);transition:transform .14s}
+.go:active{transform:scale(.99)}
+.go .ic{flex:none;width:34px;height:34px;border-radius:9px;background:rgba(78,163,255,.18);
+  color:var(--acc);display:flex;align-items:center;justify-content:center}
+.go .b{flex:1;min-width:0}
+.go .b>span{display:block}
+.go .k{font-size:.68rem;color:var(--acc);letter-spacing:.08em}
+.go .t{font-size:.94rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.go .arw{flex:none;color:var(--acc)}
+
+/* ---------- 篇 ---------- */
+.sec{margin:18px 12px 0}
+.sec-h{display:flex;align-items:center;gap:8px;margin:0 2px 10px}
+.sec-h .t{font-size:.82rem;font-weight:700;letter-spacing:.1em;color:var(--tx2)}
+.sec-h .ln{flex:1;height:1px;background:var(--line)}
+.sec-h .d{font-size:.7rem;color:var(--tx3)}
+
+/* ---------- 章卡 ---------- */
+.chap{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden;margin-bottom:10px}
+.chap.live{border-color:var(--accln);
+  box-shadow:0 0 0 1px rgba(78,163,255,.1),0 8px 24px -12px rgba(78,163,255,.5)}
+.chap-t{display:flex;align-items:center;gap:11px;padding:12px 13px;background:var(--card2)}
+.chap-t .ic{flex:none;width:38px;height:38px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(78,163,255,.12);color:var(--acc);border:1px solid rgba(78,163,255,.24)}
+.chap.off .chap-t .ic{background:var(--line2);color:var(--tx3);border-color:var(--line)}
+.chap-t .b{flex:1;min-width:0}
+.chap-t .b>span{display:block}
+.chap-t .n{font-size:.66rem;font-weight:700;letter-spacing:.14em;color:var(--tx3)}
+.chap-t .t{font-size:.96rem;font-weight:700;line-height:1.35;margin-top:1px}
+.chap-t .d{font-size:.73rem;color:var(--tx3);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chap-t .pg{flex:none;align-self:flex-start;font-size:.68rem;color:var(--tx3);padding-top:2px}
+
+/* ---------- 母线 + 分支回路 ---------- */
+.bus{position:relative;padding:6px 0 8px}
+.bus::before{content:'';position:absolute;left:30px;top:0;bottom:14px;width:2px;
+  background:linear-gradient(180deg,var(--acc),rgba(78,163,255,.18))}
+.item{position:relative;display:flex;align-items:center;gap:10px;
+  min-height:56px;padding:6px 13px 6px 46px;
+  text-decoration:none;color:inherit;transition:background .16s}
+.item:active{background:var(--card2)}
+.item::before{content:'';position:absolute;left:31px;top:50%;width:13px;height:2px;
+  background:var(--line);transform:translateY(-1px)}
+.item::after{content:'';position:absolute;left:26px;top:50%;width:10px;height:10px;
+  border-radius:50%;margin-top:-5px;background:var(--bg);
+  border:2px solid var(--line);box-sizing:border-box}
+.item.done::after{background:var(--ok);border-color:var(--ok);
+  box-shadow:0 0 9px rgba(62,207,142,.65)}
+.item.now::after{background:var(--warn);border-color:var(--warn);
+  box-shadow:0 0 10px rgba(240,160,32,.75);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 3px rgba(240,160,32,.3)}}
+.item.done::before,.item.now::before{background:var(--acc)}
+.item .ic{flex:none;width:32px;height:32px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--card2);color:var(--tx2);border:1px solid var(--line)}
+.item.done .ic{color:var(--ok);border-color:rgba(62,207,142,.3)}
 .item .b{flex:1;min-width:0}
-.item .t{display:block;font-size:.9rem;font-weight:600;line-height:1.4}
-.item .d{display:block;font-size:.76rem;color:var(--tx3);margin-top:2px;line-height:1.45}
-.item .go{flex:none;font-size:.8rem;color:var(--tx3)}
-.item .ok{flex:none;font-size:.72rem;font-weight:700;color:var(--ok);
-  background:var(--okbg);border-radius:5px;padding:2px 6px}
-.item.off{opacity:.5}
+.item .b>span{display:block}
+.item .id{font-size:.66rem;font-weight:700;color:var(--acc);letter-spacing:.06em}
+.item .t{font-size:.89rem;font-weight:600;line-height:1.4}
+.item .d{font-size:.73rem;color:var(--tx3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .go2{flex:none;color:var(--tx3)}
+.item .ok{flex:none;color:var(--ok)}
+.item .half{flex:none;font-size:.66rem;color:var(--tx3);
+  border:1px solid var(--line);border-radius:6px;padding:1px 5px}
+
+/* ---------- 还没做的章 ---------- */
+.row{display:flex;align-items:center;gap:10px;min-height:50px;padding:8px 13px;
+  border-bottom:1px solid var(--line2)}
+.row:last-child{border-bottom:none}
+.row .ic{flex:none;width:28px;height:28px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--card2);color:var(--tx3);border:1px solid var(--line)}
+.row .b{flex:1;min-width:0}
+.row .b>span{display:block}
+.row .t{font-size:.85rem;font-weight:600;color:var(--tx2);line-height:1.35}
+.row .d{font-size:.71rem;color:var(--tx3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .pg{flex:none;font-size:.68rem;color:var(--tx3)}
+
+/* ---------- 配套 ---------- */
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.tile{display:block;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  padding:11px 12px;min-height:78px;text-decoration:none;color:inherit}
-.tile .t{display:block;font-size:.88rem;font-weight:600}
-.tile .d{display:block;font-size:.74rem;color:var(--tx3);margin-top:3px;line-height:1.45}
-.later{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-.later .part{font-size:.72rem;font-weight:700;letter-spacing:.08em;color:var(--tx3);
-  background:var(--card2);padding:6px 12px}
-.later .row{display:flex;gap:9px;align-items:center;padding:9px 12px;border-top:1px solid var(--line);opacity:.62}
-.later .row .n{flex:none;width:22px;height:22px;border-radius:6px;background:var(--line);
-  color:var(--tx2);font-size:.7rem;font-weight:700;display:flex;align-items:center;justify-content:center}
-.later .row .t{flex:1;min-width:0;font-size:.84rem;font-weight:600}
-.later .row .p{flex:none;font-size:.7rem;color:var(--tx3)}
-.honest{margin:0 10px 16px;background:var(--warnbg);border-radius:var(--r);
-  padding:12px 13px;font-size:.84rem;line-height:1.75}
+.tile{display:block;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:12px;text-decoration:none;color:inherit;
+  transition:border-color .16s,transform .14s}
+.tile:active{transform:scale(.975)}
+.tile .ic{width:32px;height:32px;border-radius:9px;display:flex;
+  align-items:center;justify-content:center;margin-bottom:8px;
+  background:var(--tb);color:var(--tc);border:1px solid var(--tl)}
+.tile .t{display:block;font-size:.86rem;font-weight:700}
+.tile .d{display:block;font-size:.72rem;color:var(--tx3);margin-top:3px;line-height:1.5}
+
+.honest{margin:18px 12px 0;background:var(--warnbg);
+  border:1px solid rgba(240,160,32,.28);border-radius:var(--r);
+  padding:12px 13px;font-size:.82rem;line-height:1.75;color:var(--tx2);
+  display:flex;gap:11px}
+.honest .ic{flex:none;color:var(--warn)}
 .honest b{color:var(--warn)}
+
+.fade{animation:up .5s cubic-bezier(.2,.85,.3,1) both}
+@keyframes up{from{opacity:0;transform:translateY(10px)}}
+@media (prefers-reduced-motion:reduce){
+  .fade{animation:none}.item.now::after,.hd .kick::before{animation:none}
+}
 </style>
 </head>
 <body>
+<div class="wrap" id="w"></div>
 
-<div class="wrap">
-
-<div class="stick">
-  <div class="top"><h1>跟着《零基础学电工》学</h1></div>
-</div>
-
-<div class="hero">
-  <h2>这个站是干什么的</h2>
-  <p>教材是《零基础学电工》（韩雪涛主编，机械工业出版社）。
-     这个站<b>按书的章节走</b>，把书上讲不动的地方 —— 电流怎么流、电压差在哪、
-     波形长什么样、磁场往哪转 —— 做成<b>能上手拨弄的动画</b>。</p>
-  <p>每一节的路子都一样：<b>先玩，再读，中间猜一次，最后四道题</b>。
-     每节末尾标着对应的书内页码，可以对着书看。</p>
-  <span class="bk">书内页码 + 14 = PDF 页码</span>
-  <p style="margin-top:12px">
-    <a href="book.html" style="display:inline-flex;align-items:center;gap:6px;
-       min-height:44px;padding:0 16px;border-radius:10px;background:var(--acc,#1a6fd4);
-       color:#fff;text-decoration:none;font-size:.88rem;font-weight:600">
-      📖 打开整本书</a>
-    <span style="display:block;margin-top:6px;font-size:.76rem;color:var(--tx3,#8b949e)">
-      全书目录随时点开，翻节不跳页，看到哪儿有记号</span>
-  </p>
-</div>
-
-<div class="sec">
-  <div class="sec-h"><span class="t">正在学</span><span class="d">第 1 章 · 六节全部做好了</span></div>
-  <div class="chap" id="ch1"></div>
-</div>
-
-<div class="sec">
-  <div class="sec-h"><span class="t">配套的几块</span><span class="d">不按章节走，随时可以进</span></div>
-  <div class="grid">
-    <a class="tile" href="c00.html">
-      <span class="t">第 0 课 · 读懂符号</span>
-      <span class="d">I 和 A、P 和 W 到底差在哪 —— 看不懂公式先看这个</span>
-    </a>
-    <a class="tile" href="circuit-basics.html">
-      <span class="t">回路 · 大地 · 触电</span>
-      <span class="d">为什么鸟站电线上没事，人站地上就会触电</span>
-    </a>
-    <a class="tile" href="magnet-field.html">
-      <span class="t">磁场与磁力线</span>
-      <span class="d">撒铁粉看磁场，通电导线周围是什么形状</span>
-    </a>
-    <a class="tile" href="lab-circuit.html">
-      <span class="t">电路实验室</span>
-      <span class="d">自己搭电路、自己算 —— 里面是一个真的求解器</span>
-    </a>
-    <a class="tile" href="parts.html">
-      <span class="t">元件设计规范图</span>
-      <span class="d">全课程的电路元件长什么样、有哪些状态 —— 改元件先看这页</span>
-    </a>
-  </div>
-</div>
-
-<div class="sec">
-  <div class="sec-h"><span class="t">后面还有 15 章</span><span class="d">一章一章往下做</span></div>
-  <div class="later" id="later"></div>
-</div>
-
-<div class="honest">
-  <b>有一句话得先说清楚：网页教不了实操。</b>
-  压接、穿线、用钳形表卡在带电导线上、按力矩拧端子 —— 这些只有真上手才学得会。
-  这个站能给的是<b>原理看得懂、图看得明白、故障有思路、笔试答得上</b>这四样。
-  <br><b>还有：低压电工作业操作证是法律硬门槛</b>，无证上岗违法，这条不是靠自学能替代的。
-</div>
-
-<div class="foot" style="margin:0 10px 20px">
-  内容全部按教材原创改写，公式和数值逐条核对过<br>
-  出现具体数字的地方都标了出处；涉及标准和规范的数值以现行规范为准
-</div>
-
-</div>
-
+<script src="elec-icons.js"></script>
 <script src="elec-nav.js"></script>
 <script>
 'use strict';
 /* 课表数据全部来自 elec-nav.js 的 BOOK —— 加新课只改那一处 */
 const BOOK = ElecNav.BOOK;
 
-/* 哪几节的课末练习已经全做完了：读 elec-ui.js 存的那份 */
+/* 哪几节的课末练习全做完了：读 elec-ui.js 存的那份（每节四道题） */
 function doneSet(){
   let q = {};
   try{ q = JSON.parse(localStorage.getItem('elec_quiz') || '{}') || {}; }catch(e){}
@@ -145,38 +172,134 @@ function doneSet(){
     const p = (q[k] && q[k].picks) || [];
     let n = 0;
     for(let i=0;i<p.length;i++) if(p[i] !== undefined && p[i] !== null) n++;
-    if(n >= 4) out[k] = true;      /* 每节四道题 */
+    if(n >= 4) out[k] = true;
   });
   return out;
 }
+/* 哪几节读过、读到第几屏：读 book.html 存的那份（一节四屏） */
+function seenMap(){
+  try{ return JSON.parse(localStorage.getItem('elec_book_seen') || '{}') || {}; }
+  catch(e){ return {}; }
+}
 
 (function(){
-  const done = doneSet();
-  const ch = ElecNav.chapter(1);
-  let h = '<div class="chap-t"><span class="n">1</span>'+
-          '<span class="t">'+ch.t+'</span><span class="p">书内 P'+ch.p+' 起</span></div>';
-  ch.secs.forEach(function(s){
-    const key = 'c' + s.id.replace('.', '-');       /* 1.1 → c1-1 */
-    const ok = done[key];
-    const inner = '<span class="id">'+s.id+'</span>'+
-      '<span class="b"><span class="t">'+s.t+'</span><span class="d">'+s.d+'　·　P'+s.p+'</span></span>'+
-      (ok ? '<span class="ok">练习做完</span>' : '<span class="go">›</span>');
-    h += s.f ? '<a class="item" href="'+s.f+'">'+inner+'</a>'
-             : '<div class="item off">'+inner+'</div>';
-  });
-  document.getElementById('ch1').innerHTML = h;
+  const done = doneSet(), seen = seenMap();
+  const live = [];                       /* 已经做好的节，按书序 */
+  BOOK.forEach(function(P){ P.chs.forEach(function(ch){
+    (ch.secs||[]).forEach(function(s){ if(s.f) live.push(s); });
+  }); });
 
-  let l = '';
+  const key = function(id){ return 'c' + id.replace('.', '-'); };
+  const readCnt = live.filter(function(s){ return (seen[s.id]||[]).length >= 4; }).length;
+  const doneCnt = live.filter(function(s){ return done[key(s.id)]; }).length;
+
+  /* 「接着上次」＝ 第一节还没读完的；全读完了就指向最后一节 */
+  const nextSec = live.find(function(s){ return (seen[s.id]||[]).length < 4; })
+               || live[live.length-1];
+  const NOW = nextSec ? nextSec.id : '';
+
+  let h = '';
+  h += '<div class="hd">'+
+    '<div class="kick">跟着教材学</div>'+
+    '<h1>零基础学电工</h1>'+
+    '<div class="sub">韩雪涛主编 · 机械工业出版社 · 全 16 章<br>'+
+      '书内页码 + 14 = PDF 页码</div>'+
+    '<div class="gauge">'+
+      '<div class="g"><div class="k">读过</div>'+
+        '<div class="v mono">'+readCnt+'<span class="u">/ '+live.length+' 节</span></div></div>'+
+      '<div class="g ok"><div class="k">练习做完</div>'+
+        '<div class="v mono">'+doneCnt+'<span class="u">/ '+live.length+' 节</span></div></div>'+
+      '<div class="g amb"><div class="k">在学</div>'+
+        '<div class="v mono">'+(NOW||'—')+'</div></div>'+
+    '</div>'+
+    (nextSec ? '<a class="go" href="book.html#'+nextSec.id+'">'+
+      '<span class="ic">'+EI.svg('book',19)+'</span>'+
+      '<span class="b"><span class="k">接着上次</span>'+
+      '<span class="t">'+nextSec.id+'　'+nextSec.t+'</span></span>'+
+      '<span class="arw">'+EI.svg('right',20)+'</span></a>' : '')+
+  '</div>';
+
+  let di = 0;
   BOOK.forEach(function(P){
-    const rows = P.chs.filter(function(c){ return c.n !== 1; });
-    if(!rows.length) return;
-    l += '<div class="part">'+P.part+'</div>';
-    rows.forEach(function(c){
-      l += '<div class="row"><span class="n">'+c.n+'</span>'+
-           '<span class="t">'+c.t+'</span><span class="p">P'+c.p+'</span></div>';
+    h += '<div class="sec fade" style="animation-delay:'+(di++*.05)+'s">'+
+      '<div class="sec-h"><span class="t">'+P.part+'</span>'+
+      '<span class="ln"></span><span class="d">'+P.chs.length+' 章</span></div>';
+
+    /* 已经拆到节的章：画成一条母线 + 若干分支 */
+    P.chs.forEach(function(ch){
+      if(!(ch.secs && ch.secs.length)) return;
+      h += '<div class="chap live"><div class="chap-t">'+
+        '<span class="ic">'+EI.svg(EI.forChapter(ch.n),21)+'</span>'+
+        '<span class="b"><span class="n mono">CH '+String(ch.n).padStart(2,'0')+'</span>'+
+        '<span class="t">'+ch.t+'</span><span class="d">'+ch.d+'</span></span>'+
+        '<span class="pg mono">P'+ch.p+'</span></div><div class="bus">';
+      ch.secs.forEach(function(s){
+        const ok = !!done[key(s.id)];
+        const rd = (seen[s.id]||[]).length;
+        const st = ok ? ' done' : (s.id === NOW ? ' now' : '');
+        let right;
+        if(ok)            right = '<span class="ok">'+EI.svg('check',19)+'</span>';
+        else if(rd > 0)   right = '<span class="half mono">'+rd+'/4 屏</span>';
+        else              right = '<span class="go2">'+EI.svg('right',17)+'</span>';
+        const inner = '<span class="ic">'+EI.svg(EI.forSection(s.id),18)+'</span>'+
+          '<span class="b"><span class="id mono">'+s.id+'</span>'+
+          '<span class="t">'+s.t+'</span>'+
+          '<span class="d">'+s.d+'　P'+s.p+'</span></span>'+right;
+        h += s.f ? '<a class="item'+st+'" href="'+s.f+'">'+inner+'</a>'
+                 : '<div class="item" style="opacity:.5">'+inner+'</div>';
+      });
+      h += '</div></div>';
     });
+
+    /* 还没拆到节的章：塌成一张卡里的若干行 */
+    const rest = P.chs.filter(function(c){ return !(c.secs && c.secs.length); });
+    if(rest.length){
+      h += '<div class="chap off">';
+      rest.forEach(function(c){
+        h += '<div class="row"><span class="ic">'+EI.svg(EI.forChapter(c.n),17)+'</span>'+
+          '<span class="b"><span class="t">'+
+            '<span class="mono" style="color:var(--tx3)">CH '+String(c.n).padStart(2,'0')+'</span>　'+
+            c.t+'</span><span class="d">'+c.d+'</span></span>'+
+          '<span class="pg mono">P'+c.p+'</span></div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
   });
-  document.getElementById('later').innerHTML = l;
+
+  /* 配套的几块 —— 不按章节走 */
+  const TOOLS = [
+   ['c00.html','symbol','#4ea3ff','第 0 课 · 读懂符号','I 和 A、P 和 W 到底差在哪'],
+   ['circuit-basics.html','shock','#ff6b6b','回路 · 大地 · 触电','鸟站电线上为什么没事'],
+   ['magnet-field.html','magnet','#b07ce8','磁场与磁力线','撒铁粉看通电导线周围'],
+   ['lab-circuit.html','lab','#3ecf8e','电路实验室','自己搭电路，里面是真求解器'],
+   ['quiz/quiz.html','quiz','#f0a020','考证题库','单选 537 + 判断 290 题'],
+   ['parts.html','target','#9fadbd','元件设计规范图','元件长什么样、有哪些状态']
+  ];
+  h += '<div class="sec fade" style="animation-delay:.3s">'+
+    '<div class="sec-h"><span class="t">配套的几块</span><span class="ln"></span>'+
+    '<span class="d">不按章节走</span></div><div class="grid">';
+  TOOLS.forEach(function(t){
+    h += '<a class="tile" href="'+t[0]+'" style="--tc:'+t[2]+
+      ';--tb:'+t[2]+'22;--tl:'+t[2]+'4d">'+
+      '<span class="ic">'+EI.svg(t[1],19)+'</span>'+
+      '<span class="t">'+t[3]+'</span><span class="d">'+t[4]+'</span></a>';
+  });
+  h += '</div></div>';
+
+  h += '<div class="honest fade" style="animation-delay:.35s">'+
+    '<span class="ic">'+EI.svg('warn',19)+'</span><span>'+
+    '<b>网页教不了实操。</b>压接、穿线、用钳形表卡在带电导线上、按力矩拧端子 —— '+
+    '这些只有真上手才学得会。这个站能给的是<b>原理看得懂、图看得明白、'+
+    '故障有思路、笔试答得上</b>这四样。<br>'+
+    '<b>低压电工作业操作证是法律硬门槛</b>，无证上岗违法，这条不是靠自学能替代的。'+
+    '</span></div>';
+
+  h += '<div class="foot" style="margin:16px 12px 24px">'+
+    '内容全部按教材原创改写，公式和数值逐条核对过<br>'+
+    '出现具体数字的地方都标了出处；涉及标准和规范的数值以现行规范为准</div>';
+
+  document.getElementById('w').innerHTML = h;
 })();
 </script>
 </body>

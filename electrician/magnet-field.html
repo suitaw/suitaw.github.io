@@ -6,22 +6,30 @@
 <title>磁场与磁力线 —— 电工入门</title>
 <style>
 :root{
-  --bg:#f3f5f7; --card:#ffffff; --card2:#f7f9fb; --line:#dde2e8;
-  --tx:#1e2329; --tx2:#5d6773; --tx3:#8b949e;
-  --acc:#1a6fd4; --accbg:#e8f1fc;
-  --ok:#1c8348; --okbg:#e6f4ec;
-  --err:#c32f2f; --errbg:#fdeaea;
-  --warn:#a86200; --warnbg:#fdf2e0;
+  /* 2026-08-28 全站改成「深色仪表台」，这一份和 elec-page.css 的 :root 保持一致。
+     恒深色：画布、元件、外壳是一整套，跟着系统亮暗切会让画布和页面对不上。 */
+  --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
+  --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
+  --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
+  --ok:#3ecf8e; --okbg:#12291f;
+  --err:#ff6b6b; --errbg:#331a1a;
+  --warn:#f0a020; --warnbg:#2e2412;
+  --canvas:#111820;
+  /* 让浏览器原生控件（滑杆轨道、复选框、下拉、滚动条）自己变深 ——
+     不写这一行的话，深色页面里那几个原生件还是浅色的一块。 */
+  color-scheme: dark;
+
   --r:10px; --tap:44px;
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --bg:#14171b; --card:#1d2126; --card2:#232830; --line:#333b44;
-    --tx:#e7eaee; --tx2:#9ba5b1; --tx3:#78828e;
-    --acc:#5da3f0; --accbg:#17293c;
-    --ok:#4dc47e; --okbg:#16301f;
-    --err:#ff7373; --errbg:#3a1c1c;
-    --warn:#e2a53c; --warnbg:#38290f;
+    --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
+    --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
+    --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
+    --ok:#3ecf8e; --okbg:#12291f;
+    --err:#ff6b6b; --errbg:#331a1a;
+    --warn:#f0a020; --warnbg:#2e2412;
+    --canvas:#111820;
   }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -57,7 +65,7 @@ b{font-weight:600}
 .scene.on{display:block}
 .card{background:var(--card);border:1px solid var(--line);
   border-radius:var(--r);overflow:hidden;margin-bottom:10px}
-canvas{display:block;width:100%;background:#fafbfc}
+canvas{display:block;width:100%;background:var(--canvas)}
 
 /* ---------- 控件 ---------- */
 .ctrl{padding:10px}
@@ -255,15 +263,18 @@ const TAU = Math.PI * 2;
 const RM = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
 /* 画布内部固定用浅色：示意图白底最清楚，也省掉一整套深色适配 */
+/* 2026-08-28 深色仪表台，规矩同 elec-canvas.js 的 PAL.dark。
+   **fil 是撒的铁粉**：原来深灰 #3f4a55 是「白纸上的铁屑」，深底上得反过来
+   画成浅灰，才是「暗处的金属反光」—— 这一页全部内容就是看铁粉排成什么形状。 */
 const C = {
-  bg:'#fafbfc', tx:'#242a31', tx2:'#6c7681', tx3:'#98a1ab',
-  N:'#e0402a', Nd:'#b52a18', S:'#1667d6', Sd:'#0f4ea3',
-  wire:'#39424d', cop:'#c07830',
-  fil:'#3f4a55', iron:'#a7b0ba', iron2:'#7d8792', ironL:'#6b747e',
-  ext:'#e0402a', inn:'#1667d6', leak:'#b8901c',
-  ok:'#1c8348', warn:'#c05a00', err:'#c32f2f',
-  box:'#eef1f5', boxLine:'#b9c2cc',
-  skin:'#f2c79c', skinL:'#a97644'
+  bg:'#111820', tx:'#e6edf5', tx2:'#9fadbd', tx3:'#71808f',
+  N:'#ff6a4a', Nd:'#e05540', S:'#4ea3ff', Sd:'#2b7fd0',
+  wire:'#8b97a5', cop:'#d08a3c',
+  fil:'#9aa5b3', iron:'#a7b0ba', iron2:'#7d8792', ironL:'#9fadbd',
+  ext:'#ff6a4a', inn:'#4ea3ff', leak:'#d9b23c',
+  ok:'#3ecf8e', warn:'#f0a020', err:'#ff6b6b',
+  box:'#1b232d', boxLine:'#3a4653',
+  skin:'#e0b088', skinL:'#a97644'
 };
 
 /* ---- 折线路径：所有流动动画的地基 ---- */
@@ -693,7 +704,7 @@ const S1 = (function(){
   function needle(x, y, a){
     g.save();
     g.beginPath(); g.arc(x, y, 12, 0, TAU);
-    g.fillStyle = '#fff'; g.fill();
+    g.fillStyle = C.box; g.fill();
     g.strokeStyle = C.boxLine; g.lineWidth = 1.3; g.stroke();
     const cx = Math.cos(a), sy = Math.sin(a), px = -sy, py = cx;
     g.beginPath();
@@ -917,3 +928,70 @@ const S2 = (function(){
   note();
   return { st:st, draw:draw };
 })();
+
+
+/* =========================================================
+   标签页 + 主循环
+   ---------------------------------------------------------
+   2026-08-28 补上的。**这一整段原本是缺的** —— 文件在 S2 的 `})();` 处
+   就截断了，连收尾的 script / body / html 结束标签都没有。后果是：
+   （注意：这行**不能**把那三个结束标签原样写出来 —— 浏览器解析 HTML 时
+    遇到字面的 script 结束标签就当场关闭脚本块，管它在不在 JS 注释里，
+    后面的代码会被当成正文，报出来是「Invalid or unexpected token」。）
+   没人调 st.fit()（canvas 一直停在浏览器默认的 300×150）、
+   没有 rAF 主循环、页签点了没反应 —— 整页四屏全是空白，
+   之前看到的白色只是 CSS 的 canvas 背景色，不是画出来的东西。
+
+   **场景 3（通电导线）和场景 4（为何闭合）的 JS 从来没写过**：
+   它们的 HTML、控件、note 容器都在，但没有对应的 S3/S4。
+   所以这两个页签先禁掉并标成「还在做」，别让人点进一片空白。
+   ========================================================= */
+const SCENES = [S1, S2];
+let cur = 0;
+
+function go(i){
+  if(i >= SCENES.length) return;          /* 3、4 还没实现 */
+  cur = i;
+  for(let k=0;k<4;k++){
+    const sc = $('sc' + k);
+    if(sc) sc.classList.toggle('on', k === i);
+  }
+  const tabs = document.querySelectorAll('.tab');
+  for(let k=0;k<tabs.length;k++) tabs[k].classList.toggle('on', k === i);
+  SCENES[i].st.fit();      /* display:none 时 clientWidth = 0，必须显示后再量 */
+  window.scrollTo(0, 0);
+}
+
+$('tabs').addEventListener('click', function(ev){
+  const b = ev.target.closest('.tab');
+  if(b && !b.disabled) go(+b.dataset.i);
+});
+
+/* 还没做的那两个页签：禁掉、标出来 */
+(function(){
+  const tabs = document.querySelectorAll('.tab');
+  for(let k=SCENES.length;k<tabs.length;k++){
+    tabs[k].disabled = true;
+    tabs[k].style.opacity = '.42';
+    tabs[k].title = '这一屏还没做';
+    const n = tabs[k].querySelector('.n');
+    if(n) n.textContent = '待做';
+  }
+})();
+
+window.addEventListener('resize', function(){ SCENES[cur].st.fit(); });
+
+let last = 0;
+function frame(now){
+  const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
+  last = now;
+  const s = SCENES[cur];
+  if(s.st.cv.clientWidth) s.draw(dt);
+  requestAnimationFrame(frame);
+}
+
+go(0);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

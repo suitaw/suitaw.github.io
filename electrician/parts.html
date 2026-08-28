@@ -11,7 +11,7 @@
   padding:12px 12px 6px;margin-bottom:12px}
 .sec>h2{font-size:.95rem;margin:0 0 2px;letter-spacing:.01em}
 .sec>p{font-size:.8rem;color:var(--tx3);margin:0 0 10px;line-height:1.6}
-canvas{display:block;width:100%;background:#fafbfc;border-radius:8px}
+canvas{display:block;width:100%;background:var(--canvas);border-radius:8px}
 .rule{font-size:.82rem;line-height:1.85;color:var(--tx2);margin:0;padding-left:18px}
 .rule li{margin:2px 0}
 .rule b{color:var(--tx)}
@@ -106,16 +106,17 @@ const {Stage, Path, txt, box, loop} = EC;
 /* 每个格子：画一件东西 + 底下一行中文名 */
 function cellBox(g, x, y, w, h, name, draw){
   EP.rr(g, x, y, w, h, 8);
-  g.save(); g.fillStyle = '#ffffff'; g.fill();
-  g.strokeStyle = '#e2e8ee'; g.lineWidth = 1; g.stroke(); g.restore();
+  /* 格子底板跟着画布主题走 —— 元件已经是深色版了，白格子会打架 */
+  g.save(); g.fillStyle = EC.C.card || '#1a222b'; g.fill();
+  g.strokeStyle = EC.C.boxLine; g.lineWidth = 1; g.stroke(); g.restore();
   draw(x + w/2, y + h/2 - 6);
-  txt(g, name, x + w/2, y + h - 12, {sz:10, c:'#5b6672'});
+  txt(g, name, x + w/2, y + h - 12, {sz:10, c:EC.C.tx2});
 }
 
 /* ---------------- 一、元件库 ---------------- */
 const s1 = new Stage('c1', 360, 470);
 function draw1(t){
-  const g = s1.g; s1.clear('#fafbfc');
+  const g = s1.g; s1.clear(EC.C.bg);
   const W = 108, H = 84, gx = 8, gy = 8, gap = 6;
   const at = function(i){ return [gx + (i%3)*(W+gap), gy + Math.floor(i/3)*(H+gap)]; };
   const items = [
@@ -148,7 +149,7 @@ function draw1(t){
 const s2 = new Stage('c2', 360, 250);
 let ph = 0;
 function draw2(dt){
-  const g = s2.g; s2.clear('#fafbfc');
+  const g = s2.g; s2.clear(EC.C.bg);
   ph += dt * 46;
   const rows = [
     ['普通导线（没通电）', function(y){
@@ -187,7 +188,7 @@ function draw2(dt){
 /* ---------------- 三、状态与档位 ---------------- */
 const s3 = new Stage('c3', 360, 300);
 function draw3(t){
-  const g = s3.g; s3.clear('#fafbfc');
+  const g = s3.g; s3.clear(EC.C.bg);
   txt(g, '灯泡四档', 14, 20, {sz:10.5, b:1, c:'#2b3038', al:'left'});
   [['熄灭', 0], ['微亮', 0.22], ['正常', 0.55], ['很亮', 1]].forEach(function(a, i){
     const x = 56 + i*84;
@@ -209,7 +210,7 @@ function draw3(t){
 /* ---------------- 四、标注排版 ---------------- */
 const s4 = new Stage('c4', 360, 200);
 function draw4(){
-  const g = s4.g; s4.clear('#fafbfc');
+  const g = s4.g; s4.clear(EC.C.bg);
   EP.heading(g, 14, 20, '标注示例', '（数值在上、名称在下、引线牵出去）');
   EP.cell(g, 80, 78, 56, 24, {horiz:true, pm:false});
   EP.callout(g, 80, 66, 150, 56, 'E = 1.5 V', '电池电动势', {al:'left'});
@@ -224,7 +225,7 @@ function draw4(){
 /* ---------------- 六、颜色语义 ---------------- */
 const s6 = new Stage('c6', 360, 176);
 function draw6(){
-  const g = s6.g; s6.clear('#fafbfc');
+  const g = s6.g; s6.clear(EC.C.bg);
   const rows = [
     ['#c0392b', '红', '正极 · 警告 · 错误 · 危险'],
     ['#23272c', '黑 / 深灰', '普通导线 · 负极 · 正文 · 金属结构'],
@@ -249,7 +250,7 @@ function draw6(){
 const s5 = new Stage('c5', 360, 230);
 const P5 = new Path([[56,120],[56,44],[304,44],[304,196],[56,196],[56,140]]);
 function draw5(dt){
-  const g = s5.g; s5.clear('#fafbfc');
+  const g = s5.g; s5.clear(EC.C.bg);
   EP.wire(g, P5, {c:'black'});
   const skip = [[0,14],[P5.len-14,P5.len],[86,132],[300,346]];
   EP.flow(g, P5, {phase:-ph, kind:'ele', gap:58, skip:skip});

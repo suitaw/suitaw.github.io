@@ -1,3 +1,6 @@
+/* 电池那三处用的是 volt:'12V' 不是 label:'12V'：
+   EP.cell 的电池**身上本来就印着一个电压**（默认 '1.5V'），
+   再挂一个外部标注就是两个数字打架，位置上还正好叠在一起。
 /* 1.4 电路的连接方式 —— 本节内容的唯一真相。
    由 c1-4.html 机械拆分而来（正文一个字未改）。
    book.html 按需载入它；c1-4.html 现在只是个薄壳，也载入它。 */
@@ -254,9 +257,12 @@ function draw1(dt){
   EP.flow(g, P1, {phase:v.ok ? S1.ph : 0, gap:52,
                kind:'cur', skip:skip});
 
-  EP.cell(g, RC1.x0, 119, 44, 21, {horiz:false, pm:false, label:'12V', lx:28, ly:0});
+  EP.cell(g, RC1.x0, 119, 44, 21, {horiz:false, pm:false, volt:'12V'});
   EP.knife(g, 180, RC1.y1, S1.on, {w:52, h:22});
-  txt(g, S1.on ? '开关合上' : '开关断开', 180, RC1.y1-20, {sz:10.5, b:1, c:S1.on?C.ok:C.err});
+  /* 标签放开关**左边**：拨杆是从左端往右上抬的，正上方（原来的位置）必被穿过去，
+     正下方又贴着画布底边 —— 左边这一块是回路内部的空白，怎么扳都够不着（截图抓到的）*/
+  txt(g, S1.on ? '开关合上' : '开关断开', 148, RC1.y1-16,
+      {sz:10.5, b:1, c:S1.on?C.ok:C.err, al:'right'});
 
   LP1.forEach(function(x, i){
     const dead = S1.dead[i];
@@ -268,7 +274,7 @@ function draw1(dt){
     else if(v.ok) txt(g, v.U.toFixed(1) + ' V', x, RC1.y0+38, {sz:10.5, b:1, c:C.acc});
   });
 
-  box(g, 20, 208, 320, 30, 6, v.ok ? '#e6f4ec' : '#fdeaea', C.boxLine, 1);
+  box(g, 20, 208, 320, 30, 6, v.ok ? '#12291f' : '#331a1a', C.boxLine, 1);
   const msg = !S1.on ? '开关断开 —— 整条路没有电流'
             : v.broken ? '一个灯泡坏了 → 三个全灭（这就是串联的毛病）'
             : '电流处处 ' + v.I.toFixed(2) + ' A，每个灯分到 ' + v.U.toFixed(1) + ' V（三个平分 12V）';
@@ -339,15 +345,16 @@ function draw2(dt){
     EP.flow(g, back, {phase:-S2.ph, gap:52, kind:'cur', skip:[[back.len-10,back.len]]});
   }
 
-  EP.cell(g, RC2.xL, 129, 44, 21, {horiz:false, pm:false, label:'12V', lx:28, ly:0});
+  EP.cell(g, RC2.xL, 129, 44, 21, {horiz:false, pm:false, volt:'12V'});
   EP.knife(g, 78, RC2.yTop, S2.on, {w:46, h:20});
-  txt(g, S2.on ? '合上' : '断开', 78, RC2.yTop-18, {sz:10, c:EP.P.inkL});
+  /* 同 1.4 屏 1：标签一律挪到闸刀**左侧**，拨杆是往右上抬的，够不着这儿 */
+  txt(g, S2.on ? '合上' : '断开', 48, RC2.yTop-12, {sz:10, c:EP.P.inkL, al:'right'});
 
   /* 三条支路 */
   BR.forEach(function(x, i){
     const dead = S2.dead[i], live = S2.on && !dead;
     const br = new Path([[x,RC2.yTop],[x,RC2.yBot]]);
-    br.stroke(g, 3, dead ? '#c2c8cf' : C.wire);
+    br.stroke(g, 3, dead ? '#3a4551' : C.wire);
     if(dead){
       g.save(); g.strokeStyle = C.bg; g.lineWidth = 6;
       g.beginPath(); g.moveTo(x, 122); g.lineTo(x, 148); g.stroke(); g.restore();
@@ -362,8 +369,8 @@ function draw2(dt){
     else if(live) txt(g, '12V / ' + v.Ib.toFixed(1) + 'A', x+15, 160, {sz:10, b:1, c:C.acc, al:'left'});
   });
 
-  txt(g, '干路', 70, RC2.yTop-30, {sz:10, c:C.tx3});
-  box(g, 20, 214, 320, 44, 6, v.It>0 ? '#e6f4ec' : '#f4f6f9', C.boxLine, 1);
+  txt(g, '干路', 48, RC2.yTop-26, {sz:10, c:C.tx3, al:'right'});
+  box(g, 20, 214, 320, 44, 6, v.It>0 ? '#12291f' : '#1a222b', C.boxLine, 1);
   txt(g, S2.on ? ('亮着 ' + v.alive + ' 个 → 干路电流 = ' +
         (v.alive ? Array(v.alive).fill(v.Ib.toFixed(1)).join(' + ') : '0') +
         ' = ' + v.It.toFixed(1) + ' A')
@@ -434,8 +441,8 @@ function draw3(dt){
   wires.forEach(function(w){ w.stroke(g, 3, C.wire); });
   const upW = new Path([[M3.xA,M3.yU],[M3.xB,M3.yU]]);
   const dnW = new Path([[M3.xA,M3.yD],[M3.xB,M3.yD]]);
-  upW.stroke(g, 3, v.upOK ? C.wire : '#c2c8cf');
-  dnW.stroke(g, 3, v.dnOK ? C.wire : '#c2c8cf');
+  upW.stroke(g, 3, v.upOK ? C.wire : '#3a4551');
+  dnW.stroke(g, 3, v.dnOK ? C.wire : '#3a4551');
 
   /* 开关缺口 */
   if(!S3.s[0]){ gap(g, 92, M3.yU, 1); }
@@ -456,7 +463,7 @@ function draw3(dt){
     if(v.dnOK) EP.flow(g, dnW, {phase:S3.ph, gap:52, kind:'cur', skip:skB});
   }
 
-  EP.cell(g, M3.xL, 159, 42, 20, {horiz:false, pm:false, label:'12V', lx:19, ly:0});
+  EP.cell(g, M3.xL, 159, 42, 20, {horiz:false, pm:false, volt:'12V'});
 
   switchSym(g, 92, M3.yU, S3.s[0], {len:30});
   txt(g, 'S1', 92, M3.yU-15, {sz:10, c:C.tx2});
@@ -471,16 +478,21 @@ function draw3(dt){
   const bU = v.upOK ? bright(v.Ibr*v.Ibr*RL) : 0;
   const bD = v.dnOK ? bright(v.Ibr*v.Ibr*RL) : 0;
   const b5 = (v.I>0 && v.el5OK) ? bright(v.I*v.I*RL) : 0;
-  lampAt(g, M3.up[0][0], M3.yU, bU, 'EL1', S3.dead[0], -1);
-  lampAt(g, M3.up[1][0], M3.yU, bU, 'EL2', S3.dead[1], -1);
+  /* EL1/EL2 的名字放灯**下方**：放上方会和「上支路：…」那行字叠在一起（截图抓到的）。
+     EL5 的名字放灯**左边**：上方是「下支路：…」那行、下方就是绿色读数条，只剩左边 */
+  lampAt(g, M3.up[0][0], M3.yU, bU, 'EL1', S3.dead[0], 1);
+  lampAt(g, M3.up[1][0], M3.yU, bU, 'EL2', S3.dead[1], 1);
   lampAt(g, M3.dn[0][0], M3.yD, bD, 'EL3', S3.dead[2], 1);
   lampAt(g, M3.dn[1][0], M3.yD, bD, 'EL4', S3.dead[3], 1);
-  lampAt(g, 162, M3.yMain, b5, 'EL5（干路）', S3.dead[4], -1);
+  lampAt(g, 162, M3.yMain, b5, '', S3.dead[4], -1);
+  txt(g, (S3.dead[4] ? '✕ ' : '') + 'EL5（干路）', 130, M3.yMain-18,
+      {sz:10, b:S3.dead[4]?1:0, c:S3.dead[4] ? C.err : C.tx2, al:'right'});
 
   txt(g, '上支路：EL1 与 EL2 串联', 218, 42, {sz:10, c:C.tx3});
-  txt(g, '下支路：EL3 与 EL4 串联', 218, 204, {sz:10, c:C.tx3});
+  /* y 只能落在 192：再往下就撞 EL5 的灯泡（灯泡上沿 202），再往上就撞 EL3/EL4 的名字（下沿 183）*/
+  txt(g, '下支路：EL3 与 EL4 串联', 218, 192, {sz:10, c:C.tx3});
 
-  box(g, 20, 256, 320, 24, 5, v.I>0 ? '#e6f4ec' : '#fdeaea', C.boxLine, 1);
+  box(g, 20, 256, 320, 24, 5, v.I>0 ? '#12291f' : '#331a1a', C.boxLine, 1);
   txt(g, v.I>0
         ? '干路 ' + v.I.toFixed(2) + ' A　EL5 分到 ' + v.U5.toFixed(1) +
           ' V　每条支路 ' + v.Ibr.toFixed(2) + ' A'
@@ -497,7 +509,7 @@ function gap(g, x, y, horiz){
 function lampAt(g, x, y, b, name, dead, side){
   EP.lampHolder(g, x, y-7, 24, 13);
   EP.bulb(g, x, y-23, 11, dead ? 0 : b);
-  txt(g, dead ? '✕ ' + name : name, x, y + (side>0 ? 20 : -40),
+  if(name) txt(g, dead ? '✕ ' + name : name, x, y + (side>0 ? 20 : -40),
       {sz:10, b:dead?1:0, c:dead ? C.err : C.tx2});
 }
 st3.cv.addEventListener('click', function(ev){
@@ -597,7 +609,7 @@ function draw4(){
 
   if(S4.ans){
     const ok = S4.ans === e.a;
-    box(g, 24, 178, 312, 24, 5, ok ? '#e6f4ec' : '#fdeaea', ok ? C.ok : C.err, 1.2);
+    box(g, 24, 178, 312, 24, 5, ok ? '#12291f' : '#331a1a', ok ? C.ok : C.err, 1.2);
     txt(g, ok ? '✓ 答对了：这是' + (e.a==='ser'?'串联':'并联')
               : '✕ 不对，这是' + (e.a==='ser'?'串联':'并联'),
         180, 190, {sz:11, b:1, c: ok ? C.ok : C.err});
