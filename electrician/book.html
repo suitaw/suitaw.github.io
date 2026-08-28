@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>零基础学电工 —— 全书</title>
+<link rel="stylesheet" href="elec-page.css">
+<style>
+/* ===== 侧边目录 =====
+   手机上是抽屉（从左滑入），≥900px 常驻。
+   他主要在手机上看，所以抽屉才是主形态，常驻是宽屏的附赠。 */
+:root{ --side:284px }
+
+.side{position:fixed;left:0;top:0;bottom:0;width:min(84vw,300px);z-index:60;
+  background:var(--card);border-right:1px solid var(--line);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  transform:translateX(-100%);transition:transform .22s;
+  padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+.side.on{transform:none}
+.mask{position:fixed;inset:0;z-index:55;background:rgba(10,14,20,.45);display:none}
+.mask.on{display:block}
+
+.sd-hd{padding:14px 14px 10px;border-bottom:1px solid var(--line);
+  position:sticky;top:0;background:var(--card);z-index:2}
+.sd-hd b{display:block;font-size:.95rem}
+.sd-hd span{display:block;font-size:.75rem;color:var(--tx3);margin-top:3px}
+.sd-hd a{display:inline-block;margin-top:8px;font-size:.78rem;
+  color:var(--acc);text-decoration:none;position:relative}
+.sd-hd a::after{content:'';position:absolute;inset:-12px -10px}
+
+.sd-part{font-size:.72rem;color:var(--tx3);letter-spacing:.08em;
+  padding:12px 14px 4px;font-weight:600}
+.sd-ch{padding:7px 14px;font-size:.82rem;color:var(--tx2);font-weight:600;
+  display:flex;gap:6px;align-items:baseline}
+.sd-ch .no{flex:none;color:var(--tx3);font-weight:400;font-size:.74rem}
+.sd-ch.off{color:var(--tx3);font-weight:400}
+.sd-ch.off .no{opacity:.6}
+.sd-ch .soon{margin-left:auto;flex:none;font-size:.68rem;color:var(--tx3);
+  border:1px solid var(--line);border-radius:8px;padding:0 5px}
+
+/* 节：整行可点，热区 44px 是靠 padding 撑的（不是 ::after，这里有足够空间） */
+.sd-sec{display:flex;align-items:center;gap:8px;min-height:var(--tap);
+  padding:4px 14px 4px 26px;font-size:.82rem;color:var(--tx);
+  text-decoration:none;border-left:3px solid transparent;cursor:pointer}
+.sd-sec:active{background:var(--card2)}
+.sd-sec.cur{background:var(--accbg);border-left-color:var(--acc);color:var(--acc);font-weight:600}
+.sd-sec .id{flex:none;font-size:.74rem;color:var(--tx3);width:26px}
+.sd-sec.cur .id{color:var(--acc)}
+.sd-sec .t{flex:1;min-width:0}
+.sd-sec .t small{display:block;font-size:.7rem;color:var(--tx3);font-weight:400;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 进度点：看过一部分是空心，四屏都看过才实心勾 */
+.sd-sec .pg{flex:none;width:16px;text-align:center;font-size:.72rem;color:var(--tx3)}
+.sd-sec .pg.done{color:var(--ok)}
+
+.sd-extra{border-top:1px solid var(--line);margin-top:10px;padding-top:6px}
+
+/* ===== 顶栏的 ☰ ===== */
+.mb{flex:none;width:30px;height:var(--tap);margin-left:-6px;
+  background:none;border:0;font-size:1.05rem;color:var(--tx2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+
+/* ===== 正文加载中 ===== */
+.ld{padding:40px 16px;text-align:center;color:var(--tx3);font-size:.85rem}
+
+@media(min-width:900px){
+  .side{transform:none;width:var(--side);box-shadow:none}
+  .mask{display:none!important}
+  body{padding-left:var(--side)}
+  .mb{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="mask" id="mask"></div>
+<nav class="side" id="side">
+  <div class="sd-hd">
+    <b>零基础学电工</b>
+    <span>韩雪涛 主编 · 机械工业出版社</span>
+    <a href="index.html">← 回课程首页</a>
+  </div>
+  <div id="sdList"></div>
+  <div class="sd-extra" id="sdExtra"></div>
+</nav>
+
+<div class="wrap">
+  <div class="stick">
+    <div class="top">
+      <button class="mb" id="menuBtn" aria-label="目录">☰</button>
+      <h1 id="secTitle">零基础学电工</h1>
+      <a class="bk" href="index.html">课表</a>
+    </div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+  <div id="secBody"><div class="ld">正在载入…</div></div>
+</div>
+
+<script src="elec-canvas.js"></script>
+<script src="elec-parts.js"></script>
+<script src="elec-ui.js"></script>
+<script src="elec-nav.js"></script>
+<script src="elec-book.js"></script>
+<script>
+'use strict';
+
+const BOOK = ElecNav.BOOK;
+const SEEN_KEY = 'elec_book_seen';
+
+/* 每节的 init 里都有一句 ElecNav.init({ch,sec})，那是给薄壳页用的：
+   它往 .top h1 上挂 ▾ 和 click、再往 body 塞一个课表覆盖层。
+   这里 h1 是常驻的，切一节就再挂一次 —— 六节翻下来会挂出六个 ▾、
+   六个监听器、六层覆盖层。本页有自己的侧栏，直接停掉。 */
+ElecNav.init = function(){};
+
+/* 进度：记每一节看过哪几屏。四屏都看过才算读完。
+   只记「切到过第几个页签」——这门课一节就是四屏，翻完等于看完了。 */
+function loadSeen(){
+  try{ return JSON.parse(localStorage.getItem(SEEN_KEY)) || {}; }
+  catch(e){ return {}; }
+}
+function markSeen(id, i){
+  const s = loadSeen();
+  const a = s[id] || (s[id] = []);
+  if(a.indexOf(i) < 0){
+    a.push(i);
+    try{ localStorage.setItem(SEEN_KEY, JSON.stringify(s)); }catch(e){}
+    paintProgress();
+  }
+}
+
+/* ---------------- 侧栏 ---------------- */
+function buildSide(){
+  let h = '';
+  BOOK.forEach(function(P){
+    h += '<div class="sd-part">' + P.part + '</div>';
+    P.chs.forEach(function(ch){
+      const has = ch.secs && ch.secs.length;
+      h += '<div class="sd-ch' + (has ? '' : ' off') + '">' +
+             '<span class="no">第' + ch.n + '章</span>' +
+             '<span>' + ch.t + '</span>' +
+             (has ? '' : '<span class="soon">未做</span>') +
+           '</div>';
+      if(!has) return;
+      ch.secs.forEach(function(s){
+        if(!s.f) return;
+        h += '<a class="sd-sec" data-id="' + s.id + '" href="#' + s.id + '">' +
+               '<span class="id">' + s.id + '</span>' +
+               '<span class="t">' + s.t + '<small>' + s.d + '</small></span>' +
+               '<span class="pg" data-pg="' + s.id + '"></span>' +
+             '</a>';
+      });
+    });
+  });
+  document.getElementById('sdList').innerHTML = h;
+
+  document.getElementById('sdExtra').innerHTML =
+    '<div class="sd-part">配套</div>' +
+    '<a class="sd-sec" href="c00.html"><span class="id">0</span>' +
+      '<span class="t">读懂符号<small>物理量符号和单位符号</small></span></a>' +
+    '<a class="sd-sec" href="lab-circuit.html"><span class="id">🔬</span>' +
+      '<span class="t">电路实验室<small>自己搭电路、求解器算给你看</small></span></a>' +
+    '<a class="sd-sec" href="parts.html"><span class="id">⚙</span>' +
+      '<span class="t">元件对照图<small>这门课用到的元件长什么样</small></span></a>' +
+    '<a class="sd-sec" href="quiz/quiz.html"><span class="id">📖</span>' +
+      '<span class="t">考证题库<small>低压电工作业证 · 单选 537 + 判断 290</small></span></a>';
+}
+
+/* 进度点：0 屏空白、看了一部分空心圈、四屏齐了绿勾 */
+function paintProgress(){
+  const seen = loadSeen();
+  document.querySelectorAll('[data-pg]').forEach(function(el){
+    const a = seen[el.getAttribute('data-pg')] || [];
+    if(a.length >= 4){ el.textContent = '✓'; el.className = 'pg done'; }
+    else if(a.length){ el.textContent = '○'; el.className = 'pg'; }
+    else { el.textContent = ''; el.className = 'pg'; }
+  });
+}
+
+function markCur(id){
+  document.querySelectorAll('.sd-sec[data-id]').forEach(function(el){
+    el.classList.toggle('cur', el.getAttribute('data-id') === id);
+  });
+}
+
+/* ---------------- 抽屉开关 ---------------- */
+const side = document.getElementById('side'), mask = document.getElementById('mask');
+function openSide(){ side.classList.add('on'); mask.classList.add('on'); }
+function closeSide(){ side.classList.remove('on'); mask.classList.remove('on'); }
+document.getElementById('menuBtn').addEventListener('click', openSide);
+mask.addEventListener('click', closeSide);
+
+/* ---------------- 切节 ---------------- */
+ELEC.init({
+  tabs: document.getElementById('tabs'),
+  body: document.getElementById('secBody'),
+  onSwitch: function(id, m){
+    document.getElementById('secTitle').textContent = m.title;
+    document.title = m.title + ' —— 零基础学电工';
+    markCur(id);
+    markSeen(id, 0);                       /* 进来就算看过第 1 屏 */
+    const tabs = document.getElementById('tabs');
+    tabs.addEventListener('click', function(e){
+      const b = e.target.closest('.tab');
+      if(b) markSeen(id, +b.getAttribute('data-i'));
+    });
+    scrollTo(0, 0);
+  }
+});
+
+/* 正文里的站内链接（每节末尾的「上一节 / 下一节」）不跳页，就地换 */
+document.getElementById('secBody').parentNode.addEventListener('click', function(e){
+  const a = e.target.closest('a[href]');
+  if(!a) return;
+  const m = /^c1-(\d)\.html$/.exec(a.getAttribute('href') || '');
+  if(!m) return;
+  e.preventDefault();
+  location.hash = '1.' + m[1];
+});
+
+function route(){
+  const id = (location.hash || '').replace(/^#/, '') || '1.1';
+  const s = ElecNav.section(id);
+  ELEC.go(s && s.f ? id : '1.1');
+  closeSide();
+}
+addEventListener('hashchange', route);
+
+buildSide();
+paintProgress();
+route();
+</script>
+</body>
+</html>
