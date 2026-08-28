@@ -1215,6 +1215,64 @@ note 容器都在，就是没有对应的实现。这两个页签现在禁掉并
 暂时性死区，整个模块当场中断，报出来是「Cannot access 'btns' before initialization」。
 **和 vocab 的 `AGENT_TURNS`、cube-solver 的 `goHome()` 同源，这是第三次了。**
 
+### 「实物接线图 / 电路原理图」可切换（2026-08-28）
+
+他的原话：「电路原理图点不了，其他的也可以都配一下电路原理图。实物跟电路图相结合」。
+
+**1.1 那两颗按钮当初根本没绑事件** —— `drawSym1` 早就写好了，
+`S1.view` 从头到尾只被读、没被写过。这类「函数写完了但没接线」的洞，
+`node --check` 和坐标断言都查不出来，**只有真去点一下才发现**。
+
+现在 **1.1 / 1.2 / 1.3 / 1.4 共 9 屏**都能切。做法定死了，后面的章节照抄：
+
+- 模块级一个 `let VIEW='real'`，**一节之内几屏共用**（翻到下一屏不该又变回实物图）
+- HTML 里每屏 ctrl 顶上放一排 `<div class="btns vsw">`，
+  用 `document.querySelectorAll('.vsw')` 委托绑定，切换时同步全部 `.vsw .btn`
+- **只换元件的画法，位置 / 导线 / 电流点 / 标注 / 结论条一个都不动。**
+  这是重点：同一个电路摆在同一个地方，两种画法一一对得上 —— 识图要练的就是这个。
+  所以包装成 `vCell` / `vSwitch` / `vLamp` / `vResistor` / `vMeter` 几个小函数，
+  `isReal()` 里面二选一，调用处只改一行
+- 符号版直接用 `elec-canvas.js` 里那套（`battery` / `lamp` / `resistor` /
+  `switchSym` / `meter` / `node`）—— **它们本来就是为这件事准备的**，别再画一份
+- 画布标题跟着换：`vHead()` 输出「实物接线图」/「电路原理图 · 标准符号」
+- **`EC.lamp` 是填充圆，会盖住底下的导线**，所以符号版的灯直接画在导线上就行，
+  不用像实物版那样把灯泡架在导线上方（实物版是 `lampHolder` + `bulb` 两件）
+- **没有 rAF 循环的节要在切换时手动重画**（1.3 是 `draw2(); draw3();`）；
+  1.2 / 1.4 在循环里，不用管
+
+### 深色化那次留下的两个洞（2026-08-28 傍晚发现并修）
+
+**① 四个页面根本没引 `elec-page.css`。**
+`c00.html` / `lab-circuit.html` / `circuit-basics.html` / `magnet-field.html`
+的内联 `:root` 里写着「颜色全部交给 elec-page.css」，**但 `<link>` 忘了加** ——
+`--bg` / `--tx` / `--card` / `--line` 全部未定义，于是这四页从深色化那天起
+一直是**白底黑字配深色画布**。`grep -c 'elec-page.css'` 会返回 1 把人骗过去，
+那个 1 是注释里的文字，**要 grep `<link[^>]*elec-page.css`**。
+- 补 `<link>` 时**放在内联 `<style>` 之前**，让各页自己的规则能盖住共用表
+- 补完 `lab-circuit` 的顶栏当场溢出：共用表里 `.top` 是**定高 46px**，
+  而它的顶栏是两行（标题行 + `flex:1 1 100%` 的 `.sub`），得显式 `height:auto`
+
+**② 白天模式刷新之后画布还是黑的。**
+`elec-theme.js` 在 `<head>` 里跑（早了才不闪深色），可
+`elec-canvas.js` / `elec-parts.js` / `elec-symbols.js` 都在 body 末尾才加载 ——
+那次 `apply()` 执行时 `global.EC / EP / ESYM` **全都还不存在**，
+三个「有就调」全部落空，画布色板永远停在 dark。
+点按钮切换没这毛病（那会儿库早加载好了），**所以这个 bug 只在刷新后出现**。
+修法是 DOMContentLoaded 时再 `syncLate()` 补一次三套色板 + 派一次 resize。
+
+### elec-top.js —— 配套页的返回入口（2026-08-28）
+
+他的原话：「左下角可以跳转电工题库，但是跳转不回来，那几个配套好像都不行」。
+`circuit-basics` / `magnet-field` / `lab-circuit` / `quiz` 的顶栏里没有回课程首页的链接。
+
+不各页各写一行 `<a>`，是因为这四页的顶栏样式各写各的（都是内联 CSS）。
+走和 `elec-theme.js` 的 `autoMount` 同一个路子：自己找 `.top` → `.hd` → 浮在左上角。
+- 子目录里的页面用 `data-home="../index.html"` 指路，`data-label` 改文案
+- **页面本来就有回首页的链接就跳过**（判据 `top.querySelector('a[href$="index.html"]')`）——
+  c00 的 `‹` 和 parts 的「课表」不该再多一颗
+- 题库顶栏被挤窄之后副标题会折行，给它 `nowrap + ellipsis`
+  （「257 题原解析有误」下面那条黄提示里完整说了一遍，截断没有信息损失）
+
 ### elec-icons.js —— 全站图标集（2026-08-28 新增）
 
 在这之前全站一个图标都没有，导航和课表全靠文字，emoji 零散用了几处。

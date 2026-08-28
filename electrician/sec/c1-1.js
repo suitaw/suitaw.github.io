@@ -368,8 +368,10 @@ function drawSym1(g){
   EP.callout(g, R1.x0, BY, R1.x0 + 22, BY, '1.5 V', '电池', {al:'left'});
 
   switchSym(g, SWX, R1.y0, S1.on, {len:34});
-  txt(g, '开关', SWX, R1.y0 - 22, {sz:10.5, b:1, c:EP.P.inkL});
-  txt(g, S1.on ? '（闭合）' : '（断开）', SWX, R1.y0 - 9,
+  /* 标注放**下方**：断开时刀片从左端往右上抬，正上方那一片全被它扫过
+     （和闸刀开关 EP.knife 那条坑同源） */
+  txt(g, '开关', SWX, R1.y0 + 18, {sz:10.5, b:1, c:EP.P.inkL});
+  txt(g, S1.on ? '（闭合）' : '（断开）', SWX, R1.y0 + 31,
       {sz:10, c: EP.P.inkL});
 
   lamp(g, LPX, R1.y0, 15, S1.on ? 0.42 + 0.12*S1.I : 0);
@@ -776,6 +778,16 @@ $('s1sw').addEventListener('click', ()=>{
   note1();
 });
 $('s1rst').addEventListener('click', ()=>{ S1.t = 0; S1.Q = 0; });
+/* 「实物接线图 / 电路原理图」这两颗原来**没绑事件** —— drawSym1 早就写好了，
+   按钮却点不动（2026-08-28 他截图报的）。S1.view 一直只被读、从来没被写过。 */
+document.getElementById('s1view').addEventListener('click', function(e){
+  const b = e.target.closest('.btn'); if(!b) return;
+  S1.view = b.dataset.v;
+  document.querySelectorAll('#s1view .btn').forEach(function(t){
+    t.classList.toggle('on', t.dataset.v === S1.view);
+  });
+  note1();
+});
 $('s1i').addEventListener('input', e=>{
   S1.I = +e.target.value; $('s1ilab').textContent = S1.I + ' A';
   S1.t = 0; S1.Q = 0; note1();

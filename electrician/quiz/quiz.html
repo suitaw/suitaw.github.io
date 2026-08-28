@@ -6,6 +6,7 @@
 <title>低压电工 · 题库复习</title>
 <!-- 主题要在解析 body 之前定下来，否则选了白天模式也会先闪一下深色 -->
 <script src="../elec-theme.js"></script>
+<script src="../elec-top.js" data-home="../index.html"></script>
 <style>
 :root{
   --nav-h:58px;
@@ -60,7 +61,10 @@ code{background:var(--code);border-radius:4px;padding:1px 5px;font-size:.9em;fon
   display:flex;align-items:center;gap:10px;
 }
 .top h1{margin:0;font-size:16px;font-weight:700;letter-spacing:.2px}
-.top .sub{font-size:12px;color:var(--tx3);margin-top:1px}
+.top .sub{font-size:12px;color:var(--tx3);margin-top:1px;
+  /* 左边多了「‹ 电工课」之后标题区变窄，这行会折成两行把顶栏顶高。
+     截断没有信息损失 —— 「257 题原解析有误」下面那条黄提示里完整说了一遍 */
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top .grow{flex:1;min-width:0}
 .stat{
   font-size:12px;color:var(--tx2);background:var(--bg);border:1px solid var(--line);

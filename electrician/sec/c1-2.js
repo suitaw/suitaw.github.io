@@ -20,6 +20,10 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
+      <div class="btns vsw">
+        <button class="btn on" data-v="real">实物接线图</button>
+        <button class="btn" data-v="sym">电路原理图</button>
+      </div>
       <div class="rowlab">电源电压 U　<b id="s1ulab">25 V</b>　（电阻固定 10 Ω 不动）</div>
       <input type="range" id="s1u" min="5" max="30" step="1" value="25">
       <div class="ticks"><span>5 V</span><span>30 V</span></div>
@@ -57,6 +61,10 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
+      <div class="btns vsw">
+        <button class="btn on" data-v="real">实物接线图</button>
+        <button class="btn" data-v="sym">电路原理图</button>
+      </div>
       <div class="rowlab">电阻 R　<b id="s2rlab">10 Ω</b>　（电压固定 25 V 不动）</div>
       <input type="range" id="s2r" min="5" max="30" step="1" value="10">
       <div class="ticks"><span>5 Ω</span><span>30 Ω</span></div>
@@ -242,6 +250,35 @@ function chart(g, bx, o){
   txt(g, o.ylab, bx.x, bx.y-9, {sz:10, c:C.tx3, al:'left'});
 }
 
+/* ================= 实物接线图 / 电路原理图 =================
+   和 1.4 同一个路子：**只换元件画法，位置/导线/电流点/标注全不动**，
+   两种画法一一对得上。前两屏共用一个 VIEW。 */
+let VIEW = 'real';
+function isReal(){ return VIEW === 'real'; }
+function vHead(g, x, y, title){
+  EP.heading(g, x, y, title, isReal() ? '（实物接线图）' : '（电路原理图 · 标准符号）');
+}
+function vCell(g, x, y, volt){
+  if(isReal()) EP.cell(g, x, y, 46, 22, {horiz:false, pm:false, volt:volt});
+  else battery(g, x, y, {horiz:false, long:20, short:11, gap:10, pm:false});
+}
+/* 电流表：实物是一块面板表（读数在表下面），符号版就是圈里一个 A */
+function vMeter(g, cx, cy, I, max){
+  if(isReal()){
+    EP.panelMeter(g, cx-42, cy-26, 84, 58, {val:I, max:max, ticks:4, show:false});
+    txt(g, I.toFixed(2) + ' A', cx, cy+43, {sz:12.5, b:1, c:EP.P.ink});
+    txt(g, '电流表', cx, cy+57, {sz:9.5, c:EP.P.inkL});
+  }else{
+    meter(g, cx, cy, 15, 'A');
+    txt(g, I.toFixed(2) + ' A', cx, cy+30, {sz:12.5, b:1, c:EP.P.ink});
+    txt(g, '电流表', cx, cy+44, {sz:9.5, c:EP.P.inkL});
+  }
+}
+function vResistor(g, x, y, dia, bands){
+  if(isReal()) EP.resistor(g, x, y, {horiz:false, len:40, dia:dia, bands:bands});
+  else resistor(g, x, y, {horiz:false, len:40, w:15});
+}
+
 /* ================================================================
    场景 1：电压对电流的影响（R 固定 10Ω）
    ================================================================ */
@@ -252,7 +289,7 @@ const P1 = new Path([[L1.x0,88],[L1.x0,L1.y0],[L1.x1,L1.y0],[L1.x1,L1.y1],[L1.x0
 
 function draw1(dt){
   const g = st1.g; st1.clear();
-  EP.heading(g, 20, 18, '固定电阻，只拧电压');
+  vHead(g, 20, 18, '固定电阻，只拧电压');
   const I = S1.U / 10;
   S1.phase += I * 30 * dt;
 
@@ -266,7 +303,7 @@ function draw1(dt){
   /* 实物元件：可调直流电源（画成电池组）+ 色环电阻 + 指针电流表 */
   /* volt 必须跟着滑杆走：不传的话元件默认印「1.5V」，
      而这一屏电压 5~30V 可调，屏幕上就会一边写 1.5V 一边标 U=25V（截图抓到的）*/
-  EP.cell(g, L1.x0, 97, 46, 22, {horiz:false, pm:false, volt:S1.U + 'V'});
+  vCell(g, L1.x0, 97, S1.U + 'V');
   txt(g, '＋', L1.x0-15, 82, {sz:11, b:1, c:C.err});
   txt(g, '−',  L1.x0-15, 112, {sz:13, b:1, c:C.tx2});
   EP.callout(g, L1.x0+10, 97, L1.x0+26, 92, 'U = ' + S1.U + ' V', '可调直流电源',
@@ -274,12 +311,9 @@ function draw1(dt){
 
   /* 读数不印在表盘上：这块表只有 48px 高，数字正好压在刻度弧顶上（截图抓到的）。
      改成粗体数值在表下、名称再下一行 —— 和 EP.callout 一个排法。 */
-  EP.panelMeter(g, 176, L1.y0-26, 84, 58, {val:I, max:3.2, ticks:4, show:false});
-  txt(g, I.toFixed(2) + ' A', 218, L1.y0+43, {sz:12.5, b:1, c:EP.P.ink});
-  txt(g, '电流表', 218, L1.y0+57, {sz:9.5, c:EP.P.inkL});
+  vMeter(g, 218, L1.y0, I, 3.2);
 
-  EP.resistor(g, L1.x1, 97, {horiz:false, len:40, dia:17,
-    bands:['#6b4423', '#1b1b1b', '#1b1b1b', EP.BAND.gold]});
+  vResistor(g, L1.x1, 97, 17, ['#6b4423', '#1b1b1b', '#1b1b1b', EP.BAND.gold]);
   EP.callout(g, L1.x1-10, 108, L1.x1-26, 126, 'R = 10 Ω', '固定电阻，不动',
              {al:'right', color:EP.P.ink});
 
@@ -320,7 +354,7 @@ const st2 = new Stage('cv1', 360, 300);
 
 function draw2(dt){
   const g = st2.g; st2.clear();
-  EP.heading(g, 20, 18, '固定电压，只换电阻');
+  vHead(g, 20, 18, '固定电压，只换电阻');
   const I = 25 / S2.R;
   S2.phase += I * 30 * dt;
 
@@ -330,21 +364,18 @@ function draw2(dt){
                      [segAt(P1,218,L1.y0)-36, segAt(P1,218,L1.y0)+36],
                      [segAt(P1,L1.x1,97)-24, segAt(P1,L1.x1,97)+24]]});
 
-  EP.cell(g, L1.x0, 97, 46, 22, {horiz:false, pm:false, volt:'25V'});
+  vCell(g, L1.x0, 97, '25V');
   txt(g, '＋', L1.x0-15, 82, {sz:11, b:1, c:C.err});
   txt(g, '−',  L1.x0-15, 112, {sz:13, b:1, c:C.tx2});
   EP.callout(g, L1.x0+10, 97, L1.x0+26, 92, 'U = 25 V', '电源电压，不动',
              {al:'left', color:EP.P.ink});
 
-  EP.panelMeter(g, 176, L1.y0-26, 84, 58, {val:I, max:5.2, ticks:4, show:false});
-  txt(g, I.toFixed(2) + ' A', 218, L1.y0+43, {sz:12.5, b:1, c:EP.P.ink});
-  txt(g, '电流表', 218, L1.y0+57, {sz:9.5, c:EP.P.inkL});
+  vMeter(g, 218, L1.y0, I, 5.2);
 
   /* 阻值越大画得越粗，看得见「拦得越狠」；色环也跟着换 */
   const wR = 12 + S2.R*0.5;
   const b3 = S2.R < 10 ? '#1b1b1b' : (S2.R < 20 ? '#6b4423' : '#c0392b');  /* 色环红：真实材质色，不跟语义色走 */
-  EP.resistor(g, L1.x1, 97, {horiz:false, len:40, dia:wR,
-    bands:['#6b4423', '#1b1b1b', b3, EP.BAND.gold]});
+  vResistor(g, L1.x1, 97, wR, ['#6b4423', '#1b1b1b', b3, EP.BAND.gold]);
   EP.callout(g, L1.x1-10, 108, L1.x1-26, 126, 'R = ' + S2.R + ' Ω', '拖滑杆换阻值',
              {al:'right', color:EP.P.blueD});
 
@@ -538,6 +569,16 @@ $('f1').innerHTML = ElecUI.formula({
   f:'I = U / R',
   vars:['I','U','R'],
   note:'三个量必须用基本单位：伏特 V、安培 A、欧姆 Ω。给的是 mA 或 kΩ，先换算再代入。'
+});
+
+document.querySelectorAll('.vsw').forEach(function(row){
+  row.addEventListener('click', function(e){
+    const b = e.target.closest('.btn'); if(!b) return;
+    VIEW = b.dataset.v;
+    document.querySelectorAll('.vsw .btn').forEach(function(t){
+      t.classList.toggle('on', t.dataset.v === VIEW);
+    });
+  });
 });
 
 function fitAll(){

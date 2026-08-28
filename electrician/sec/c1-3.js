@@ -72,6 +72,10 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
+      <div class="btns vsw">
+        <button class="btn on" data-v="real">实物接线图</button>
+        <button class="btn" data-v="sym">电路原理图</button>
+      </div>
       <div class="rowlab">电压 U　<b id="s2ulab">220 V</b></div>
       <input type="range" id="s2u" min="12" max="240" step="4" value="220">
       <div class="rowlab" style="margin-top:6px">电阻 R　<b id="s2rlab">44 Ω</b></div>
@@ -106,6 +110,10 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv2"></canvas>
     <div class="ctrl">
+      <div class="btns vsw">
+        <button class="btn on" data-v="real">实物接线图</button>
+        <button class="btn" data-v="sym">电路原理图</button>
+      </div>
       <div class="rowlab">电流 I　<b id="s3ilab">1.0 A</b>　<span class="sub">（拖大看两边热量怎么变）</span></div>
       <input type="range" id="s3i" min="2" max="30" step="1" value="10">
       <div class="ticks"><span>0.2 A</span><span>3 A</span></div>
@@ -206,6 +214,23 @@ ELEC.reg({
 const {C, Path, Stage, dots, txt, box, tag, head, node, tw,
        battery, lamp, resistor, switchSym, meter, loop, $} = EC;
 
+/* ================= 实物接线图 / 电路原理图 =================
+   和 1.2 / 1.4 同一个路子：只换元件画法，位置和标注全不动。
+   这一节只有第 2、3 屏是「电路」，第 1 屏（电费柱状图）和第 4 屏（铭牌）不涉及。 */
+let VIEW = 'real';
+function isReal(){ return VIEW === 'real'; }
+function vHead(g, x, y, title){
+  EP.heading(g, x, y, title, isReal() ? '（实物接线图）' : '（电路原理图 · 标准符号）');
+}
+function vCell(g, x, y, w, h){
+  if(isReal()) EP.cell(g, x, y, w, h, {horiz:false, pm:false, volt:false});
+  else battery(g, x, y, {horiz:false, long:19, short:10, gap:9, pm:false});
+}
+function vResistor(g, x, y, dia){
+  if(isReal()) EP.resistor(g, x, y, {horiz:false, len:38, dia:dia});
+  else resistor(g, x, y, {horiz:false, len:38, w:15});
+}
+
 let cur = 0;
 const scenes = [$('sc0'), $('sc1'), $('sc2'), $('sc3')];
 document.getElementById('tabs').addEventListener('click', function(e){
@@ -296,7 +321,7 @@ const st2 = new Stage('cv1', 360, 268);
 
 function draw2(){
   const g = st2.g; st2.clear();
-  EP.heading(g, 14, 18, '同一个功率，三种算法');
+  vHead(g, 14, 18, '同一个功率，三种算法');
   const I = S2.U / S2.R, P = S2.U * I;
 
   /* 电路 */
@@ -306,10 +331,10 @@ function draw2(){
   EP.flow(g, P2, {phase:0, gap:52, kind:'cur',
                skip:[[0,10],[P2.len-10,P2.len],
                      [segAt(P2,L.x1,87)-22, segAt(P2,L.x1,87)+22]]});
-  EP.cell(g, L.x0, 87, 40, 19, {horiz:false, pm:false, volt:false});
+  vCell(g, L.x0, 87, 40, 19);
   EP.callout(g, L.x0+9, 87, L.x0+24, 82, 'U = ' + S2.U + ' V', '电源电压',
              {al:'left', color:EP.P.blueD});
-  EP.resistor(g, L.x1, 87, {horiz:false, len:38, dia:16});
+  vResistor(g, L.x1, 87, 16);
   EP.callout(g, L.x1-9, 87, L.x1-24, 108, 'R = ' + S2.R + ' Ω', '负载电阻',
              {al:'right', color:EP.P.ink});
   EP.chip(g, 'I = ' + I.toFixed(2) + ' A', 178, L.y0-14, {sz:11, b:1, c:EP.P.amber});
@@ -356,7 +381,7 @@ const st3 = new Stage('cv2', 360, 276);
 
 function draw3(){
   const g = st3.g; st3.clear();
-  EP.heading(g, 14, 18, '同一根回路，谁烫谁不烫');
+  vHead(g, 14, 18, '同一根回路，谁烫谁不烫');
   const qa = S3.I*S3.I*RA, qb = S3.I*S3.I*RB;
 
   /* 一条串联电路：电源 — 导线 — 灯丝 — 导线 */
@@ -369,8 +394,10 @@ function draw3(){
 
   /* 中间那一段是灯泡本体：灯丝就在玻璃壳里 */
   const ha = Math.min(1, qa/900);
-  EP.lampHolder(g, 160, y-6, 30, 15);
-  EP.bulb(g, 160, y-26, 15, ha);
+  if(isReal()){
+    EP.lampHolder(g, 160, y-6, 30, 15);
+    EP.bulb(g, 160, y-26, 15, ha);
+  }else lamp(g, 160, y, 15, ha);
   txt(g, '灯泡（灯丝 R = 400 Ω）', 196, y-34, {sz:10.5, b:1, c:C.tx, al:'left'});
   txt(g, '导线 R = 0.2 Ω', 36, y+26, {sz:10.5, c:C.tx2, al:'left'});
   txt(g, '同一根回路，电流处处相同：I = ' + S3.I.toFixed(1) + ' A', 180, 40, {sz:11.5, b:1, c:C.cur});
@@ -537,6 +564,17 @@ $('f3').innerHTML = ElecUI.formula({
     'I','R','t'
   ],
   note:'1840 年焦耳做了大量实验后确定的关系。注意 I 是平方 —— 这是整条公式最要命的地方。'
+});
+
+document.querySelectorAll('.vsw').forEach(function(row){
+  row.addEventListener('click', function(e){
+    const b = e.target.closest('.btn'); if(!b) return;
+    VIEW = b.dataset.v;
+    document.querySelectorAll('.vsw .btn').forEach(function(t){
+      t.classList.toggle('on', t.dataset.v === VIEW);
+    });
+    draw2(); draw3();          /* 这两屏是「按状态重画」的，不在 rAF 里连续跑 */
+  });
 });
 
 function fitAll(){
