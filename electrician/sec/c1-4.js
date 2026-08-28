@@ -23,6 +23,10 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
+      <div class="btns vsw">
+        <button class="btn on" data-v="real">实物接线图</button>
+        <button class="btn" data-v="sym">电路原理图</button>
+      </div>
       <div class="btns">
         <button class="btn big go" id="s1sw">合上开关</button>
         <button class="btn sm" id="s1fix">全部换新</button>
@@ -67,6 +71,10 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
+      <div class="btns vsw">
+        <button class="btn on" data-v="real">实物接线图</button>
+        <button class="btn" data-v="sym">电路原理图</button>
+      </div>
       <div class="btns">
         <button class="btn big go" id="s2sw">合上开关</button>
         <button class="btn sm" id="s2fix">全部换新</button>
@@ -111,6 +119,10 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv2"></canvas>
     <div class="ctrl">
+      <div class="btns vsw">
+        <button class="btn on" data-v="real">实物接线图</button>
+        <button class="btn" data-v="sym">电路原理图</button>
+      </div>
       <div class="btns" id="s3sw">
         <button class="btn on" data-s="1">S1（总开关）</button>
         <button class="btn on" data-s="2">S2（上支路）</button>
@@ -201,6 +213,36 @@ ELEC.reg({
 const {C, Path, Stage, dots, txt, box, tag, head, node, tw,
        battery, lamp, resistor, switchSym, meter, loop, $} = EC;
 
+/* ================= 实物接线图 / 电路原理图 =================
+   三屏共用一个 VIEW：切一处三屏一起变，免得翻页时还要各切一次。
+   **只换元件的画法，位置、导线、电流点、标注、结论条全都不动** ——
+   同一个电路摆在同一个地方，两种画法一一对得上，这正是识图要练的。 */
+let VIEW = 'real';
+function isReal(){ return VIEW === 'real'; }
+function vHead(g, x, y, subReal){
+  EP.heading(g, x, y, isReal() ? '实物接线图' : '电路原理图',
+             isReal() ? subReal : '（同一个电路，换成标准符号）');
+}
+function vCell(g, x, y, w, h){
+  if(isReal()) EP.cell(g, x, y, w, h, {horiz:false, pm:false, volt:'12V'});
+  else{
+    battery(g, x, y, {horiz:false, long:19, short:10, gap:9, pm:false});
+    txt(g, '＋', x - 15, y - 11, {sz:11, b:1, c:C.err, al:'right'});
+    txt(g, '−',  x - 15, y + 11, {sz:13, b:1, c:C.tx2, al:'right'});
+    txt(g, '12 V', x + 15, y, {sz:10.5, b:1, c:C.tx2, al:'left'});
+  }
+}
+function vSwitch(g, x, y, on, w, h){
+  if(isReal()) EP.knife(g, x, y, on, {w:w, h:h});
+  else switchSym(g, x, y, on, {len:w*0.72});
+}
+function vLamp(g, x, y, b, hw, hh, r){
+  if(isReal()){
+    EP.lampHolder(g, x, y - hh*0.5, hw, hh);
+    EP.bulb(g, x, y - hh - r, r, b);
+  }else lamp(g, x, y, r, b);
+}
+
 const E = 12, RL = 8;                 /* 电源 12V，每个灯泡 8Ω */
 const PFULL = E*E/RL;                 /* 灯泡拿到全电压时的功率，用来折算亮度 */
 function bright(P){ return Math.max(0, Math.min(1, Math.sqrt(P/PFULL))); }
@@ -234,7 +276,7 @@ function calc1(){
 }
 function draw1(dt){
   const g = st1.g; st1.clear();
-  EP.heading(g, 20, 22, '实物接线图', '（点灯泡可以把它弄坏）');
+  vHead(g, 20, 22, '（点灯泡可以把它弄坏）');
   const v = calc1();
   if(v.ok) S1.ph += v.I * 90 * dt;
 
@@ -257,8 +299,8 @@ function draw1(dt){
   EP.flow(g, P1, {phase:v.ok ? S1.ph : 0, gap:52,
                kind:'cur', skip:skip});
 
-  EP.cell(g, RC1.x0, 119, 44, 21, {horiz:false, pm:false, volt:'12V'});
-  EP.knife(g, 180, RC1.y1, S1.on, {w:52, h:22});
+  vCell(g, RC1.x0, 119, 44, 21);
+  vSwitch(g, 180, RC1.y1, S1.on, 52, 22);
   /* 标签放开关**左边**：拨杆是从左端往右上抬的，正上方（原来的位置）必被穿过去，
      正下方又贴着画布底边 —— 左边这一块是回路内部的空白，怎么扳都够不着（截图抓到的）*/
   txt(g, S1.on ? '开关合上' : '开关断开', 148, RC1.y1-16,
@@ -267,8 +309,7 @@ function draw1(dt){
   LP1.forEach(function(x, i){
     const dead = S1.dead[i];
     const b = (v.ok && !dead) ? bright(v.I*v.I*RL) : 0;
-    EP.lampHolder(g, x, RC1.y0-8, 30, 16);
-    EP.bulb(g, x, RC1.y0-27, 13, b);
+    vLamp(g, x, RC1.y0, b, 30, 16, 13);
     txt(g, 'EL' + (i+1), x, RC1.y0+22, {sz:10.5, c:C.tx2});
     if(dead) txt(g, '✕ 坏了', x, RC1.y0+38, {sz:10, b:1, c:C.err});
     else if(v.ok) txt(g, v.U.toFixed(1) + ' V', x, RC1.y0+38, {sz:10.5, b:1, c:C.acc});
@@ -328,7 +369,7 @@ function calc2(){
 }
 function draw2(dt){
   const g = st2.g; st2.clear();
-  EP.heading(g, 20, 22, '实物接线图', '（弄坏一个看看别的）');
+  vHead(g, 20, 22, '（弄坏一个看看别的）');
   const v = calc2();
   if(v.It > 0) S2.ph += 60 * dt;
 
@@ -345,8 +386,8 @@ function draw2(dt){
     EP.flow(g, back, {phase:-S2.ph, gap:52, kind:'cur', skip:[[back.len-10,back.len]]});
   }
 
-  EP.cell(g, RC2.xL, 129, 44, 21, {horiz:false, pm:false, volt:'12V'});
-  EP.knife(g, 78, RC2.yTop, S2.on, {w:46, h:20});
+  vCell(g, RC2.xL, 129, 44, 21);
+  vSwitch(g, 78, RC2.yTop, S2.on, 46, 20);
   /* 同 1.4 屏 1：标签一律挪到闸刀**左侧**，拨杆是往右上抬的，够不着这儿 */
   txt(g, S2.on ? '合上' : '断开', 48, RC2.yTop-12, {sz:10, c:EP.P.inkL, al:'right'});
 
@@ -361,8 +402,7 @@ function draw2(dt){
     }
     if(live) EP.flow(g, br, {phase:S2.ph, gap:52, kind:'cur', skip:[[18,76]]});
     node(g, x, RC2.yTop); node(g, x, RC2.yBot);
-    EP.lampHolder(g, x, 132, 28, 15);
-    EP.bulb(g, x, 114, 13, live ? 1 : 0);
+    vLamp(g, x, 129, live ? 1 : 0, 28, 15, 13);
     /* 标签一律放支路右边，别居中——居中会被那根竖导线穿过去 */
     txt(g, 'EL' + (i+1), x+15, 112, {sz:10.5, c:C.tx2, al:'left'});
     if(dead) txt(g, '✕ 坏了', x+15, 160, {sz:10, b:1, c:C.err, al:'left'});
@@ -426,7 +466,7 @@ function calc3(){
 }
 function draw3(dt){
   const g = st3.g; st3.clear();
-  EP.heading(g, 20, 20, '实物接线图', '（书上第 9 页那个结构）');
+  vHead(g, 20, 20, '（书上第 9 页那个结构）');
   const v = calc3();
   if(v.I > 0) S3.ph += v.I * 90 * dt;
 
@@ -463,7 +503,7 @@ function draw3(dt){
     if(v.dnOK) EP.flow(g, dnW, {phase:S3.ph, gap:52, kind:'cur', skip:skB});
   }
 
-  EP.cell(g, M3.xL, 159, 42, 20, {horiz:false, pm:false, volt:'12V'});
+  vCell(g, M3.xL, 159, 42, 20);
 
   switchSym(g, 92, M3.yU, S3.s[0], {len:30});
   txt(g, 'S1', 92, M3.yU-15, {sz:10, c:C.tx2});
@@ -507,8 +547,7 @@ function gap(g, x, y, horiz){
   g.stroke(); g.restore();
 }
 function lampAt(g, x, y, b, name, dead, side){
-  EP.lampHolder(g, x, y-7, 24, 13);
-  EP.bulb(g, x, y-23, 11, dead ? 0 : b);
+  vLamp(g, x, y, dead ? 0 : b, 24, 13, 11);
   if(name) txt(g, dead ? '✕ ' + name : name, x, y + (side>0 ? 20 : -40),
       {sz:10, b:dead?1:0, c:dead ? C.err : C.tx2});
 }
@@ -661,6 +700,17 @@ $('f1').innerHTML = ElecUI.formula({
     {sym:'U总',name:'电源电压',unit:'伏特',unitSym:'V',what:'加在整条串联电路两端的电压'}
   ],
   note:'串联电路里电流处处相等，所以谁的电阻大，谁分到的电压就大（U = I·R，I 是共用的）。'
+});
+
+document.querySelectorAll('.vsw').forEach(function(row){
+  row.addEventListener('click', function(e){
+    const b = e.target.closest('.btn'); if(!b) return;
+    VIEW = b.dataset.v;
+    /* 三屏的按钮一起同步 —— 翻到下一屏不该又变回实物图 */
+    document.querySelectorAll('.vsw .btn').forEach(function(t){
+      t.classList.toggle('on', t.dataset.v === VIEW);
+    });
+  });
 });
 
 function fitAll(){

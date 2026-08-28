@@ -125,9 +125,25 @@ function autoMount(){
   const b = mount(document.body);
   if(b) b.classList.add('et-float');
 }
+/* ---- DOM 好了之后再把后三套色板补一次 ----
+   **这一步是必须的，不是保险**：本模块在 <head> 里跑（早了才不会闪一下深色），
+   而 elec-canvas.js / elec-parts.js / elec-symbols.js 都在 body 末尾才加载 ——
+   上面那次 apply() 执行时 global.EC / EP / ESYM 全都还不存在，
+   三个「有就调」全部落空，于是**画布色板永远停在 dark**。
+   表现：选了白天模式，刷新之后页面是白的、画布还是黑的（他截图报的）。
+   点按钮切换时没这个毛病，因为那会儿库早加载好了 —— 所以只在刷新后出现。 */
+function syncLate(){
+  if(global.EC   && EC.theme)   EC.theme(cur);
+  if(global.EP   && EP.theme)   EP.theme(cur);
+  if(global.ESYM && ESYM.theme) ESYM.theme(cur);
+  /* 这时候各页的初始化已经跑完、可能已经画过一帧了，得让它们重画 */
+  global.dispatchEvent(new Event('resize'));
+  global.dispatchEvent(new CustomEvent('elec:theme', {detail:{theme:cur}}));
+}
+function ready(){ syncLate(); autoMount(); }
 if(document.readyState === 'loading')
-  document.addEventListener('DOMContentLoaded', autoMount);
-else autoMount();
+  document.addEventListener('DOMContentLoaded', ready);
+else ready();
 
 global.ETheme = {
   get:function(){ return cur; },
