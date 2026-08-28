@@ -278,7 +278,7 @@ function draw1(dt){
     g.restore();
     txt(g, '导线', cx + 100, cy, {sz:10, c:C.tx2, al:'right'});
 
-    box(g, 62, 246, 236, 34, 6, '#1a222b', C.boxLine, 1);
+    box(g, 62, 246, 236, 34, 6, C.card, C.boxLine, 1);
     txt(g, '右手握住导线，拇指顺着电流', 180, 259, {sz:10.5, b:1, c:C.tx});
     txt(g, '四指弯曲的方向，就是这些圆圈的方向', 180, 274, {sz:10, c:C.tx2});
   }else{
@@ -322,7 +322,7 @@ function draw1(dt){
       g.stroke(); g.restore();
     }
 
-    box(g, 40, 208, 280, 62, 6, '#1a222b', C.boxLine, 1);
+    box(g, 40, 208, 280, 62, 6, C.card, C.boxLine, 1);
     txt(g, '右手四指顺着电流绕线圈弯曲，拇指指的那一头就是 N 极', 180, 226, {sz:10.5, b:1, c:C.tx});
     txt(g, '匝数 ' + S1.n + ' 匝' + (S1.core ? ' ＋ 铁芯' : '（没有铁芯）') +
            '　→　磁场强度约 ' + strength.toFixed(1) + ' 份', 180, 246, {sz:10.5, c:C.tx2});
@@ -462,7 +462,7 @@ function draw2(dt){
 
   /* ---- 底部状态 ---- */
   const moving = Math.abs(S2.v) > 6;
-  box(g, 12, 268, 336, 32, 5, moving ? '#12291f' : '#1a222b', C.boxLine, 1);
+  box(g, 12, 268, 336, 32, 5, moving ? C.okbg : C.card, C.boxLine, 1);
   txt(g, moving
         ? 'Φ = ' + phi.toFixed(3) + ' mWb　e = ' + (S2.e<0?'−':'') + Math.abs(S2.e).toFixed(1) + ' mV'
         : 'Φ = ' + phi.toFixed(3) + ' mWb　e = 0.0 mV　（磁铁没动）',
@@ -578,16 +578,16 @@ function draw3(){
     const outward = (d < 0) === (S3.bDir > 0);
     symCur(g, 106, y0, outward);
     symCur(g, 192, y0, outward);
-    box(g, 60, 196, 240, 30, 5, '#152536', C.acc, 1.3);
+    box(g, 60, 196, 240, 30, 5, C.accbg, C.acc, 1.3);
     txt(g, outward ? '感应电流：从纸面里流出来（⊙，朝你）'
                    : '感应电流：流进纸面里去（⊗，背着你）',
         180, 211, {sz:11, b:1, c:C.accD});
   }else{
-    box(g, 60, 196, 240, 30, 5, '#1a222b', C.boxLine, 1);
+    box(g, 60, 196, 240, 30, 5, C.card, C.boxLine, 1);
     txt(g, '先点一下「往上切」或「往下切」', 180, 211, {sz:11, c:C.tx2});
   }
 
-  box(g, 40, 234, 280, 46, 6, '#1a222b', C.boxLine, 1);
+  box(g, 40, 234, 280, 46, 6, C.card, C.boxLine, 1);
   txt(g, '右手摊平：磁力线穿过掌心，拇指指着导体运动的方向', 180, 250, {sz:10.5, b:1, c:C.tx});
   txt(g, '这时四指指的，就是感应电流在导体里流动的方向', 180, 268, {sz:10.5, c:C.tx2});
 }
@@ -653,7 +653,7 @@ function draw4(dt){
   const a = APP4[S4.i];
 
   txt(g, a.n, 180, 26, {sz:14, b:1, c:C.tx});
-  tag(g, '原理：' + a.k, 180, 48, {sz:10.5, b:1, c:C.accD, fill:'#152536', line:C.acc});
+  tag(g, '原理：' + a.k, 180, 48, {sz:10.5, b:1, c:C.accD, fill:C.accbg, line:C.acc});
 
   const cy = 132;
   if(S4.i === 0 || S4.i === 1){
@@ -661,7 +661,7 @@ function draw4(dt){
     const cx = 128;
     g.save();
     g.beginPath(); g.arc(cx, cy, 46, 0, EC.TAU);
-    g.fillStyle = '#1b232d'; g.fill(); g.strokeStyle = C.metalD; g.lineWidth = 2; g.stroke();
+    g.fillStyle = C.box; g.fill(); g.strokeStyle = C.metalD; g.lineWidth = 2; g.stroke();
     g.restore();
     g.save(); g.translate(cx, cy); g.rotate(S4.ph*Math.PI/180);
     box(g, -10, -28, 20, 24, 3, '#ff6a4a', null);
@@ -720,7 +720,7 @@ function draw4(dt){
     txt(g, '小电流控制大电流', 180, cy+62, {sz:10, c:C.tx3});
   }
 
-  box(g, 20, 200, 320, 30, 6, '#1b232d', C.boxLine, 1);
+  box(g, 20, 200, 320, 30, 6, C.box, C.boxLine, 1);
   txt(g, a.ch, 180, 215, {sz:10.5, c:C.tx2});
 }
 function note4(){

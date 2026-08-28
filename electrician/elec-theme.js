@@ -52,6 +52,10 @@ const CSS = `
 .et-btn::after{content:'';position:absolute;inset:-4px}
 .et-btn:active{background:var(--card2,var(--card,#141a21))}
 .et-btn svg{display:block}
+/* 没有顶栏可挂的页面（首页那种）：浮在右上角。
+   z-index 要压过吸顶区（.stick 是 20），但别压过全屏覆盖层 */
+.et-float{position:fixed;top:9px;right:9px;z-index:60;
+  background:var(--card,#141a21);box-shadow:0 2px 10px rgba(0,0,0,.28)}
 `;
 function injectCSS(){
   if(document.getElementById('et-css')) return;
@@ -98,6 +102,32 @@ function mount(host, where){
    就是暂时性死区，整个模块当场中断，报出来是「Cannot access 'btns' before initialization」。
    （和 vocab 的 AGENT_TURNS、cube-solver 的 goHome() 同源，栽第三次了） */
 apply(cur, true);
+
+/* ---- 自动挂载 ----
+   13 个页面各去改一遍 JS 太碎，所以这里自己找地方挂：
+   顶栏 .top（课页/专题页）→ 首页那块 .hd → 都没有就浮在右上角。
+   页面自己调过 mount() 的（比如题库，它要插在「掌握 N/537」左边）就跳过 —— 
+   判据是 DOM 里已经有 .et-btn 了：DOMContentLoaded 晚于 body 末尾的同步脚本，所以这时候查得准。 */
+function autoMount(){
+  if(document.querySelector('.et-btn')) return;
+  const top = document.querySelector('.top');
+  if(top){
+    const b = mount(top);
+    /* 插在哪儿：优先「整本书」链接左边；再退到 .sub 前面 ——
+       lab-circuit 的 .top 是 flex-wrap，而它的 .sub 是 flex:1 1 100%（独占一行），
+       直接 append 的话按钮会被挤到第三行去（截图抓到的）。 */
+    const anchor = top.querySelector('.bk') || top.querySelector('.sub');
+    if(b && anchor) top.insertBefore(b, anchor);
+    return;
+  }
+  const hd = document.querySelector('.hd');
+  if(hd){ const b = mount(hd); if(b) b.classList.add('et-float'); return; }
+  const b = mount(document.body);
+  if(b) b.classList.add('et-float');
+}
+if(document.readyState === 'loading')
+  document.addEventListener('DOMContentLoaded', autoMount);
+else autoMount();
 
 global.ETheme = {
   get:function(){ return cur; },

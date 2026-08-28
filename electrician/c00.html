@@ -6,31 +6,9 @@
 <title>第 0 课 · 读懂符号 —— 电工入门</title>
 <style>
 :root{
-  /* 2026-08-28 全站改成「深色仪表台」，这一份和 elec-page.css 的 :root 保持一致。
-     恒深色：画布、元件、外壳是一整套，跟着系统亮暗切会让画布和页面对不上。 */
-  --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
-  --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
-  --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
-  --ok:#3ecf8e; --okbg:#12291f;
-  --err:#ff6b6b; --errbg:#331a1a;
-  --warn:#f0a020; --warnbg:#2e2412;
-  --canvas:#111820;
-  /* 让浏览器原生控件（滑杆轨道、复选框、下拉、滚动条）自己变深 ——
-     不写这一行的话，深色页面里那几个原生件还是浅色的一块。 */
-  color-scheme: dark;
-
+  /* 颜色全部交给 elec-page.css —— 那边现在是深浅两套（:root[data-theme]），
+     这里再抄一份的话白天模式会被这份深色盖回去。只留这一页自己的尺寸变量。 */
   --r:10px; --tap:44px; --dock-h:62px; --stick-h:260px;
-}
-@media (prefers-color-scheme:dark){
-  :root{
-    --bg:#0c1014; --card:#141a21; --card2:#1a222b; --line:#252f3a; --line2:#1d2530;
-    --tx:#e6edf5; --tx2:#9fadbd; --tx3:#71808f;
-    --acc:#4ea3ff; --accbg:#152536; --accln:rgba(78,163,255,.34);
-    --ok:#3ecf8e; --okbg:#12291f;
-    --err:#ff6b6b; --errbg:#331a1a;
-    --warn:#f0a020; --warnbg:#2e2412;
-    --canvas:#111820;
-  }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -189,6 +167,8 @@ main{padding:12px 12px 0}
 /* 吸顶的经典坑：scrollIntoView 会把目标滚到视口最上边、正好被吸顶块盖住 */
 [data-anchor]{scroll-margin-top:calc(var(--stick-h) + 12px)}
 </style>
+<!-- 主题要在解析 body 之前定下来，否则选了白天模式也会先闪一下深色 -->
+<script src="elec-theme.js"></script>
 </head>
 <body>
 

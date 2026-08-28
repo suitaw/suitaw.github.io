@@ -6,6 +6,9 @@
 <title>跟着《零基础学电工》学 —— 课程首页</title>
 <link rel="stylesheet" href="elec-page.css">
 <style>
+/* 这一页只有这一个自己的颜色，其余全部来自 elec-page.css 的两套 :root */
+:root, :root[data-theme="dark"]{ --hero:#121a24 }
+:root[data-theme="light"]{ --hero:#e9eef5 }
 /* 首页自己的版式（2026-08-28 深色仪表台改版）
    —— 别的课页用不到，就不进 elec-page.css。
    色板全部走 elec-page.css 的 :root 变量，改一处两边一起变。
@@ -19,7 +22,9 @@ svg{display:block}
 
 /* ---------- 顶部：仪表面板 ---------- */
 .hd{position:relative;overflow:hidden;padding:16px 15px 18px;
-  background:linear-gradient(180deg,#121a24,var(--bg));
+  /* 渐变的起点跟着主题走：写死 #121a24 的话，白天模式下这一块还是深的，
+     而标题用的是 var(--tx)（深色字）—— 深字压深底，标题直接读不出来 */
+  background:linear-gradient(180deg,var(--hero),var(--bg));
   border-bottom:1px solid var(--line)}
 /* 背景一条淡正弦，像示波器余晖 */
 .hd::before{content:'';position:absolute;left:0;right:0;top:56px;height:90px;opacity:.15;
@@ -152,6 +157,8 @@ svg{display:block}
   .fade{animation:none}.item.now::after,.hd .kick::before{animation:none}
 }
 </style>
+<!-- 主题要在解析 body 之前定下来，否则选了白天模式也会先闪一下深色 -->
+<script src="elec-theme.js"></script>
 </head>
 <body>
 <div class="wrap" id="w"></div>

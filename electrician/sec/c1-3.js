@@ -250,7 +250,7 @@ function draw1(){
     const kwh = a.w/1000 * S1.h * 30;
     const w = Math.max(3, (x1-x0) * kwh / maxKwh);
     const on = (i === S1.i);
-    box(g, x0, y, x1-x0, bh, 5, '#1b232d', null);
+    box(g, x0, y, x1-x0, bh, 5, C.box, null);
     /* 未选中那几根**不能压到 40% 不透明度**：浅底上混出来是淡橙，
        深底上混出来是暗棕，五根柱子看着像生锈了。深底上要保住色相，
        弱化靠的是「比选中的暗一档」而不是「透出背景」。 */
@@ -265,7 +265,7 @@ function draw1(){
 
   const a = APP[S1.i];
   const kwh = a.w/1000 * S1.h * 30;
-  box(g, 20, 212, 320, 30, 6, '#1b232d', C.boxLine, 1);
+  box(g, 20, 212, 320, 30, 6, C.box, C.boxLine, 1);
   txt(g, a.n + '　' + a.w + ' W × ' + S1.h.toFixed(1) + ' h × 30 天 = ' +
          kwh.toFixed(1) + ' 度 ≈ ' + yuan(kwh*0.6) + ' 元',
       180, 227, {sz:11.5, b:1, c:C.tx});
@@ -322,7 +322,7 @@ function draw2(){
   ];
   rows.forEach(function(r, i){
     const y = 158 + i*32;
-    box(g, 20, y, 320, 26, 5, i===0 ? '#152536' : '#1a222b', C.boxLine, 1);
+    box(g, 20, y, 320, 26, 5, i===0 ? C.accbg : C.card, C.boxLine, 1);
     txt(g, r[0], 30, y+13, {sz:11, b:1, c:C.accD, al:'left'});
     txt(g, r[1], 152, y+13, {sz:11, c:C.tx2, al:'left'});
     txt(g, '= ' + fmtP(P), 330, y+13, {sz:11.5, b:1, c:C.cur, al:'right'});
@@ -381,7 +381,7 @@ function draw3(){
   [['灯丝', qa, '#ff6b6b'], ['导线', qb, '#5eb0ff']].forEach(function(r, i){
     const yy = 156 + i*38;
     txt(g, r[0], bx-8, yy+11, {sz:10.5, c:C.tx2, al:'right'});
-    box(g, bx, yy, bw, 22, 5, '#1b232d', null);
+    box(g, bx, yy, bw, 22, 5, C.box, null);
     const w = Math.max(2, bw * r[1]/hmax);
     box(g, bx, yy, w, 22, 5, r[2], null);
     const s = r[1] >= 10 ? r[1].toFixed(0) + ' J/s' : r[1].toFixed(2) + ' J/s';
@@ -425,7 +425,7 @@ function draw4(){
   EP.heading(g, 14, 14, '铭牌功率 vs 实际功率');
 
   /* 铭牌 */
-  box(g, 22, 28, 150, 92, 6, '#1a222b', C.metalD, 1.6);
+  box(g, 22, 28, 150, 92, 6, C.card, C.metalD, 1.6);
   txt(g, '产 品 铭 牌', 97, 44, {sz:10, c:C.tx3});
   g.save(); g.strokeStyle = C.boxLine; g.lineWidth = 1;
   g.beginPath(); g.moveTo(32, 53); g.lineTo(162, 53); g.stroke(); g.restore();
@@ -442,7 +442,7 @@ function draw4(){
   /* 功率条 */
   const bx = 30, bw = 300, by = 138, bh = 24;
   txt(g, '实际功率占额定功率的比例', 180, 128, {sz:10.5, c:C.tx2});
-  box(g, bx, by, bw, bh, 5, '#1b232d', C.boxLine, 1);
+  box(g, bx, by, bw, bh, 5, C.box, C.boxLine, 1);
   const w = Math.min(bw, bw * pct / 1.4);
   const col = pct < 0.85 ? '#5eb0ff' : (pct > 1.12 ? '#ff6b6b' : '#3ecf8e');
   box(g, bx, by, w, bh, 5, col, null);

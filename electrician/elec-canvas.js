@@ -43,6 +43,9 @@ dark:{
   lamp:'#f0b429', lampOff:'#5a636d', glow:'#ffd76a',
   hot:'#ff6a4a',
   box:'#1b232d', boxLine:'#3a4653', card:'#1a222b',
+  /* 画布上那些「状态底板」（读数带、结论条、高亮行）。原来是逐处写死 hex 的，
+     加白天模式时才发现散了 31 处 —— 全部收到这里，两套主题各给一份。 */
+  okbg:'#12291f', errbg:'#331a1a', warnbg:'#2e2412', accbg:'#152536', voltbg:'#241a33',
   skin:'#e0b088', skinL:'#a97644'
 },
 /* ---------- 浅色（改深色之前那一份，留着好回退）---------- */
@@ -56,6 +59,7 @@ light:{
   lamp:'#f0b429', lampOff:'#c8cdd3', glow:'#ffd76a',
   hot:'#e0402a',
   box:'#eef1f5', boxLine:'#b9c2cc', card:'#ffffff',
+  okbg:'#e7f6ec', errbg:'#fdecec', warnbg:'#fff3e0', accbg:'#e8f1fc', voltbg:'#f1e9fb',
   skin:'#f2c79c', skinL:'#a97644'
 }};
 

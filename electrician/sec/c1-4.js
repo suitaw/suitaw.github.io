@@ -274,7 +274,7 @@ function draw1(dt){
     else if(v.ok) txt(g, v.U.toFixed(1) + ' V', x, RC1.y0+38, {sz:10.5, b:1, c:C.acc});
   });
 
-  box(g, 20, 208, 320, 30, 6, v.ok ? '#12291f' : '#331a1a', C.boxLine, 1);
+  box(g, 20, 208, 320, 30, 6, v.ok ? C.okbg : C.errbg, C.boxLine, 1);
   const msg = !S1.on ? '开关断开 —— 整条路没有电流'
             : v.broken ? '一个灯泡坏了 → 三个全灭（这就是串联的毛病）'
             : '电流处处 ' + v.I.toFixed(2) + ' A，每个灯分到 ' + v.U.toFixed(1) + ' V（三个平分 12V）';
@@ -370,7 +370,7 @@ function draw2(dt){
   });
 
   txt(g, '干路', 48, RC2.yTop-26, {sz:10, c:C.tx3, al:'right'});
-  box(g, 20, 214, 320, 44, 6, v.It>0 ? '#12291f' : '#1a222b', C.boxLine, 1);
+  box(g, 20, 214, 320, 44, 6, v.It>0 ? C.okbg : C.card, C.boxLine, 1);
   txt(g, S2.on ? ('亮着 ' + v.alive + ' 个 → 干路电流 = ' +
         (v.alive ? Array(v.alive).fill(v.Ib.toFixed(1)).join(' + ') : '0') +
         ' = ' + v.It.toFixed(1) + ' A')
@@ -492,7 +492,7 @@ function draw3(dt){
   /* y 只能落在 192：再往下就撞 EL5 的灯泡（灯泡上沿 202），再往上就撞 EL3/EL4 的名字（下沿 183）*/
   txt(g, '下支路：EL3 与 EL4 串联', 218, 192, {sz:10, c:C.tx3});
 
-  box(g, 20, 256, 320, 24, 5, v.I>0 ? '#12291f' : '#331a1a', C.boxLine, 1);
+  box(g, 20, 256, 320, 24, 5, v.I>0 ? C.okbg : C.errbg, C.boxLine, 1);
   txt(g, v.I>0
         ? '干路 ' + v.I.toFixed(2) + ' A　EL5 分到 ' + v.U5.toFixed(1) +
           ' V　每条支路 ' + v.Ibr.toFixed(2) + ' A'
@@ -609,7 +609,7 @@ function draw4(){
 
   if(S4.ans){
     const ok = S4.ans === e.a;
-    box(g, 24, 178, 312, 24, 5, ok ? '#12291f' : '#331a1a', ok ? C.ok : C.err, 1.2);
+    box(g, 24, 178, 312, 24, 5, ok ? C.okbg : C.errbg, ok ? C.ok : C.err, 1.2);
     txt(g, ok ? '✓ 答对了：这是' + (e.a==='ser'?'串联':'并联')
               : '✕ 不对，这是' + (e.a==='ser'?'串联':'并联'),
         180, 190, {sz:11, b:1, c: ok ? C.ok : C.err});

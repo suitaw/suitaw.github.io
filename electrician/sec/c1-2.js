@@ -209,7 +209,7 @@ document.getElementById('tabs').addEventListener('click', function(e){
 function chart(g, bx, o){
   box(g, bx.x, bx.y, bx.w, bx.h, 6, C.box, C.boxLine, 1);
   /* 网格 */
-  g.save(); g.strokeStyle = '#1b232d'; g.lineWidth = 1;
+  g.save(); g.strokeStyle = C.box; g.lineWidth = 1;
   for(let i=1;i<4;i++){
     const y = bx.y + bx.h*i/4;
     g.beginPath(); g.moveTo(bx.x, y); g.lineTo(bx.x+bx.w, y); g.stroke();
@@ -425,7 +425,7 @@ function draw3(dt){
   txt(g, S3.R + ' Ω', ex1-16, 149, {sz:10.5, b:1, c:C.tx, al:'right'});
 
   /* 底部读数 */
-  box(g, 20, 262, 320, 30, 6, '#1b232d', C.boxLine, 1);
+  box(g, 20, 262, 320, 30, 6, C.box, C.boxLine, 1);
   txt(g, '水流量 ＝ 电流 I ＝ ' + S3.U + ' ÷ ' + S3.R + ' ＝ ' + I.toFixed(2) + ' A',
       180, 277, {sz:12, b:1, c:C.cur});
 }
@@ -459,7 +459,7 @@ function draw4(){
   const ax = 180, ay = 44, bx = 84, by = 210, cx = 276, cy = 210;
   g.save();
   g.beginPath(); g.moveTo(ax,ay); g.lineTo(bx,by); g.lineTo(cx,cy); g.closePath();
-  g.fillStyle = '#1a222b'; g.fill();
+  g.fillStyle = C.card; g.fill();
   g.strokeStyle = C.boxLine; g.lineWidth = 1.6; g.lineJoin='round'; g.stroke();
   /* 中间横线 + 竖线：U 在上，I × R 在下 */
   g.strokeStyle = C.boxLine; g.lineWidth = 1.4;
@@ -480,7 +480,7 @@ function draw4(){
   /* 结论条 */
   const f = S4.k === 'I' ? 'I = U ÷ R' : (S4.k === 'U' ? 'U = I × R' : 'R = U ÷ I');
   const w = tw(g, f, 17, true) + 34;
-  box(g, 180-w/2, 222, w, 24, 6, C.accbg==='#152536'?'#152536':'#152536', C.acc, 1.4);
+  box(g, 180-w/2, 222, w, 24, 6, C.accbg, C.acc, 1.4);
   txt(g, f, 180, 234, {sz:15, b:1, c:C.accD});
 
   txt(g, '盖住要求的那个，剩下的样子就是算法', 180, 24, {sz:10.5, c:C.tx2});
