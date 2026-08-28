@@ -4,23 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>图形符号题预览</title>
+<script src="../elec-theme.js"></script>
 <style>
-body{font-family:-apple-system,"PingFang SC",sans-serif;background:#0c1014;margin:0;padding:16px;color:#e6edf5}
+:root, :root[data-theme="dark"]{
+  --bg:#0c1014; --card:#141a21; --line:#252f3a;
+  --tx:#e6edf5; --tx2:#9fadbd; --blue:#4ea3ff; --blue-l:#152536;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#f5f7fa; --card:#ffffff; --line:#e3e8ee;
+  --tx:#242a31; --tx2:#5d6773; --blue:#1a6fd4; --blue-l:#e8f1fd;
+  color-scheme:light;
+}
+body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);margin:0;padding:16px;color:var(--tx)}
 h2{font-size:15px;margin:22px 0 8px}
-.q{background:#141a21;border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.hd{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.hd h2{flex:1;margin:0}
+.q{background:var(--card);border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .q h3{margin:0 0 10px;font-size:14.5px;line-height:1.5}
 .opts{display:flex;gap:10px}
-.opt{flex:1;text-align:center;border:2px solid #252f3a;border-radius:8px;padding:6px 2px}
-.opt.right{border-color:#4ea3ff;background:#152536}
-.opt .lbl{font-weight:700;color:#9fadbd;font-size:13px;margin-bottom:2px}
+.opt{flex:1;text-align:center;border:2px solid var(--line);border-radius:8px;padding:6px 2px}
+.opt.right{border-color:var(--blue);background:var(--blue-l)}
+.opt .lbl{font-weight:700;color:var(--tx2);font-size:13px;margin-bottom:2px}
 canvas{display:block;margin:0 auto}
-.all{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#141a21;border-radius:12px;padding:12px}
-.all .cell{text-align:center;border:1px solid #252f3a;border-radius:8px;padding:6px 2px}
-.all .cell b{display:block;font-size:11px;color:#4ea3ff;margin-bottom:2px;font-weight:700}
+.all{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:var(--card);border-radius:12px;padding:12px}
+.all .cell{text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 2px}
+.all .cell b{display:block;font-size:11px;color:var(--blue);margin-bottom:2px;font-weight:700}
 </style>
 </head>
 <body>
-<h2>① 八道题按题库顺序（蓝框＝正确答案）</h2>
+<div class="hd"><h2>① 八道题按题库顺序（蓝框＝正确答案）</h2></div>
 <div id="root"></div>
 
 <h2>② SYMS 全集（18 个符号，逐个核对画法）</h2>
@@ -45,24 +58,41 @@ function cv(sym,W,H){
   return c;
 }
 var root=document.getElementById('root');
-QS.forEach(function(q){
-  var div=document.createElement('div');div.className='q';
-  div.innerHTML='<h3>'+q.id+'. '+q.question+'</h3><div class="opts">'+
-    ['A','B','C'].map(function(L){return '<div class="opt'+(L===q.answer?' right':'')+'">'+
-      '<div class="lbl">'+L+(L===q.answer?' ✓':'')+'</div></div>'}).join('')+'</div>';
-  root.appendChild(div);
-  div.querySelectorAll('.opt').forEach(function(o,i){
-    o.appendChild(cv(q.options[['A','B','C'][i]],96,108));
+/* 包成函数：切主题时符号要整个重画（墨色是画进像素里的）*/
+function paint(){
+  root.innerHTML='';
+  QS.forEach(function(q){
+    var div=document.createElement('div');div.className='q';
+    div.innerHTML='<h3>'+q.id+'. '+q.question+'</h3><div class="opts">'+
+      ['A','B','C'].map(function(L){return '<div class="opt'+(L===q.answer?' right':'')+'">'+
+        '<div class="lbl">'+L+(L===q.answer?' ✓':'')+'</div></div>'}).join('')+'</div>';
+    root.appendChild(div);
+    div.querySelectorAll('.opt').forEach(function(o,i){
+      o.appendChild(cv(q.options[['A','B','C'][i]],96,108));
+    });
   });
-});
+}
+paint();
 
 var all=document.getElementById('all');
-Object.keys(ESYM.SYMS).forEach(function(k){
-  var d=document.createElement('div');d.className='cell';
-  d.innerHTML='<b>'+k+'</b>';
-  d.appendChild(cv(k,96,108));
-  all.appendChild(d);
-});
+function paintAll(){
+  all.innerHTML='';
+  Object.keys(ESYM.SYMS).forEach(function(k){
+    var d=document.createElement('div');d.className='cell';
+    d.innerHTML='<b>'+k+'</b>';
+    d.appendChild(cv(k,96,108));
+    all.appendChild(d);
+  });
+}
+paintAll();
+
+/* 白天 / 夜间。符号的墨色是画进像素里的，改 CSS 变量动不了它 —— 必须整页重画 */
+if(window.ETheme){
+  ESYM.theme(ETheme.get());
+  paint(); paintAll();
+  ETheme.mount('.hd');
+  window.addEventListener('elec:theme', function(){ paint(); paintAll(); });
+}
 </script>
 </body>
 </html>

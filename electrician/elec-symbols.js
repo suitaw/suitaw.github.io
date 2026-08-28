@@ -16,8 +16,15 @@
    元件内部填白）。题库那 8 道图形题现在的底是深色，黑符号等于看不见，
    所以墨改成浅色、内部填充改成和卡片同色的深灰。
    —— 白底那份留在下面注释里，万一要做打印版再切回去。 */
-const INK  = '#dfe7f0';   /* 白底版：#242a31 */
-const FILL = '#141a21';   /* 白底版：#fff  —— 元件内部（表盘、灯泡）的填充 */
+/* 2026-08-28 傍晚加了白天模式，所以这两个从 const 换成 let + theme()。
+   函数体里都是直接引 INK / FILL，所以换值下一次重画就生效。 */
+let INK  = '#dfe7f0';   /* 白底版：#242a31 */
+let FILL = '#141a21';   /* 白底版：#fff  —— 元件内部（表盘、灯泡）的填充 */
+function theme(name){
+  const light = (name === 'light');
+  INK  = light ? '#242a31' : '#dfe7f0';
+  FILL = light ? '#ffffff' : '#141a21';
+}
 const LW = 1.9;
 
 function line(g,x0,y0,x1,y1){
@@ -229,6 +236,6 @@ function drawKey(g, key, W, H, pad){
 }
 function isSym(v){ return /^sym:/.test(String(v)) }
 
-global.ESYM = { meter, switch3, contact, contactor, fuseSym, drawKey, isSym, SYMS };
+global.ESYM = { meter, switch3, contact, contactor, fuseSym, drawKey, isSym, SYMS, theme:theme };
 
 })(typeof window!=='undefined' ? window : globalThis);
