@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>5.3 接触器与继电器的检测 —— 零基础学电工</title>
+<link rel="stylesheet" href="elec-page.css">
+<!-- 主题要在解析 body 之前定下来，否则选了白天模式也会先闪一下深色 -->
+<script src="elec-theme.js"></script>
+</head>
+<body>
+<!-- 这一页只是个壳：内容住在 sec/c5-3.js 里，book.html 载入的是同一个文件。 -->
+
+<div class="wrap">
+  <div class="stick">
+    <div class="top">
+      <h1>5.3 接触器与继电器的检测</h1>
+      <a class="bk" href="book.html#5.3">整本书</a>
+    </div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+  <div id="secBody"></div>
+</div>
+
+<script src="elec-icons.js"></script>
+<script src="elec-canvas.js"></script>
+<script src="elec-parts.js"></script>
+<script src="elec-symbols.js"></script>
+<script src="elec-ui.js"></script>
+<script src="elec-nav.js"></script>
+<script src="elec-book.js"></script>
+<script src="elec-page.js"></script>
+<script src="sec/c5-3.js"></script>
+<script>
+ELEC.init({ tabs: document.getElementById('tabs'),
+            body: document.getElementById('secBody') });
+ELEC.go('5.3');
+</script>
+</body>
+</html>
