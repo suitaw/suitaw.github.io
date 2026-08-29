@@ -4,9 +4,288 @@
 
 | 文件 | 是什么 |
 |---|---|
-| `index.html` | 第一章切片原型：概念卡 + 电路搭建器 + 三个关卡（求解器在里面） |
+| `index.html` | 课程首页（全书课表，电气单线图版式） |
+| `book.html` | 整本书的单页站：侧栏目录 + 正文，翻节不跳页 |
+| `sec/cN-M.js` | **每一节内容的唯一真相**；`cN-M.html` 只是薄壳 |
+| `lab-circuit.html` | 原来的 index.html：概念卡 + 电路搭建器 + 三个关卡（**求解器在里面**） |
 | `c00.html` | **第 0 课 · 读懂符号**（六步，讲符号不讲原理） |
 | `elec-ui.js` | 全课程共用教学组件：公式拆解 / 物理量表 / 先猜一下 / 课末练习题 / 行内跳转 |
+| `elec-canvas.js` / `elec-parts.js` | 画布工具层 / 实物元件库，见下面「API 速查」 |
+
+---
+
+## API 速查 —— 写新一节课之前读这一节
+
+CLAUDE.md 记的是**决策和坑**（为什么这么做），这一节记的是**名字和签名**（怎么调）。
+新开会话时这两样都拿到，就不用再 grep 一遍四个库了。
+
+**唯一真相仍然是源码**：这份表是从 `elec-canvas.js` / `elec-parts.js` /
+`elec-ui.js` / `elec-book.js` 里抽出来的，改了库要顺手改这里。
+
+### 一节课 = 三个文件
+
+| 写在哪 | 干什么 |
+|---|---|
+| `sec/cN-M.js` | **内容的唯一真相**。`ELEC.reg({...})` 一个模块 |
+| `cN-M.html` | 薄壳（1.1 KB），只负责把模块挂起来，让单节 URL 不失效 |
+| `elec-nav.js` | 在 `BOOK` 里那一章的 `secs` 填上 `{id,f,t,d,p}` |
+
+`book.html` 和薄壳页载入的是**同一个** `sec/cN-M.js`，改内容只改一处。
+
+### 模块骨架（照抄这个开头）
+
+```js
+(function(){
+'use strict';
+ELEC.reg({
+  id: '3.1',                    // 和 elec-nav.js 里的 id 一致
+  file: 'c3-1.html',
+  title: '3.1 手动工具',
+  tabs: `<button class="tab on" data-i="0"><span class="n">1</span>第一屏</button>
+    <button class="tab" data-i="1"><span class="n">2</span>第二屏</button>
+    <button class="tab" data-i="2"><span class="n">3</span>第三屏</button>
+    <button class="tab" data-i="3"><span class="n">4</span>第四屏</button>`,
+  html: `<section class="scene on" id="sc0"> … </section>
+         <section class="scene" id="sc1"> … </section>
+         <section class="scene" id="sc2"> … </section>
+         <section class="scene" id="sc3"> … </section>`,
+  init: function(EC){
+'use strict';
+const {C, Path, Stage, txt, tw, box, tag, loop, $} = EC;
+
+let cur = 0;
+const scenes = [$('sc0'), $('sc1'), $('sc2'), $('sc3')];
+document.getElementById('tabs').addEventListener('click', function(e){
+  const b = e.target.closest('.tab'); if(!b) return;
+  cur = +b.dataset.i;
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('on', +t.dataset.i===cur); });
+  scenes.forEach(function(s,i){ s.classList.toggle('on', i===cur); });
+  window.scrollTo(0,0);
+  fitAll();
+});
+
+const st1 = new Stage('cv0', 360, 300);   // 逻辑坐标固定 360 宽，fit() 缩放到容器
+
+function fitAll(){
+  [st1, st2, st3, st4].forEach(function(s){ s.fit(); });
+  /* fit() 会重设画布尺寸并清空。rAF 里每帧重画的屏不用管，
+     静态的那几屏必须在这儿补画一次，否则第一次进来是空白 */
+  draw2(); draw3(); draw4();
+}
+window.addEventListener('resize', fitAll);
+
+ElecNav.init({ch:3, sec:'3.1'});
+ElecUI.bind(document);
+note1(); note2(); note3(); note4();
+fitAll();
+
+(function(){
+  const nb = ElecNav.neighbors('3.1');
+  let h = '';
+  h += nb.prev ? '<a href="'+nb.prev.f+'">‹ '+nb.prev.id+' '+nb.prev.t+'</a>'
+               : '<a href="index.html">‹ 课程首页</a>';
+  h += nb.next ? '<a class="next" href="'+nb.next.f+'">'+nb.next.id+' '+nb.next.t+' ›</a>'
+               : '<span>下一节还没做</span>';
+  $('pager').innerHTML = h;
+})();
+
+loop(function(dt){ if(cur === 0) draw1(dt); });
+  }
+});
+})();
+```
+
+约束（`book.html` 单页站要求的，破了就翻页出问题）：
+
+- **`html` 是模板字面量** —— 正文里不许出现反引号和 `${`
+- **rAF 只能走 `EC.loop`**（`init` 拿到的那份 EC 会记账，切走时统一 stop）
+- **`window.addEventListener` 只在 `init` 期间注册**（同样被记账，切走时解绑）
+- 各节的 DOM id 可以重名（`sc0`/`tabs`/`pager`），同一时刻只挂一节
+- **`ElecNav.init` 在 `book.html` 里被替换成空函数**，薄壳页才真的执行
+
+### 薄壳页模板（`cN-M.html`）
+
+`<script>` 顺序固定：icons → canvas → parts → symbols → ui → nav → book → page → 本节模块。
+`<link rel="stylesheet" href="elec-page.css">` 和 `<script src="elec-theme.js">` 都在 `<head>`
+（theme 晚了会先闪一下深色）。照抄 `c2-7.html` 改三处：title、`<h1>`、最后两行的节号。
+
+### EC —— `elec-canvas.js`（画布工具层）
+
+```js
+new EC.Stage(canvasId, LW, LH)   // .g 上下文  .fit() 量宽重设尺寸(会清空)
+                                 // .clear(色)  .pick(ev)→[x,y] 逻辑坐标
+EC.loop(fn)                      // fn(dt秒, t秒)，返回 {stop()}；dt 封顶 0.1
+EC.$(id)
+
+new EC.Path([[x,y],…])           // .at(s)→[x,y]  .dir(s)→[dx,dy]  .len
+                                 // .stroke(g,w,color,upto)  .dash(g,w,color,pat)
+EC.bez(p0,c1,c2,p3,n)            // → 点数组，喂给 Path
+EC.dots(g, path, {gap,r,color,dir,phase,skip:[[s0,s1],…],upto})
+EC.flowArrows(g, path, {gap,size,color,dir,phase,upto})
+EC.glow(g, path, color)
+EC.head(g, x,y, ax,ay, size, color)              // 箭头
+
+EC.txt(g, s, x, y, {sz,b,c,al,bl,a})             // al 默认 center，bl 默认 middle
+EC.tw(g, s, sz, b)                               // 量文字宽度
+EC.box(g, x,y,w,h, r, fill, line, lw)            // 圆角矩形
+EC.tag(g, s, x, y, {sz,b,c,fill,line,al})        // 带底板的胶囊，→{x,y,w,h}
+
+EC.dial(g, x,y,w,h, {val,max,unit,label,ticks,span,bipolar,
+                     valText,valSz,show,needle,face,line,ink})   // 指针表盘
+EC.strip(g, x,y,w,h, buf, [{i,color,scale|auto,floor,lw}], {n,bg,line})  // 走纸记录仪
+EC.stripLegend(g, x, y, [['名字', 色], …])
+
+// 电路**符号**（实物件在 EP 里；一律「中心点 + 尺寸」，方向靠 horiz）
+EC.battery(g,x,y,o)  EC.cell(g,x,y,w,h,o)  EC.lamp(g,x,y,r,b,o)
+EC.resistor(g,x,y,o) EC.switchSym(g,x,y,on,o)   EC.meter(g,x,y,r,'A',o)
+EC.node(g,x,y,o)     EC.dimV(g,x,y0,y1,'220V',o)
+```
+
+**色板 `EC.C`**（`EC.PAL.dark` / `.light` 两份，`EC.theme(name)` 就地改 `C` 的键值，
+所以各节直接引 `C.xxx` 没问题，但**不能把 `C` 整个换掉**）：
+
+```
+bg tx tx2 tx3                    背景与三级文字
+wire wireL cop copD              导线、铜
+metal metalD metalL chrome       金属
+L N PE PE2                       国标线色（相/零/PE黄绿）—— 色相不许动
+ok warn err acc accD             状态语义色
+cur ele volt                     电流(橙) 电子(蓝) 电位(紫)
+lamp lampOff glow hot
+box boxLine card                 画布上的面板底 / 描边 / 卡片底
+okbg errbg warnbg accbg voltbg   状态底板（结论条、读数带）
+skin skinL
+```
+
+画布上出现的**任何面板底色都要走这几个键**，别写死 hex —— 白天模式那次逐屏复查
+才从六节课里挖出 31 处写死的 `#1b232d`。
+
+### EP —— `elec-parts.js`（实物元件 + 标注排版）
+
+```js
+EP.heading(g, x, y, '画布小标题', '灰色补充')          // 左对齐
+EP.callout(g, ax,ay, tx,ty, '值', '名称', {al,color,dash,dot,line})
+                                                     // 值粗体在上、名称小字在下、一条引线
+EP.chip(g, s, x, y, {sz,b,c,fill,line,al})           // 胶囊底板标签（压在图上也读得清）
+EP.legend(g, cx, y, [['名字', 色, 'dot'|'bar'|'arrow'], …])   // 居中图例行
+EP.highlight(g, x,y,w,h, {r})                        // 选中：细蓝描边 + 柔和蓝光晕
+
+EP.wire(g, path, {c:'black'|'red'|'blue'|'yellow', color, kind:'normal'|'hot'|'thick', w})
+EP.flow(g, path, {gap:56, kind:'ele'|'cur', color, dir, phase, r, size, skip})
+EP.node(g, x, y, r)      EP.terminal(g, x, y, r, {pole:'+'|'-'})
+
+EP.cell(g,x,y,len,dia,{horiz,flip,volt,label,lx,ly,lsz,pm})   // 干电池；volt:false 才不印字
+EP.resistor(g,x,y,{len,dia,bands:[…4色],wide,horiz,label,lx,ly,lsz,lc})
+EP.rheostat(g,x,y,t,o)   EP.slideRheostat(g,x,y,t,{w,h,label})
+EP.knife(g,x,y,on,{w,label,ly})                      // 闸刀；断开时拨杆往右上抬 0.55 rad
+EP.bulb(g,x,y,R,b,{label,lsz})   EP.bulbLevel(b)→0..3   EP.lampHolder(g,x,y,w,h)
+EP.coil(g,cx,cy,half,r,n,front)  EP.magnet(g,x,y,w,h,nRight)
+EP.motor(g,x,y,r,{spin,label})   EP.buzzer(g,x,y,r,{on,label})
+EP.diode(g,x,y,{len,dia,flip,horiz,label})   EP.led(g,x,y,{r,on,color,label})
+EP.capacitor(g,x,y,{w,h,label})  EP.inductor(g,x,y,{len,r,n,core,label})
+EP.internalR(g,x,y,w,h,{label})  EP.appliance(g,x,y,s,'ac'|'tv'|'rice'|'led')
+
+EP.multimeter(g,x,y,w,h,{reading,unit,mode,knob})    // → {com:[x,y], hot:[x,y]} 好接表笔线
+EP.panelMeter(g,x,y,w,h,{…dial 的选项…, label})       // 方壳指针表
+EP.meterInline(g,x,y,r,'A',{val,label})              // 串在线上的小圆表
+EP.readout(g,x,y,w,h,'12.3 V',{sz,label,t})          // LCD 读数（自带背景波纹）
+
+EP.rr(g,x,y,w,h,r)  EP.cyl(g,y0,y1,暗,中,亮)  EP.shade(hex,k)
+```
+
+**材质色 `EP.P`**（元件本体只准用这些；蓝/橙/红/绿是教学语义色，不许拿来给元件上色）：
+
+```
+ink inkL inkLL                    画布文字与符号引脚（跟主题走）
+steel steelD steelDD chrome       镀镍钢
+copper copperD copperL brass brassD
+bakelite bakeliteL body bodyD bodyL    胶木、深灰机身（跟主题走）
+cream creamD ceramic tungsten warm warmHot
+panel panelD lcd lcdInk
+```
+
+**字号 `EP.TYPE` 四档，画布上只准从里面挑**：
+`val`(12.5 粗) / `name`(9.5 灰) / `note`(10) / `tiny`(8.5)。
+**统一规格 `EP.S`**：导线 2.8、引脚 2.4、描边 1.2、圆角 6；高光一律左上、投影一律右下。
+
+### ElecUI —— `elec-ui.js`（教学组件）
+
+```js
+ElecUI.formula({ plain:'白话版（必填，显示在最上面）', f:'U = I R',
+                 vars:['U','I','R'], note:'可选' })
+ElecUI.qtyTable(['I','U','R','P','Q','t'])
+ElecUI.bind(root)          // 激活 root 里的 .bet / .quiz / [data-j]
+ElecUI.progress('3.1')
+ElecUI.QTY                 // 物理量唯一真相：I U R P W Q t f S，加量只改这里
+```
+
+HTML 侧的两个组件（属性约定和 `money-ui.js` 一致，localStorage 前缀 `elec_`）：
+
+```html
+<div class="bet" data-bet="唯一id" data-q="问题"
+     data-opts="A|B|C" data-right="1" data-after="揭晓后说的话"></div>
+<div data-bet-for="唯一id">…揭晓前必须藏起来的答案块…</div>
+
+<div class="quiz" data-quiz="3.1">
+  <div class="qz" data-q="题面" data-opts="A|B|C" data-right="1"
+       data-why="答错必须给的解释 —— 这句话才是全部价值"></div>
+</div>
+```
+
+### EI —— `elec-icons.js`
+
+```js
+EI.svg(key, size, cls)   EI.forChapter(3)   EI.forSection('3.1')
+```
+`forSection` 找不到 `s31` 就退回 `ch3`。接进老代码一律写成
+`window.EI ? EI.svg(...) : '文字'`，没引图标库的页面才不会坏。
+
+### 课页的 HTML 骨架与 class
+
+```html
+<section class="scene on" id="sc0">
+  <div class="lead"><div class="h">一句话标题</div>引导文案</div>
+  <div class="card">
+    <canvas id="cv0"></canvas>
+    <div class="ctrl">
+      <div class="btns" id="s1k"><button class="btn on sm" data-k="0">档</button></div>
+      <div class="rowlab">滑杆名　<b id="lab">当前值</b></div>
+      <input type="range" id="s1a" min="1" max="4" step="1" value="2">
+      <div class="nums three">
+        <div class="num"><div class="k">标题<br>换行</div><div class="v" id="a">值</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="note" id="n0"></div>          <!-- JS 按当前状态生成，会跟着变 -->
+  <div class="note" style="margin-top:10px">
+    <div class="st">静态讲解卡</div>          <!-- .st.warn / .st.bad / .st.good -->
+    <div class="eu-tw"><table class="eu-t">…<td class="eu-s">首列</td>…</table></div>
+    <div class="tip">琥珀=警示</div>          <!-- .tip.info 是淡蓝=中性 -->
+    <span class="sub">小字补充</span>
+    <span class="key">蓝底强调</span> <span class="rd">红底强调</span>
+  </div>
+  <div class="pager" id="pager"></div>
+  <div class="foot">对应《零基础学电工》第 N 章 N.M 节（书内 PXX~PXX）</div>
+</section>
+```
+
+`.num` 的数值 `margin-top:auto` 靠卡底对齐；**`.num .k` 不能给 `display:flex`**
+（标题里的 `<br>` 会被打乱）。`.nums` 默认两列，`.nums.three` 三列。
+
+### 每写完一节要做的四件事
+
+```bash
+node --check sec/c3-1.js
+# 四个页签各截一张，只验第一屏没用
+~/deb-run.sh "node /root/sdcard/webdev/shot.js /root/sdcard/webdev/c3-1.html /root/sdcard/webdev/o0.png --vp"
+~/deb-run.sh "node /root/sdcard/webdev/shot.js /root/sdcard/webdev/c3-1.html /root/sdcard/webdev/o1.png --vp '.tab[data-i=\"1\"]'"
+```
+
+1. `node --check`
+2. **四个页签各截一张**（`--vp`），看控制台报错和版面
+3. 在 `elec-nav.js` 里把那一节的 `f` 填上
+4. 结论写进 CLAUDE.md（踩到的坑、算过的数），别留在脚本里
+
 
 ---
 
@@ -63,7 +342,7 @@ k/M/m/μ 前缀 → 公式里的记号怎么读 → 回头再读铭牌 + 4 道�
 
 ---
 
-## index.html —— 第一章切片原型
+## lab-circuit.html —— 第一章切片原型（原 index.html）
 
 覆盖《零基础学电工》第一章的一个切片：电流 / 电压 / 电阻 / 欧姆定律 / 串联并联。
 文字、类比、误区、题目全部原创，没有抄书里的原文和插图。
