@@ -1159,6 +1159,153 @@ function appliance(g, x, y, s, kind){
   g.restore();
 }
 
+/* ================= 万用表：档位记号 / 插孔 / 表笔 / 表笔线 =================
+   3.6a 起用，3.6b、3.7、3.8 都要用同一套 —— 每节各画一份的话，
+   表笔和插孔在几节课之间会长得不一样。 */
+
+/* 直流记号：一条实线 + 三段短虚线。
+   **别写 U+2393 那个「⎓」字符** —— 字体里没有就是一个豆腐块（截图环境实测过）。 */
+function dcMark(g, x, y, c){
+  g.save();
+  g.strokeStyle = c; g.lineWidth = 1.3; g.lineCap = 'butt';
+  g.beginPath(); g.moveTo(x-5, y-2.6); g.lineTo(x+5, y-2.6); g.stroke();
+  g.beginPath();
+  for(let i=0;i<3;i++){ g.moveTo(x-5+i*3.6, y+1.8); g.lineTo(x-5+i*3.6+2.2, y+1.8); }
+  g.stroke(); g.restore();
+}
+/* 交流记号：一个正弦波 */
+function acMark(g, x, y, c){
+  g.save();
+  g.strokeStyle = c; g.lineWidth = 1.4; g.lineCap = 'round';
+  g.beginPath();
+  for(let i=0;i<=16;i++){
+    const px = x - 6.5 + i*13/16, py = y - Math.sin(i/16*Math.PI*2)*3.4;
+    i ? g.lineTo(px, py) : g.moveTo(px, py);
+  }
+  g.stroke(); g.restore();
+}
+/* 通断档记号：二极管三角 + 两道声波弧 */
+function ctMark(g, x, y, c){
+  g.save();
+  g.strokeStyle = c; g.fillStyle = c; g.lineWidth = 1.3; g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(x-7, y-4.2); g.lineTo(x-7, y+4.2); g.lineTo(x-0.5, y); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(x-0.5, y-4.6); g.lineTo(x-0.5, y+4.6); g.stroke();
+  g.lineWidth = 1.1;
+  for(let i=1;i<=2;i++){ g.beginPath(); g.arc(x-0.5, y, 2.6+i*2.8, -0.9, 0.9); g.stroke(); }
+  g.restore();
+}
+function modeMark(g, kind, x, y, c){
+  if(kind === 'dc') dcMark(g, x, y, c);
+  else if(kind === 'ac') acMark(g, x, y, c);
+  else if(kind === 'ct') ctMark(g, x, y, c);
+}
+
+/* 插孔：黑色 COM 一个样，红色的三个一个样。on 时套一圈蓝光晕。返回孔心坐标 */
+function jack(g, x, y, red, on){
+  g.save();
+  if(on){
+    const gr = g.createRadialGradient(x, y, 3, x, y, 17);
+    gr.addColorStop(0, 'rgba(74,144,217,.55)');
+    gr.addColorStop(1, 'rgba(74,144,217,0)');
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(x, y, 17, 0, TAU); g.fill();
+  }
+  g.beginPath(); g.arc(x, y, 7.5, 0, TAU);
+  g.fillStyle = red ? '#a8302a' : '#14171b'; g.fill();
+  g.strokeStyle = on ? P.blue : '#1b2027'; g.lineWidth = on ? 1.8 : 1.2; g.stroke();
+  g.beginPath(); g.arc(x, y, 3, 0, TAU);
+  g.fillStyle = '#0b0e12'; g.fill();
+  g.restore();
+  return [x, y];
+}
+
+/* 一支表笔：笔尖在 (tx,ty)，笔杆朝 ang 方向斜出去。整支长约 49 */
+function probe(g, tx, ty, ang, red){
+  const c = red ? '#c0392b' : '#1b2027', cl = red ? '#e05a4a' : '#3b444f';
+  g.save();
+  g.translate(tx, ty); g.rotate(ang);
+  g.beginPath();
+  g.moveTo(0,0); g.lineTo(3, -2.2); g.lineTo(16, -1.5); g.lineTo(16, 1.5); g.lineTo(3, 2.2);
+  g.closePath();
+  g.fillStyle = P.steel; g.fill();
+  g.strokeStyle = P.steelDD; g.lineWidth = 0.9; g.lineJoin = 'round'; g.stroke();
+  rr(g, 15, -5, 30, 10, 3); g.fillStyle = c; g.fill();
+  g.strokeStyle = cl; g.lineWidth = 1.1; g.stroke();
+  rr(g, 41, -4, 8, 8, 2); g.fillStyle = cl; g.fill(); g.stroke();
+  g.restore();
+}
+
+/* 一台小万用表。孔在机身底边附近、标签在孔**上方** ——
+   标签放下方的话表笔线得从机身里穿出去。
+   读数**右对齐**、档位字左对齐（像真表那样分站两头）：读数居中会跟档位字挤在一起。
+   返回每个孔的坐标数组。 */
+function meterUnit(g, x, y, w, h, o){
+  o = o || {};
+  g.save();
+  rr(g, x, y, w, h, 9);
+  g.fillStyle = cyl(g, y, y+h, '#14171b', P.body, P.bodyL);
+  g.fill();
+  g.strokeStyle = '#0d1013'; g.lineWidth = 1.3; g.stroke();
+  g.fillStyle = '#a8432a';
+  rr(g, x+2, y+h*0.26, 4.5, h*0.36, 3); g.fill();
+  rr(g, x+w-6.5, y+h*0.26, 4.5, h*0.36, 3); g.fill();
+  g.restore();
+
+  const lw = w - 20, lh = h*0.38;
+  readout(g, x+10, y+8, lw, lh, '', {});
+  const cy = y + 8 + lh/2;
+  txt(g, o.reading || '- - - -', x+10+lw-9, cy,
+      {sz:o.rsz || Math.max(13, lh*0.5), b:1, c:P.lcdInk, al:'right'});
+  if(o.mode) txt(g, o.mode, x+19, cy, {sz:9, b:1, c:P.lcdInk, al:'left'});
+
+  const js = o.jacks || [], n = js.length, jy = y + h - 14;
+  const out = [];
+  js.forEach(function(J, i){
+    const jx = x + w*(i+1)/(n+1);
+    const on = (o.hot != null && (o.hot === i || J.n === 'COM'));
+    jack(g, jx, jy, J.red, on);
+    txt(g, J.n, jx, jy - 13, {sz:TYPE.tiny.sz, c: on ? '#cfe0f5' : '#9aa3ad'});
+    out.push([jx, jy]);
+  });
+  return out;
+}
+
+/* 两支表笔的软线：插孔垂下来 → 横走 → 垂到落点。
+   两条线走哪条横线**靠几何判定**，不靠孔序规则 ——
+   孔序和落点序的四种组合里，能不能不打结要真去算竖段和横段有没有相交
+   （3.6a 那版按「孔 x 大的走上面」，到 3.6b 的「跨熔断器」那种两支笔都往左伸的情形就失效了）。
+   o = {yTop, yBot, tipY, tipYR, tipYB}；返回 [红线 Path, 黑线 Path]。 */
+function leads(g, rj, bj, tRed, tBlack, o){
+  const yT = o.yTop, yB = o.yBot;
+  const tyR = (o.tipYR != null) ? o.tipYR : o.tipY;
+  const tyB = (o.tipYB != null) ? o.tipYB : o.tipY;
+  const A = {jx:rj[0], jy:rj[1], tx:tRed,   ty:tyR};
+  const B = {jx:bj[0], jy:bj[1], tx:tBlack, ty:tyB};
+  let ok = { r:yT, b:yB };
+  if(hits(yT, yB)) ok = { r:yB, b:yT };
+  const pr = one(A, ok.r, true), pb = one(B, ok.b, false);
+  return [pr, pb];
+
+  function hits(myR, myB){
+    A.my = myR; B.my = myB;
+    return oneWay(A, B) || oneWay(B, A);
+  }
+  /* X 的两条竖段有没有穿过 Y 的那条横段 */
+  function oneWay(X, Y){
+    return vh(X.jx, X.jy, X.my) || vh(X.tx, X.my, X.ty);
+    function vh(vx, vy0, vy1){
+      const y0 = Math.min(vy0, vy1), y1 = Math.max(vy0, vy1);
+      const x0 = Math.min(Y.jx, Y.tx), x1 = Math.max(Y.jx, Y.tx);
+      return Y.my > y0 && Y.my < y1 && vx > x0 && vx < x1;
+    }
+  }
+  function one(S, my, red){
+    const p = new global.EC.Path([[S.jx, S.jy], [S.jx, my], [S.tx, my], [S.tx, S.ty]]);
+    wire(g, p, {color: red ? '#c0392b' : global.EC.C.wire, w:2.4});
+    return p;
+  }
+}
+
 const BAND = {0:'#1b1b1b',1:'#6b4423',2:'#c0392b',3:'#e07b2a',4:'#e0c020',
               5:'#2f9e44',6:'#1e6fd0',7:'#7b2fbe',8:'#8d97a2',9:'#f2f5f8',
               gold:'#c9a227', silver:'#c6ced6'};
@@ -1175,7 +1322,9 @@ global.EP = {
   handFlat:handFlat, handGrip:handGrip,
   diode:diode, led:led, capacitor:capacitor, inductor:inductor,
   motor:motor, buzzer:buzzer, slideRheostat:slideRheostat, internalR:internalR,
-  bulbLevel:bulbLevel, S:S, theme:theme
+  bulbLevel:bulbLevel, S:S, theme:theme,
+  dcMark:dcMark, acMark:acMark, ctMark:ctMark, modeMark:modeMark,
+  jack:jack, probe:probe, meterUnit:meterUnit, leads:leads
 };
 
 })(typeof window!=='undefined' ? window : globalThis);
