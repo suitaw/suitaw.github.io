@@ -191,6 +191,15 @@ EP.capacitor(g,x,y,{w,h,label})  EP.inductor(g,x,y,{len,r,n,core,label})
 EP.internalR(g,x,y,w,h,{label})  EP.appliance(g,x,y,s,'ac'|'tv'|'rice'|'led')
 
 EP.multimeter(g,x,y,w,h,{reading,unit,mode,knob})    // → {com:[x,y], hot:[x,y]} 好接表笔线
+
+// 万用表那一套（3.6a 起，3.6b/3.7/3.8 共用；每节各画一份的话几节课之间会长得不一样）
+EP.meterUnit(g,x,y,w,h,{mode,reading,rsz,jacks:[{n,red}],hot})  // 小表身 → 每个孔的坐标数组
+EP.jack(g,x,y,red,on)                       // 插孔，on 时套蓝光晕
+EP.probe(g,tx,ty,ang,red)                   // 一支表笔，笔尖在 (tx,ty)，整支长约 49
+EP.leads(g, 红孔, 黑孔, 红落点x, 黑落点x, {yTop,yBot,tipY,tipYR,tipYB})
+                                            // 两条软线，走哪条横线**几何判定**，→ [红Path, 黑Path]
+EP.dcMark / acMark / ctMark(g,x,y,色)        // 直流「⎓」/ 交流「~」/ 通断记号，都是自己画的
+EP.modeMark(g,'dc'|'ac'|'ct',x,y,色)
 EP.panelMeter(g,x,y,w,h,{…dial 的选项…, label})       // 方壳指针表
 EP.meterInline(g,x,y,r,'A',{val,label})              // 串在线上的小圆表
 EP.readout(g,x,y,w,h,'12.3 V',{sz,label,t})          // LCD 读数（自带背景波纹）

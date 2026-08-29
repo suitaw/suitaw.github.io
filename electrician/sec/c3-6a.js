@@ -327,97 +327,8 @@ document.getElementById('tabs').addEventListener('click', function(e){
   fitAll();
 });
 
-/* ================================================================
-   全节共用的小零件
-   ================================================================ */
-/* 直流记号：一条实线 + 三段短虚线。
-   **别写 U+2393 那个「⎓」字符** —— 字体里没有就是一个豆腐块（截图环境实测过）。 */
-function dcMark(g, x, y, c){
-  g.save();
-  g.strokeStyle = c; g.lineWidth = 1.3; g.lineCap = 'butt';
-  g.beginPath(); g.moveTo(x-5, y-2.6); g.lineTo(x+5, y-2.6); g.stroke();
-  g.beginPath();
-  for(let i=0;i<3;i++){ g.moveTo(x-5+i*3.6, y+1.8); g.lineTo(x-5+i*3.6+2.2, y+1.8); }
-  g.stroke(); g.restore();
-}
-/* 交流记号：一个正弦波 */
-function acMark(g, x, y, c){
-  g.save();
-  g.strokeStyle = c; g.lineWidth = 1.4; g.lineCap = 'round';
-  g.beginPath();
-  for(let i=0;i<=16;i++){
-    const px = x - 6.5 + i*13/16, py = y - Math.sin(i/16*Math.PI*2)*3.4;
-    i ? g.lineTo(px, py) : g.moveTo(px, py);
-  }
-  g.stroke(); g.restore();
-}
-/* 通断档记号：二极管三角 + 两道声波弧 */
-function ctMark(g, x, y, c){
-  g.save();
-  g.strokeStyle = c; g.fillStyle = c; g.lineWidth = 1.3; g.lineJoin = 'round';
-  g.beginPath(); g.moveTo(x-7, y-4.2); g.lineTo(x-7, y+4.2); g.lineTo(x-0.5, y); g.closePath(); g.fill();
-  g.beginPath(); g.moveTo(x-0.5, y-4.6); g.lineTo(x-0.5, y+4.6); g.stroke();
-  g.lineWidth = 1.1;
-  for(let i=1;i<=2;i++){
-    g.beginPath(); g.arc(x-0.5, y, 2.6+i*2.8, -0.9, 0.9); g.stroke();
-  }
-  g.restore();
-}
-function markAt(g, kind, x, y, c){
-  if(kind === 'dc') dcMark(g, x, y, c);
-  else if(kind === 'ac') acMark(g, x, y, c);
-  else if(kind === 'ct') ctMark(g, x, y, c);
-}
-
-/* 插孔：黑色 COM 一个样，红色的三个一个样。返回孔心坐标 */
-function jack(g, x, y, red, on){
-  g.save();
-  if(on){
-    const gr = g.createRadialGradient(x, y, 3, x, y, 17);
-    gr.addColorStop(0, 'rgba(74,144,217,.55)');
-    gr.addColorStop(1, 'rgba(74,144,217,0)');
-    g.fillStyle = gr;
-    g.beginPath(); g.arc(x, y, 17, 0, Math.PI*2); g.fill();
-  }
-  g.beginPath(); g.arc(x, y, 7.5, 0, Math.PI*2);
-  g.fillStyle = red ? '#a8302a' : '#14171b'; g.fill();
-  g.strokeStyle = on ? P.blue : '#1b2027'; g.lineWidth = on ? 1.8 : 1.2; g.stroke();
-  g.beginPath(); g.arc(x, y, 3, 0, Math.PI*2);
-  g.fillStyle = '#0b0e12'; g.fill();
-  g.restore();
-  return [x, y];
-}
-
-/* 一支表笔：笔尖在 (tx,ty)，笔杆朝 ang 方向斜上去 */
-function probe(g, tx, ty, ang, red){
-  const c = red ? '#c0392b' : '#1b2027', cl = red ? '#e05a4a' : '#3b444f';
-  g.save();
-  g.translate(tx, ty); g.rotate(ang);
-  /* 金属针 */
-  g.beginPath(); g.moveTo(0,0); g.lineTo(3, -2.2); g.lineTo(16, -1.5); g.lineTo(16, 1.5); g.lineTo(3, 2.2);
-  g.closePath();
-  g.fillStyle = P.steel; g.fill();
-  g.strokeStyle = P.steelDD; g.lineWidth = 0.9; g.lineJoin = 'round'; g.stroke();
-  /* 笔杆 */
-  box(g, 15, -5, 30, 10, 3, c, cl, 1.1);
-  box(g, 41, -4, 8, 8, 2, cl, cl, 1);
-  g.restore();
-}
-
-/* 两支表笔的软线：从插孔垂下来 → 横走 → 垂到测点。
-   **孔位靠右的那支走上面那条横线**，这样两条线不交叉（试出来的，
-   孔序和测点序一致时天然不交叉，反过来就必然打结）。 */
-function leadPair(g, rj, bj, tRed, tBlack, yTop, yBot, tipY){
-  const redUp = rj[0] > bj[0];
-  const pr = drawLead(g, rj, tRed, redUp ? yTop : yBot, true);
-  const pb = drawLead(g, bj, tBlack, redUp ? yBot : yTop, false);
-  function drawLead(g2, from, tx, my, red){
-    const p = new Path([[from[0], from[1]], [from[0], my], [tx, my], [tx, tipY]]);
-    EP.wire(g2, p, {color: red ? '#c0392b' : (C.wire), w:2.4});
-    return p;
-  }
-  return [pr, pb];
-}
+/* 表笔 / 插孔 / 表身 / 表笔线都在 elec-parts.js 里（EP.probe / EP.jack /
+   EP.meterUnit / EP.leads），3.6b、3.7、3.8 用的是同一套。 */
 
 /* ================================================================
    场景 1：认识面板
@@ -474,7 +385,7 @@ function draw1(){
   /* LCD */
   EP.readout(g, 104, 40, 152, 42, '- - - -', {sz:22});
   if(M.lcd) txt(g, M.lcd, 112, 50, {sz:9.5, b:1, c:P.lcdInk, al:'left'});
-  if(M.mk === 'ct') ctMark(g, 118, 50, P.lcdInk);
+  if(M.mk === 'ct') EP.ctMark(g, 118, 50, P.lcdInk);
 
   /* 档位标签 */
   MODES.forEach(function(m, i){
@@ -493,7 +404,7 @@ function draw1(){
       g.restore();
     }
     if(m.t) txt(g, m.t, x - W/2 + wT/2, y, {sz:11.5, b:on?1:0, c:c});
-    if(m.mk) markAt(g, m.mk, x + W/2 - wM/2, y, c);
+    if(m.mk) EP.modeMark(g, m.mk, x + W/2 - wM/2, y, c);
   });
 
   /* 旋钮 */
@@ -517,7 +428,7 @@ function draw1(){
   /* 四个插孔 */
   JACKS.forEach(function(J, i){
     const on = (i === M.j) || (i === 2 && M.j >= 0);
-    jack(g, J.x, 254, J.red, on);
+    EP.jack(g, J.x, 254, J.red, on);
     txt(g, J.n, J.x, 268, {sz:8.5, c: on ? '#cfe0f5' : '#9aa3ad'});
   });
 
@@ -557,40 +468,6 @@ st1.cv.addEventListener('click', function(ev){
   });
   S1.k = best; note1(); draw1();
 });
-
-/* 一台小万用表（屏 2、屏 3 共用）。孔在机身底边附近、标签在孔**上方** ——
-   标签放下方的话表笔线得从机身里穿出去。返回每个孔的坐标。 */
-function meterUnit(g, x, y, w, h, o){
-  o = o || {};
-  g.save();
-  EP.rr(g, x, y, w, h, 9);
-  g.fillStyle = EP.cyl(g, y, y+h, '#14171b', P.body, P.bodyL);
-  g.fill();
-  g.strokeStyle = '#0d1013'; g.lineWidth = 1.3; g.stroke();
-  g.fillStyle = '#a8432a';
-  EP.rr(g, x+2, y+h*0.26, 4.5, h*0.36, 3); g.fill();
-  EP.rr(g, x+w-6.5, y+h*0.26, 4.5, h*0.36, 3); g.fill();
-  g.restore();
-
-  /* 读数**右对齐**、档位字左对齐，像真表那样分站两头 ——
-     读数居中的话会跟左上角的档位字挤在一起（截图抓到的） */
-  const lw = w - 20, lh = h*0.38;
-  EP.readout(g, x+10, y+8, lw, lh, '', {});
-  const cy = y + 8 + lh/2;
-  txt(g, o.reading || '- - - -', x+10+lw-9, cy, {sz:Math.max(13, lh*0.5), b:1, c:P.lcdInk, al:'right'});
-  if(o.mode) txt(g, o.mode, x+19, cy, {sz:9, b:1, c:P.lcdInk, al:'left'});
-
-  const js = o.jacks || [], n = js.length, jy = y + h - 14;
-  const out = [];
-  js.forEach(function(J, i){
-    const jx = x + w*(i+1)/(n+1);
-    const on = (o.hot != null && o.hot === i) || (J.n === 'COM' && o.hot != null);
-    jack(g, jx, jy, J.red, on);
-    txt(g, J.n, jx, jy - 13, {sz:8.5, c: on ? '#cfe0f5' : '#9aa3ad'});
-    out.push([jx, jy]);
-  });
-  return out;
-}
 
 /* ================================================================
    场景 2：测电压 = 并联
@@ -635,7 +512,7 @@ function draw2(dt){
   EP.heading(g, 12, 14, '测电压', S2.k === 1 ? '串进去了' : '并联');
 
   /* 表 */
-  const jk = meterUnit(g, 118, 10, 122, 88,
+  const jk = EP.meterUnit(g, 118, 10, 122, 88,
     {mode:'AC', reading: fmtV(v.r), jacks:[{n:'COM',red:0},{n:'VΩ',red:1}], hot:1});
 
   /* 回路导线 */
@@ -692,9 +569,9 @@ function draw2(dt){
   const t = pts2();
   /* 笔杆竖直向上、长约 48：软线接的是笔杆尾端，不是笔尖 —— 接到笔尖上
      线和笔身就断成两截了 */
-  leadPair(g, jk[1], jk[0], t[0][0], t[1][0], 112, 124, WY - 48);
-  probe(g, t[0][0], t[0][1], -Math.PI/2, true);
-  probe(g, t[1][0], t[1][1], -Math.PI/2, false);
+  EP.leads(g, jk[1], jk[0], t[0][0], t[1][0], {yTop:112, yBot:124, tipY:WY - 48});
+  EP.probe(g, t[0][0], t[0][1], -Math.PI/2, true);
+  EP.probe(g, t[1][0], t[1][1], -Math.PI/2, false);
 
   /* 结论条 */
   const good = (S2.k !== 1);
@@ -798,7 +675,7 @@ function draw3(dt){
   EP.heading(g, 12, 14, '测电流',
     S3.k === 0 ? '串联' : (S3.k === 1 ? '没换孔' : '并上去了'));
 
-  const jk = meterUnit(g, 110, 8, 140, 96, {
+  const jk = EP.meterUnit(g, 110, 8, 140, 96, {
     mode: K.jr === 3 ? 'DC V' : 'DC mA',
     reading: v.blow ? '- - - -' : (S3.k === 1 ? '0.00' : (v.im*1000).toFixed(1)),
     jacks: J3, hot: K.jr
@@ -829,14 +706,15 @@ function draw3(dt){
   txt(g, '100 Ω', RX3, 208, {sz:9.5, c:C.tx3});
 
   /* 表笔 */
-  const lp = leadPair(g, jk[K.jr], jk[2], K.tR, K.tB, 118, 130, WY3 - 48);
+  const lp = EP.leads(g, jk[K.jr], jk[2], K.tR, K.tB, {yTop:118, yBot:130, tipY:WY3 - 48});
   if(v.im > 0.05){
     const col = v.blow ? C.err : null;
-    EP.flow(g, lp[0], {gap:46, kind:'cur', dir:-1, phase:S3.ph, color:col});
-    EP.flow(g, lp[1], {gap:46, kind:'cur', dir:1,  phase:S3.ph, color:col});
+    /* skip 掉插孔那一小段，否则第一个箭头正好压在 COM 孔上 */
+    EP.flow(g, lp[0], {gap:46, kind:'cur', dir:-1, phase:S3.ph, color:col, skip:[[0,14]]});
+    EP.flow(g, lp[1], {gap:46, kind:'cur', dir:1,  phase:S3.ph, color:col, skip:[[0,14]]});
   }
-  probe(g, K.tR, WY3, -Math.PI/2, true);
-  probe(g, K.tB, WY3, -Math.PI/2, false);
+  EP.probe(g, K.tR, WY3, -Math.PI/2, true);
+  EP.probe(g, K.tB, WY3, -Math.PI/2, false);
 
   /* 结论条 */
   const ok = (S3.k === 0);
