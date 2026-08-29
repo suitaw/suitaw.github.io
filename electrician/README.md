@@ -125,6 +125,8 @@ EC.flowArrows(g, path, {gap,size,color,dir,phase,upto})
 EC.glow(g, path, color)
 EC.head(g, x,y, ax,ay, size, color)              // 箭头
 
+EC.hot(g, x, y, r, {color,a})                    // 可点提示：元件上套一圈细虚线环
+EC.hot(g, cx, cy, 0, {w,h,r})                    // 长条形的东西用矩形模式
 EC.txt(g, s, x, y, {sz,b,c,al,bl,a})             // al 默认 center，bl 默认 middle
 EC.tw(g, s, sz, b)                               // 量文字宽度
 EC.box(g, x,y,w,h, r, fill, line, lw)            // 圆角矩形
@@ -180,6 +182,9 @@ EP.rheostat(g,x,y,t,o)   EP.slideRheostat(g,x,y,t,{w,h,label})
 EP.knife(g,x,y,on,{w,label,ly})                      // 闸刀；断开时拨杆往右上抬 0.55 rad
 EP.bulb(g,x,y,R,b,{label,lsz})   EP.bulbLevel(b)→0..3   EP.lampHolder(g,x,y,w,h)
 EP.coil(g,cx,cy,half,r,n,front)  EP.magnet(g,x,y,w,h,nRight)
+EP.handFlat(g,x,y,right,{s,skin,skinD})  // 摊平的手（正视掌心）→{thumb,fingers,palm,wrist}
+EP.handGrip(g,x,y,right,{s})             // 握住导线的拳头 →{thumb,fingers,fist}
+                                         // 左手 = 右手镜像；标注在调用处画，别画进镜像变换里
 EP.motor(g,x,y,r,{spin,label})   EP.buzzer(g,x,y,r,{on,label})
 EP.diode(g,x,y,{len,dia,flip,horiz,label})   EP.led(g,x,y,{r,on,color,label})
 EP.capacitor(g,x,y,{w,h,label})  EP.inductor(g,x,y,{len,r,n,core,label})
@@ -279,6 +284,9 @@ node --check sec/c3-1.js
 # 四个页签各截一张，只验第一屏没用
 ~/deb-run.sh "node /root/sdcard/webdev/shot.js /root/sdcard/webdev/c3-1.html /root/sdcard/webdev/o0.png --vp"
 ~/deb-run.sh "node /root/sdcard/webdev/shot.js /root/sdcard/webdev/c3-1.html /root/sdcard/webdev/o1.png --vp '.tab[data-i=\"1\"]'"
+# 画布上的东西：用「选择器%x,y」按元素框的比例点（page.click 只点元素正中间）
+# 比例 = 逻辑坐标 ÷ (360, 该画布的逻辑高)
+~/deb-run.sh "node /root/sdcard/webdev/shot.js … --vp '#cv0%0.417,0.185'"
 ```
 
 1. `node --check`

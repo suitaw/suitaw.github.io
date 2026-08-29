@@ -20,7 +20,7 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
-      <div class="btns" id="s1view">
+      <div class="btns vsw">
         <button class="btn on" data-v="real">实物接线图</button>
         <button class="btn" data-v="sym">电路原理图</button>
       </div>
@@ -78,6 +78,10 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
+      <div class="btns vsw">
+        <button class="btn on" data-v="real">实物接线图</button>
+        <button class="btn" data-v="sym">电路原理图</button>
+      </div>
       <div class="rowlab">外面接的电阻 R　<b id="s2rlab">5.0 Ω</b>　<span id="s2hint">（数值越小＝越费电）</span></div>
       <input type="range" id="s2r" min="2" max="60" step="1" value="50">
       <div class="ticks"><span>0.2 Ω 很费电</span><span>6 Ω 很省电</span></div>
@@ -121,6 +125,10 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv2"></canvas>
     <div class="ctrl">
+      <div class="btns vsw">
+        <button class="btn on" data-v="real">实物接线图</button>
+        <button class="btn" data-v="sym">电路原理图</button>
+      </div>
       <div class="rowlab">把哪一点当作 <b>0 V 参考点</b>（书上叫“零电位点”）</div>
       <div class="btns" id="s3ref">
         <button class="btn on" data-p="A">A 点</button>
@@ -166,6 +174,10 @@ ELEC.reg({
   <div class="card">
     <canvas id="cv3"></canvas>
     <div class="ctrl">
+      <div class="btns vsw">
+        <button class="btn on" data-v="real">实物接线图</button>
+        <button class="btn" data-v="sym">电路原理图</button>
+      </div>
       <div class="rowlab"><b>用手指拖动红、黑两支表笔</b>，松手会自动吸附到最近的接线点</div>
       <div class="btns">
         <button class="btn" data-set="C,A">测整个电池（C→A）</button>
@@ -240,11 +252,37 @@ document.getElementById('tabs').addEventListener('click', e=>{
    实物那半用 elec-parts.js 里的真元件画（干电池、灯泡带灯丝、闸刀开关、
    带绝缘皮的导线），符号那半是标准电路符号 —— 上班拿到手的是后者。
    ================================================================ */
-const S1 = { on:false, I:2, phase:0, t:0, Q:0, ele:true, cur:true, view:'real' };
+const S1 = { on:false, I:2, phase:0, t:0, Q:0, ele:true, cur:true };
 const st1 = new Stage('cv0', 360, 336);
 
 /* ---------- 实物版的走线（真接线那样拐直角）---------- */
 const RB = {x:98, y:214, len:78, dia:30};              /* 干电池 */
+/* ================================================================
+   实物接线图 / 电路原理图
+   ================================================================
+   他的第 3 条：「只有实物图，没有电路原理图……只要有电路实物图的地方，
+   就要有电路原理图」。这一节原来只有场景 1 能切（还是自己一套 S1.view），
+   场景 2/3/4 一直只有实物图。
+
+   现在四屏共用**一个模块级 VIEW**，和 1.2/1.3/1.4 一个路子：
+   只换元件的画法，位置 / 导线 / 电流点 / 标注一个都不动 ——
+   同一个电路摆在同一个地方，两种画法一一对得上，识图练的就是这个。 */
+let VIEW = 'real';
+function isReal(){ return VIEW === 'real'; }
+function vCell(g, x, y, w, h, o){
+  o = o || {};
+  if(isReal()) EP.cell(g, x, y, w, h, Object.assign({horiz:false, pm:false}, o));
+  else battery(g, x, y, {horiz:false, long:20, short:11, gap:10, pm:false});
+}
+function vRes(g, x, y, len, dia, bands){
+  if(isReal()) EP.resistor(g, x, y, {horiz:false, len:len, dia:dia, bands:bands});
+  else resistor(g, x, y, {horiz:false, len:len + 8, w:15});
+}
+function vSw(g, x, y, on, w){
+  if(isReal()) EP.knife(g, x, y, on, {w:w});
+  else switchSym(g, x, y, on, {len:w*0.7});
+}
+
 const RK = {x:150, y:62, w:64, h:26};                  /* 闸刀开关 */
 const RL = {x:288, y:96, r:21};                        /* 灯泡 */
 const RH = {x:288, y:120, w:36, h:17};                 /* 灯座 */
@@ -288,7 +326,7 @@ function draw1(dt){
     S1.phase += S1.I * 26 * dt;
     S1.t += dt; S1.Q = S1.I * S1.t;
   }
-  (S1.view === 'real' ? drawReal1 : drawSym1)(g);
+  (isReal() ? drawReal1 : drawSym1)(g);
   panel1(g);
 }
 
@@ -401,7 +439,7 @@ function panel1(g){
 }
 
 function note1(){
-  const v = S1.view === 'real'
+  const v = isReal()
     ? '<span class="sub">现在看的是<b>实物接线图</b> —— 干电池、闸刀开关、灯泡和带绝缘皮的导线，'+
       '跟你在配电箱里见到的东西对得上。切到「电路原理图」看同一个电路的标准画法。</span>'
     : '<span class="sub">现在看的是<b>电路原理图</b> —— 每个元件换成了标准符号。'+
@@ -463,22 +501,22 @@ function draw2(dt){
   EP.chip(g, '电池内部', 64, 74, {sz:9.5, c:EP.P.blueD, fill:C.accbg, line:'rgba(74,144,217,.6)'});
 
   /* 旁边那条 callout 已经写了 E = 1.5 V，元件身上再印一遍就是同一个数出现两次 */
-  EP.cell(g, R2.x0, 104, 42, 20, {horiz:false, pm:false, volt:false});
+  vCell(g, R2.x0, 104, 42, 20, {volt:false});
   txt(g, '＋', 80, 88, {sz:12, b:1, c:EP.P.red});
   txt(g, '−',  80, 121, {sz:13, b:1, c:EP.P.inkL});
   EP.callout(g, R2.x0+10, 104, 106, 100, 'E = 1.5 V', '电池电动势', {al:'left'});
 
-  EP.resistor(g, R2.x0, 148, {horiz:false, len:26, dia:13});
+  vRes(g, R2.x0, 148, 26, 13);
   EP.callout(g, R2.x0+8, 148, 106, 148, 'r = 0.5 Ω', '电池内阻',
              {al:'left', color:EP.P.red});
 
   /* 开关 + 外部电阻 */
-  EP.knife(g, SW2, R2.y0, !S2.open, {w:46});
+  vSw(g, SW2, R2.y0, !S2.open, 46);
   EC.hot(g, SW2, R2.y0, 26);
   txt(g, S2.open ? '开关断开' : '开关闭合', SW2, R2.y0 + 18,
       {sz:10.5, c: EP.P.inkL});
 
-  EP.resistor(g, R2.x1, 110, {horiz:false, len:44, dia:18});
+  vRes(g, R2.x1, 110, 44, 18);
   EP.callout(g, R2.x1-10, 110, 276, 106, 'R = ' + S2.R.toFixed(1) + ' Ω', '外部电阻',
              {al:'right', color:EP.P.blueD});
 
@@ -566,14 +604,13 @@ function draw3(){
 
   g.save(); g.strokeStyle = C.bg; g.lineWidth = 5;
   g.beginPath(); g.moveTo(BX3, 134); g.lineTo(BX3, 156); g.stroke(); g.restore();
-  EP.cell(g, BX3, 145, 42, 19, {horiz:false, pm:false});
+  vCell(g, BX3, 145, 42, 19);
   txt(g, '＋', BX3+15, 132, {sz:11, b:1, c:C.err});
   txt(g, '−',  BX3+15, 159, {sz:13, b:1, c:C.tx2});
 
   [['R1',PY.D,PY.C],['R2',PY.C,PY.B],['R3',PY.B,PY.A]].forEach(function(a){
     const my = (a[1]+a[2])/2;
-    EP.resistor(g, PX, my, {horiz:false, len:32, dia:14,
-      bands:['#2f9e44','#1b1b1b','#1b1b1b',EP.BAND.gold]});
+    vRes(g, PX, my, 32, 14, ['#2f9e44','#1b1b1b','#1b1b1b',EP.BAND.gold]);
     txt(g, a[0] + ' · 0.5V', PX-14, my, {sz:10, c:C.tx2, al:'right'});
   });
 
@@ -637,15 +674,13 @@ function draw4(){
 
   g.save(); g.strokeStyle = C.bg; g.lineWidth = 5;
   g.beginPath(); g.moveTo(LX4, 157); g.lineTo(LX4, 179); g.stroke(); g.restore();
-  EP.cell(g, LX4, 168, 46, 21, {horiz:false, pm:false});
+  vCell(g, LX4, 168, 46, 21);
   txt(g, '＋', LX4+16, 154, {sz:11, b:1, c:C.err});
   txt(g, '−',  LX4+16, 183, {sz:13, b:1, c:C.tx2});
 
-  EP.resistor(g, Q4.C.x, 132, {horiz:false, len:36, dia:15,
-    bands:['#6b4423','#1b1b1b','#e0c020',EP.BAND.gold]});
+  vRes(g, Q4.C.x, 132, 36, 15, ['#6b4423','#1b1b1b','#e0c020',EP.BAND.gold]);
   txt(g, 'R1 · 0.75V', Q4.C.x+16, 132, {sz:10, c:C.tx2, al:'left'});
-  EP.resistor(g, Q4.C.x, 204, {horiz:false, len:36, dia:15,
-    bands:['#6b4423','#1b1b1b','#e0c020',EP.BAND.gold]});
+  vRes(g, Q4.C.x, 204, 36, 15, ['#6b4423','#1b1b1b','#e0c020',EP.BAND.gold]);
   txt(g, 'R2 · 0.75V', Q4.C.x+16, 204, {sz:10, c:C.tx2, al:'left'});
 
   ['C','B','A'].forEach(function(k){
@@ -665,13 +700,24 @@ function draw4(){
   probe(g, bp.x, bp.y, Q4[S4.blk], '#3d444d', '黑');
 
   const U = Q4[S4.red].v - Q4[S4.blk].v;
-  EP.multimeter(g, 16, 14, 96, 128, {
-    /* 不传 mode：让 multimeter 自己**画**直流记号。
-       传 'V⎓' 的话那个字符字体里没有就是豆腐块。 */
-    reading:(U>=0?'':'−') + Math.abs(U).toFixed(2), unit:'V'
-  });
-  txt(g, '数字万用表', 20, 154, {sz:9.5, c:C.tx3, al:'left'});
-  txt(g, '直流电压档', 20, 167, {sz:9.5, c:C.tx3, al:'left'});
+  if(isReal()){
+    EP.multimeter(g, 16, 14, 96, 128, {
+      /* 不传 mode：让 multimeter 自己**画**直流记号。
+         传 'V⎓' 的话那个字符字体里没有就是豆腐块。 */
+      reading:(U>=0?'':'−') + Math.abs(U).toFixed(2), unit:'V'
+    });
+    txt(g, '数字万用表', 20, 154, {sz:9.5, c:C.tx3, al:'left'});
+    txt(g, '直流电压档', 20, 167, {sz:9.5, c:C.tx3, al:'left'});
+  }else{
+    /* 原理图里电压表就是圈里一个 V。**插孔坐标要和实物版对齐**
+       （表笔线是从 MM.com / MM.hot 引出来的），所以圈画在同一块地方 */
+    meter(g, 64, 74, 22, 'V');
+    txt(g, (U>=0?'':'−') + Math.abs(U).toFixed(2) + ' V', 64, 110,
+        {sz:12.5, b:1, c:C.tx});
+    txt(g, '电压表（并联接法）', 64, 128, {sz:9.5, c:C.tx3});
+    txt(g, 'COM', 46, 152, {sz:8.5, c:C.tx3});
+    txt(g, 'V', 82, 152, {sz:8.5, c:C.tx3});
+  }
 }
 
 /* 表笔线：从插孔垂下来再拐向表笔，像真的软线 */
@@ -788,19 +834,22 @@ $('s1sw').addEventListener('click', toggleS1);
 /* 场景 1 的画布：点开关（实物图和原理图两个位置都认） */
 st1.cv.addEventListener('click', function(ev){
   const p = st1.pick(ev);
-  const sw = (S1.view === 'real') ? [RK.x, RK.y] : [SWX, R1.y0];
+  const sw = isReal() ? [RK.x, RK.y] : [SWX, R1.y0];
   if(Math.hypot(p[0]-sw[0], p[1]-sw[1]) < 30) toggleS1();
 });
 $('s1rst').addEventListener('click', ()=>{ S1.t = 0; S1.Q = 0; });
 /* 「实物接线图 / 电路原理图」这两颗原来**没绑事件** —— drawSym1 早就写好了，
    按钮却点不动（2026-08-28 他截图报的）。S1.view 一直只被读、从来没被写过。 */
-document.getElementById('s1view').addEventListener('click', function(e){
-  const b = e.target.closest('.btn'); if(!b) return;
-  S1.view = b.dataset.v;
-  document.querySelectorAll('#s1view .btn').forEach(function(t){
-    t.classList.toggle('on', t.dataset.v === S1.view);
+document.querySelectorAll('.vsw').forEach(function(row){
+  row.addEventListener('click', function(e){
+    const b = e.target.closest('.btn'); if(!b) return;
+    VIEW = b.dataset.v;
+    document.querySelectorAll('.vsw .btn').forEach(function(t){
+      t.classList.toggle('on', t.dataset.v === VIEW);
+    });
+    /* 场景 1、2 在 rAF 循环里，静态的 3、4 要手动重画 */
+    note1(); draw3(); draw4();
   });
-  note1();
 });
 $('s1i').addEventListener('input', e=>{
   S1.I = +e.target.value; $('s1ilab').textContent = S1.I + ' A';
