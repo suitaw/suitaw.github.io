@@ -128,7 +128,7 @@ ELEC.reg({
         <button class="btn on" data-s="2">S2（上支路）</button>
         <button class="btn on" data-s="3">S3（下支路）</button>
       </div>
-      <div class="rowlab">点开关可以断开/合上；也可以直接点灯泡把它弄坏</div>
+      <div class="rowlab"><b>图上带虚线圈的开关直接点</b>就能断合；点灯泡可以把它弄坏</div>
       <div class="nums">
         <div class="num"><div class="k">干路电流</div><div class="v" id="s3it">—</div></div>
         <div class="num"><div class="k">EL5 两端电压</div><div class="v" id="s3u5">—</div></div>
@@ -276,7 +276,7 @@ function calc1(){
 }
 function draw1(dt){
   const g = st1.g; st1.clear();
-  vHead(g, 20, 22, '（点灯泡可以把它弄坏）');
+  vHead(g, 20, 22, '（开关和灯泡都可以直接点）');
   const v = calc1();
   if(v.ok) S1.ph += v.I * 90 * dt;
 
@@ -301,6 +301,7 @@ function draw1(dt){
 
   vCell(g, RC1.x0, 119, 44, 21);
   vSwitch(g, 180, RC1.y1, S1.on, 52, 22);
+  EC.hot(g, 180, RC1.y1, 26);
   /* 标签放开关**左边**：拨杆是从左端往右上抬的，正上方（原来的位置）必被穿过去，
      正下方又贴着画布底边 —— 左边这一块是回路内部的空白，怎么扳都够不着（截图抓到的）*/
   txt(g, S1.on ? '开关合上' : '开关断开', 148, RC1.y1-16,
@@ -331,6 +332,7 @@ function segAt(path, x, y){
 }
 st1.cv.addEventListener('click', function(ev){
   const p = st1.pick(ev);
+  if(Math.hypot(p[0]-180, p[1]-RC1.y1) < 26){ toggleS1(); return; }
   LP1.forEach(function(x, i){
     if(Math.hypot(p[0]-x, p[1]-RC1.y0) < 24){ S1.dead[i] = !S1.dead[i]; note1(); }
   });
@@ -388,6 +390,7 @@ function draw2(dt){
 
   vCell(g, RC2.xL, 129, 44, 21);
   vSwitch(g, 78, RC2.yTop, S2.on, 46, 20);
+  EC.hot(g, 78, RC2.yTop, 24);
   /* 同 1.4 屏 1：标签一律挪到闸刀**左侧**，拨杆是往右上抬的，够不着这儿 */
   txt(g, S2.on ? '合上' : '断开', 48, RC2.yTop-12, {sz:10, c:EP.P.inkL, al:'right'});
 
@@ -420,6 +423,7 @@ function draw2(dt){
 }
 st2.cv.addEventListener('click', function(ev){
   const p = st2.pick(ev);
+  if(Math.hypot(p[0]-78, p[1]-RC2.yTop) < 26){ toggleS2(); return; }
   BR.forEach(function(x, i){
     if(Math.hypot(p[0]-x, p[1]-136) < 24){ S2.dead[i] = !S2.dead[i]; note2(); }
   });
@@ -517,12 +521,17 @@ function draw3(dt){
 
   vCell(g, M3.xL, 159, 42, 20);
 
-  switchSym(g, 92, M3.yU, S3.s[0], {len:30});
-  txt(g, 'S1', 92, M3.yU-15, {sz:10, c:C.tx2});
-  switchSym(g, 260, M3.yU, S3.s[1], {len:26});
-  txt(g, 'S2', 260, M3.yU-15, {sz:10, c:C.tx2});
-  switchSym(g, 260, M3.yD, S3.s[2], {len:26});
-  txt(g, 'S3', 260, M3.yD+16, {sz:10, c:C.tx2});
+  vSwitch(g, 92, M3.yU, S3.s[0], 42, 18);
+  EC.hot(g, 92, M3.yU, 23);
+  /* 闸刀断开时拨杆往右上抬，正上方那一片全被它扫过 —— 标签必须用 tag
+     （自带不透明底板，压着也读得清）。CLAUDE.md 记过这条坑，这里又栽了一次 */
+  tag(g, 'S1', 92, M3.yU-17, {sz:9.5, b:1, c:C.tx2});
+  vSwitch(g, 260, M3.yU, S3.s[1], 38, 16);
+  EC.hot(g, 260, M3.yU, 21);
+  tag(g, 'S2', 260, M3.yU-17, {sz:9.5, b:1, c:C.tx2});
+  vSwitch(g, 260, M3.yD, S3.s[2], 38, 16);
+  EC.hot(g, 260, M3.yD, 21);
+  tag(g, 'S3', 260, M3.yD+18, {sz:9.5, b:1, c:C.tx2});
 
   node(g, M3.xA, M3.yU); node(g, M3.xA, M3.yD);
   node(g, M3.xB, M3.yU); node(g, M3.xB, M3.yD);
@@ -563,8 +572,22 @@ function lampAt(g, x, y, b, name, dead, side){
   if(name) txt(g, dead ? '✕ ' + name : name, x, y + (side>0 ? 20 : -40),
       {sz:10, b:dead?1:0, c:dead ? C.err : C.tx2});
 }
+const SW3 = [[92, M3.yU, 0], [260, M3.yU, 1], [260, M3.yD, 2]];
+function syncS3btn(){
+  document.querySelectorAll('#s3sw .btn').forEach(function(b){
+    b.classList.toggle('on', !!S3.s[+b.dataset.s - 1]);
+  });
+}
 st3.cv.addEventListener('click', function(ev){
   const p = st3.pick(ev);
+  /* 先判开关 —— 开关和灯挨得近的话，开关优先 */
+  for(let i = 0; i < SW3.length; i++){
+    const a = SW3[i];
+    if(Math.hypot(p[0]-a[0], p[1]-a[1]) < 24){
+      S3.s[a[2]] = !S3.s[a[2]];
+      syncS3btn(); note3(); return;
+    }
+  }
   const pts = [[M3.up[0][0],M3.yU,0],[M3.up[1][0],M3.yU,1],
                [M3.dn[0][0],M3.yD,2],[M3.dn[1][0],M3.yD,3],[162,M3.yMain,4]];
   pts.forEach(function(a){
@@ -575,7 +598,7 @@ document.getElementById('s3sw').addEventListener('click', function(e){
   const b = e.target.closest('.btn'); if(!b) return;
   const i = +b.dataset.s - 1;
   S3.s[i] = !S3.s[i];
-  b.classList.toggle('on', S3.s[i]);
+  syncS3btn();
   note3();
 });
 function note3(){
@@ -689,19 +712,23 @@ document.querySelectorAll('#sc3 [data-a]').forEach(function(b){
 /* ================================================================
    绑定
    ================================================================ */
-$('s1sw').addEventListener('click', function(){
+/* 开关的开合抽成具名函数：下面那颗按钮和**画布上直接点开关**走同一条路
+   （function 声明会提升，所以画布的 click 处理器写在前面也拿得到） */
+function toggleS1(){
   S1.on = !S1.on;
   $('s1sw').textContent = S1.on ? '断开开关' : '合上开关';
   $('s1sw').classList.toggle('go', !S1.on);
   note1();
-});
+}
+$('s1sw').addEventListener('click', toggleS1);
 $('s1fix').addEventListener('click', function(){ S1.dead = [false,false,false]; note1(); });
-$('s2sw').addEventListener('click', function(){
+function toggleS2(){
   S2.on = !S2.on;
   $('s2sw').textContent = S2.on ? '断开开关' : '合上开关';
   $('s2sw').classList.toggle('go', !S2.on);
   note2();
-});
+}
+$('s2sw').addEventListener('click', toggleS2);
 $('s2fix').addEventListener('click', function(){ S2.dead = [false,false,false]; note2(); });
 
 $('f1').innerHTML = ElecUI.formula({
