@@ -465,13 +465,13 @@ document.getElementById('s1l').addEventListener('click', function(e){
 const S2 = { k:0 };
 const st2 = new Stage('cv1', 360, 276);
 const T2 = [
-  {t:'电力变压器', pri:'10 kV 三相', sec:'400 / 230 V', where:'配电房 / 杆上',
+  {t:'电力变压器', pri:'10 kV 三相', sec:'400 / 230 V', where:'配电房', short:'10 kV→400 V', feat:'三相，Dyn11，中性点必须可靠接地',
    iso:true, use:'把高压降成整栋楼能用的低压。三相，容量几十到上千 kVA'},
-  {t:'控制变压器', pri:'380 / 220 V', sec:'AC 24 V', where:'机床电柜里',
+  {t:'控制变压器', pri:'380 / 220 V', sec:'AC 24 V', where:'机床电柜', short:'380→24 V', feat:'一次常有 380/220 两个抽头，二次一端接地',
    iso:true, use:'给按钮、指示灯、接触器线圈这些控制回路供电。容量小，二次侧带保险丝、一端接地'},
-  {t:'隔离变压器', pri:'220 V', sec:'220 V（1:1）', where:'检修电源 / 医疗设备',
+  {t:'隔离变压器', pri:'220 V', sec:'220 V（1:1）', where:'检修电源', short:'220→220 V', feat:'1 : 1 不变压，二次侧浮地',
    iso:true, use:'不变压，只隔离。二次侧对地是「浮」的，人碰一根线构不成回路'},
-  {t:'自耦变压器', pri:'220 V', sec:'0 ~ 250 V 可调', where:'调压器 / 降压启动柜',
+  {t:'自耦变压器', pri:'220 V', sec:'0 ~ 250 V 可调', where:'调压器', short:'220→0~250 V', feat:'只有一个绕组，中间抽头',
    iso:false, use:'一个绕组抽头，省铜省铁体积小。代价是一次二次电气相通，没有安全隔离'}
 ];
 
@@ -588,11 +588,12 @@ function draw2(){
                : '一次 ⟷ 二次：直接连通，没有安全隔离',
       180, 220, {sz:11, b:1, c:ic});
   box(g, 20, 240, 320, 28, 6, C.box, C.boxLine, 1);
-  txt(g, '常见于：' + d.where, 180, 254, {sz:10, b:1, c:C.tx2});
+  /* 这一条不重复数字卡里的「在哪儿见得到」，改说接线上的特征 */
+  txt(g, d.feat, 180, 254, {sz:10, b:1, c:C.tx2});
 }
 function note2(){
   const d = T2[S2.k];
-  $('s2a').textContent = d.pri + ' / ' + d.sec;
+  $('s2a').textContent = d.short;
   $('s2b').textContent = d.where;
   $('s2c').textContent = d.iso ? '隔离' : '不隔离';
   $('n1').innerHTML =
@@ -891,13 +892,18 @@ document.getElementById('s4k').addEventListener('click', function(e){
 /* ================================================================
    绑定
    ================================================================ */
-function fitAll(){ [st1, st2, st3, st4].forEach(function(s){ s.fit(); }); }
+function fitAll(){
+  [st1, st2, st3, st4].forEach(function(s){ s.fit(); });
+  /* fit() 会重设画布尺寸并清空内容。场景 1/3 在 rAF 循环里每帧重画，
+     静态的那几屏必须在这儿补画一次 —— 否则第一次进来是**空白画布**
+     （切页签也会再触发一次 fitAll，同样要补）。截图抓到的。 */
+  draw2(); draw4();
+}
 window.addEventListener('resize', fitAll);
 
 ElecNav.init({ch:2, sec:'2.6'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
-draw2(); draw4();
 fitAll();
 
 (function(){
