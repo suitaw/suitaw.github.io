@@ -492,15 +492,27 @@ function draw3(dt){
     .forEach(function(a){ if(S3.dead[a[0]]) gap(g, a[1], a[2], 1); });
   if(S3.dead[4]) gap(g, 162, M3.yMain, 1);
 
-  /* 流动的点 */
+  /* 流动的点 —— 必须画成一条**走得通的完整回路**，缺一段就成了「电流凭空出现」。
+     原来只画了 wires[0]（电源+ 到 A）、wires[4]（B 一路回电源−）和两条支路，
+     **A 点那根竖线（上下支路之间）一个点都没有**：屏幕上电流走到 A 就断了，
+     下支路的点不知从哪冒出来。他报的「怎么没有回到电池负极」就是这个。
+     顺便把 B 竖线和主干拆开：只有上支路通电时，B 竖线上才有电流。 */
+  const wAdown = new Path([[M3.xA,M3.yU],[M3.xA,M3.yD]]);        /* A 竖：分一半给下支路 */
+  const wBdown = new Path([[M3.xB,M3.yU],[M3.xB,M3.yD]]);        /* B 竖：上支路汇下来 */
+  const wMain  = new Path([[M3.xB,M3.yD],[M3.xB,M3.yMain],
+                           [M3.xL,M3.yMain],[M3.xL,168]]);        /* 汇合后经 EL5 回电源− */
   if(v.I > 0){
+    const e5 = segAt(wMain, 162, M3.yMain);
     EP.flow(g, wires[0], {phase:S3.ph, gap:52, kind:'cur', skip:[[0,12],[42,78]]});
-    EP.flow(g, wires[4], {phase:S3.ph, gap:52, kind:'cur',
-                       skip:[[wires[4].len-12,wires[4].len],
-                             [segAt(wires[4],162,M3.yMain)-20, segAt(wires[4],162,M3.yMain)+20]]});
+    EP.flow(g, wMain,    {phase:S3.ph, gap:52, kind:'cur',
+                          skip:[[wMain.len-12, wMain.len], [e5-20, e5+20]]});
     const skB = [[20,52],[70,102]];   /* 两个灯泡各占一段，别让点画到灯上 */
     if(v.upOK) EP.flow(g, upW, {phase:S3.ph, gap:52, kind:'cur', skip:skB});
-    if(v.dnOK) EP.flow(g, dnW, {phase:S3.ph, gap:52, kind:'cur', skip:skB});
+    if(v.dnOK){
+      EP.flow(g, dnW,    {phase:S3.ph, gap:52, kind:'cur', skip:skB});
+      EP.flow(g, wAdown, {phase:S3.ph, gap:52, kind:'cur'});
+    }
+    if(v.upOK) EP.flow(g, wBdown, {phase:S3.ph, gap:52, kind:'cur'});
   }
 
   vCell(g, M3.xL, 159, 42, 20);

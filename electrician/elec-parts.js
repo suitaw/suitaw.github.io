@@ -766,6 +766,78 @@ function multimeter(g, x, y, w, h, o){
 }
 
 /* ================= 线圈 / 磁铁 ================= */
+/* ================= 手势：三条定则的手 =================
+   他的原话：「这种什么左手定则、右手定则的，能不能给个手势啊」。
+   课文里原来只有文字（「手掌摊平，磁力线穿过掌心，拇指指运动方向」）——
+   而这三条定则的全部难点就是**手到底怎么摆**，文字讲不清。
+
+   一律画**正视掌心**的手（磁力线从掌心穿进去，所以掌心正对读者）。
+   右手和左手的唯一区别是**拇指在四指的哪一侧**：
+   掌心朝向自己、四指朝上时，右手拇指在左边，左手拇指在右边。
+   这一条画错就全错了，所以左手直接用 scale(-1,1) 镜像右手，不另画一份。
+
+   返回三个锚点的**世界坐标**（拇指尖 / 四指尖 / 掌心），
+   标注和箭头在调用处画 —— 画在镜像变换里的话字会反过来。 */
+function handFlat(g, x, y, right, o){
+  o = o || {};
+  const s = o.s || 1;
+  const sk = o.skin || global.EC.C.skin, skD = o.skinD || global.EC.C.skinL;
+  g.save();
+  g.translate(x, y);
+  g.scale(right ? s : -s, s);
+  g.strokeStyle = skD; g.lineWidth = 1.4 / s; g.lineJoin = 'round';
+  /* 手腕 */
+  rr(g, -15, 18, 30, 18, 6); g.fillStyle = shade(sk, -0.10); g.fill(); g.stroke();
+  /* 手掌 */
+  rr(g, -23, -28, 46, 50, 10); g.fillStyle = sk; g.fill(); g.stroke();
+  /* 四指并拢：长度中间两根略长，看着才像手 */
+  const FL = [38, 44, 42, 34];
+  for(let i = 0; i < 4; i++){
+    const fx = -21.5 + i*11;
+    rr(g, fx, -28 - FL[i], 9.6, FL[i] + 12, 4.8);
+    g.fillStyle = sk; g.fill(); g.stroke();
+  }
+  /* 拇指：从掌根左侧伸出，和四指成 90° */
+  rr(g, -57, -16, 38, 14, 7); g.fillStyle = sk; g.fill(); g.stroke();
+  /* 掌心一点点阴影，暗示这是手心不是手背 */
+  g.save(); g.globalAlpha = 0.16; g.fillStyle = skD;
+  rr(g, -14, -20, 28, 30, 9); g.fill(); g.restore();
+  g.restore();
+  const sx = right ? 1 : -1;
+  return { thumb:[x - 57*s*sx, y - 9*s], fingers:[x, y - 72*s],
+           palm:[x, y - 4*s], wrist:[x, y + 36*s] };
+}
+
+/* 握住导线的拳头（安培定则 / 右手螺旋）：拇指沿导线伸出＝电流方向，
+   四指弯过去的那一圈＝磁力线方向。导线画在调用处，这里只画手。 */
+function handGrip(g, x, y, right, o){
+  o = o || {};
+  const s = o.s || 1;
+  const sk = o.skin || global.EC.C.skin, skD = o.skinD || global.EC.C.skinL;
+  g.save();
+  g.translate(x, y);
+  g.scale(right ? s : -s, s);
+  g.strokeStyle = skD; g.lineWidth = 1.4 / s; g.lineJoin = 'round';
+  /* 手腕在右下 */
+  g.save(); g.rotate(0.5);
+  rr(g, 16, 4, 30, 18, 6); g.fillStyle = shade(sk, -0.10); g.fill(); g.stroke();
+  g.restore();
+  /* 拳头 */
+  rr(g, -26, -16, 52, 44, 12); g.fillStyle = sk; g.fill(); g.stroke();
+  /* 四根弯过来的手指：横着压在导线前面，越往下越短 */
+  const KL = [50, 52, 48, 42];
+  for(let i = 0; i < 4; i++){
+    rr(g, -30, -12 + i*10.5, KL[i], 9, 4.5);
+    g.fillStyle = shade(sk, 0.06); g.fill(); g.stroke();
+  }
+  /* 拇指：沿导线往上伸 */
+  rr(g, -10, -58, 19, 46, 9); g.fillStyle = sk; g.fill(); g.stroke();
+  g.restore();
+  const sx = right ? 1 : -1;
+  return { thumb:[x - 0.5*s*sx, y - 58*s], fingers:[x + 22*s*sx, y + 14*s],
+           fist:[x, y + 4*s] };
+}
+
 function coil(g, cx, cy, half, r, n, front){
   const step = (2*half)/(n-1);
   for(let i=0;i<n;i++){
@@ -1100,6 +1172,7 @@ global.EP = {
   bulb:bulb, lampHolder:lampHolder,
   meterInline:meterInline, readout:readout, panelMeter:panelMeter, multimeter:multimeter,
   coil:coil, magnet:magnet, appliance:appliance,
+  handFlat:handFlat, handGrip:handGrip,
   diode:diode, led:led, capacitor:capacitor, inductor:inductor,
   motor:motor, buzzer:buzzer, slideRheostat:slideRheostat, internalR:internalR,
   bulbLevel:bulbLevel, S:S, theme:theme

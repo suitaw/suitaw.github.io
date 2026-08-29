@@ -69,7 +69,11 @@ b{font-weight:600}
 .scene.on{display:block}
 .card{background:var(--card);border:1px solid var(--line);
   border-radius:var(--r);overflow:hidden;margin-bottom:10px}
-canvas{display:block;width:100%;background:var(--canvas);touch-action:none}
+/* touch-action 原来是 none —— 那会把**整页的上下滚动**都吃掉：手指一落在画布上
+   就滑不动网页了（2026-08-29 他报的）。全站真正需要拖的只有两块画布，
+   默认给 pan-y（竖向留给页面滚动，横向手势仍归画布），
+   要自由拖的那两块在 JS 里单独设 touchAction='none'。 */
+canvas{display:block;width:100%;background:var(--canvas);touch-action:pan-y}
 
 /* ---------- 控件 ---------- */
 .ctrl{padding:10px}
