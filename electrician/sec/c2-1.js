@@ -424,6 +424,8 @@ function draw1(dt){
   /* 底部读数 */
   box(g, 20, 302, 320, 34, 6, C.box, C.boxLine, 1);
   txt(g, S1.on ? '合闸' : '拉闸', 56, 319, {sz:11.5, b:1, c:S1.on ? C.ok : C.tx3});
+  /* 刀身本来就点得动，但看不出来 —— 补一个可点提示框（他报的第 1 条） */
+  EC.hot(g, LX + 15, 135, 0, {w:96, h:106, r:10});
   txt(g, '电流 ' + I.toFixed(0) + ' A', 140, 319, {sz:11.5, b:1, c:I===0 ? C.tx3 : (I>RATED ? C.err : C.cur)});
   txt(g, S1.fuse ? '熔丝完好' : '熔丝已熔断', 246, 319,
       {sz:11.5, b:1, c:S1.fuse ? C.ok : C.err});

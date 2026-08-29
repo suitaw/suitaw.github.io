@@ -319,6 +319,7 @@ function drawReal1(g){
              '1.5 V', '干电池', {al:'right', color:EP.P.ink});
 
   EP.knife(g, RK.x, RK.y, S1.on, {w:RK.w});
+  EC.hot(g, RK.x, RK.y, 30);
   /* 标签放开关**下方**：断开时拨杆往右上抬，放上面必被穿过去（截图抓到的）。
      下面压着那根竖导线，所以用 tag —— 它自带深色底板，压在线上也读得清。 */
   tag(g, '开关', RK.x, RK.y + 22, {sz:10.5, b:1, c:EP.P.inkL});
@@ -368,6 +369,7 @@ function drawSym1(g){
   EP.callout(g, R1.x0, BY, R1.x0 + 22, BY, '1.5 V', '电池', {al:'left'});
 
   switchSym(g, SWX, R1.y0, S1.on, {len:34});
+  EC.hot(g, SWX, R1.y0, 26);
   /* 标注放**下方**：断开时刀片从左端往右上抬，正上方那一片全被它扫过
      （和闸刀开关 EP.knife 那条坑同源） */
   txt(g, '开关', SWX, R1.y0 + 18, {sz:10.5, b:1, c:EP.P.inkL});
@@ -472,6 +474,7 @@ function draw2(dt){
 
   /* 开关 + 外部电阻 */
   EP.knife(g, SW2, R2.y0, !S2.open, {w:46});
+  EC.hot(g, SW2, R2.y0, 26);
   txt(g, S2.open ? '开关断开' : '开关闭合', SW2, R2.y0 + 18,
       {sz:10.5, c: EP.P.inkL});
 
@@ -773,12 +776,20 @@ document.querySelectorAll('[data-set]').forEach(function(b){
 /* ================================================================
    绑定 / 公式 / 循环
    ================================================================ */
-$('s1sw').addEventListener('click', ()=>{
+/* 开合抽成具名函数：下面那颗按钮和**画布上直接点开关**走同一条路 */
+function toggleS1(){
   S1.on = !S1.on;
   $('s1sw').textContent = S1.on ? '断开开关' : '合上开关';
   $('s1sw').classList.toggle('go', !S1.on);
   if(!S1.on){ S1.t = 0; S1.Q = 0; }
   note1();
+}
+$('s1sw').addEventListener('click', toggleS1);
+/* 场景 1 的画布：点开关（实物图和原理图两个位置都认） */
+st1.cv.addEventListener('click', function(ev){
+  const p = st1.pick(ev);
+  const sw = (S1.view === 'real') ? [RK.x, RK.y] : [SWX, R1.y0];
+  if(Math.hypot(p[0]-sw[0], p[1]-sw[1]) < 30) toggleS1();
 });
 $('s1rst').addEventListener('click', ()=>{ S1.t = 0; S1.Q = 0; });
 /* 「实物接线图 / 电路原理图」这两颗原来**没绑事件** —— drawSym1 早就写好了，
@@ -801,11 +812,16 @@ $('s1cur').addEventListener('change', e=>{ S1.cur = e.target.checked; });
 $('s2r').addEventListener('input', e=>{
   S2.R = +e.target.value / 10; S2.open = false; note2();
 });
-$('s2open').addEventListener('click', ()=>{
+function toggleS2(){
   S2.open = !S2.open;
   $('s2open').textContent = S2.open ? '合上开关' : '断开开关看看';
   $('s2open').classList.toggle('on', S2.open);
   note2();
+}
+$('s2open').addEventListener('click', toggleS2);
+st2.cv.addEventListener('click', function(ev){
+  const p = st2.pick(ev);
+  if(Math.hypot(p[0]-SW2, p[1]-R2.y0) < 28) toggleS2();
 });
 document.getElementById('s3ref').addEventListener('click', e=>{
   const b = e.target.closest('.btn'); if(!b) return;

@@ -257,6 +257,27 @@ function tag(g, s, x, y, o){
 }
 
 /* ================= canvas 适配 ================= */
+/* 可点提示：元件上套一圈细虚线环。
+   他的原话：「我想可以能在实物电路和电路图上可以直接接通关闭开关，
+   而不是还需要下边的按钮」。图上能点了，还得让人**看出来能点** ——
+   cube-solver 那条经验：纯图标猜不出是干嘛的，得给出可供性。 */
+function hot(g, x, y, r, o){
+  o = o || {};
+  g.save();
+  g.strokeStyle = o.color || C.acc;
+  g.globalAlpha = (o.a == null) ? 0.5 : o.a;
+  g.lineWidth = 1.3;
+  g.setLineDash([3.5, 3.5]);
+  if(o.w){
+    /* 长条形的东西（闸刀的刀身之类）套圆比套框难看，给个矩形模式：
+       这时 x,y 是中心，o.w / o.h 是框的宽高 */
+    box(g, x - o.w/2, y - o.h/2, o.w, o.h, o.r || 8, null, g.strokeStyle, 1.3);
+  }else{
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.stroke();
+  }
+  g.restore();
+}
+
 function Stage(id, LW, LH){
   this.cv = (typeof id === 'string') ? document.getElementById(id) : id;
   this.g = this.cv.getContext('2d');
@@ -579,7 +600,7 @@ global.EC = {
   TAU:TAU, RM:RM, C:C, PAL:PAL, theme:theme,
   Path:Path, bez:bez, Stage:Stage, loop:loop,
   head:head, flowArrows:flowArrows, dots:dots, glow:glow,
-  txt:txt, tw:tw, box:box, tag:tag,
+  txt:txt, tw:tw, box:box, tag:tag, hot:hot,
   battery:battery, cell:cell, lamp:lamp, resistor:resistor,
   dial:dial, strip:strip, stripLegend:stripLegend,
   switchSym:switchSym, meter:meter, node:node, dimV:dimV,
