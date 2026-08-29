@@ -711,6 +711,9 @@ function snap4(p){
   });
   return best;
 }
+/* 这块画布要两个方向自由拖表笔，所以单独关掉 touch-action
+   （全局默认是 pan-y，把竖向让给页面滚动） */
+st4.cv.style.touchAction = 'none';
 st4.cv.addEventListener('pointerdown', function(ev){
   const p = st4.pick(ev), h = hit4(p);
   if(h){ S4.drag = h; st4.cv.setPointerCapture(ev.pointerId); ev.preventDefault(); }
@@ -808,7 +811,10 @@ document.getElementById('s3ref').addEventListener('click', e=>{
   const b = e.target.closest('.btn'); if(!b) return;
   S3.ref = b.dataset.p;
   document.querySelectorAll('#s3ref .btn').forEach(x=>x.classList.toggle('on', x===b));
-  note3();
+  /* draw3() 一定要跟着调 —— 这一屏是静态的，不在 rAF 循环里。
+     原来只调 note3()，于是数字卡立刻变了、画布还停在上一个参考点，
+     要等下一次 resize/切页签触发 fitAll 才更新（他报的「延迟半分钟以上」）。 */
+  note3(); draw3();
 });
 
 $('f1').innerHTML = ElecUI.formula({

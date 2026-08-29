@@ -38,6 +38,10 @@ ELEC.reg({
   </div>
   <div class="note" id="n0"></div>
 
+  <div class="card" style="margin-top:10px">
+    <canvas id="cv0h"></canvas>
+  </div>
+
   <div class="note" style="margin-top:10px">
     <div class="st">安培定则（右手定则）：两种握法</div>
     <div class="eu-tw"><table class="eu-t">
@@ -133,6 +137,10 @@ ELEC.reg({
     </div>
   </div>
   <div class="note" id="n2"></div>
+
+  <div class="card" style="margin-top:10px">
+    <canvas id="cv2h"></canvas>
+  </div>
 
   <div class="note" style="margin-top:10px">
     <div class="st">两条右手，别记混了</div>
@@ -473,6 +481,8 @@ function draw2(dt){
 }
 
 function pickMag(p){ return Math.abs(p[0]-S2.x) < 44 && Math.abs(p[1]-COIL.cy) < 30; }
+/* 拖磁铁要自由拖，单独关掉 touch-action（全局默认 pan-y） */
+st2.cv.style.touchAction = 'none';
 st2.cv.addEventListener('pointerdown', function(ev){
   const p = st2.pick(ev);
   if(pickMag(p)){
@@ -737,6 +747,97 @@ document.getElementById('s4pick').parentElement.addEventListener('click', functi
 });
 
 /* ================================================================
+   手势图：三条定则的手到底怎么摆
+   ================================================================
+   他的原话：「这种什么左手定则、右手定则的，能不能给个手势啊」。
+   原来只有文字，而这三条定则的全部难点就是手怎么摆。
+
+   **视角要说清楚**：手势图是「把手举到眼前、掌心对着自己」看到的样子，
+   和上面那张从侧面看的电路图**不是同一个视角** —— 不写明白会更乱，
+   所以画布上直接写了这句。也因此这两块画布**不跟状态联动**：
+   联动的话读者要同时在两个视角之间换算，比不联动还难。 */
+const stH1 = new Stage('cv0h', 360, 206);
+const stH2 = new Stage('cv2h', 360, 244);
+
+function drawH1(){
+  const g = stH1.g; stH1.clear();
+  EP.heading(g, 14, 16, '安培定则：右手握住导线', '拇指跟电流，四指绕的那一圈就是磁力线');
+
+  /* 导线穿过拳头，电流朝上 */
+  const WX = 150;
+  g.save(); g.strokeStyle = C.wire; g.lineWidth = 4.4; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(WX, 42); g.lineTo(WX, 182); g.stroke(); g.restore();
+  EC.head(g, WX, 50, 0, -1, 8, C.cur);
+  txt(g, '电流 I', WX - 12, 58, {sz:10, b:1, c:C.cur, al:'right'});
+  txt(g, '导线', WX - 12, 174, {sz:9.5, c:C.tx3, al:'right'});
+
+  const a = EP.handGrip(g, WX, 116, true, {s:0.9});
+
+  /* 拇指 */
+  EC.head(g, a.thumb[0], a.thumb[1] - 10, 0, -1, 7, C.ok);
+  txt(g, '拇指 = 电流方向', 196, 74, {sz:10.5, b:1, c:C.ok, al:'left'});
+  g.save(); g.strokeStyle = C.ok; g.lineWidth = 1; g.setLineDash([3,3]);
+  g.beginPath(); g.moveTo(a.thumb[0] + 10, a.thumb[1]); g.lineTo(192, 74); g.stroke();
+  g.restore();
+
+  /* 四指 */
+  txt(g, '四指弯过去的这一圈', 196, 128, {sz:10.5, b:1, c:C.acc, al:'left'});
+  txt(g, '就是磁力线的绕向', 196, 143, {sz:10, c:C.tx2, al:'left'});
+  g.save(); g.strokeStyle = C.acc; g.lineWidth = 1; g.setLineDash([3,3]);
+  g.beginPath(); g.moveTo(a.fingers[0] + 4, a.fingers[1]); g.lineTo(192, 128); g.stroke();
+  g.restore();
+
+  box(g, 14, 190, 332, 0.1, 0, null, null, 0);
+  txt(g, '线圈反过来：四指顺着电流绕，拇指指的那头是 N 极',
+      180, 196, {sz:10, b:1, c:C.warn});
+}
+
+function drawH2(){
+  const g = stH2.g; stH2.clear();
+  EP.heading(g, 14, 16, '两只手怎么摆', '把手举到眼前，掌心对着自己');
+
+  g.save(); g.strokeStyle = C.boxLine; g.lineWidth = 1; g.setLineDash([4,4]);
+  g.beginPath(); g.moveTo(180, 58); g.lineTo(180, 206); g.stroke(); g.restore();
+
+  /* 手缩到 0.62：拇指标签要摆到箭头外侧，手大了就没地方站
+     （第一版 s=0.72、标签放拇指正下方，截图上直接压在手腕上） */
+  [[100, true,  '右手 → 发电', '导体运动', '感应电流', C.ok],
+   [260, false, '左手 → 电动', '受力方向', '电流', C.cur]].forEach(function(k){
+    const cx = k[0], right = k[1];
+    EP.chip(g, k[2], cx, 44, {sz:10.5, b:1, c:k[5], line:k[5]});
+
+    const a = EP.handFlat(g, cx, 178, right, {s:0.62});
+
+    /* 四指：往上的箭头 + 名字 */
+    EC.head(g, a.fingers[0], a.fingers[1] - 6, 0, -1, 7, C.acc);
+    /* 「（四指）」原来单独一行放在箭头位置上，被箭头盖住了（截图抓到的）。
+       并进标签一行，半边 172px 装得下 */
+    txt(g, k[4] + '（四指）', a.fingers[0], a.fingers[1] - 20, {sz:10, b:1, c:C.acc});
+
+    /* 拇指：往外的箭头 + 名字。右手朝左、左手朝右，方向跟着镜像。
+       标签往外再让 26px，才躲得开手腕 */
+    const sx = right ? -1 : 1;
+    EC.head(g, a.thumb[0] + sx*8, a.thumb[1], sx, 0, 7, k[5]);
+    const lx = a.thumb[0] + sx*26;
+    txt(g, k[3], lx, 196, {sz:10, b:1, c:k[5]});
+    txt(g, '（拇指）', lx, 208, {sz:8.5, c:C.tx3});
+
+    /* 掌心：磁力线从这里穿进去 */
+    g.save();
+    g.strokeStyle = C.volt; g.lineWidth = 1.8;
+    g.beginPath(); g.arc(a.palm[0], a.palm[1] - 4, 8.5, 0, Math.PI*2); g.stroke();
+    g.beginPath();
+    g.moveTo(a.palm[0] - 6, a.palm[1] - 10); g.lineTo(a.palm[0] + 6, a.palm[1] + 2);
+    g.moveTo(a.palm[0] + 6, a.palm[1] - 10); g.lineTo(a.palm[0] - 6, a.palm[1] + 2);
+    g.stroke(); g.restore();
+  });
+
+  box(g, 14, 218, 332, 20, 5, C.voltbg, C.volt, 1);
+  txt(g, '⊗ 掌心 —— 磁力线从这里穿进手心（两只手都一样）',
+      180, 228, {sz:10, b:1, c:C.volt});
+}
+
+/* ================================================================
    绑定
    ================================================================ */
 document.getElementById('s1sub').addEventListener('click', function(e){
@@ -751,6 +852,8 @@ $('s1n').addEventListener('input', function(e){ S1.n = +e.target.value; note1();
 $('s1core').addEventListener('change', function(e){ S1.core = e.target.checked; note1(); });
 
 function fitAll(){
+  [stH1, stH2].forEach(function(x){ x.fit(); });
+  drawH1(); drawH2();
   [st1, st2, st3, st4].forEach(function(s){ s.fit(); });
   draw3();
 }
