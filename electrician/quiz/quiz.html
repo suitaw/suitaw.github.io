@@ -353,8 +353,8 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
   <!-- 题库（按章：一章里三类题混在一起 + 本章知识点）-->
   <section class="page on" id="pBank">
     <div class="note">
-      <b>一章里的东西全在一起</b>：知识点、单选题、判断题（红底＝这句是错的、绿底＝这句是对的）。
-      每章顶上那颗「测这一章」出的就是本章的混合卷。<br>
+      <b>这一页只管「学」</b>：一章里是本章主线、考点组和全部题目（单选 / 判断红底＝这句是错的 /
+      判断绿底＝这句是对的），每题都带分析。<b>出题去「练习」，数字表去「必背表」。</b><br>
       <b id="badN">—</b>　答案一律取 App 页面标注的「正确答案」，记忆要点是重写的，没照抄原解析。
     </div>
     <div class="bar">
@@ -362,19 +362,37 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
       <button class="tgl" id="bMask">盖住答案</button>
       <button class="tgl" id="bTodo">只看未掌握</button>
     </div>
-    <button class="big ghost" id="tfDrillB">⚡ 判断题挑错练习（只出红底那 290 题）</button>
     <div id="bank"></div>
   </section>
 
-  <!-- 刷题 -->
+  <!-- 练习（原来的「刷题」和「冲刺」合并成这一页）-->
   <section class="page" id="pQuiz">
     <div id="qzSetup">
       <div class="card pad">
-        <div style="font-size:15px;font-weight:700;margin-bottom:2px">练哪些题？</div>
-        <div style="font-size:12.5px;color:var(--tx3);line-height:1.6">选完直接开始。答错的会自动进错题本，答对再移出去。</div>
-        <div class="pick" id="scope"></div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:2px">练一练</div>
+        <div style="font-size:12.5px;color:var(--tx3);line-height:1.6">
+          答错的会自动进错题本，答对再移出去。
+        </div>
+        <div class="ex-lbl">怎么练</div>
+        <div class="pick" id="exMode"></div>
+        <div class="ex-lbl">练哪一章</div>
+        <div class="pick" id="exChap"></div>
+        <div class="ex-lbl">出什么题</div>
+        <div class="pick" id="exMix"></div>
+        <div class="ex-lbl">怎么抽题</div>
+        <div class="pick" id="exSrc"></div>
+        <div class="ex-lbl" id="lbN">出多少题</div>
+        <div class="pick" id="exN"></div>
+        <div class="ex-lbl" id="lbMin">限时</div>
+        <div class="pick" id="exMin"></div>
+        <div class="ex-lbl" id="lbOrder">顺序</div>
         <div class="pick" id="order"></div>
-        <button class="big" id="qzGo">开始</button>
+        <button class="big" id="exGo">开始</button>
+        <div class="note" style="margin:12px 0 0" id="exNote"></div>
+      </div>
+      <div class="card pad" id="exHistBox" style="display:none">
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">最近几次模拟考</div>
+        <div class="ex-hist" id="exHist"></div>
       </div>
     </div>
 
@@ -404,121 +422,6 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
         <button class="big ghost" id="dWrong">只练这轮答错的</button>
       </div>
       <div id="dList"></div>
-    </div>
-  </section>
-
-  <!-- 判断题 -->
-  <!-- 挑错练习（从题库页那颗按钮进来，没有自己的页签）-->
-  <section class="page" id="pTF">
-    <div id="tfList" style="display:none">
-      <div class="note">
-        判断题分<b>两批</b>：<b>第 1~290 题答案全是「错误」</b>（红底，价值在「错在哪个词 + 正确说法」，
-        单独刷这一批一律选「错误」就满分，等于白刷）；<b>第 291 题起答案全是「正确」</b>（绿底，
-        整句就是标准答案，直接背题干本身）。
-        <b id="tfBadN">—</b>
-      </div>
-      <div class="bar">
-        <input class="search" id="tfQ" type="search" placeholder="搜题号 / 关键词，如 188 或 短路环">
-        <button class="tgl" id="tfMaskB">盖住答案</button>
-        <button class="tgl" id="tfTodoB">只看未掌握</button>
-      </div>
-      <div id="tfRv"></div>
-    </div>
-
-    <div id="tfDrill" style="display:none">
-      <div id="tdSetup">
-        <div class="card pad">
-          <div style="font-size:15px;font-weight:700;margin-bottom:2px">挑错练习</div>
-          <div style="font-size:12.5px;color:var(--tx3);line-height:1.6">
-            给你一句被改错的话，<b>先自己想「错在哪个词、正确说法是什么」</b>，想好了再翻答案，自己判自己。
-            这批题没法判对错，只能这么练。
-          </div>
-          <div class="pick" id="tdScope"></div>
-          <button class="big" id="tdGo">开始</button>
-          <button class="big ghost" id="tdBack">‹ 返回题库</button>
-        </div>
-      </div>
-
-      <div id="tdRun" style="display:none">
-        <div class="qz-meta"><span id="tdPos"></span><span id="tdScore"></span></div>
-        <div class="prog"><i id="tdBar" style="width:0"></i></div>
-        <div class="card pad">
-          <div class="q-top">
-            <span class="q-id" id="tdId"></span>
-            <span class="q-warn" id="tdWarnB" style="display:none">存疑 / 原解析有误</span>
-          </div>
-          <div class="tf-q"><span class="tf-x">✗ 这句话是错的</span><span id="tdT"></span></div>
-          <div id="tdAsk">
-            <div class="tf-ask">想一想：<b>错在哪个词？正确的说法是什么？</b></div>
-            <button class="big" id="tdShow">想好了，看答案</button>
-          </div>
-          <div id="tdAfter" style="display:none">
-            <div id="tdBody"></div>
-            <div class="tf-self">刚才想到了吗？</div>
-            <div class="tf-btns">
-              <button class="big" id="tdYes">✓ 想到了</button>
-              <button class="big ghost" id="tdNo">✗ 没想到</button>
-            </div>
-          </div>
-        </div>
-        <button class="big ghost" id="tdQuit">结束本轮</button>
-      </div>
-
-      <div id="tdDone" style="display:none">
-        <div class="card pad">
-          <div class="score"><div class="n" id="tdS"></div><div class="d" id="tdD"></div></div>
-          <button class="big" id="tdAgain">再来一轮</button>
-          <button class="big ghost" id="tdMiss">只练这轮没想到的</button>
-          <button class="big ghost" id="tdBack2">‹ 返回题库</button>
-        </div>
-        <div id="tdList"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 必背表 -->
-  <!-- 错题本 -->
-  <section class="page" id="pWrong">
-    <div class="wb-sum">
-      <div class="r"><b id="wbA">0</b><span>单选错题</span></div>
-      <div class="r"><b id="wbB">0</b><span>判断错题</span></div>
-      <div class="g"><b id="wbC">0</b><span>已掌握</span></div>
-    </div>
-    <div class="note">
-      答错的题会<b>自动</b>收进这里（刷题、判断题练习、冲刺卷都算）。
-      答对一次就自动移出去 —— 所以这一页只剩「还没拿下的」。
-    </div>
-    <div class="bar" id="wbPick"></div>
-    <button class="big" id="wbGo">⚡ 拿这些错题组一套冲刺卷</button>
-    <button class="big ghost" id="wbClr">清空错题本</button>
-    <div id="wbList"></div>
-  </section>
-
-  <!-- 考前冲刺 -->
-  <section class="page" id="pExam">
-    <div id="exSetup">
-      <div class="card pad">
-        <div style="font-size:15px;font-weight:700;margin-bottom:2px">考前冲刺 · 模拟卷</div>
-        <div style="font-size:13px;color:var(--tx3);line-height:1.7">
-          单选和判断混着出，<b>答完统一交卷</b>，中途可以回头改。交卷后按章看正确率，错题自动进错题本。
-        </div>
-        <div class="ex-lbl">考哪一章</div>
-        <div class="pick" id="exChap"></div>
-        <div class="ex-lbl">出多少题</div>
-        <div class="pick" id="exN"></div>
-        <div class="ex-lbl">出什么题</div>
-        <div class="pick" id="exMix"></div>
-        <div class="ex-lbl">怎么抽题</div>
-        <div class="pick" id="exSrc"></div>
-        <div class="ex-lbl">限时</div>
-        <div class="pick" id="exMin"></div>
-        <button class="big" id="exGo">开始</button>
-        <div class="note" style="margin:12px 0 0" id="exNote"></div>
-      </div>
-      <div class="card pad" id="exHistBox" style="display:none">
-        <div style="font-size:14px;font-weight:700;margin-bottom:6px">最近几次</div>
-        <div class="ex-hist" id="exHist"></div>
-      </div>
     </div>
 
     <div id="exRun" style="display:none">
@@ -558,6 +461,81 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
     </div>
   </section>
 
+  <!-- 判断题 -->
+  <!-- 挑错练习（从题库页那颗按钮进来，没有自己的页签）-->
+  <section class="page" id="pTF">
+    <div id="tfList" style="display:none">
+      <div class="note">
+        判断题分<b>两批</b>：<b>第 1~290 题答案全是「错误」</b>（红底，价值在「错在哪个词 + 正确说法」，
+        单独刷这一批一律选「错误」就满分，等于白刷）；<b>第 291 题起答案全是「正确」</b>（绿底，
+        整句就是标准答案，直接背题干本身）。
+        <b id="tfBadN">—</b>
+      </div>
+      <div class="bar">
+        <input class="search" id="tfQ" type="search" placeholder="搜题号 / 关键词，如 188 或 短路环">
+        <button class="tgl" id="tfMaskB">盖住答案</button>
+        <button class="tgl" id="tfTodoB">只看未掌握</button>
+      </div>
+      <div id="tfRv"></div>
+    </div>
+
+    <div id="tfDrill" style="display:none">
+      <div id="tdRun" style="display:none">
+        <div class="qz-meta"><span id="tdPos"></span><span id="tdScore"></span></div>
+        <div class="prog"><i id="tdBar" style="width:0"></i></div>
+        <div class="card pad">
+          <div class="q-top">
+            <span class="q-id" id="tdId"></span>
+            <span class="q-warn" id="tdWarnB" style="display:none">存疑 / 原解析有误</span>
+          </div>
+          <div class="tf-q"><span class="tf-x">✗ 这句话是错的</span><span id="tdT"></span></div>
+          <div id="tdAsk">
+            <div class="tf-ask">想一想：<b>错在哪个词？正确的说法是什么？</b></div>
+            <button class="big" id="tdShow">想好了，看答案</button>
+          </div>
+          <div id="tdAfter" style="display:none">
+            <div id="tdBody"></div>
+            <div class="tf-self">刚才想到了吗？</div>
+            <div class="tf-btns">
+              <button class="big" id="tdYes">✓ 想到了</button>
+              <button class="big ghost" id="tdNo">✗ 没想到</button>
+            </div>
+          </div>
+        </div>
+        <button class="big ghost" id="tdQuit">结束本轮</button>
+      </div>
+
+      <div id="tdDone" style="display:none">
+        <div class="card pad">
+          <div class="score"><div class="n" id="tdS"></div><div class="d" id="tdD"></div></div>
+          <button class="big" id="tdAgain">再来一轮</button>
+          <button class="big ghost" id="tdMiss">只练这轮没想到的</button>
+          <button class="big ghost" id="tdBack2">‹ 返回练习</button>
+        </div>
+        <div id="tdList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 必背表 -->
+  <!-- 错题本 -->
+  <section class="page" id="pWrong">
+    <div class="wb-sum">
+      <div class="r"><b id="wbA">0</b><span>单选错题</span></div>
+      <div class="r"><b id="wbB">0</b><span>判断错题</span></div>
+      <div class="g"><b id="wbC">0</b><span>已掌握</span></div>
+    </div>
+    <div class="note">
+      答错的题会<b>自动</b>收进这里（刷题、判断题练习、冲刺卷都算）。
+      答对一次就自动移出去 —— 所以这一页只剩「还没拿下的」。
+    </div>
+    <div class="bar" id="wbPick"></div>
+    <button class="big" id="wbGo">⚡ 拿这些错题组一套模拟卷</button>
+    <button class="big ghost" id="wbClr">清空错题本</button>
+    <div id="wbList"></div>
+  </section>
+
+
   <section class="page" id="pTable">
     <div class="bar" id="tbPick"></div>
     <div id="tb"></div>
@@ -568,9 +546,8 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
      各家系统画得不一样、和全站那套线性图标也不是一路 —— 换成 SVG。 -->
 <nav class="nav">
   <button class="on" data-p="pBank"><span class="ic" data-ei="book"></span>题库</button>
-  <button data-p="pQuiz"><span class="ic" data-ei="pencil"></span>刷题</button>
+  <button data-p="pQuiz"><span class="ic" data-ei="target"></span>练习</button>
   <button data-p="pWrong"><span class="ic" data-ei="warn"></span>错题本</button>
-  <button data-p="pExam"><span class="ic" data-ei="target"></span>冲刺</button>
   <button data-p="pTable"><span class="ic" data-ei="table"></span>必背表</button>
 </nav>
 <script src="../elec-icons.js"></script>
@@ -674,22 +651,21 @@ function paintStat(){
     $('#subT').textContent='错题本 · 单选 '+wa+' · 判断 '+wb;
     return;
   }
-  if(curPage==='pExam'){
+  if(curPage==='pQuiz'){
     var hs=load('exhist',[]);
-    $('#statT').innerHTML=hs.length?('上次 <b>'+hs[0].score+'</b> 分'):'还没考过';
-    $('#subT').textContent='考前冲刺 · 单选 '+ALL.length+' + 判断 '+TFALL.length+' 题可抽';
+    $('#statT').innerHTML=hs.length?('模考 <b>'+hs[0].score+'</b> 分'):'练习';
+    $('#subT').textContent='练习 · 边练边看 / 模拟考 / 判断题挑错';
     return;
   }
   var m=ALL.filter(function(q){return isM(q.id)}).length;
-  var w=Object.keys(WRONG).length;
-  $('#statT').innerHTML='掌握 <b>'+m+'</b>/'+ALL.length+(w?' · 错 '+w:'');
-  $('#subT').textContent='刷题 · 单选 '+ALL.length+' 题 · '+BAD+' 题原解析有误';
+  $('#statT').innerHTML='掌握 <b>'+m+'</b>/'+ALL.length;
+  $('#subT').textContent='低压电工作业 · 考证题库';
 }
 
 /* ══ 页签 ══ */
 function goPage(id){
-  /* 挑错练习（pTF）没有自己的页签，导航仍高亮「题库」 */
-  var nav=(id==='pTF')?'pBank':id;
+  /* 挑错练习（pTF）没有自己的页签，它是「练习」页的第三种模式，导航就高亮练习 */
+  var nav=(id==='pTF')?'pQuiz':id;
   $$('.nav button').forEach(function(x){x.classList.toggle('on',x.dataset.p===nav)});
   $$('.page').forEach(function(p){p.classList.toggle('on',p.id===id)});
   window.scrollTo(0,0);
@@ -697,7 +673,7 @@ function goPage(id){
   if(id==='pTable')paintTable();
   if(id==='pBank')paintBank();
   if(id==='pWrong')paintWB();
-  if(id==='pExam'&&!EX.running)exPaintSetup();
+  if(id==='pQuiz'&&!EX.running&&$('#qzRun').style.display==='none')exPaintSetup();
 }
 $$('.nav button').forEach(function(b){
   b.onclick=function(){goPage(b.dataset.p)};
@@ -762,8 +738,9 @@ function hit(q){
 var BANK=(function(){
   var m={};
   function ent(no,title){return m[no]||(m[no]={no:no,title:title,mc:[],tf:[],intro:'',mcT:'',tfT:''})}
-  QUIZ_CHAPTERS.forEach(function(c){var e=ent(c.no,c.title);e.mc=c.groups;e.mcT=c.table});
-  TF_CHAPTERS.forEach(function(c){var e=ent(c.no,c.title);e.tf=c.groups;e.intro=c.intro;e.tfT=c.table});
+  /* 两套 md 各自的章导语都收进来 —— 覆盖的章不一样（单选 7 章、判断 10 章），合起来更全 */
+  QUIZ_CHAPTERS.forEach(function(c){var e=ent(c.no,c.title);e.mc=c.groups;e.mcT=c.table;e.mcI=c.intro});
+  TF_CHAPTERS.forEach(function(c){var e=ent(c.no,c.title);e.tf=c.groups;e.tfI=c.intro;e.tfT=c.table});
   return Object.keys(m).map(Number).sort(function(a,b){return a-b}).map(function(k){return m[k]});
 })();
 var bMask=load('bmask',true), bTodo=load('btodo',false), bKw='';
@@ -785,17 +762,16 @@ function paintBank(){
     html+='<details class="chap"'+(fo?' open':'')+' data-c="'+c.no+'"><summary><div class="chap-h">'+
       '<span class="chap-n">'+c.no+'</span><span class="chap-t">'+esc(c.title)+'</span>'+
       '<span class="chap-c">'+(nm+nt)+' 题</span><span class="caret">▶</span></div></summary><div class="chap-body">'+
-      '<div class="bk-sum">单选 <b>'+nm+'</b> 题 · 判断 <b>'+nt+'</b> 题</div>'+
-      '<button class="big" data-exam="'+c.no+'">测这一章（单选 + 判断混合）</button>';
-    /* 知识点：判断题那份章导语（本章主线）+ 两套的章末必背表，全折在一块里 */
-    if(c.intro||c.mcT||c.tfT){
+      '<div class="bk-sum">单选 <b>'+nm+'</b> 题 · 判断 <b>'+nt+'</b> 题</div>';
+    /* 这一页只管「学」：知识点 + 题目 + 逐题分析。
+       必背表在底部那个页签里，出题在「练习」页 —— 都不重复放这儿 */
+    if(c.mcI||c.tfI){
       var kOpen=!!open['k'+c.no];
       html+='<details class="grp bk-know"'+(kOpen?' open':'')+' data-g="k'+c.no+'"><summary><div class="grp-h">'+
-        '<span class="grp-code">知识点</span><span class="grp-t">本章主线 + 必背表</span>'+
+        '<span class="grp-code">本章主线</span><span class="grp-t">这一章到底在讲什么</span>'+
         '<span class="caret">▶</span></div></summary>'+
-        (c.intro?'<div class="key tf-intro"><span class="lb">本章主线</span>'+mdRich(c.intro)+'</div>':'')+
-        (c.mcT?'<div class="wb-h">必背表 · 单选那套</div>'+mdTable(c.mcT):'')+
-        (c.tfT?'<div class="wb-h">必背表 · 判断那套</div>'+mdTable(c.tfT):'')+
+        (c.mcI?'<div class="key tf-intro"><span class="lb">主线 · 从单选题看</span>'+mdRich(c.mcI)+'</div>':'')+
+        (c.tfI?'<div class="key tf-intro"><span class="lb">主线 · 从判断题看</span>'+mdRich(c.tfI)+'</div>':'')+
         '</details>';
     }
     gs.forEach(function(x){
@@ -815,8 +791,6 @@ function paintBank(){
   paintSyms($('#bank'));
 }
 $('#bank').addEventListener('click',function(e){
-  var ex=e.target.closest('button[data-exam]');
-  if(ex){EXC.chap=+ex.dataset.exam;EXC.mix='all';save('excfg',EXC);goPage('pExam');return}
   var sh=e.target.closest('.tf-show');
   if(sh){sh.closest('.q').classList.add('show');return}
   var b=e.target.closest('button[data-m]');
@@ -841,48 +815,40 @@ $('#bTodo').onclick=function(){bTodo=!bTodo;save('btodo',bTodo);this.classList.t
 var tmr;
 $('#bq').oninput=function(){var v=this.value.trim();clearTimeout(tmr);tmr=setTimeout(function(){bKw=v;paintBank()},180)};
 
-/* ══ 刷题页 ══ */
-var SCOPES=[{k:'all',t:'全部'},{k:'todo',t:'未掌握的'},{k:'wrong',t:'错题本'},{k:'bad',t:'解析有误的'}];
-QUIZ_CHAPTERS.forEach(function(c){SCOPES.push({k:'c'+c.no,t:'第 '+c.no+' 章'})});
-var scope=load('scope','all'), rnd=load('rnd',true);
-function paintPick(){
-  $('#scope').innerHTML=SCOPES.map(function(s){
-    var n=pool(s.k).length;
-    return '<button class="tgl'+(scope===s.k?' on':'')+'" data-s="'+s.k+'"'+(n?'':' disabled style="opacity:.4"')+'>'+s.t+' '+n+'</button>';
-  }).join('');
-  $('#order').innerHTML='<button class="tgl'+(rnd?' on':'')+'" data-o="1">🔀 随机</button>'+
-                        '<button class="tgl'+(rnd?'':' on')+'" data-o="0">🔢 按题号</button>';
-  $('#qzGo').disabled=!pool(scope).length;
-}
-function pool(k){
-  if(k==='all')return ALL.slice();
-  if(k==='todo')return ALL.filter(function(q){return !isM(q.id)});
-  if(k==='wrong')return ALL.filter(function(q){return WRONG[q.id]});
-  if(k==='bad')return ALL.filter(function(q){return q.note});
-  var n=+k.slice(1);return ALL.filter(function(q){return q.chap===n});
-}
-$('#scope').onclick=function(e){var b=e.target.closest('button[data-s]');if(!b||b.disabled)return;
-  scope=b.dataset.s;save('scope',scope);paintPick()};
-$('#order').onclick=function(e){var b=e.target.closest('button[data-o]');if(!b)return;
-  rnd=b.dataset.o==='1';save('rnd',rnd);paintPick()};
+/* ══ 练习页 ══
+   2026-09-01 把原来的「刷题」（只有单选、一题一判）和「冲刺」（混合卷、统一交卷）
+   合并成这一页 —— 它们本来就是同一件事的两种模式，范围选择也是重复的。
+   三种模式共用同一套范围（章 / 题型 / 怎么抽）：
+     step 边练边看：一题一判，当场出解析
+     exam 模拟考：答完统一交卷、限时、出分、分章正确率
+     pick 判断题挑错：只出答案为「错误」的判断题，自己想错在哪（走 pTF 那套 UI）
+   题目统一表示成 {t:'mc'|'tf', q:题目对象}，两个 runner 都吃这个结构。 */
+var rnd=load('rnd',true);
 
+/* ── 边练边看 ── */
 var Q={list:[],i:0,ok:0,bad:[]};
 function start(list){
   Q={list:list,i:0,ok:0,bad:[]};
   if(rnd)for(var i=Q.list.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=Q.list[i];Q.list[i]=Q.list[j];Q.list[j]=t}
-  $('#qzSetup').style.display='none';$('#qzDone').style.display='none';$('#qzRun').style.display='';
+  $('#qzSetup').style.display='none';$('#qzDone').style.display='none';
+  $('#exRun').style.display='none';$('#exDone').style.display='none';
+  $('#qzRun').style.display='';
   showQ();
 }
 function showQ(){
-  var q=Q.list[Q.i];
-  $('#qzPos').textContent='第 '+(Q.i+1)+' / '+Q.list.length+' 题　（题库第 '+q.id+' 题）';
+  var it=Q.list[Q.i], q=it.q;
+  $('#qzPos').textContent='第 '+(Q.i+1)+' / '+Q.list.length+' 题　（'+(it.t==='tf'?'判断':'单选')+'第 '+q.id+' 题）';
   $('#qzScore').textContent='答对 '+Q.ok;
   $('#qzBar').style.width=(Q.i/Q.list.length*100)+'%';
-  $('#qzId').textContent='第 '+q.id+' 题';
-  $('#qzWarn').style.display=q.note?'':'none';
+  $('#qzId').textContent='第 '+q.id+' 题 · 第 '+q.chap+' 章';
+  $('#qzWarn').style.display=(it.t==='mc'?(q.note?'':'none'):(q.warn?'':'none'));
+  $('#qzWarn').textContent=(it.t==='mc')?'解析有误':'存疑 / 原解析有误';
   $('#qzT').textContent=q.question;
-  $('#qzOpts').innerHTML=['A','B','C'].map(function(k){
-    return '<button class="qz-opt" data-k="'+k+'"><span class="k">'+k+'</span>'+optBody(q.options[k],true)+'</button>';
+  var ks=(it.t==='tf')?['正确','错误']:['A','B','C'];
+  $('#qzOpts').innerHTML=ks.map(function(k){
+    return '<button class="qz-opt" data-k="'+esc(k)+'">'+
+      (it.t==='tf'?('<span class="k" style="width:auto">'+k+'</span>')
+                 :('<span class="k">'+k+'</span>'+optBody(q.options[k],true)))+'</button>';
   }).join('');
   paintSyms($('#qzOpts'));
   $('#qzAfter').style.display='none';
@@ -890,18 +856,24 @@ function showQ(){
 }
 $('#qzOpts').onclick=function(e){
   var b=e.target.closest('.qz-opt');if(!b||b.disabled)return;
-  var q=Q.list[Q.i],pick=b.dataset.k,right=(pick===q.answer);
+  var it=Q.list[Q.i], q=it.q, pick=b.dataset.k, right=(pick===q.answer);
   $$('#qzOpts .qz-opt').forEach(function(x){
     x.disabled=true;
     if(x.dataset.k===q.answer)x.classList.add('right');
     else if(x.dataset.k===pick)x.classList.add('wrong');
   });
-  if(right){Q.ok++;delW(q.id)}else{addW(q.id);Q.bad.push(q);setM(q.id,false)}
+  if(right){Q.ok++; if(it.t==='mc')delW(q.id);else tfDelMiss(q.id)}
+  else{Q.bad.push(it); if(it.t==='mc'){addW(q.id);setM(q.id,false)}else{tfAddMiss(q.id);tfSetM(q.id,false)}}
   paintStat();
   $('#qzV').className='verdict '+(right?'y':'n');
   $('#qzV').textContent=right?'✓ 答对了':'✗ 答错了　正确答案是 '+q.answer;
-  $('#qzTip').innerHTML='<span class="lb">记忆要点</span>'+mdRich(q.tip)+
-    (q.note?'<br><br><b style="color:var(--amber)">注意：这题 App 里的 AI 解析结论是错的，别按它记。</b>':'');
+  /* 单选给「记忆要点」，判断给整块解析（错在哪 / 正确说法 / 为什么对） */
+  /* 判断题的解析本身就是几个带底色的块，外面再套一层 .tip 会多出一道边条 */
+  $('#qzTip').className=(it.t==='mc')?'tip':'';
+  $('#qzTip').innerHTML=(it.t==='mc')
+    ? ('<span class="lb">记忆要点</span>'+mdRich(q.tip)+
+       (q.note?'<br><br><b style="color:var(--amber)">注意：这题 App 里的 AI 解析结论是错的，别按它记。</b>':''))
+    : tfAns(q);
   $('#qzNext').textContent=(Q.i+1>=Q.list.length)?'看成绩':'下一题';
   $('#qzAfter').style.display='';
   $('#qzScore').textContent='答对 '+Q.ok;
@@ -915,16 +887,21 @@ function finish(){
   $('#dDetail').textContent=Q.bad.length?('答错 '+Q.bad.length+' 题，已收进错题本'):'全对，这一轮没有错题';
   $('#dWrong').style.display=Q.bad.length?'':'none';
   $('#dList').innerHTML=Q.bad.length?('<div class="card pad"><div style="font-size:14px;font-weight:700;margin-bottom:8px">这轮答错的题</div>'+
-     Q.bad.map(function(q){return qCard(q,true)}).join('')+'</div>'):'';
-  paintPick();paintBank();window.scrollTo(0,0);
+     Q.bad.map(function(x){return x.t==='mc'?qCard(x.q,true):tfCard(x.q,true)}).join('')+'</div>'):'';
+  paintSyms($('#dList'));
+  paintBank();window.scrollTo(0,0);
 }
 $('#dList').addEventListener('click',function(e){
-  var b=e.target.closest('button[data-m]');if(!b)return;
-  var id=+b.dataset.m;setM(id,!isM(id));
-  b.classList.toggle('done',isM(id));b.textContent=isM(id)?'✓ 已掌握':'标记掌握';
+  var sh=e.target.closest('.tf-show');
+  if(sh){sh.closest('.q').classList.add('show');return}
+  var b=e.target.closest('button[data-m]');
+  if(b){var id=+b.dataset.m;setM(id,!isM(id));
+    b.classList.toggle('done',isM(id));b.textContent=isM(id)?'✓ 已掌握':'标记掌握';return}
+  var t=e.target.closest('button[data-tm]');
+  if(t){var id2=+t.dataset.tm;tfSetM(id2,!tfIsM(id2));
+    t.classList.toggle('done',tfIsM(id2));t.textContent=tfIsM(id2)?'✓ 已掌握':'标记掌握'}
 });
-$('#qzGo').onclick=function(){start(pool(scope))};
-$('#dAgain').onclick=function(){$('#qzDone').style.display='none';$('#qzSetup').style.display='';paintPick()};
+$('#dAgain').onclick=function(){$('#qzDone').style.display='none';$('#qzSetup').style.display='';exPaintSetup()};
 $('#dWrong').onclick=function(){start(Q.bad.slice())};
 
 /* ══ 判断题 ══
@@ -1037,38 +1014,8 @@ var tfTmr;
 $('#tfQ').oninput=function(){var v=this.value.trim();clearTimeout(tfTmr);
   tfTmr=setTimeout(function(){tfKw=v;paintTFReview()},180)};
 
-/* ── 挑错练习 ── */
-var TDS=[{k:'all',t:'全部'},{k:'todo',t:'未掌握的'},
-         {k:'miss',t:'没想到过的'},{k:'warn',t:'带存疑标注的'}];
-TF_CHAPTERS.forEach(function(c){TDS.push({k:'c'+c.no,t:'第 '+c.no+' 章'})});
-var tdScope=load('tdscope','todo');
-function tdPool(k){
-  /* 全部从 TFNO（答案是「错误」的那 290 题）里出 —— 正确批没有「错在哪」可挑 */
-  if(k==='all')return TFNO.slice();
-  if(k==='todo')return TFNO.filter(function(q){return !tfIsM(q.id)});
-  if(k==='miss')return TFNO.filter(function(q){return TFW[q.id]});
-  if(k==='warn')return TFNO.filter(function(q){return q.warn});
-  var n=+k.slice(1);return TFNO.filter(function(q){return q.chap===n});
-}
-function tdPaintPick(){
-  $('#tdScope').innerHTML=TDS.map(function(x){
-    var n=tdPool(x.k).length;
-    return '<button class="tgl'+(tdScope===x.k?' on':'')+'" data-s="'+x.k+'"'+
-      (n?'':' disabled style="opacity:.4"')+'>'+x.t+' '+n+'</button>';
-  }).join('');
-  $('#tdGo').disabled=!tdPool(tdScope).length;
-}
-$('#tdScope').onclick=function(e){var b=e.target.closest('button[data-s]');if(!b||b.disabled)return;
-  tdScope=b.dataset.s;save('tdscope',tdScope);tdPaintPick()};
-
-/* 「返回」回题库页 —— 列表已经并进那一页了 */
-function tfShowList(){ goPage('pBank') }
-$('#tfDrillB').onclick=function(){
-  $('#tfDrill').style.display='';
-  $('#tdSetup').style.display='';$('#tdRun').style.display='none';$('#tdDone').style.display='none';
-  tdPaintPick();goPage('pTF');
-};
-$('#tdBack').onclick=tfShowList;
+/* ── 挑错练习（练习页的第三种模式，出题在那边选好了再跳过来）── */
+function tfShowList(){ goPage('pQuiz') }
 $('#tdBack2').onclick=tfShowList;
 
 var D={list:[],i:0,ok:0,miss:[]};
@@ -1076,7 +1023,7 @@ function tdStart(list){
   D={list:list,i:0,ok:0,miss:[]};
   for(var i=D.list.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));
     var t=D.list[i];D.list[i]=D.list[j];D.list[j]=t}
-  $('#tdSetup').style.display='none';$('#tdDone').style.display='none';$('#tdRun').style.display='';
+  $('#tdDone').style.display='none';$('#tdRun').style.display='';
   tdShow();
 }
 function tdShow(){
@@ -1113,15 +1060,14 @@ function tdFinish(){
   /* 没想到的题在成绩页直接摊开，不再盖住 —— 这时候要的是马上重看正确说法 */
   $('#tdList').innerHTML=D.miss.length?('<div class="card pad"><div style="font-size:14px;font-weight:700;margin-bottom:8px">这轮没想到的题</div>'+
     D.miss.map(function(q){return tfCard(q,true)}).join('')+'</div>'):'';
-  tdPaintPick();window.scrollTo(0,0);
+  window.scrollTo(0,0);
 }
 $('#tdList').addEventListener('click',function(e){
   var b=e.target.closest('button[data-tm]');if(!b)return;
   var id=+b.dataset.tm;tfSetM(id,!tfIsM(id));
   b.classList.toggle('done',tfIsM(id));b.textContent=tfIsM(id)?'✓ 已掌握':'标记掌握';
 });
-$('#tdGo').onclick=function(){tdStart(tdPool(tdScope))};
-$('#tdAgain').onclick=function(){$('#tdDone').style.display='none';$('#tdSetup').style.display='';tdPaintPick()};
+$('#tdAgain').onclick=function(){goPage('pQuiz')};
 $('#tdMiss').onclick=function(){tdStart(D.miss.slice())};
 
 /* ══ 错题本 ══
@@ -1195,11 +1141,11 @@ $('#wbList').addEventListener('click',function(e){
 });
 $('#wbClr').onclick=function(){
   if(!confirm('清空错题本？已经标「掌握」的记录不受影响。'))return;
-  WRONG={};TFW={};save('wrong',WRONG);save('tfwrong',TFW);paintWB();paintStat();paintPick();
+  WRONG={};TFW={};save('wrong',WRONG);save('tfwrong',TFW);paintWB();paintStat();
 };
 $('#wbGo').onclick=function(){
-  EXC.src='wrong';EXC.mix='all';save('excfg',EXC);
-  goPage('pExam');
+  EXC.src='wrong';EXC.mix='all';EXC.mode='exam';EXC.chap=0;save('excfg',EXC);
+  goPage('pQuiz');
 };
 
 /* ══ 考前冲刺 ══
@@ -1207,14 +1153,18 @@ $('#wbGo').onclick=function(){
    所以它才能量出「现在这个水平上考能考多少分」—— 边答边看解析量不出来。
    一套卷子里单选和判断混着出，两套题库的题各带一个 t 标记（'mc' / 'tf'）。 */
 var EXOPT={
+  mode:[{v:'step',t:'边练边看'},{v:'exam',t:'模拟考'},{v:'pick',t:'判断题挑错'}],
   chap:[{v:0,t:'全部 13 章'}].concat(BANK.map(function(c){return {v:c.no,t:'第'+c.no+'章'}})),
   n  :[{v:30,t:'30 题'},{v:50,t:'50 题'},{v:100,t:'100 题'}],
   mix:[{v:'all',t:'单选 + 判断'},{v:'mc',t:'只出单选'},{v:'tf',t:'只出判断'}],
   src:[{v:'weak',t:'弱项优先'},{v:'rand',t:'全库随机'},{v:'wrong',t:'只抽错题'}],
-  min:[{v:60,t:'60 分钟'},{v:30,t:'30 分钟'},{v:0,t:'不限时'}]
+  min:[{v:60,t:'60 分钟'},{v:30,t:'30 分钟'},{v:0,t:'不限时'}],
+  order:[{v:1,t:'随机'},{v:0,t:'按题号'}]
 };
-var EXC=load('excfg',{n:100,mix:'all',src:'weak',min:60,chap:0});
+var EXC=load('excfg',{n:100,mix:'all',src:'weak',min:60,chap:0,mode:'step'});
 if(EXC.chap===undefined)EXC.chap=0;
+if(EXC.mode===undefined)EXC.mode='step';
+EXC.order=rnd?1:0;
 var EX={running:false,list:[],i:0,pick:{},flag:{},t0:0,used:0,tm:null};
 
 function exShuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
@@ -1237,6 +1187,22 @@ function exPick(type,k){
   if(k<=0)return [];
   return exPool(type).slice(0,k).map(function(q){return {t:type,q:q}});
 }
+/* 当前设置下这一轮会出哪些题 —— 三种模式共用 */
+function drillList(){
+  if(EXC.mode==='exam')return exBuild();
+  if(EXC.mode==='pick'){
+    var a=TFNO.slice();
+    if(EXC.chap)a=a.filter(function(q){return q.chap===EXC.chap});
+    if(EXC.src==='wrong')a=a.filter(function(q){return TFW[q.id]});
+    else if(EXC.src==='weak')a=exRank(a,'tf');
+    else a=exShuffle(a);
+    return a;
+  }
+  /* step：范围内的题全给，顺序由「顺序」那一行定 */
+  var mc=(EXC.mix==='tf')?[]:exPool('mc').map(function(q){return {t:'mc',q:q}});
+  var tf=(EXC.mix==='mc')?[]:exPool('tf').map(function(q){return {t:'tf',q:q}});
+  return mc.concat(tf);
+}
 function exBuild(){
   var want=EXC.n, wm, wt;
   if(EXC.mix==='mc'){wm=want;wt=0}
@@ -1250,17 +1216,30 @@ function exBuild(){
   }
   return a.concat(b);                            // 单选在前、判断在后，和真卷子一样
 }
+/* 三种模式共用这一张设置表，只是显示哪几行不一样 */
 function exPaintSetup(){
-  $('#exSetup').style.display='';$('#exRun').style.display='none';$('#exDone').style.display='none';
-  ['chap','n','mix','src','min'].forEach(function(k){
-    $('#ex'+k.charAt(0).toUpperCase()+k.slice(1)).innerHTML=EXOPT[k].map(function(o){
+  $('#qzSetup').style.display='';$('#qzRun').style.display='none';$('#qzDone').style.display='none';
+  $('#exRun').style.display='none';$('#exDone').style.display='none';
+  ['mode','chap','n','mix','src','min','order'].forEach(function(k){
+    var el=$('#'+(k==='order'?'order':'ex'+k.charAt(0).toUpperCase()+k.slice(1)));
+    el.innerHTML=EXOPT[k].map(function(o){
       return '<button class="tgl'+(EXC[k]===o.v?' on':'')+'" data-v="'+o.v+'">'+o.t+'</button>';
     }).join('');
   });
-  var n=exBuild().length;
+  var M=EXC.mode;
+  var show=function(id,on){$(id).style.display=on?'':'none'};
+  show('#lbN',M==='exam'); show('#exN',M==='exam');
+  show('#lbMin',M==='exam'); show('#exMin',M==='exam');
+  show('#lbOrder',M==='step'); show('#order',M==='step');
+  show('#exMix',M!=='pick'); $('#exMix').previousElementSibling.style.display=(M!=='pick')?'':'none';
+  var n=drillList().length;
   $('#exGo').disabled=!n;
-  $('#exGo').textContent=n?('开始（'+n+' 题）'):'抽不到题';
+  $('#exGo').textContent=n?({step:'开始练（',exam:'开始考（',pick:'开始挑错（'}[M]+n+' 题）'):'抽不到题';
   var tip='';
+  if(M==='step')tip+='<b>边练边看</b>：一题一判，选完当场给答案和解析。答错自动进错题本。<br>';
+  if(M==='exam')tip+='<b>模拟考</b>：答完统一交卷，中途可以回头改；交卷后按题型和章看正确率。<br>';
+  if(M==='pick')tip+='<b>判断题挑错</b>：只出答案是「错误」的那 '+TFNO.length+' 道判断题，'+
+    '先自己想「错在哪个词」，再翻答案自评。<b>这一批一律选「错误」就满分，所以不做判对错。</b><br>';
   if(EXC.chap){
     var bc=BANK.filter(function(c){return c.no===EXC.chap})[0];
     tip+='<b>只考第 '+EXC.chap+' 章 '+esc(bc?bc.title:'')+'</b>：这一章一共 '+
@@ -1278,24 +1257,34 @@ function exPaintSetup(){
        '及格线按 <b>80 分</b> 算（必背表第 1 章那句「理论 + 实操，均 80 分合格」）。';
   $('#exNote').innerHTML=tip;
   var hs=load('exhist',[]);
-  $('#exHistBox').style.display=hs.length?'':'none';
+  $('#exHistBox').style.display=(hs.length&&EXC.mode==='exam')?'':'none';
   $('#exHist').innerHTML=hs.slice(0,6).map(function(h){
     return '<div><i>'+h.d+'</i>　<b class="'+(h.score>=80?'pass':'fail')+'">'+h.score+' 分</b>　'+
            '<i>对 '+h.ok+'/'+h.n+'　用时 '+exMS(h.sec)+'</i></div>';
   }).join('');
 }
 function exMS(sec){var m=Math.floor(sec/60),s2=sec%60;return m+':'+(s2<10?'0':'')+s2}
-$('#exSetup').addEventListener('click',function(e){
+$('#qzSetup').addEventListener('click',function(e){
   var b=e.target.closest('.pick button[data-v]');if(!b)return;
-  var k=b.parentNode.id.slice(2).toLowerCase(), v=b.dataset.v;
-  EXC[k]=(k==='mix'||k==='src')?v:+v; save('excfg',EXC); exPaintSetup();
+  var pid=b.parentNode.id, k=(pid==='order')?'order':pid.slice(2).toLowerCase(), v=b.dataset.v;
+  EXC[k]=(k==='mix'||k==='src'||k==='mode')?v:+v;
+  if(k==='order'){rnd=!!EXC.order;save('rnd',rnd)}
+  save('excfg',EXC); exPaintSetup();
 });
-$('#exGo').onclick=function(){exStart(exBuild())};
+$('#exGo').onclick=function(){
+  var list=drillList(); if(!list.length)return;
+  if(EXC.mode==='exam'){exStart(list);return}
+  if(EXC.mode==='step'){start(list);return}
+  /* 挑错练习复用 pTF 那一套 UI，跳过它自己的范围选择 */
+  $('#tfDrill').style.display='';
+  goPage('pTF'); tdStart(list);
+};
 
 function exStart(list){
   if(!list.length)return;
   EX={running:true,list:list,i:0,pick:{},flag:{},t0:Date.now(),used:0,tm:null};
-  $('#exSetup').style.display='none';$('#exDone').style.display='none';$('#exRun').style.display='';
+  $('#qzSetup').style.display='none';$('#qzRun').style.display='none';$('#qzDone').style.display='none';
+  $('#exDone').style.display='none';$('#exRun').style.display='';
   EX.tm=setInterval(exTick,1000); exTick(); exShow();
 }
 function exTick(){
@@ -1399,7 +1388,7 @@ function exSubmit(force){
   hs.unshift({d:(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()),
               score:score,ok:ok,n:EX.list.length,sec:EX.used});
   save('exhist',hs.slice(0,10));
-  paintStat();paintPick();paintBank();
+  paintStat();paintBank();
   window.scrollTo(0,0);
 }
 $('#exList').addEventListener('click',function(e){
@@ -1471,7 +1460,7 @@ $('#tbPick').onclick=function(e){
 /* ══ 启动 ══ */
 $('#bMask').classList.toggle('on',bMask);
 $('#bTodo').classList.toggle('on',bTodo);
-paintStat();paintBank();paintPick();
+paintStat();paintBank();
 
 /* ══ 白天 / 夜间 ══
    按钮挂在顶栏「掌握 N/537」左边。切换后要**重画符号 canvas** ——
