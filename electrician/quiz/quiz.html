@@ -829,7 +829,9 @@ var rnd=load('rnd',true);
 var Q={list:[],i:0,ok:0,bad:[]};
 function start(list){
   Q={list:list,i:0,ok:0,bad:[]};
-  if(rnd)for(var i=Q.list.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=Q.list[i];Q.list[i]=Q.list[j];Q.list[j]=t}
+  /* 只有「全库随机」这一档才轮得到「顺序」那一行说了算 ——
+     选了弱项优先或只抽错题时，顺序已经是按优先级排好的，再洗一遍等于白排 */
+  if(EXC.src==='rand'&&rnd)for(var i=Q.list.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=Q.list[i];Q.list[i]=Q.list[j];Q.list[j]=t}
   $('#qzSetup').style.display='none';$('#qzDone').style.display='none';
   $('#exRun').style.display='none';$('#exDone').style.display='none';
   $('#qzRun').style.display='';
@@ -1230,13 +1232,18 @@ function exPaintSetup(){
   var show=function(id,on){$(id).style.display=on?'':'none'};
   show('#lbN',M==='exam'); show('#exN',M==='exam');
   show('#lbMin',M==='exam'); show('#exMin',M==='exam');
-  show('#lbOrder',M==='step'); show('#order',M==='step');
+  /* 顺序只在「边练边看 + 全库随机」时才有意义：
+     弱项优先和只抽错题的顺序是算出来的，不该再让这一行覆盖 */
+  var ordOn=(M==='step'&&EXC.src==='rand');
+  show('#lbOrder',ordOn); show('#order',ordOn);
   show('#exMix',M!=='pick'); $('#exMix').previousElementSibling.style.display=(M!=='pick')?'':'none';
   var n=drillList().length;
   $('#exGo').disabled=!n;
   $('#exGo').textContent=n?({step:'开始练（',exam:'开始考（',pick:'开始挑错（'}[M]+n+' 题）'):'抽不到题';
   var tip='';
   if(M==='step')tip+='<b>边练边看</b>：一题一判，选完当场给答案和解析。答错自动进错题本。<br>';
+  if(EXC.src==='weak')tip+='<b>弱项优先的排法</b>：错 2 次以上 → 错 1 次 → 还没标「掌握」→ 已掌握，'+
+    '同一档内部随机打散。<b>答对一次就移出错题本</b>，那道题自动降一档。<br>';
   if(M==='exam')tip+='<b>模拟考</b>：答完统一交卷，中途可以回头改；交卷后按题型和章看正确率。<br>';
   if(M==='pick')tip+='<b>判断题挑错</b>：只出答案是「错误」的那 '+TFNO.length+' 道判断题，'+
     '先自己想「错在哪个词」，再翻答案自评。<b>这一批一律选「错误」就满分，所以不做判对错。</b><br>';
@@ -1247,14 +1254,19 @@ function exPaintSetup(){
          (TFALL.filter(function(q){return q.chap===EXC.chap}).length)+' 道判断'+
          (n<EXC.n?('，凑不满 '+EXC.n+' 题，这套只有 '+n+' 题'):'')+'。<br>';
   }
-  if(EXC.src==='wrong')tip='<b>只抽错题</b>：错题本里现在有 '+(Object.keys(WRONG).length+Object.keys(TFW).length)+' 道，'+
-    (n<EXC.n?('凑不满 '+EXC.n+' 题，这套只有 '+n+' 题。'):'');
-  else if(EXC.src==='weak')tip='<b>弱项优先</b>：错过的排最前，其次是还没标「掌握」的。';
-  else tip='<b>全库随机</b>：不看你的记录，纯随机抽。';
-  tip+='<br>判断题库里 <b>错误 '+TFNO.length+' 题 / 正确 '+TFYES.length+' 题</b>，比例不真实 —— '+
-       '判断题全蒙「错误」也能对七成，<b>所以判断那部分的正确率别当水平看</b>，剩下的正确批整理完才准。'+
-       '<br>单选 : 判断按 <b>6 : 4</b> 抽 —— 这是我定的配比，不是考试的真实比例；'+
-       '及格线按 <b>80 分</b> 算（必背表第 1 章那句「理论 + 实操，均 80 分合格」）。';
+  /* 这几句原来写成 tip='...'（赋值），把上面累积的全冲掉了 —— 一律用 += */
+  if(EXC.src==='wrong')tip+='<b>只抽错题</b>：错题本里现在有 '+
+    (Object.keys(WRONG).length+Object.keys(TFW).length)+' 道'+
+    (n<EXC.n&&M==='exam'?('，凑不满 '+EXC.n+' 题，这套只有 '+n+' 题'):'')+'。<br>';
+  if(EXC.src==='rand')tip+='<b>全库随机</b>：不看你的记录，纯随机抽。<br>';
+  if(M==='exam'){
+    tip+='单选 : 判断按 <b>6 : 4</b> 抽 —— 这是我定的配比，不是考试的真实比例；'+
+         '及格线按 <b>80 分</b> 算（必背表第 1 章那句「理论 + 实操，均 80 分合格」）。<br>';
+  }
+  if(M!=='pick'&&EXC.mix!=='mc'){
+    tip+='判断题库里 <b>错误 '+TFNO.length+' 题 / 正确 '+TFYES.length+' 题</b>，比例不真实 —— '+
+         '判断题全蒙「错误」也能对大半，<b>所以判断那部分的正确率别当水平看</b>，剩下的正确批整理完才准。';
+  }
   $('#exNote').innerHTML=tip;
   var hs=load('exhist',[]);
   $('#exHistBox').style.display=(hs.length&&EXC.mode==='exam')?'':'none';
