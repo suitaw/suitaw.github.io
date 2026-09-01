@@ -336,6 +336,39 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 .tf-self{text-align:center;font-size:13px;color:var(--tx3);margin:14px 0 6px}
 .tf-btns{display:flex;gap:8px}
 .tf-btns .big{margin:0}
+/* ── 术语：正文里点得开的词 ──
+   零基础最卡的不是题，是题里那些词（相电压 / 感抗 / 零序电流互感器 / Ⅱ类工具）。
+   命中术语表的词加一条虚下划线，点一下从底部弹出解释卡，不用离开当前题。 */
+.tm{
+  border-bottom:1px dashed var(--blue);color:var(--blue);cursor:pointer;
+  font-weight:inherit;padding-bottom:1px;
+}
+.tmov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:none}
+.tmov.on{display:block}
+.tmbox{
+  position:absolute;left:0;right:0;bottom:0;background:var(--card);
+  border-top:1px solid var(--line);border-radius:16px 16px 0 0;
+  padding:14px 16px calc(16px + env(safe-area-inset-bottom,0px));
+  max-height:74dvh;overflow:auto;
+}
+@supports not (height:1dvh){.tmbox{max-height:74vh}}
+.tmbox .h{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.tmbox .w{font-size:19px;font-weight:800;letter-spacing:.3px}
+.tmbox .cat{font-size:11px;font-weight:700;color:var(--blue);background:var(--blue-l);border-radius:5px;padding:2px 7px}
+.tmbox .su{font-size:12.5px;color:var(--tx3);margin:2px 0 8px;font-variant-numeric:tabular-nums}
+.tmbox .su b{color:var(--tx2)}
+.tmbox .d{font-size:15.5px;line-height:1.75;font-weight:700;margin-bottom:8px}
+.tmbox .m{font-size:14px;line-height:1.8;color:var(--tx2)}
+.tmbox .ask{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);
+  font-size:12.5px;color:var(--tx3);line-height:1.7}
+.tmbox .cl{margin-top:12px}
+/* 术语表页 */
+.tmlist .card{padding:0}
+.tmrow{padding:11px 14px;border-top:1px solid var(--line)}
+.tmrow:first-child{border-top:0}
+.tmrow .w{font-size:15px;font-weight:700}
+.tmrow .s{font-size:12px;color:var(--tx3);margin-left:6px;font-weight:600}
+.tmrow .d{font-size:13.5px;line-height:1.7;color:var(--tx2);margin-top:2px}
 .empty{text-align:center;color:var(--tx3);font-size:14px;padding:34px 10px}
 </style>
 </head>
@@ -544,6 +577,8 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 
 <!-- 图标由 elec-icons.js 在下面填进 .ic 里。原来这四个是 emoji，
      各家系统画得不一样、和全站那套线性图标也不是一路 —— 换成 SVG。 -->
+<div class="tmov" id="tmOv"><div class="tmbox" id="tmBox"></div></div>
+
 <nav class="nav">
   <button class="on" data-p="pBank"><span class="ic" data-ei="book"></span>题库</button>
   <button data-p="pQuiz"><span class="ic" data-ei="target"></span>练习</button>
@@ -558,6 +593,7 @@ document.querySelectorAll('.nav .ic[data-ei]').forEach(function(el){
 });
 </script>
 
+<script src="../elec-terms.js"></script>
 <script src="../elec-symbols.js"></script>
 <script>
 /* elec-symbols.js 是在 elec-theme.js 之后才加载的，所以它错过了开头那次同步 —— 这里补一次 */
@@ -606,6 +642,67 @@ function md(s){
 }
 var $=function(s){return document.querySelector(s)},$$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
 
+/* ══ 术语：正文里把认识的词标出来，点开解释 ══
+   走文本节点（TreeWalker）而不是 innerHTML 正则替换 —— 后者会把标签属性
+   里的字也换掉，整段 HTML 当场坏掉。
+   每个词**在一张卡里只标第一次**，否则一屏全是虚下划线，反而看不清。 */
+function linkTerms(root,force){
+  if(!root||!window.ETERM_RE)return;
+  var boxes=root.classList&&root.classList.contains('q')?[root]:root.querySelectorAll('.q,.key,.note,.tip,.tf-sec');
+  Array.prototype.forEach.call(boxes.length?boxes:[root],function(box){
+    /* 反复换内容的容器（题干、解析）要传 force，否则标过一次就再也不标了 */
+    if(!force&&box.dataset&&box.dataset.tmd)return;
+    if(box.dataset)box.dataset.tmd='1';
+    var seen={}, nodes=[];
+    var w=document.createTreeWalker(box,NodeFilter.SHOW_TEXT,{acceptNode:function(n){
+      var p=n.parentNode;
+      if(!p||!n.nodeValue||n.nodeValue.length<2)return NodeFilter.FILTER_REJECT;
+      var t=p.nodeName;
+      if(t==='CODE'||t==='CANVAS'||t==='SCRIPT'||t==='STYLE'||t==='BUTTON')return NodeFilter.FILTER_REJECT;
+      if(p.classList&&p.classList.contains('tm'))return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }});
+    var n; while(n=w.nextNode())nodes.push(n);
+    nodes.forEach(function(node){
+      var txt=node.nodeValue, re=new RegExp(ETERM_RE.source,'g'), m, out=null, last=0;
+      while(m=re.exec(txt)){
+        var key=ETERM_MAP[m[0]]; if(!key||seen[key])continue;
+        seen[key]=1;
+        out=out||document.createDocumentFragment();
+        if(m.index>last)out.appendChild(document.createTextNode(txt.slice(last,m.index)));
+        var b=document.createElement('b');
+        b.className='tm'; b.dataset.t=key; b.textContent=m[0];
+        out.appendChild(b); last=m.index+m[0].length;
+      }
+      if(out){
+        if(last<txt.length)out.appendChild(document.createTextNode(txt.slice(last)));
+        node.parentNode.replaceChild(out,node);
+      }
+    });
+  });
+}
+function tmShow(key){
+  var t=ETERMS[key]; if(!t)return;
+  var su=[];
+  if(t.s)su.push('符号 <b>'+esc(t.s)+'</b>');
+  if(t.u)su.push('单位 <b>'+esc(t.u)+'</b>');
+  if(t.k&&t.k.length)su.push('也叫 <b>'+t.k.map(esc).join(' / ')+'</b>');
+  $('#tmBox').innerHTML=
+    '<div class="h"><span class="w">'+esc(key)+'</span><span class="cat">'+esc(t.c)+'</span></div>'+
+    (su.length?'<div class="su">'+su.join('　·　')+'</div>':'<div style="height:6px"></div>')+
+    '<div class="d">'+md(t.d)+'</div>'+
+    (t.m?'<div class="m">'+md(t.m)+'</div>':'')+
+    '<div class="ask">这一条还是看不懂，或者你碰到别的不认识的词 —— <b>直接跟我说，我加进来。</b>'+
+    '　全部词条在「必背表」页的<b>术语表</b>里。</div>'+
+    '<button class="big ghost cl" id="tmClose">关上</button>';
+  $('#tmOv').classList.add('on');
+}
+document.addEventListener('click',function(e){
+  var t=e.target.closest('.tm');
+  if(t){tmShow(t.dataset.t);return}
+  if(e.target.id==='tmClose'||e.target.id==='tmOv'){$('#tmOv').classList.remove('on')}
+});
+
 /* 全部题目扁平化 */
 var ALL=[],SEEN={};
 QUIZ_CHAPTERS.forEach(function(c){c.groups.forEach(function(g){g.items.forEach(function(q){
@@ -629,6 +726,10 @@ function paintStat(){
   if(curPage==='pTable'){                       // 必背表页两套表都能看，跟着切换条走
     var nt=(tbWhich==='tf'?TF_CHAPTERS:QUIZ_CHAPTERS).filter(function(c){return c.table}).length;
     $('#statT').innerHTML='<b>'+nt+'</b> 张表';
+    if(tbWhich==='term'){
+      $('#statT').innerHTML='<b>'+(window.ETERMS?Object.keys(ETERMS).length:0)+'</b> 条';
+      $('#subT').textContent='术语表 · 不认识的词点开看';return;
+    }
     $('#subT').textContent='必背表 · '+(tbWhich==='tf'?'判断题':'单选题')+'的表';
     return;
   }
@@ -806,7 +907,10 @@ $('#bank').addEventListener('click',function(e){
     if(bTodo)paintBank();}
 });
 $('#bank').addEventListener('toggle',function(e){
-  var d=e.target; if(d.tagName!=='DETAILS'||bKw||bTodo)return;
+  var d=e.target; if(d.tagName!=='DETAILS')return;
+  /* 术语标注是懒的：展开哪一组才标哪一组 —— 全页 900 多张卡一次性走 TreeWalker 会卡住 */
+  if(d.open&&d.classList.contains('grp'))linkTerms(d);
+  if(bKw||bTodo)return;
   var open=load('bopen',{}), k=d.dataset.c?('c'+d.dataset.c):d.dataset.g;
   if(!k)return; if(d.open)open[k]=1;else delete open[k]; save('bopen',open);
 },true);
@@ -845,7 +949,7 @@ function showQ(){
   $('#qzId').textContent='第 '+q.id+' 题 · 第 '+q.chap+' 章';
   $('#qzWarn').style.display=(it.t==='mc'?(q.note?'':'none'):(q.warn?'':'none'));
   $('#qzWarn').textContent=(it.t==='mc')?'解析有误':'存疑 / 原解析有误';
-  $('#qzT').textContent=q.question;
+  $('#qzT').textContent=q.question; linkTerms($('#qzT'),true);
   var ks=(it.t==='tf')?['正确','错误']:['A','B','C'];
   $('#qzOpts').innerHTML=ks.map(function(k){
     return '<button class="qz-opt" data-k="'+esc(k)+'">'+
@@ -876,6 +980,7 @@ $('#qzOpts').onclick=function(e){
     ? ('<span class="lb">记忆要点</span>'+mdRich(q.tip)+
        (q.note?'<br><br><b style="color:var(--amber)">注意：这题 App 里的 AI 解析结论是错的，别按它记。</b>':''))
     : tfAns(q);
+  linkTerms($('#qzTip'),true);
   $('#qzNext').textContent=(Q.i+1>=Q.list.length)?'看成绩':'下一题';
   $('#qzAfter').style.display='';
   $('#qzScore').textContent='答对 '+Q.ok;
@@ -890,7 +995,7 @@ function finish(){
   $('#dWrong').style.display=Q.bad.length?'':'none';
   $('#dList').innerHTML=Q.bad.length?('<div class="card pad"><div style="font-size:14px;font-weight:700;margin-bottom:8px">这轮答错的题</div>'+
      Q.bad.map(function(x){return x.t==='mc'?qCard(x.q,true):tfCard(x.q,true)}).join('')+'</div>'):'';
-  paintSyms($('#dList'));
+  paintSyms($('#dList'));linkTerms($('#dList'));
   paintBank();window.scrollTo(0,0);
 }
 $('#dList').addEventListener('click',function(e){
@@ -1041,6 +1146,7 @@ function tdShow(){
 }
 $('#tdShow').onclick=function(){
   $('#tdBody').innerHTML=tfAns(D.list[D.i]);
+  linkTerms($('#tdBody'),true);
   $('#tdAsk').style.display='none';$('#tdAfter').style.display='';
 };
 function tdGrade(got){
@@ -1062,6 +1168,7 @@ function tdFinish(){
   /* 没想到的题在成绩页直接摊开，不再盖住 —— 这时候要的是马上重看正确说法 */
   $('#tdList').innerHTML=D.miss.length?('<div class="card pad"><div style="font-size:14px;font-weight:700;margin-bottom:8px">这轮没想到的题</div>'+
     D.miss.map(function(q){return tfCard(q,true)}).join('')+'</div>'):'';
+  linkTerms($('#tdList'));
   window.scrollTo(0,0);
 }
 $('#tdList').addEventListener('click',function(e){
@@ -1119,7 +1226,7 @@ function paintWB(){
         '<button class="mini" data-rm="'+x.t+':'+x.q.id+'" style="margin-top:8px">✓ 拿下了，移出错题本</button>'+
       '</div>';
     }).join('');
-  paintSyms($('#wbList'));
+  paintSyms($('#wbList'));linkTerms($('#wbList'));
 }
 $('#wbPick').onclick=function(e){
   var b=e.target.closest('button[data-w]');if(!b)return;
@@ -1316,7 +1423,7 @@ function exShow(){
   $('#exId').textContent='第 '+q.id+' 题';
   $('#exKind').className='wb-tag'+(it.t==='tf'?' tf':'');
   $('#exKind').textContent=(it.t==='tf'?'判断题':'单选题')+' · 第 '+q.chap+' 章';
-  $('#exT').textContent=q.question;
+  $('#exT').textContent=q.question; linkTerms($('#exT'),true);
   var ks=(it.t==='tf')?['正确','错误']:['A','B','C'];
   $('#exOpts').innerHTML=ks.map(function(k){
     var sel=(EX.pick[EX.i]===k)?' sel':'';
@@ -1394,7 +1501,7 @@ function exSubmit(force){
         (x.t==='tf'?'判断':'单选')+' 第 '+x.q.id+' 题</span></div>'+
         (x.t==='mc'?qCard(x.q,true):tfCard(x.q,true));
     }).join('')+'</div>'):'';
-  paintSyms($('#exList'));
+  paintSyms($('#exList'));linkTerms($('#exList'));
   var hs=load('exhist',[]);
   var d=new Date(), pad=function(x){return (x<10?'0':'')+x};
   hs.unshift({d:(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()),
@@ -1451,18 +1558,43 @@ function mdTable(src){
 /* 两套题库各有一批章末表，章号是对齐的，但内容不一样，用一个切换条分开看 */
 var tbWhich=load('tbwhich','q');
 function paintTable(){
-  var src=(tbWhich==='tf')?TF_CHAPTERS:QUIZ_CHAPTERS, has=src.filter(function(c){return c.table});
+  var nTerm=window.ETERMS?Object.keys(ETERMS).length:0;
   $('#tbPick').innerHTML=
     '<button class="tgl'+(tbWhich==='q'?' on':'')+'" data-w="q">单选题的表 '+
       QUIZ_CHAPTERS.filter(function(c){return c.table}).length+' 张</button>'+
     '<button class="tgl'+(tbWhich==='tf'?' on':'')+'" data-w="tf">判断题的表 '+
-      TF_CHAPTERS.filter(function(c){return c.table}).length+' 张</button>';
+      TF_CHAPTERS.filter(function(c){return c.table}).length+' 张</button>'+
+    (nTerm?'<button class="tgl'+(tbWhich==='term'?' on':'')+'" data-w="term">术语表 '+nTerm+' 条</button>':'');
+  if(tbWhich==='term'){paintTerms();return}
+  var src=(tbWhich==='tf')?TF_CHAPTERS:QUIZ_CHAPTERS, has=src.filter(function(c){return c.table});
   var html='<div class="note">考前一天把这 '+has.length+' 张表过一遍。数字类的题在真题里占比很高，而且是唯一能靠死记拿分的部分。<br>表格太宽时可以左右滑动。</div>';
   has.forEach(function(c){
     html+='<div class="card pad"><div class="chap-t" style="margin-bottom:2px">第 '+c.no+' 章 '+esc(c.title)+' · 必背</div>'+
       mdTable(c.table)+'</div>';
   });
   $('#tb').innerHTML=html;
+}
+/* 术语表：按分类通读用。正文里点词弹出的是同一份数据 */
+function paintTerms(){
+  var cats={},order=[];
+  Object.keys(ETERMS).forEach(function(k){
+    var c=ETERMS[k].c; if(!cats[c]){cats[c]=[];order.push(c)}
+    cats[c].push(k);
+  });
+  var html='<div class="note">题目和记忆要点里凡是这些词，都<b>带虚下划线、点一下就能看解释</b>，不用翻到这一页来。'+
+    '<br><b>碰到没收进来的词，直接跟我说，我加。</b></div><div class="tmlist">';
+  order.forEach(function(c){
+    html+='<div class="card"><div class="pad" style="padding-bottom:6px"><div class="chap-t">'+esc(c)+
+      '<span class="chap-c" style="margin-left:8px">'+cats[c].length+' 条</span></div></div>';
+    cats[c].forEach(function(k){
+      var t=ETERMS[k];
+      html+='<div class="tmrow"><div><span class="w tm" data-t="'+esc(k)+'">'+esc(k)+'</span>'+
+        (t.s||t.u?'<span class="s">'+esc([t.s,t.u].filter(Boolean).join(' · '))+'</span>':'')+'</div>'+
+        '<div class="d">'+md(t.d)+'</div></div>';
+    });
+    html+='</div>';
+  });
+  $('#tb').innerHTML=html+'</div>';
 }
 $('#tbPick').onclick=function(e){
   var b=e.target.closest('button[data-w]');if(!b||b.dataset.w===tbWhich)return;
