@@ -387,7 +387,8 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
   <section class="page on" id="pBank">
     <div class="note">
       <b>这一页只管「学」</b>：一章里是本章主线、考点组和全部题目（单选 / 判断红底＝这句是错的 /
-      判断绿底＝这句是对的），每题都带分析。<b>出题去「练习」，数字表去「必背表」。</b><br>
+      判断绿底＝这句是对的），每题都带分析。<b>出题去「练习」，数字表和术语表去「必背表」。</b><br>
+      不认识的词带<b>虚下划线，点一下就有解释</b>。<br>
       <b id="badN">—</b>　答案一律取 App 页面标注的「正确答案」，记忆要点是重写的，没照抄原解析。
     </div>
     <div class="bar">
@@ -1371,8 +1372,8 @@ function exPaintSetup(){
          '及格线按 <b>80 分</b> 算（必背表第 1 章那句「理论 + 实操，均 80 分合格」）。<br>';
   }
   if(M!=='pick'&&EXC.mix!=='mc'){
-    tip+='判断题库里 <b>错误 '+TFNO.length+' 题 / 正确 '+TFYES.length+' 题</b>，比例不真实 —— '+
-         '判断题全蒙「错误」也能对大半，<b>所以判断那部分的正确率别当水平看</b>，剩下的正确批整理完才准。';
+    tip+='判断题库 <b>错误 '+TFNO.length+' 题 / 正确 '+TFYES.length+' 题</b>，'+
+         '两批都整理完了，比例接近真实 —— <b>判断那部分的正确率现在可以当水平看</b>。';
   }
   $('#exNote').innerHTML=tip;
   var hs=load('exhist',[]);
