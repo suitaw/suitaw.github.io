@@ -10,7 +10,7 @@ const QUIZ_CHAPTERS = [
     no: 3, title: '思想道德',
     groups: [
       {
-        code: '3-4', title: '社会主义核心价值观', file: '../c3-4.html',
+        code: '3-4', title: '社会主义核心价值观', file: '../p2c3-4.html',
         key: '24 字三层面：国家层面富强民主文明和谐 / 社会层面自由平等公正法治 / 个人层面爱国敬业诚信友善。',
         items: [
           { id: 1, year: '2025', multi: false,
@@ -21,7 +21,7 @@ const QUIZ_CHAPTERS = [
         ]
       },
       {
-        code: '3-5', title: '道德规范', file: '../c3-5.html',
+        code: '3-5', title: '道德规范', file: '../p2c3-5.html',
         key: '核心是为人民服务，原则是集体主义（无私奉献一心为公 / 先公后私先人后己 / 顾全大局遵纪守法热爱祖国诚实劳动 三个层次）。',
         items: [
           { id: 2, year: '2022', multi: false,
@@ -42,7 +42,7 @@ const QUIZ_CHAPTERS = [
     no: 4, title: '法治知识',
     groups: [
       {
-        code: '4-1', title: '社会主义法律的特征和运行', file: '../c4-1.html',
+        code: '4-1', title: '社会主义法律的特征和运行', file: '../p2c4-1.html',
         key: '我国社会主义法律的本质：党的主张和人民意志的统一 / 科学性先进性 / 推动社会变革与进步（不是"确立维护"变革）。',
         items: [
           { id: 4, year: '2024', multi: false,
@@ -53,7 +53,7 @@ const QUIZ_CHAPTERS = [
         ]
       },
       {
-        code: '4-3', title: '宪法及宪法权威', file: '../c4-3.html',
+        code: '4-3', title: '宪法及宪法权威', file: '../p2c4-3.html',
         key: '民族区域自治是基本民族政策；宪法修正案由全国人大主席团公布，不是国家主席；1954年宪法是新中国第一部宪法。',
         items: [
           { id: 5, year: '2024', multi: false,
@@ -69,7 +69,7 @@ const QUIZ_CHAPTERS = [
         ]
       },
       {
-        code: '4-5', title: '与国防和军队相关的法律法规', file: '../c4-5.html',
+        code: '4-5', title: '与国防和军队相关的法律法规', file: '../p2c4-5.html',
         key: '中央军委领导管理解放军武警建设；预备役部队属于解放军；服兵役应当优先；学校的国防教育是全民国防教育的基础，方针是全民参与长期坚持讲求实效。',
         items: [
           { id: 7, year: '2023', multi: false,
