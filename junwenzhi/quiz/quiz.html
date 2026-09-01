@@ -226,6 +226,9 @@ var LS='jw_quiz_';
 function load(k,d){try{var v=localStorage.getItem(LS+k);return v==null?d:JSON.parse(v)}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v))}catch(e){}}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+/* 题干和记忆要点里允许 <b> 和 <br>（数据是我们自己写的）：先整体转义，再把这两个标签放回来。
+   直接 innerHTML 不行——题面里有《》和引号还好，但一旦有人写了别的标签就失控了。 */
+function rich(s){return esc(s).replace(/&lt;(\/?)b&gt;/g,'<$1b>').replace(/&lt;br\s*\/?&gt;/g,'<br>')}
 var $=function(s){return document.querySelector(s)},$$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
 function shortCode(code){var m=/^p(\d)c(\d+)-(.+)$/.exec(code);return m?m[1]+'篇'+m[2]+'-'+m[3]:code}
 function letters(q){return Object.keys(q.options).sort()}
@@ -276,10 +279,10 @@ function qCard(q){
       (q.multi?'<span class="q-multi">多选题</span>':'')+
       (WRONG[q.id]?'<span class="q-multi" style="color:var(--bad);background:var(--bad-bg)">错过 '+WRONG[q.id]+' 次</span>':'')+
     '</div>'+
-    '<div class="q-t">'+esc(q.q)+'</div>'+
+    '<div class="q-t">'+rich(q.q)+'</div>'+
     letters(q).map(function(k){return optRow(q,k)}).join('')+
     '<div class="ans">【答案】'+q.answer+'</div>'+
-    '<div class="tip"><span class="lb">记忆要点</span>'+esc(q.tip)+'</div>'+
+    '<div class="tip"><span class="lb">记忆要点</span>'+rich(q.tip)+'</div>'+
     '<div class="q-acts"><button class="mini'+(isM(q.id)?' done':'')+'" data-m="'+q.id+'">'+
       (isM(q.id)?'✓ 已掌握':'标记掌握')+'</button></div>'+
   '</div>';
@@ -380,7 +383,7 @@ function showQ(){
   $('#qzId').textContent=q.year+' · '+shortCode(q.gcode)+' '+q.grpT;
   $('#qzMulti').style.display=q.multi?'':'none';
   $('#qzHint').style.display=q.multi?'':'none';
-  $('#qzT').textContent=q.q;
+  $('#qzT').innerHTML=rich(q.q);
   $('#qzOpts').innerHTML=letters(q).map(function(k){
     return '<button class="qz-opt" data-k="'+k+'"><span class="k">'+k+'</span><span>'+esc(q.options[k])+'</span></button>';
   }).join('');
@@ -403,7 +406,7 @@ function reveal(pickedArr){
   paintStat();
   $('#qzV').className='verdict '+(right?'y':'n');
   $('#qzV').textContent=right?'✓ 答对了':'✗ 答错了　正确答案是 '+q.answer;
-  $('#qzTip').innerHTML='<span class="lb">记忆要点</span>'+esc(q.tip);
+  $('#qzTip').innerHTML='<span class="lb">记忆要点</span>'+rich(q.tip);
   $('#qzNext').textContent=(Q.i+1>=Q.list.length)?'看成绩':'下一题';
   $('#qzAfter').style.display='';
   $('#qzScore').textContent='答对 '+Q.ok;
