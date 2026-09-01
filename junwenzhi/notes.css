@@ -143,3 +143,24 @@ footer.pagefoot{margin-top:30px;padding-top:16px;border-top:1px solid var(--line
   display:flex;align-items:center;justify-content:center;}
 .seclist .todo .qc{flex:none;font-size:.7rem;color:var(--ink-soft);background:var(--surface-2);
   border-radius:999px;padding:3px 8px;align-self:center;}
+
+/* ── 必背卡 ──
+   他的原话：「哪些需要背呢？怎么记呢？有点无从下手，都需要背吗？」
+   判断标准：**换一个词就变错的才要背**；论述性的读懂即可。
+   所以每节顶部汇总一张，只列真正要背的，其余正文当理解材料读。 */
+.mustknow{border:2px solid var(--crimson);border-radius:12px;margin:16px 0 20px;overflow:hidden;background:var(--surface);}
+.mustknow .mk-hd{background:var(--crimson);color:#fdf9f2;padding:9px 14px;font-weight:700;font-size:.92rem;}
+.mustknow .mk-hd small{display:block;font-weight:400;font-size:.72rem;opacity:.85;margin-top:2px;}
+.mustknow .mk-body{padding:11px 14px 13px;}
+.mk-row{display:grid;grid-template-columns:4.2em 1fr;gap:9px;padding:8px 0;border-top:1px solid var(--line-soft);
+  font-size:.86rem;line-height:1.65;}
+.mk-row:first-of-type{border-top:none;padding-top:2px;}
+.mk-row .lv{font-size:.68rem;font-weight:700;border-radius:5px;padding:2px 0;text-align:center;
+  align-self:start;margin-top:3px;}
+.mk-row .lv.a{background:var(--crimson);color:#fdf9f2;}
+.mk-row .lv.b{background:var(--brass);color:#fdf9f2;}
+.mk-row .lv.c{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--line);}
+.mk-row b{color:var(--crimson);}
+.mk-tip{margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);
+  font-size:.78rem;color:var(--ink-soft);line-height:1.7;}
+.mk-tip b{color:var(--navy);}
