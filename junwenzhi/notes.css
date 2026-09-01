@@ -123,3 +123,13 @@ footer.pagefoot{margin-top:30px;padding-top:16px;border-top:1px solid var(--line
   border-bottom:1px dashed var(--line);
 }
 .pian:first-of-type{margin-top:14px;}
+
+/* 列多的表在窄屏上会被压成细条（每列 90px，字竖着排）。
+   给它一个最小宽度，让 .tbl-wrap 的 overflow-x 真正起作用，改成横向滑动。 */
+.tbl-wrap.wide table{min-width:520px;}
+.tbl-wrap.wide{position:relative;}
+.tbl-wrap.wide::after{
+  content:"← 可左右滑动 →";display:block;text-align:center;
+  font-size:.68rem;color:var(--ink-soft);padding:5px 0 3px;
+  border-top:1px solid var(--line-soft);background:var(--surface-2);
+}
