@@ -1,16 +1,22 @@
 /* 军队文职考试 · 真题数据
    来源：华图教育《军队文职人员招聘考试 公共科目 基本知识+岗位能力（上）》2026版
-   按小节分组，group.code 对应笔记页面 c3-4.html / c4-5.html 这类文件名（去掉 .html）。
+   按小节分组。**group.code 就是笔记页面的文件名去掉 .html**（如 'p2c3-4' → p2c3-4.html），
+   所以不再单独存 file 字段——两处都写就会有两份真相。
+   章一级带 pian（第几篇）和 cid（'p2c3'，篇+章，用来当 localStorage 的展开键和 DOM 的 data-c）。
+   **篇号一定要带**：第一篇和第二篇都有第 3、4 章，只写章号会重号（笔记文件当初改名成
+   p1c1-1 / p2c3-1 就是为了这个，题库这边同一个坑）。
    题目字段：id 全局唯一 / year 真题年份 / multi 是否多选 / q 题干 /
              options 选项对象（键就是选项字母，会按字母序渲染）/
-             answer 单选是字母，多选是排好序的字母连写（如 'ABCDE'）/ tip 记忆要点解析
+             answer 单选是字母，多选是排好序的字母连写（如 'ABCDE'）/ tip 记忆要点解析 /
+             src 可选，题的出处（篇末「华图题库精选」的题要写，如 '篇1精选·单选7'，
+             这样既能按节练、也能把整篇那批筛出来连着做）
    以后照着这个格式往对应 group 的 items 里加就行，加新小节就整段复制一个 group。 */
 const QUIZ_CHAPTERS = [
   {
-    no: 3, title: '思想道德',
+    pian: 2, pianT: '人文与社会', no: 3, cid: 'p2c3', title: '思想道德',
     groups: [
       {
-        code: '3-4', title: '社会主义核心价值观', file: '../p2c3-4.html',
+        code: 'p2c3-4', title: '社会主义核心价值观',
         key: '24 字三层面：国家层面富强民主文明和谐 / 社会层面自由平等公正法治 / 个人层面爱国敬业诚信友善。',
         items: [
           { id: 1, year: '2025', multi: false,
@@ -21,7 +27,7 @@ const QUIZ_CHAPTERS = [
         ]
       },
       {
-        code: '3-5', title: '道德规范', file: '../p2c3-5.html',
+        code: 'p2c3-5', title: '道德规范',
         key: '核心是为人民服务，原则是集体主义（无私奉献一心为公 / 先公后私先人后己 / 顾全大局遵纪守法热爱祖国诚实劳动 三个层次）。',
         items: [
           { id: 2, year: '2022', multi: false,
@@ -39,10 +45,10 @@ const QUIZ_CHAPTERS = [
     ]
   },
   {
-    no: 4, title: '法治知识',
+    pian: 2, pianT: '人文与社会', no: 4, cid: 'p2c4', title: '法治知识',
     groups: [
       {
-        code: '4-1', title: '社会主义法律的特征和运行', file: '../p2c4-1.html',
+        code: 'p2c4-1', title: '社会主义法律的特征和运行',
         key: '我国社会主义法律的本质：党的主张和人民意志的统一 / 科学性先进性 / 推动社会变革与进步（不是"确立维护"变革）。',
         items: [
           { id: 4, year: '2024', multi: false,
@@ -53,7 +59,7 @@ const QUIZ_CHAPTERS = [
         ]
       },
       {
-        code: '4-3', title: '宪法及宪法权威', file: '../p2c4-3.html',
+        code: 'p2c4-3', title: '宪法及宪法权威',
         key: '民族区域自治是基本民族政策；宪法修正案由全国人大主席团公布，不是国家主席；1954年宪法是新中国第一部宪法。',
         items: [
           { id: 5, year: '2024', multi: false,
@@ -69,7 +75,7 @@ const QUIZ_CHAPTERS = [
         ]
       },
       {
-        code: '4-5', title: '与国防和军队相关的法律法规', file: '../p2c4-5.html',
+        code: 'p2c4-5', title: '与国防和军队相关的法律法规',
         key: '中央军委领导管理解放军武警建设；预备役部队属于解放军；服兵役应当优先；学校的国防教育是全民国防教育的基础，方针是全民参与长期坚持讲求实效。',
         items: [
           { id: 7, year: '2023', multi: false,

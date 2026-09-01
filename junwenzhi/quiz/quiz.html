@@ -74,6 +74,8 @@ main{padding:12px 14px 24px;max-width:720px;margin:0 auto;}
 
 /* 章 / 节 折叠 */
 .chap{margin-bottom:12px;}
+.pian-h{font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:.6px;color:var(--brass);margin:14px 2px 8px;padding-bottom:5px;border-bottom:1px solid var(--line);}
+.pian-h:first-child{margin-top:2px;}
 .chap>summary,.grp>summary{list-style:none;cursor:pointer;}
 .chap>summary::-webkit-details-marker,.grp>summary::-webkit-details-marker{display:none;}
 .chap-h{display:flex;align-items:center;gap:9px;min-height:50px;padding:8px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);}
@@ -225,6 +227,7 @@ function load(k,d){try{var v=localStorage.getItem(LS+k);return v==null?d:JSON.pa
 function save(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v))}catch(e){}}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 var $=function(s){return document.querySelector(s)},$$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+function shortCode(code){var m=/^p(\d)c(\d+)-(.+)$/.exec(code);return m?m[1]+'篇'+m[2]+'-'+m[3]:code}
 function letters(q){return Object.keys(q.options).sort()}
 function rightSet(q){return q.multi?q.answer.split(''):[q.answer]}
 
@@ -232,7 +235,7 @@ function rightSet(q){return q.multi?q.answer.split(''):[q.answer]}
 var ALL=[],SEEN={};
 QUIZ_CHAPTERS.forEach(function(c){c.groups.forEach(function(g){g.items.forEach(function(q){
   if(SEEN[q.id])return; SEEN[q.id]=1;
-  ALL.push(Object.assign({},q,{chap:c.no,chapT:c.title,gcode:g.code,grpT:g.title}));
+  ALL.push(Object.assign({},q,{cid:c.cid,chap:c.no,pian:c.pian,chapT:c.title,gcode:g.code,grpT:g.title}));
 })})});
 ALL.sort(function(a,b){return a.id-b.id});
 
@@ -288,7 +291,7 @@ function hit(q){
   return s.indexOf(kw)>=0;
 }
 function paintReview(){
-  var openMap=load('open',{}), html='';
+  var openMap=load('open',{}), html='', curPian=null;
   QUIZ_CHAPTERS.forEach(function(c){
     var gs=c.groups.map(function(g){
       var its=g.items.filter(hit);
@@ -297,14 +300,16 @@ function paintReview(){
     }).filter(Boolean);
     if(!gs.length)return;
     var n=gs.reduce(function(a,x){return a+x.its.length},0);
-    var forceOpen=(kw||todo)?true:!!openMap['c'+c.no];
-    html+='<details class="chap"'+(forceOpen?' open':'')+' data-c="'+c.no+'"><summary><div class="chap-h">'+
+    if(c.pian!==curPian){curPian=c.pian;
+      html+='<div class="pian-h">第'+c.pian+'篇 · '+esc(c.pianT||'')+'</div>';}
+    var forceOpen=(kw||todo)?true:!!openMap[c.cid];
+    html+='<details class="chap"'+(forceOpen?' open':'')+' data-c="'+c.cid+'"><summary><div class="chap-h">'+
       '<span class="chap-n">第'+c.no+'章</span><span class="chap-t">'+esc(c.title)+'</span>'+
       '<span class="chap-c">'+n+' 题</span><span class="caret">▶</span></div></summary><div class="chap-body">';
     gs.forEach(function(x){
       var gOpen=(kw||todo)?true:!!openMap[x.g.code];
       html+='<details class="grp" id="g-'+x.g.code+'"'+(gOpen?' open':'')+' data-g="'+x.g.code+'"><summary><div class="grp-h">'+
-        '<span class="grp-code">'+x.g.code+'</span><span class="grp-t">'+esc(x.g.title)+'</span>'+
+        '<span class="grp-code">'+shortCode(x.g.code)+'</span><span class="grp-t">'+esc(x.g.title)+'</span>'+
         '<span class="grp-c">'+x.its.length+'</span><span class="caret">▶</span></div></summary>'+
         (x.g.key?'<div class="key"><span class="lb">核心考点</span>'+esc(x.g.key)+'</div>':'')+
         x.its.map(qCard).join('')+'</details>';
@@ -333,8 +338,11 @@ $('#q').oninput=function(){var v=this.value.trim();clearTimeout(tmr);tmr=setTime
 
 /* ══ 刷题页 ══ */
 var SCOPES=[{k:'all',t:'全部 '+ALL.length+' 题'},{k:'todo',t:'未掌握的'},{k:'wrong',t:'错题本'}];
-QUIZ_CHAPTERS.forEach(function(c){c.groups.forEach(function(g){SCOPES.push({k:'g'+g.code,t:g.code+' '+g.title})})});
+QUIZ_CHAPTERS.forEach(function(c){c.groups.forEach(function(g){SCOPES.push({k:'g'+g.code,t:shortCode(g.code)+' '+g.title})})});
 var scope=load('scope','all'), rnd=load('rnd',true);
+/* 旧版存的 scope 是 'g4-5' 这种不带篇号的，改编号之后就找不到对应小节了 —— 
+   不兜住的话他打开刷题页会看到一个选中着、却 0 题、按钮点不动的范围。*/
+if(!SCOPES.some(function(s){return s.k===scope})){scope='all';save('scope',scope);}
 function paintPick(){
   $('#scope').innerHTML=SCOPES.map(function(s){
     var n=pool(s.k).length;
@@ -369,7 +377,7 @@ function showQ(){
   $('#qzPos').textContent='第 '+(Q.i+1)+' / '+Q.list.length+' 题';
   $('#qzScore').textContent='答对 '+Q.ok;
   $('#qzBar').style.width=(Q.i/Q.list.length*100)+'%';
-  $('#qzId').textContent=q.year+' · '+q.gcode+' '+q.grpT;
+  $('#qzId').textContent=q.year+' · '+shortCode(q.gcode)+' '+q.grpT;
   $('#qzMulti').style.display=q.multi?'':'none';
   $('#qzHint').style.display=q.multi?'':'none';
   $('#qzT').textContent=q.q;
@@ -436,11 +444,11 @@ $('#tMask').classList.toggle('on',mask);
 $('#tTodo').classList.toggle('on',todo);
 paintStat();paintReview();paintPick();
 
-/* 从笔记页跳转过来：#g-3-4 这种 hash 自动展开对应小节并滚过去 */
+/* 从笔记页跳转过来：#g-p2c3-4 这种 hash 自动展开对应小节并滚过去（code 就是笔记文件名） */
 if(location.hash.indexOf('#g-')===0){
   var code=location.hash.slice(3);
   var openMap=load('open',{});
-  QUIZ_CHAPTERS.forEach(function(c){if(c.groups.some(function(g){return g.code===code}))openMap['c'+c.no]=1});
+  QUIZ_CHAPTERS.forEach(function(c){if(c.groups.some(function(g){return g.code===code}))openMap[c.cid]=1});
   openMap[code]=1; save('open',openMap);
   gotoTab('pReview');
   paintReview();
