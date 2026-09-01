@@ -139,7 +139,22 @@ var CSS = [
 '.bn-inner .lb{display:block;font-size:.7rem;color:var(--brass);font-weight:700;letter-spacing:.06em;margin-bottom:6px;}',
 '.bn-inner a{display:block;padding:8px 4px;min-height:40px;font-size:.83rem;color:var(--ink);',
 '  text-decoration:none;border-top:1px solid var(--line-soft);line-height:1.4;}',
-'.bn-inner a:first-of-type{border-top:none;}'
+'.bn-inner a:first-of-type{border-top:none;}',
+/* ── 大标题折叠 ── */
+'.fold{border:1px solid var(--line);border-radius:11px;margin:12px 0;background:var(--surface);overflow:hidden;}',
+'.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;',
+'  padding:13px 14px;min-height:48px;font-weight:700;font-size:.95rem;color:var(--ink);}',
+'.fold>summary::-webkit-details-marker{display:none;}',
+'.fold[open]>summary{border-bottom:1px solid var(--line);background:var(--surface-2);}',
+'.fold .fc{flex:none;color:var(--brass);font-size:.72rem;transition:transform .18s;}',
+'.fold[open] .fc{transform:rotate(90deg);}',
+'.fold .ft{flex:1;min-width:0;line-height:1.4;}',
+'.fold .fn{flex:none;font-family:var(--font-mono);font-size:.66rem;color:var(--ink-soft);}',
+'.fold-body{padding:2px 14px 14px;}',
+'.foldbar{display:flex;gap:8px;margin:14px 0 4px;}',
+'.foldbar button{flex:1;min-height:42px;border:1px solid var(--line);background:var(--surface);',
+'  border-radius:9px;color:var(--navy);font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;}',
+'@media (prefers-reduced-motion:reduce){.fold .fc{transition:none;}}'
 ].join('\n');
 
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){
@@ -193,6 +208,57 @@ function build(){
 }
 
 /* 本节小目录：抓正文里的 h4，做成页内跳转 */
+/* 把每个 h4 连同它下面的内容包成一个可折叠块。
+   他的原话：「一长篇下来，看的很累，比如说每节一个折叠」——
+   1-2 那节整页近 20000px，竖屏一路滚确实累。
+   **默认收起**：一进来先看这一节的骨架（3~9 行），点开才读正文。
+   必背卡在第一个 h4 之前，不受影响、永远展开。 */
+function makeFolds(){
+  var sec=document.querySelector('.section');
+  if(!sec) return 0;
+  var hs=Array.prototype.slice.call(sec.children).filter(function(el){return el.tagName==='H4'});
+  if(hs.length<2) return 0;          // 只有一个大标题就不折了，没意义
+
+  hs.forEach(function(h,i){
+    var d=document.createElement('details');
+    d.className='fold';
+    var sm=document.createElement('summary');
+    sm.innerHTML='<span class="fc">▶</span><span class="ft"></span>'+
+                 '<span class="fn">'+(i+1)+'/'+hs.length+'</span>';
+    sm.querySelector('.ft').textContent=h.textContent;
+    d.appendChild(sm);
+    var body=document.createElement('div');
+    body.className='fold-body';
+    d.appendChild(body);
+    /* 标题已经搬到 summary 上，但 id 要留给页内跳转用 */
+    if(h.id) d.id=h.id;
+    h.parentNode.insertBefore(d,h);
+    var n=h.nextSibling;
+    h.parentNode.removeChild(h);
+    while(n){
+      var next=n.nextSibling;
+      if(n.nodeType===1&&n.tagName==='H4') break;
+      body.appendChild(n);
+      n=next;
+    }
+  });
+
+  var first=sec.querySelector('.fold');
+  if(first){
+    var bar=document.createElement('div');
+    bar.className='foldbar';
+    bar.innerHTML='<button type="button" data-fold="open">展开全部</button>'+
+                  '<button type="button" data-fold="close">收起全部</button>';
+    sec.insertBefore(bar,first);
+    bar.addEventListener('click',function(e){
+      var b=e.target.closest('button[data-fold]'); if(!b) return;
+      var on=b.dataset.fold==='open';
+      sec.querySelectorAll('.fold').forEach(function(d){d.open=on});
+    });
+  }
+  return hs.length;
+}
+
 function innerToc(){
   var hs=document.querySelectorAll('.section h4');
   if(hs.length<2) return '';
@@ -202,6 +268,13 @@ function innerToc(){
     out+='<a href="#'+h.id+'" data-jump="1">'+esc(h.textContent)+'</a>';
   });
   return out+'</div>';
+}
+
+/* 页内跳转落到折叠块上时，要先把它展开，否则跳过去是一条收起的标题 */
+function openTarget(hash){
+  if(!hash) return;
+  var el=document.getElementById(hash.replace('#',''));
+  if(el&&el.classList&&el.classList.contains('fold')) el.open=true;
 }
 
 function mount(){
@@ -223,12 +296,15 @@ function mount(){
   top.insertBefore(btn, top.firstChild);
 
   var b=build();
+  /* 小目录必须在 makeFolds 之前生成 —— 折叠之后 h4 就被搬进 summary 了 */
+  var toc=innerToc();
+  makeFolds();
   var ov=document.createElement('div');
   ov.className='bn-ov';
   ov.innerHTML='<div class="bn-panel">'+
     '<div class="bn-hd"><div class="ti">全书目录<small>共 '+b.st.all+' 节 · 已整理 '+b.st.done+' 节</small></div>'+
     '<button class="bn-x" type="button">关闭</button></div>'+
-    '<div class="bn-body">'+innerToc()+b.html+'</div></div>';
+    '<div class="bn-body">'+toc+b.html+'</div></div>';
   document.body.appendChild(ov);
 
   function open(){
@@ -243,7 +319,8 @@ function mount(){
   ov.addEventListener('click',function(e){
     if(e.target===ov || e.target.closest('.bn-x')) { close(); return; }
     /* 页内跳转点完要把抽屉收起来，否则跳了也看不见 */
-    if(e.target.closest('a[data-jump]')) setTimeout(close,60);
+    var j=e.target.closest('a[data-jump]');
+    if(j){ openTarget(j.getAttribute('href')); setTimeout(close,60); }
   });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
 
