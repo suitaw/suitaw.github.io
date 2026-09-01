@@ -19,9 +19,9 @@ var BOOK = [
       { n: 3, t: '实践与认识及其发展规律', f: 'p1c1-3.html', pg: '15–19' },
       { n: 4, t: '人类社会及其发展规律', f: 'p1c1-4.html', pg: '20–24' },
       { n: 5, t: '资本主义的本质及规律', f: 'p1c1-5.html', pg: '24–30' },
-      { n: 6, t: '资本主义的发展及其趋势', f: '', pg: '30–36' },
-      { n: 7, t: '社会主义的发展及其规律', f: '', pg: '36–39' },
-      { n: 8, t: '共产主义崇高理想及其最终实现', f: '', pg: '39–42' }
+      { n: 6, t: '资本主义的发展及其趋势', f: 'p1c1-6.html', pg: '30–36' },
+      { n: 7, t: '社会主义的发展及其规律', f: 'p1c1-7.html', pg: '36–39' },
+      { n: 8, t: '共产主义崇高理想及其最终实现', f: 'p1c1-8.html', pg: '39–42' }
     ]},
     { c: 2, t: '毛泽东思想', secs: [
       { n: 1, t: '毛泽东思想及其历史地位', f: '', pg: '43–48' },
@@ -98,10 +98,12 @@ var CSS = [
 '.bn-btn .bar::before{top:-5px;}.bn-btn .bar::after{top:5px;}',
 '.bn-ov{position:fixed;inset:0;z-index:80;background:rgba(20,18,14,.5);display:none;}',
 '.bn-ov.on{display:block;}',
-'.bn-panel{position:absolute;left:0;right:0;bottom:0;background:var(--bg);',
-'  border-top-left-radius:16px;border-top-right-radius:16px;',
-'  max-height:86dvh;display:flex;flex-direction:column;box-shadow:0 -6px 30px rgba(0,0,0,.22);}',
-'@supports not (height:1dvh){.bn-panel{max-height:86vh;}}',
+/* 抽屉从左边滑出 —— 和左上角那颗按钮同一侧，手指从按钮直接落到列表上 */
+'.bn-panel{position:absolute;left:0;top:0;bottom:0;width:min(88vw,380px);background:var(--bg);',
+'  display:flex;flex-direction:column;box-shadow:6px 0 30px rgba(0,0,0,.22);',
+'  transform:translateX(-100%);transition:transform .22s ease;}',
+'.bn-ov.on .bn-panel{transform:translateX(0);}',
+'@media (prefers-reduced-motion:reduce){.bn-panel{transition:none;}}',
 '.bn-hd{flex:none;display:flex;align-items:center;gap:10px;padding:13px 16px 10px;border-bottom:1px solid var(--line);}',
 '.bn-hd .ti{flex:1;min-width:0;font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--navy);}',
 '.bn-hd .ti small{display:block;font-family:var(--font-body);font-size:.72rem;font-weight:400;color:var(--ink-soft);margin-top:2px;}',
@@ -215,7 +217,10 @@ function mount(){
   btn.className='bn-btn'; btn.type='button';
   btn.setAttribute('aria-label','打开目录');
   btn.innerHTML='<span class="bar"></span>目录';
-  if(old) old.parentNode.replaceChild(btn,old); else top.appendChild(btn);
+  /* 他要求放左边：「导航放在左边不要放右边。不得劲」——
+     原来的 a.bk 在顶栏右侧，直接替换会继承那个位置，所以先删掉再插到最前面。 */
+  if(old) old.parentNode.removeChild(old);
+  top.insertBefore(btn, top.firstChild);
 
   var b=build();
   var ov=document.createElement('div');
