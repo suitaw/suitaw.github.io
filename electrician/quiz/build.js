@@ -134,8 +134,16 @@ if (WRITE) {
      > **正确说法**：★ xxx
      >
      > 记忆要点：★ xxx
-   引用块按小标题切成四段：wrong / right / tip / warn（⚠ 开头的存疑说明）。
+   引用块按小标题切成五段：wrong / right / why / tip / warn（⚠ 开头的存疑说明）。
    有几道题错处不明确，整段都是 ⚠，此时 wrong 和 right 为空，页面要能兜住。
+
+   2026-09-01 加进来的「正确批」（第 291 题起，答案是「正确」）结构不一样：
+     **第 291 题**　题干（）
+     **【答案】正确**
+     > **为什么对**：xxx
+     > 记忆要点：xxx
+   它没有「错在 / 正确说法」—— 整句本来就是对的，要背的就是题干本身。
+   所以校验按 answer 分两套：错误批要 wrong+right（或 warn），正确批要 why。
    ════════════════════════════════════════════════════════════════ */
 const TFQS = JSON.parse(fs.readFileSync(dir + 'questions-tf.json', 'utf8'));
 const tfById = {}; TFQS.forEach(q => tfById[q.id] = q);
@@ -149,7 +157,7 @@ let tbq = [];                            // 题外的引用（章导语 / 组核
 
 function tfFlushItem() {
   if (!cur) return;
-  ['wrong', 'right', 'tip', 'warn'].forEach(k => {
+  ['wrong', 'right', 'why', 'tip', 'warn'].forEach(k => {
     cur[k] = (buf[k] || []).join('\n').replace(/^\s+|\s+$/g, '');
     if (!cur[k]) delete cur[k];
   });
@@ -199,6 +207,7 @@ for (let i = 0; i < tfLines.length; i++) {
     // 第 3、5 章没分组，题直接挂在章下面 —— 给它们建一个默认组
     if (!tg) tfGroup(tc.no + '-·', tc.title);
     cur = { id: q.id, question: q.question, answer: q.answer, category: q.category };
+    if (q.srcNo) cur.srcNo = q.srcNo;
     sect = null; buf = {};
     tg.items.push(cur);
     continue;
@@ -211,11 +220,13 @@ for (let i = 0; i < tfLines.length; i++) {
     if (/^\*{0,2}⚠/.test(s0)) sect = 'warn';
     else if (/^\*\*错在\*\*/.test(s0)) { sect = 'wrong'; }
     else if (/^\*\*正确说法\*\*/.test(s0)) { sect = 'right'; }
+    else if (/^\*\*为什么对\*\*/.test(s0)) { sect = 'why'; }
     else if (/^记忆要点/.test(s0)) { sect = 'tip'; }
     else if (!sect) sect = 'wrong';              // 没写「错在」的特殊题，先归到 wrong
     let body = t;
     if (sect === 'wrong') body = body.replace(/^\*\*错在\*\*[：:]\s*/, '');
     if (sect === 'right') body = body.replace(/^\*\*正确说法\*\*[：:]\s*/, '');
+    if (sect === 'why') body = body.replace(/^\*\*为什么对\*\*[：:]\s*/, '');
     if (sect === 'tip') body = body.replace(/^记忆要点[^：:]*[：:]\s*/, '');
     (buf[sect] = buf[sect] || []).push(body);
     continue;
@@ -232,9 +243,12 @@ const tfSeen = new Set();
 tfChapters.forEach(c => c.groups.forEach(g => g.items.forEach(it => {
   if (tfSeen.has(it.id)) tfWarn.push('题号重复：' + it.id);
   tfSeen.add(it.id);
-  if (it.answer !== '错误') tfWarn.push('第 ' + it.id + ' 题答案不是「错误」：' + it.answer);
+  if (it.answer !== '错误' && it.answer !== '正确') tfWarn.push('第 ' + it.id + ' 题答案既不是「错误」也不是「正确」：' + it.answer);
   if (!it.tip) tfWarn.push('第 ' + it.id + ' 题没有记忆要点');
-  if (!it.right && !it.warn) tfWarn.push('第 ' + it.id + ' 题既没有正确说法也没有存疑说明');
+  if (it.answer === '正确') {
+    if (!it.why) tfWarn.push('第 ' + it.id + ' 题（正确批）没有「为什么对」');
+    if (it.wrong || it.right) tfWarn.push('第 ' + it.id + ' 题是正确批，不该有「错在 / 正确说法」');
+  } else if (!it.right && !it.warn) tfWarn.push('第 ' + it.id + ' 题既没有正确说法也没有存疑说明');
   if (+it.category.split(' ')[0] !== c.no) tfWarn.push('第 ' + it.id + ' 题归错章了');
 })));
 TFQS.forEach(q => { if (!tfSeen.has(q.id)) tfWarn.push('第 ' + q.id + ' 题没被收进来'); });
@@ -248,8 +262,10 @@ const tfFlagged = Array.from(tfSeen).filter(id => {
 }).length;
 
 console.log('');
+const tfYes = TFQS.filter(q => q.answer === '正确').length;
 console.log('判断题：章 ' + tfChapters.length + '，组 ' + tfChapters.reduce((n, c) => n + c.groups.length, 0) +
             '，题 ' + tfSeen.size + ' / ' + TFQS.length +
+            '（错误 ' + (TFQS.length - tfYes) + ' / 正确 ' + tfYes + '）' +
             '，带 ⚠ 标注 ' + tfFlagged + ' 题' + (tfNoKey ? '（' + tfNoKey + ' 个组没写核心考点，不影响）' : ''));
 console.log(tfWarn.length ? '⚠ 问题 ' + tfWarn.length + ' 处:\n' + tfWarn.slice(0, 40).join('\n') : '✓ 无问题');
 
@@ -257,8 +273,8 @@ if (WRITE) {
   const head = '// 低压电工作业 · 判断题库数据（由 questions-tf.json + 判断题分类整理.md 合并生成，勿手改）\n' +
     '// ' + TFQS.length + ' 题 / ' + tfChapters.length + ' 章 / ' +
     tfChapters.reduce((n, c) => n + c.groups.length, 0) + ' 个考点组。\n' +
-    '// 这批题的答案「全部是错误」，所以不做判对错的刷题，只做「找出错在哪个词 + 背正确说法」。\n' +
-    '// 每题字段：wrong 错在哪 / right 正确说法 / tip 记忆要点 / warn 存疑或原解析有误的说明。\n' +
+    '// 两批：第 1~290 题答案全是「错误」（背正确说法）；第 291 题起答案是「正确」（整句就是标准答案）。\n' +
+    '// 每题字段：wrong 错在哪 / right 正确说法 / why 为什么对 / tip 记忆要点 / warn 存疑或原解析有误的说明。\n' +
     '// 生成时间：' + new Date().toISOString().slice(0, 10) + '\n';
   fs.writeFileSync(dir + 'quiz-data-tf.js',
     head + 'const TF_CHAPTERS = ' + JSON.stringify(tfChapters, null, 1) + ';\n');
