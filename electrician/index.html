@@ -193,7 +193,8 @@ function seenMap(){
   const done = doneSet(), seen = seenMap();
   const live = [];                       /* 已经做好的节，按书序 */
   BOOK.forEach(function(P){ P.chs.forEach(function(ch){
-    (ch.secs||[]).forEach(function(s){ if(s.f) live.push(s); });
+    /* 带上章号：目录抽屉要靠它展开「在学」那一章 */
+    (ch.secs||[]).forEach(function(s){ if(s.f) live.push(Object.assign({ch:ch.n}, s)); });
   }); });
 
   const key = function(id){ return 'c' + id.replace('.', '-'); };
@@ -280,7 +281,7 @@ function seenMap(){
    ['circuit-basics.html','shock','#ff6b6b','回路 · 大地 · 触电','鸟站电线上为什么没事'],
    ['magnet-field.html','magnet','#b07ce8','磁场与磁力线','撒铁粉看通电导线周围'],
    ['lab-circuit.html','lab','#3ecf8e','电路实验室','自己搭电路，里面是真求解器'],
-   ['quiz/quiz.html','quiz','#f0a020','考证题库','单选 537 + 判断 290 题'],
+   ['quiz/quiz.html','quiz','#f0a020','考证题库','单选 537 + 判断 723 题'],
    ['parts.html','target','#9fadbd','元件设计规范图','元件长什么样、有哪些状态']
   ];
   h += '<div class="sec fade" style="animation-delay:.3s">'+
@@ -307,6 +308,11 @@ function seenMap(){
     '出现具体数字的地方都标了出处；涉及标准和规范的数值以现行规范为准</div>';
 
   document.getElementById('w').innerHTML = h;
+
+  /* 首页的标题也挂上全书目录（▾）——课页上点标题就有，回到首页反而没有，
+     从题库「回电工课」落在这一页时最明显。必须排在 innerHTML 之后：
+     .hd h1 是上面这一大串现生成的 */
+  ElecNav.init({ ch: nextSec ? nextSec.ch : 1, sec: NOW });
 })();
 </script>
 </body>
