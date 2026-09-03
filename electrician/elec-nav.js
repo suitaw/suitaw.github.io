@@ -77,7 +77,8 @@ const BOOK = [
   {n:7,  t:'照明控制线路的安装与维护', p:121, d:'室内与公共照明的控制关系、安装、检修',
    secs:[
      {id:'7.1', f:'c7-1.html', t:'一个灯，几个地方控', d:'单控、双控、多控，和三种接错', p:121},
-     {id:'7.2', f:'c7-2.html', t:'照明回路怎么装', d:'尺寸、接线盒、灯具接线端', p:125}
+     {id:'7.2', f:'c7-2.html', t:'照明回路怎么装', d:'尺寸、接线盒、灯具接线端', p:125},
+     {id:'7.3', f:'c7-3.html', t:'装完怎么验，坏了怎么查', d:'调试表、替换法、故障树', p:134}
    ]},
   {n:8,  t:'供配电线路的安装与维护', p:139, d:'高低压供配电、配电箱、配电盘'},
   {n:9,  t:'电力拖动系统的安装与维护', p:163, d:'交直流电动机控制电路的安装与检修'},
@@ -178,7 +179,9 @@ function init(host){
 
   document.head.appendChild(Object.assign(document.createElement('style'),{textContent:CSS}));
 
-  const h1 = document.querySelector('.top h1');
+  /* 课页的标题在 .top 里，课程首页 index.html 的在 .hd 里 ——
+     两个都要认，否则从题库回到首页就没有目录入口了（2026-09-03 他报的） */
+  const h1 = document.querySelector('.top h1') || document.querySelector('.hd h1');
   if(h1){
     h1.classList.add('en-hd');
     h1.insertAdjacentHTML('beforeend','<span class="en-car">▾</span>');
