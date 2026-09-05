@@ -366,6 +366,13 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 .p-mine b{color:var(--tx)}
 .p-todo{margin:10px 0;font-size:13px;color:var(--tx3);line-height:1.7}
 .p-gnote{margin:-2px 2px 8px;font-size:12.5px;color:var(--tx3);line-height:1.6}
+.p-sh{margin:12px 0 5px;font-size:12.5px;font-weight:700;color:var(--tx3)}
+.p-tool{display:flex;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px;line-height:1.7}
+.p-tool:first-of-type{border-top:0}
+.p-tool b{flex:none;width:104px;color:var(--tx)}
+.p-tool span{flex:1;color:var(--tx2)}
+.p-tool span b{display:inline;width:auto}
+@media (max-width:359px){.p-tool{flex-direction:column;gap:1px}.p-tool b{width:auto}}
 .p-gnote b{color:var(--amber)}
 /* K43 那张灭火器选型表：全局 table 有 min-width:440px，这儿要放开，不然手机上横向滚 */
 #pPrac table{min-width:0}
@@ -1807,6 +1814,18 @@ function paintPrac(){
      '<div class="p-no"><div class="t">七项共有的否定项</div><ol>'+
        F.no.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol></div>'+
      '<div class="p-mine"><div class="t">所以真正要单独背的只有这些</div>'+F.tip+'</div></div>';
+  /* 考场器材台（材料那张照片）—— 放在骨架之后、K1 之前：进考场先认一眼台面 */
+  if(P.site){
+    var S=P.site;
+    h+='<div class="card pad"><div class="p-lead"><b>'+esc(S.t)+'</b>　'+esc(S.d)+'</div>'+
+       '<div class="p-sh">墙上的面板</div>'+
+       '<div class="p-ex">'+S.panels.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div>'+
+       '<div class="p-sh">台面上的器材</div>'+
+       '<div style="margin-top:2px">'+S.tools.map(function(x){
+         return '<div class="p-tool"><b>'+esc(x[0])+'</b><span>'+x[1]+'</span></div>';
+       }).join('')+'</div>'+
+       '<div class="p-mine"><div class="t">看台面能先解决两件事</div>'+S.mine+'</div></div>';
+  }
   /* 四个大组 */
   h+=P.groups.map(function(g){
     return '<div class="p-grp"><div class="p-gh"><span class="p-gc">'+esc(g.id)+'</span>'+
