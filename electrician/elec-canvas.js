@@ -37,7 +37,7 @@ dark:{
   /* 国标线色：这是要顺带记住的东西，色相别动，深底上只提亮度 */
   L:'#ff5f52', N:'#4ea3ff', PE:'#4fc04a', PE2:'#e8d34a',
   /* 状态 */
-  ok:'#3ecf8e', warn:'#f0a020', err:'#ff6b6b', acc:'#4ea3ff', accD:'#2b7fd0',
+  ok:'#3ecf8e', warn:'#f0a020', err:'#ff6b6b', acc:'#2f90d6', accD:'#1f6cab',
   /* 电流 / 电子 / 电压 */
   cur:'#ff9840', ele:'#5eb0ff', volt:'#b07ce8',
   lamp:'#f0b429', lampOff:'#5a636d', glow:'#ffd76a',
@@ -54,7 +54,7 @@ light:{
   wire:'#39424d', wireL:'#8d97a2', cop:'#c07830', copD:'#8a5418',
   metal:'#aeb7c1', metalD:'#7c8590', metalL:'#d7dde3',
   L:'#d5342a', N:'#1e6fd0', PE:'#3f9b35', PE2:'#e0c020',
-  ok:'#1c8348', warn:'#c05a00', err:'#c32f2f', acc:'#1a6fd4', accD:'#12518f',
+  ok:'#1c8348', warn:'#c05a00', err:'#c32f2f', acc:'#0d5aa8', accD:'#0a3f73',
   cur:'#e0731a', ele:'#2a86d8', volt:'#8d4bd0',
   lamp:'#f0b429', lampOff:'#c8cdd3', glow:'#ffd76a',
   hot:'#e0402a',

@@ -45,7 +45,7 @@ function apply(v, silent){
 
 const CSS = `
 .et-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;
-  width:36px;height:36px;padding:0;border-radius:10px;cursor:pointer;
+  width:36px;height:36px;padding:0;border-radius:6px;cursor:pointer;
   background:transparent;border:1px solid var(--line,#252f3a);
   color:var(--tx2,#9fadbd);position:relative;-webkit-tap-highlight-color:transparent}
 /* 视觉 36px，热区靠 ::after 撑到 44 —— 和全站其它小按钮一个路子 */
