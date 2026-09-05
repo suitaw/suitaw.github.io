@@ -270,6 +270,113 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 .q.hidden-ans.show .tip{display:block}
 .q.show .tf-show{display:none}
 .tf-intro{background:var(--amber-l);border-color:var(--amber-b);color:var(--tx)}
+
+/* ── 实操页（practical-data.js）──
+   和题库那两套是三条独立的数据链。这里的东西不是「判对错」，是「照着做、照着背」，
+   所以卡片结构完全不同：一步一句原话，原话默认盖住（点一下才翻开）。 */
+.p-lead{font-size:13.5px;line-height:1.72;color:var(--tx2)}
+.p-lead b{color:var(--tx)}
+.p-ex{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.p-ex span{
+  font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:7px;
+  padding:5px 9px;color:var(--tx2);
+}
+.p-ex span b{color:var(--tx)}
+.p-fr{border-left:3px solid var(--blue)}
+.p-fr .st{display:flex;gap:9px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px;line-height:1.7}
+.p-fr .st:first-of-type{border-top:0}
+.p-fr .st .n{flex:none;width:76px;font-weight:700;color:var(--blue)}
+.p-fr .st .b{flex:1;color:var(--tx2)}
+.p-fr .st .b b{color:var(--tx)}
+
+.p-grp{margin-bottom:14px}
+.p-gh{display:flex;align-items:center;gap:9px;margin:0 2px 8px}
+.p-gc{
+  flex:none;font-size:12.5px;font-weight:700;color:var(--blue);background:var(--blue-l);
+  border:1px solid var(--blue-b);border-radius:7px;padding:4px 9px;
+}
+.p-gt{flex:1;font-size:15px;font-weight:700;line-height:1.35}
+.p-gs{font-size:12px;color:var(--tx3);white-space:nowrap}
+
+.p-task{border:1px solid var(--line);border-radius:10px;background:var(--card);margin-bottom:9px;overflow:hidden}
+.p-th{
+  display:flex;align-items:center;gap:8px;min-height:48px;padding:9px 11px;cursor:pointer;
+  background:none;border:0;width:100%;text-align:left;font-family:inherit;color:var(--tx);
+}
+.p-tid{
+  flex:none;font-size:11.5px;font-weight:700;color:var(--tx2);background:var(--bg);
+  border-radius:5px;padding:3px 7px;
+}
+.p-tt{flex:1;font-size:14px;font-weight:700;line-height:1.4}
+.p-tm{font-size:11.5px;color:var(--tx3);white-space:nowrap}
+.p-task .caret{flex:none;color:var(--tx3);font-size:13px;transition:transform .18s}
+.p-task.open .caret{transform:rotate(90deg)}
+.p-body{display:none;padding:2px 11px 12px;border-top:1px solid var(--line)}
+.p-task.open .p-body{display:block}
+.p-task.todo{opacity:.55}
+.p-task.todo .p-th{cursor:default}
+
+.p-pick{margin:10px 0;font-size:13.5px;line-height:1.7;color:var(--tx2)}
+.p-pick .from{color:var(--tx3);font-size:12.5px}
+.p-pick .ans{display:inline-block;margin-top:4px;color:var(--green);font-weight:700;font-size:14px}
+.p-key{
+  margin:10px 0;background:var(--blue-l);border:1px solid var(--blue-b);border-radius:9px;
+  padding:9px 11px;font-size:13.5px;line-height:1.7;color:var(--tx);
+}
+.p-step{display:flex;gap:9px;padding:9px 0;border-top:1px solid var(--line)}
+.p-step .h{flex:none;width:82px;font-size:13px;font-weight:700;color:var(--tx2);line-height:1.6;padding-top:1px}
+.p-step .c{flex:1;min-width:0}
+.p-step .d{font-size:13.5px;line-height:1.72;color:var(--tx2)}
+.p-step .d b{color:var(--tx)}
+/* 要背的原话：默认盖住，点一下才露出来 */
+.p-say{
+  margin-top:6px;background:var(--green-l);border:1px solid var(--green-b);border-radius:8px;
+  padding:8px 10px;font-size:14px;line-height:1.75;color:var(--tx);cursor:pointer;position:relative;
+}
+.p-say .qm{color:var(--green);font-weight:700}
+.p-say .cover{display:none;font-size:13px;color:var(--tx3);font-weight:700}
+.p-task.hid .p-say .txt{display:none}
+.p-task.hid .p-say .cover{display:block}
+.p-task.hid .p-say.on .txt{display:block}
+.p-task.hid .p-say.on .cover{display:none}
+
+.p-nums{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0 2px}
+.p-num{
+  background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 9px;
+  font-size:12px;color:var(--tx3);line-height:1.45;
+}
+.p-num b{display:block;font-size:14px;color:var(--tx);font-weight:700;
+  font-variant-numeric:tabular-nums;margin-bottom:1px}
+.p-warn{
+  margin-top:11px;background:var(--amber-l);border:1px solid var(--amber-b);border-radius:9px;
+  padding:9px 11px;font-size:13.5px;line-height:1.72;color:var(--tx);
+}
+.p-no{
+  margin-top:11px;background:var(--red-l);border:1px solid var(--red-b);border-radius:9px;
+  padding:9px 11px;font-size:13.5px;line-height:1.72;color:var(--tx);
+}
+.p-no .t{font-weight:700;color:var(--red);margin-bottom:3px}
+.p-no ol{margin:0;padding-left:20px}
+.p-no li{margin:2px 0}
+.p-mine{
+  margin-top:11px;background:var(--code);border:1px solid var(--line);border-left:3px solid var(--blue);
+  border-radius:0 8px 8px 0;padding:9px 11px;font-size:13.5px;line-height:1.72;color:var(--tx2);
+}
+.p-mine .t{font-weight:700;color:var(--blue);margin-bottom:3px;font-size:12.5px}
+.p-mine b{color:var(--tx)}
+.p-todo{margin:10px 0;font-size:13px;color:var(--tx3);line-height:1.7}
+.p-gnote{margin:-2px 2px 8px;font-size:12.5px;color:var(--tx3);line-height:1.6}
+.p-gnote b{color:var(--amber)}
+/* K43 那张灭火器选型表：全局 table 有 min-width:440px，这儿要放开，不然手机上横向滚 */
+#pPrac table{min-width:0}
+/* 320 宽下步骤那 82px 的标签列占比太大，改成上下堆叠 */
+@media (max-width:359px){
+  .p-step{flex-direction:column;gap:3px}
+  .p-step .h{width:auto;padding-top:0}
+  .p-fr .st{flex-direction:column;gap:2px}
+  .p-fr .st .n{width:auto}
+}
+
 .tf-intro .lb{display:inline-block;background:var(--amber-b);color:var(--amber);border-radius:5px;padding:1px 7px;margin-bottom:5px}
 .tf-ask{
   margin:10px 0 9px;font-size:13.5px;line-height:1.7;color:var(--tx2);
@@ -570,6 +677,20 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
   </section>
 
 
+  <!-- 实操（practical-data.js）——「照着做、照着背」，和判对错那两套不是一回事 -->
+  <section class="page" id="pPrac">
+    <div class="note">
+      <b>这一页是实操考试</b>：每项＝<b>选哪件工具 → 背哪几句原话 → 做哪几步 → 哪几条一票否决</b>。<br>
+      绿底的是<b>要一字不差说出口的原话</b>，默认盖着 —— <b>先自己说一遍再点开</b>，直接看等于白看。<br>
+      蓝色竖线那块是我提炼的记法，材料上没有。
+    </div>
+    <div class="bar">
+      <button class="tgl on" id="pMaskB">盖住原话</button>
+      <button class="tgl" id="pOpenB">全部展开</button>
+    </div>
+    <div id="prac"></div>
+  </section>
+
   <section class="page" id="pTable">
     <div class="bar" id="tbPick"></div>
     <div id="tb"></div>
@@ -583,6 +704,7 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 <nav class="nav">
   <button class="on" data-p="pBank"><span class="ic" data-ei="book"></span>题库</button>
   <button data-p="pQuiz"><span class="ic" data-ei="target"></span>练习</button>
+  <button data-p="pPrac"><span class="ic" data-ei="lab"></span>实操</button>
   <button data-p="pWrong"><span class="ic" data-ei="warn"></span>错题本</button>
   <button data-p="pTable"><span class="ic" data-ei="table"></span>必背表</button>
 </nav>
@@ -602,6 +724,7 @@ if(window.ESYM && window.ETheme) ESYM.theme(ETheme.get());
 </script>
 <script src="quiz-data.js"></script>
 <script src="quiz-data-tf.js"></script>
+<script src="practical-data.js"></script>
 <script>
 /* ══ 基础 ══ */
 var LS='elec_quiz_';
@@ -753,6 +876,14 @@ function paintStat(){
     $('#subT').textContent='错题本 · 单选 '+wa+' · 判断 '+wb;
     return;
   }
+  if(curPage==='pPrac'){
+    var ts=[],dn=0;
+    (window.PRACTICAL?PRACTICAL.groups:[]).forEach(function(g){g.tasks.forEach(function(t){
+      ts.push(t); if(!t.todo)dn++; })});
+    $('#statT').innerHTML='<b>'+dn+'</b>/'+ts.length+' 项';
+    $('#subT').textContent='实操 · 照着背';
+    return;
+  }
   if(curPage==='pQuiz'){
     var hs=load('exhist',[]);
     $('#statT').innerHTML=hs.length?('模考 <b>'+hs[0].score+'</b> 分'):'练习';
@@ -775,6 +906,7 @@ function goPage(id){
   if(id==='pTable')paintTable();
   if(id==='pBank')paintBank();
   if(id==='pWrong')paintWB();
+  if(id==='pPrac')paintPrac();
   if(id==='pQuiz'&&!EX.running&&$('#qzRun').style.display==='none')exPaintSetup();
 }
 $$('.nav button').forEach(function(b){
@@ -1600,6 +1732,114 @@ function paintTerms(){
 $('#tbPick').onclick=function(e){
   var b=e.target.closest('button[data-w]');if(!b||b.dataset.w===tbWhich)return;
   tbWhich=b.dataset.w;save('tbwhich',tbWhich);paintTable();paintStat();window.scrollTo(0,0);
+};
+
+/* ══ 实操页（PRACTICAL，来自 practical-data.js）══
+   和「判对错」那两套完全不同的形态：每项＝选什么 → 背哪几句 → 做哪几步 → 哪几条否定。
+   要背的原话（say）默认盖住，点一下才露 —— 和判断题「盖住答案」同一个路子：
+   先自己说一遍再翻开，直接看等于白看。
+   展开状态存 localStorage，翻回来还在原地。 */
+var pMask=load('pmask',true), pOpen=load('popen',{});
+
+function pSteps(t){
+  if(!t.steps) return '';
+  return t.steps.map(function(s){
+    var c='';
+    if(s.d) c+='<div class="d">'+s.d+'</div>';
+    if(s.say) c+='<div class="p-say"><div class="cover">▸ 点一下看要说的原话</div>'+
+                 '<div class="txt"><span class="qm">「</span>'+s.say+'<span class="qm">」</span></div></div>';
+    return '<div class="p-step"><div class="h">'+esc(s.h)+'</div><div class="c">'+c+'</div></div>';
+  }).join('');
+}
+function pTable(tb){
+  if(!tb) return '';
+  return '<div class="tbl-wrap"><table><thead><tr>'+
+    tb.head.map(function(h){return '<th>'+h+'</th>'}).join('')+'</tr></thead><tbody>'+
+    tb.rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+c+'</td>'}).join('')+'</tr>'}).join('')+
+    '</tbody></table></div>';
+}
+function pTask(t){
+  var open=!!pOpen[t.id], meta=[];
+  if(t.min) meta.push(t.min+' 分钟');
+  if(t.pct) meta.push(t.pct);
+  var head='<button class="p-th" data-tid="'+esc(t.id)+'">'+
+    '<span class="p-tid">'+esc(t.id)+'</span>'+
+    '<span class="p-tt">'+esc(t.t)+'</span>'+
+    (meta.length?'<span class="p-tm">'+meta.join(' · ')+'</span>':'')+
+    (t.todo?'':'<span class="caret">›</span>')+'</button>';
+  if(t.todo){
+    return '<div class="p-task todo"><div class="p-th" style="cursor:default">'+
+      '<span class="p-tid">'+esc(t.id)+'</span><span class="p-tt">'+esc(t.t)+'</span>'+
+      '<span class="p-tm">材料未到</span></div>'+
+      (t.d?'<div class="p-body" style="display:block;border-top:1px solid var(--line)">'+
+           '<div class="p-todo">'+t.d+'</div></div>':'')+'</div>';
+  }
+  var b='';
+  if(t.lead) b+='<div class="p-lead" style="margin:10px 0">'+t.lead+'</div>';
+  if(t.pick) b+='<div class="p-pick"><div class="from">从这些里面选：'+esc(t.pick.from)+'</div>'+
+                '<div class="ans">✓ 选 '+esc(t.pick.ans)+'</div></div>';
+  if(t.key)  b+='<div class="p-key">'+t.key+'</div>';
+  b+=pSteps(t);
+  if(t.nums&&t.nums.length) b+='<div class="p-nums">'+t.nums.map(function(n){
+    return '<div class="p-num"><b>'+n[0]+'</b>'+esc(n[1])+'</div>'}).join('')+'</div>';
+  if(t.warn) b+='<div class="p-warn">⚠ '+t.warn+'</div>';
+  b+=pTable(t.table);
+  if(t.no&&t.no.length) b+='<div class="p-no"><div class="t">否定项（碰到就是 0 分）</div><ol>'+
+    t.no.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ol></div>';
+  if(t.mine) b+='<div class="p-mine"><div class="t">怎么记（材料上没有，我加的）</div>'+t.mine+'</div>';
+  return '<div class="p-task'+(open?' open':'')+(pMask?' hid':'')+'" data-tid="'+esc(t.id)+'">'+
+         head+'<div class="p-body">'+b+'</div></div>';
+}
+function paintPrac(){
+  if(!window.PRACTICAL){$('#prac').innerHTML='<div class="card pad">没找到 practical-data.js</div>';return}
+  var P=PRACTICAL, h='';
+  /* 整场考试的构成 */
+  h+='<div class="card pad"><div class="p-lead"><b>'+esc(P.exam.t)+'</b>　'+P.exam.note+'</div>'+
+     '<div class="p-ex">'+P.exam.parts.map(function(p){
+       return '<span><b>'+esc(p[0])+'</b> '+esc(p[1])+(p[2]?'（'+esc(p[2])+'）':'')+(p[3]&&p[3]!=='—'?' '+esc(p[3]):'')+'</span>';
+     }).join('')+'</div></div>';
+  /* K1 七项共用的骨架 —— 这一页最值钱的东西，放最上面 */
+  var F=P.frame;
+  h+='<div class="card pad p-fr"><div class="p-lead"><b>'+esc(F.t)+'</b>　'+esc(F.d)+'</div>'+
+     '<div style="margin-top:8px">'+F.steps.map(function(x){
+       return '<div class="st"><div class="n">'+esc(x[0])+'</div><div class="b">'+x[1]+'</div></div>';
+     }).join('')+'</div>'+
+     '<div class="p-no"><div class="t">七项共有的否定项</div><ol>'+
+       F.no.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol></div>'+
+     '<div class="p-mine"><div class="t">所以真正要单独背的只有这些</div>'+F.tip+'</div></div>';
+  /* 四个大组 */
+  h+=P.groups.map(function(g){
+    return '<div class="p-grp"><div class="p-gh"><span class="p-gc">'+esc(g.id)+'</span>'+
+      '<span class="p-gt">'+esc(g.t)+'</span>'+(g.sub?'<span class="p-gs">'+esc(g.sub)+'</span>':'')+'</div>'+
+      (function(){
+        var n=g.tasks.filter(function(t){return t.todo}).length;
+        return n ? '<div class="p-gnote">其中 <b>'+n+' 项</b>材料上只有标题、没有步骤和话术 —— 拿到那几页再补。</div>' : '';
+      })()+
+      g.tasks.map(pTask).join('')+'</div>';
+  }).join('');
+  $('#prac').innerHTML=h;
+}
+/* 展开 / 收起一项；点绿底的原话就翻开那一句 */
+$('#prac').onclick=function(e){
+  var say=e.target.closest('.p-say');
+  if(say){ say.classList.toggle('on'); return }
+  var th=e.target.closest('.p-th[data-tid]');
+  if(!th) return;
+  var card=th.closest('.p-task'), id=th.dataset.tid;
+  var now=!card.classList.contains('open');
+  card.classList.toggle('open',now);
+  if(now) pOpen[id]=1; else delete pOpen[id];
+  save('popen',pOpen);
+};
+$('#pMaskB').onclick=function(){
+  pMask=!pMask; save('pmask',pMask); this.classList.toggle('on',pMask); paintPrac();
+};
+$('#pOpenB').onclick=function(){
+  var all=$$('#prac .p-task:not(.todo)'), allOpen=all.length&&all.every(function(c){return c.classList.contains('open')});
+  pOpen = {};
+  if(!allOpen) all.forEach(function(c){ pOpen[c.dataset.tid]=1 });
+  save('popen',pOpen); paintPrac();
+  this.textContent = allOpen ? '全部展开' : '全部收起';
 };
 
 /* ══ 启动 ══ */
