@@ -148,6 +148,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
     <div class="g">记法</div>
     <div class="t" id="hintText">点一个分组，看这组怎么记。</div>
     <div class="warn">⚠ 第 3 组端子号是交叉的 —— 1 配 5，2 配 1</div>
+    <div class="warn">⚠ 每个接触器的辅助端子按 22NC → 21NC → 14NO → 13NO 的顺序接，先常闭后常开</div>
   </div>
   <div class="foot-pad"></div>
 </div>
@@ -219,29 +220,30 @@ TLABEL['tb-last'] = '端子排（末端）';
 
 const GROUPS = [
   {id:1, name:'电源进线',         hint:'两个熔断器各管一路，4 号走热继电器，5 号串两个线圈 A1'},
-  {id:2, name:'常开对常开',       hint:'13 对 13，再引一根去公共点'},
-  {id:3, name:'常闭对常开（交叉）', hint:'我的 21 接对方的 14，这个点再引一根下端子排'},
-  {id:4, name:'常闭对线圈（交叉）', hint:'我的 22 管对方的命'},
+  {id:2, name:'常闭对线圈（交叉）', hint:'我的 22NC 管对方的命'},
+  {id:3, name:'常闭对常开（交叉）', hint:'我的 21NC 接对方的 14NO，这个点再引一根下端子排'},
+  {id:4, name:'常开对常开',       hint:'13NO 对 13NO，再引一根去公共点'},
   {id:5, name:'端子排跳线',       hint:'端子排 2-6-11 并成一个公共点'}
 ];
-const GCOLOR = {1:'var(--red)', 2:'var(--green)', 3:'var(--blue)', 4:'var(--blue)', 5:'var(--orange)'};
-const GCOLOR_HEX = {1:'#c0392b', 2:'#2f9e44', 3:'#2b6cb0', 4:'#2b6cb0', 5:'#e67e22'};
+const GCOLOR = {1:'var(--red)', 2:'var(--blue)', 3:'var(--blue)', 4:'var(--green)', 5:'var(--orange)'};
+const GCOLOR_HEX = {1:'#c0392b', 2:'#2b6cb0', 3:'#2b6cb0', 4:'#2f9e44', 5:'#e67e22'};
 
 /* WIRES：from/to 是端子 id，waypoints 只写「中间拐点」，起止点由 from/to 自动取。
-   14 根，序号跟纸质材料的 # 列一一对应 */
+   14 根，数组顺序＝实际接线顺序（先常闭后常开：21NC/13NO 在接触器右侧相邻，
+   22NC/14NO 在左侧相邻，先接常开会挡住旁边常闭的螺丝，2026-09-06 改的） */
 const WIRES = [
   {id:1,  from:'fu4-out', to:'fr-96',   group:1, waypoints:[[X('fu4-out'),150],[X('fr-96'),150]]},
   {id:2,  from:'fr-95',   to:'tb-last', group:1, waypoints:[[X('fr-95'),180],[X('tb-last'),180]]},
   {id:3,  from:'fu5-out', to:'km2-a1',  group:1, waypoints:[[X('fu5-out'),170],[X('km2-a1'),170]]},
   {id:4,  from:'km2-a1',  to:'km1-a1',  group:1, waypoints:[]},
-  {id:5,  from:'km1-13',  to:'km2-13',  group:2, waypoints:[[X('km1-13'),500],[X('km2-13'),500]]},
-  {id:6,  from:'km2-13',  to:'tb-2',    group:2, waypoints:[[X('km2-13'),520],[X('tb-2'),520]]},
+  {id:5,  from:'km1-22',  to:'km2-a2',  group:2, waypoints:[[X('km1-22'),505],[390,505],[390,Y('km2-a2')]]},
+  {id:6,  from:'km2-22',  to:'km1-a2',  group:2, waypoints:[[X('km2-22'),515],[430,515],[430,Y('km1-a2')]]},
   {id:7,  from:'km1-21',  to:'km2-14',  group:3, waypoints:[[X('km1-21'),540],[X('km2-14'),540]]},
   {id:8,  from:'km2-14',  to:'tb-5',    group:3, waypoints:[[X('km2-14'),560],[X('tb-5'),560]]},
   {id:9,  from:'km2-21',  to:'km1-14',  group:3, waypoints:[[X('km2-21'),580],[X('km1-14'),580]]},
   {id:10, from:'km2-21',  to:'tb-1',    group:3, waypoints:[[X('km2-21'),600],[X('tb-1'),600]]},
-  {id:11, from:'km1-22',  to:'km2-a2',  group:4, waypoints:[[X('km1-22'),505],[390,505],[390,Y('km2-a2')]]},
-  {id:12, from:'km2-22',  to:'km1-a2',  group:4, waypoints:[[X('km2-22'),515],[430,515],[430,Y('km1-a2')]]},
+  {id:11, from:'km1-13',  to:'km2-13',  group:4, waypoints:[[X('km1-13'),500],[X('km2-13'),500]]},
+  {id:12, from:'km2-13',  to:'tb-2',    group:4, waypoints:[[X('km2-13'),520],[X('tb-2'),520]]},
   {id:13, from:'tb-2',    to:'tb-6',    group:5, waypoints:[[X('tb-2'),610],[X('tb-6'),610]]},
   {id:14, from:'tb-6',    to:'tb-11',   group:5, waypoints:[[X('tb-6'),610],[X('tb-11'),610]]}
 ];
