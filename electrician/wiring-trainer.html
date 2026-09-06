@@ -39,8 +39,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .stage svg{display:block;width:100%;height:auto}
 
 .term-hit{fill:transparent;cursor:pointer}
-.term-dot,.tlabel,.badge-c,.badge-t{pointer-events:none}
+.term-dot,.tlabel,.badge-c,.badge-t,.term-ring{pointer-events:none}
 .term-dot{fill:#fff;stroke:#333;stroke-width:1.6}
+.term-ring{fill:none;stroke:#333;stroke-width:1.3}
 .term-dot.hi{stroke:var(--acc);stroke-width:2.4}
 .term-dot.wrong{fill:var(--red);stroke:var(--red)}
 .term-dot.right{fill:var(--green);stroke:var(--green)}
@@ -79,6 +80,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .playbar .cur{flex:1 1 100%;font-size:.85rem;color:var(--tx);background:var(--accbg);
   border-radius:8px;padding:8px 10px}
 .playbar .cur b{color:var(--acc)}
+.playbar .cur .warnline{display:block;margin-top:7px;color:#a86200;background:#fdf1de;
+  border-radius:7px;padding:6px 8px;font-size:.76rem;font-weight:400}
 
 .qcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
 .qcard .qn{font-size:.72rem;color:var(--tx3);margin-bottom:4px}
@@ -121,6 +124,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
     <button data-mode="browse" class="on">浏览模式</button>
     <button data-mode="step">逐根播放</button>
     <button data-mode="test">自测</button>
+    <button data-mode="screw">上螺丝顺序</button>
   </div>
 
   <div class="toolbar" id="browseBar">
@@ -129,6 +133,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
   </div>
 
   <div id="testHead"></div>
+  <div id="screwHead"></div>
 
   <div class="stage">
     <svg id="svg" viewBox="0 0 860 700" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -249,16 +254,54 @@ const WIRES = [
 ];
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 
+/* 电路登记表：key 是电路 id（对应实操材料的 K 编号），value 是它自己的 devices/wires/groups。
+   现在只有 K32（正反转），以后加 K31/K33/K34 只要在这里再添一条 —— 下面
+   getTerminalWireCount / buildScrewSteps 都是照 circuitId 查表算的，不认单一全局 WIRES */
+const CIRCUITS = {
+  k32: { id:'k32', name:'三相异步电动机正反转运行的接线及安全操作', devices:DEVICES, wires:WIRES, groups:GROUPS }
+};
+const CURRENT_CIRCUIT = 'k32';
+
+/* 每个端子被几根线用到，从 wires 数组现算，不要在别处维护一份名单 */
+function getTerminalWireCount(circuitId){
+  const c = CIRCUITS[circuitId];
+  const counts = {};
+  if(!c) return counts;
+  c.wires.forEach(function(w){
+    counts[w.from] = (counts[w.from]||0) + 1;
+    counts[w.to]   = (counts[w.to]||0) + 1;
+  });
+  return counts;
+}
+const TCOUNT = getTerminalWireCount(CURRENT_CIRCUIT);
+function termCount(id){ return TCOUNT[id]||0; }
+
 function wireDesc(w){ return TLABEL[w.from]+' → '+TLABEL[w.to]; }
+function otherEndText(w, tid){
+  return w.from===tid ? '去往 '+TLABEL[w.to]+'（'+w.to+'）' : '来自 '+TLABEL[w.from]+'（'+w.from+'）';
+}
 function wirePathD(w){
   const p0=TPOS[w.from], p1=TPOS[w.to];
   const pts=[[p0.x,p0.y]].concat(w.waypoints||[]).concat([[p1.x,p1.y]]);
   return pts.map(function(p,i){ return (i===0?'M':'L')+p[0]+','+p[1]; }).join(' ');
 }
-function termCount(id){
-  let n=0;
-  WIRES.forEach(function(w){ if(w.from===id||w.to===id) n++; });
-  return n;
+
+/* 按端子分步：每个端子第一次在 wires 里出现的位置决定它排第几步，
+   一步里列出这个端子上的每一根线 —— 接 2 根的步骤就是「同时压 2 个端子」那一下 */
+function buildScrewSteps(circuitId){
+  const c = CIRCUITS[circuitId];
+  if(!c) return [];
+  const order=[], seen={};
+  c.wires.forEach(function(w){
+    [w.from, w.to].forEach(function(tid){
+      if(!seen[tid]){ seen[tid]=true; order.push(tid); }
+    });
+  });
+  const counts = getTerminalWireCount(circuitId);
+  return order.map(function(tid){
+    const items = c.wires.filter(function(w){ return w.from===tid || w.to===tid; });
+    return { terminal:tid, count:counts[tid], items:items };
+  });
 }
 
 /* ------------------------------------------------------------------
@@ -309,16 +352,21 @@ DEVICES.forEach(drawDevice);
 
 function drawTerminal(id){
   const p=TPOS[id];
+  const n=termCount(id);
+  const shared = n>=2;
   const g=el('g',{'data-term':id});
   const hit=el('circle',{class:'term-hit', cx:p.x, cy:p.y, r:14});
-  const dot=el('circle',{class:'term-dot', cx:p.x, cy:p.y, r:6, 'data-term-dot':id});
-  g.appendChild(hit); g.appendChild(dot);
+  g.appendChild(hit);
+  /* 共用端子（同一颗螺丝压两根线）画成双环：外面再套一圈细描边，
+     一眼跟只接一根的普通端子分开 —— 提醒「两个冷压端子一起套上再拧」 */
+  if(shared) g.appendChild(el('circle',{class:'term-ring', cx:p.x, cy:p.y, r:10}));
+  const dot=el('circle',{class:'term-dot', cx:p.x, cy:p.y, r:(shared?7:6), 'data-term-dot':id});
+  g.appendChild(dot);
   const lbl=el('text',{class:'tlabel', x:p.x+9, y:p.y-8});
   lbl.textContent=p.label; g.appendChild(lbl);
-  const n=termCount(id);
-  if(n>=2){
-    g.appendChild(el('circle',{class:'badge-c', cx:p.x+9, cy:p.y+9, r:7}));
-    const bt=el('text',{class:'badge-t', x:p.x+9, y:p.y+9}); bt.textContent=n; g.appendChild(bt);
+  if(shared){
+    g.appendChild(el('circle',{class:'badge-c', cx:p.x+11, cy:p.y+11, r:8}));
+    const bt=el('text',{class:'badge-t', x:p.x+11, y:p.y+11}); bt.textContent='×'+n; g.appendChild(bt);
   }
   gTerm.appendChild(g);
   hit.addEventListener('mouseenter', function(){ onTermHover(id); });
@@ -377,7 +425,7 @@ function renderBrowse(){
     const list = WIRES.filter(function(w){ return w.from===id||w.to===id; });
     const side = document.getElementById('side');
     side.innerHTML = '<b>'+(TLABEL[id]||id)+'</b> 接了 '+list.length+' 根：<br>'+
-      list.map(function(w){ return '·　'+wireDesc(w); }).join('<br>');
+      list.map(function(w){ return '·　第 '+w.id+' 根　'+otherEndText(w, id); }).join('<br>');
   } else {
     document.getElementById('side').innerHTML =
       '<span class="empty">悬停任意端子，看它接了几根线；点击左侧分组，只看这一组的走线。</span>';
@@ -409,7 +457,18 @@ function renderStep(){
   if(idx===0){ cur.innerHTML='点击「下一根」开始'; }
   else{
     const w=WIRES[idx-1];
-    cur.innerHTML = '<b>'+idx+'.</b> '+wireDesc(w)+'　（第 '+w.group+' 组：'+GROUPS[w.group-1].name+'）';
+    let html = '<b>'+idx+'.</b> '+wireDesc(w)+'　（第 '+w.group+' 组：'+GROUPS[w.group-1].name+'）';
+    /* 某一端如果还挂着别的线，提醒「两个冷压端子一起压上再拧」，别拧一次松一次 */
+    ['from','to'].forEach(function(end){
+      const tid = w[end];
+      if(TCOUNT[tid] > 1){
+        WIRES.filter(function(o){ return o.id!==w.id && (o.from===tid || o.to===tid); })
+          .forEach(function(o){
+            html += '<span class="warnline">⚠ '+tid+' 还有第 '+o.id+' 根线，两个端子一起压上再拧螺丝</span>';
+          });
+      }
+    });
+    cur.innerHTML = html;
     setHint(w.group);
   }
   document.getElementById('pPrev').disabled = idx===0;
@@ -513,6 +572,23 @@ function onTermClick(id){
   answerAttempt(id);
 }
 
+/* ---- 上螺丝顺序：按端子把 wires 合并成「一次拧螺丝能干完的动作」 ---- */
+function renderScrew(){
+  const steps = buildScrewSteps(CURRENT_CIRCUIT);
+  const head = document.getElementById('screwHead');
+  head.innerHTML = '<div class="qcard"><div class="qt">共 '+steps.length+' 步，按接线顺序排</div></div>' +
+    steps.map(function(s,i){
+      const label = TLABEL[s.terminal]+'（'+s.terminal+'）';
+      const header = s.count>=2 ? label+'　——　同时压 '+s.count+' 个端子' : label+'　——　单独接';
+      const lines = s.items.map(function(w){
+        return '·　第 '+w.id+' 根　'+otherEndText(w, s.terminal);
+      }).join('<br>');
+      return '<div class="qcard"><div class="qn">步骤 '+(i+1)+' / '+steps.length+'</div>'+
+        '<div class="qt">'+header+'</div>'+
+        '<div style="margin-top:6px;color:var(--tx2);font-size:.82rem;line-height:1.6">'+lines+'</div></div>';
+    }).join('');
+}
+
 /* ------------------------------------------------------------------
    模式切换 / UI 绑定
 ------------------------------------------------------------------ */
@@ -522,6 +598,7 @@ function setMode(m){
   document.getElementById('browseBar').style.display = m==='browse' ? 'flex' : 'none';
   document.getElementById('playBar').style.display   = m==='step' ? 'flex' : 'none';
   document.getElementById('testHead').innerHTML = '';
+  document.getElementById('screwHead').innerHTML = '';
   document.getElementById('side').innerHTML = '<span class="empty">悬停任意端子，看它接了几根线；点击左侧分组，只看这一组的走线。</span>';
   WIRES.forEach(function(w){ const p=wirePath(w.id); p.style.opacity=1; p.classList.remove('dim','hi'); });
   document.querySelectorAll('.term-dot').forEach(function(d){ d.classList.remove('wrong','right','hi'); });
@@ -531,6 +608,7 @@ function setMode(m){
   if(m==='step'){ state.step.index=0; stepStopAuto(); renderStep(); }
   if(m==='test'){ startTest(); }
   if(m==='browse'){ renderBrowse(); }
+  if(m==='screw'){ renderScrew(); }
 }
 
 const grpBtnsEl = document.getElementById('grpBtns');
@@ -558,6 +636,8 @@ renderBrowse();
 /* 供 jsdom 自测脚本用的最小调试接口，不影响正常使用 */
 window.__MRW = {
   DEVICES: DEVICES, WIRES: WIRES, GROUPS: GROUPS, TPOS: TPOS,
+  CIRCUITS: CIRCUITS, CURRENT_CIRCUIT: CURRENT_CIRCUIT,
+  getTerminalWireCount: getTerminalWireCount, buildScrewSteps: buildScrewSteps,
   setMode: setMode, setGroup: setGroup,
   startTest: startTest, answer: answerAttempt,
   getState: function(){ return state; },
