@@ -167,13 +167,23 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
    渲染只读这三个常量，不倒过来写死坐标 —— 改布局只改 DEVICES
 ------------------------------------------------------------------ */
 const DEVICES = [
-  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:90, y:40, w:60, h:90,
+  /* 端子排挪到左上角、竖排——照他实操板拍的照片来的（2026-09-06）。
+     其余元件跟着整体右移 30px 让位，彼此之间的相对位置没变，
+     所以大部分导线的拐点是靠 X()/Y() 现算的，改这里不用跟着改那些拐点 */
+  {id:'tb', name:'端子排', sub:'TB', kind:'tb', x:40, y:50, w:50, h:380,
+   terminals:(function(){
+     const out=[];
+     for(let i=0;i<12;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:25, y:20+i*(340/12)});
+     out.push({id:'tb-last', label:'末', x:25, y:20+12*(340/12)});
+     return out;
+   })()},
+  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:120, y:40, w:60, h:90,
    terminals:[ {id:'fu4-out', label:'出', x:30, y:90} ]},
-  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:520, y:40, w:60, h:90,
+  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:550, y:40, w:60, h:90,
    terminals:[ {id:'fu5-out', label:'出', x:30, y:90} ]},
-  {id:'fr', name:'JR36 热继电器', sub:'', kind:'fr', x:230, y:70, w:110, h:60,
+  {id:'fr', name:'JR36 热继电器', sub:'', kind:'fr', x:260, y:70, w:110, h:60,
    terminals:[ {id:'fr-96', label:'96', x:0, y:30}, {id:'fr-95', label:'95', x:110, y:30} ]},
-  {id:'km1', name:'1号接触器', sub:'CJX2s-0911', kind:'km', x:150, y:220, w:160, h:260,
+  {id:'km1', name:'1号接触器', sub:'CJX2s-0911', kind:'km', x:180, y:220, w:160, h:260,
    terminals:[
      {id:'km1-a1', label:'A1', x:160, y:20},
      {id:'km1-a2', label:'A2', x:160, y:160},
@@ -182,7 +192,7 @@ const DEVICES = [
      {id:'km1-21', label:'21', x:95,  y:260},
      {id:'km1-13', label:'13', x:120, y:260}
    ]},
-  {id:'km2', name:'2号接触器', sub:'CJX2s-0911', kind:'km', x:470, y:220, w:160, h:260,
+  {id:'km2', name:'2号接触器', sub:'CJX2s-0911', kind:'km', x:500, y:220, w:160, h:260,
    terminals:[
      {id:'km2-a1', label:'A1', x:0,   y:20},
      {id:'km2-a2', label:'A2', x:0,   y:180},
@@ -190,14 +200,7 @@ const DEVICES = [
      {id:'km2-22', label:'22', x:65,  y:260},
      {id:'km2-21', label:'21', x:95,  y:260},
      {id:'km2-13', label:'13', x:120, y:260}
-   ]},
-  {id:'tb', name:'端子排', sub:'TB', kind:'tb', x:90, y:620, w:680, h:40,
-   terminals:(function(){
-     const out=[];
-     for(let i=0;i<12;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:20+i*(640/12), y:20});
-     out.push({id:'tb-last', label:'末', x:20+12*(640/12), y:20});
-     return out;
-   })()}
+   ]}
 ];
 
 /* 端子绝对坐标表：{id:{x,y,device,label}} —— WIRES 的 from/to 全靠它解析，
@@ -236,21 +239,26 @@ const GCOLOR_HEX = {1:'#c0392b', 2:'#2b6cb0', 3:'#2b6cb0', 4:'#2f9e44', 5:'#e67e
 /* WIRES：from/to 是端子 id，waypoints 只写「中间拐点」，起止点由 from/to 自动取。
    14 根，数组顺序＝实际接线顺序（先常闭后常开：21NC/13NO 在接触器右侧相邻，
    22NC/14NO 在左侧相邻，先接常开会挡住旁边常闭的螺丝，2026-09-06 改的） */
+/* 碰端子排的六根（2/8/10/12/13/14）单独说一下走法：端子排现在是竖排贴在左边，
+   fu4 的左边缘在 x=120，留出 x=90~120 这条空当当走线的「过道」。
+   凡是要去端子排的线，一律先落到过道里的某个 x（每根错开几像素，视觉上不叠成一股），
+   再顺着过道走到端子排自己那一行的高度，最后从右边横着接进端子——不从端子排上方/
+   下方穿过去，也不会撞见 fu4/km1 的方框 */
 const WIRES = [
   {id:1,  from:'fu4-out', to:'fr-96',   group:1, waypoints:[[X('fu4-out'),150],[X('fr-96'),150]]},
-  {id:2,  from:'fr-95',   to:'tb-last', group:1, waypoints:[[X('fr-95'),180],[X('tb-last'),180]]},
+  {id:2,  from:'fr-95',   to:'tb-last', group:1, waypoints:[[X('fr-95'),150],[114,150],[114,Y('tb-last')]]},
   {id:3,  from:'fu5-out', to:'km2-a1',  group:1, waypoints:[[X('fu5-out'),170],[X('km2-a1'),170]]},
   {id:4,  from:'km2-a1',  to:'km1-a1',  group:1, waypoints:[]},
-  {id:5,  from:'km1-22',  to:'km2-a2',  group:2, waypoints:[[X('km1-22'),505],[390,505],[390,Y('km2-a2')]]},
-  {id:6,  from:'km2-22',  to:'km1-a2',  group:2, waypoints:[[X('km2-22'),515],[430,515],[430,Y('km1-a2')]]},
+  {id:5,  from:'km1-22',  to:'km2-a2',  group:2, waypoints:[[X('km1-22'),505],[400,505],[400,Y('km2-a2')]]},
+  {id:6,  from:'km2-22',  to:'km1-a2',  group:2, waypoints:[[X('km2-22'),515],[440,515],[440,Y('km1-a2')]]},
   {id:7,  from:'km1-21',  to:'km2-14',  group:3, waypoints:[[X('km1-21'),540],[X('km2-14'),540]]},
-  {id:8,  from:'km2-14',  to:'tb-5',    group:3, waypoints:[[X('km2-14'),560],[X('tb-5'),560]]},
+  {id:8,  from:'km2-14',  to:'tb-5',    group:3, waypoints:[[X('km2-14'),560],[108,560],[108,Y('tb-5')]]},
   {id:9,  from:'km2-21',  to:'km1-14',  group:3, waypoints:[[X('km2-21'),580],[X('km1-14'),580]]},
-  {id:10, from:'km2-21',  to:'tb-1',    group:3, waypoints:[[X('km2-21'),600],[X('tb-1'),600]]},
+  {id:10, from:'km2-21',  to:'tb-1',    group:3, waypoints:[[X('km2-21'),600],[102,600],[102,Y('tb-1')]]},
   {id:11, from:'km1-13',  to:'km2-13',  group:4, waypoints:[[X('km1-13'),500],[X('km2-13'),500]]},
-  {id:12, from:'km2-13',  to:'tb-2',    group:4, waypoints:[[X('km2-13'),520],[X('tb-2'),520]]},
-  {id:13, from:'tb-2',    to:'tb-6',    group:5, waypoints:[[X('tb-2'),610],[X('tb-6'),610]]},
-  {id:14, from:'tb-6',    to:'tb-11',   group:5, waypoints:[[X('tb-6'),610],[X('tb-11'),610]]}
+  {id:12, from:'km2-13',  to:'tb-2',    group:4, waypoints:[[X('km2-13'),520],[96,520],[96,Y('tb-2')]]},
+  {id:13, from:'tb-2',    to:'tb-6',    group:5, waypoints:[[33,Y('tb-2')],[33,Y('tb-6')]]},
+  {id:14, from:'tb-6',    to:'tb-11',   group:5, waypoints:[[33,Y('tb-6')],[33,Y('tb-11')]]}
 ];
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 
@@ -323,8 +331,16 @@ svg.appendChild(gDev); svg.appendChild(gWire); svg.appendChild(gTerm); svg.appen
 function drawDevice(d){
   if(d.kind==='tb'){
     gDev.appendChild(el('rect',{class:'tb-strip', x:d.x, y:d.y, width:d.w, height:d.h, rx:4}));
-    const t=el('text',{class:'dev-name', x:d.x+d.w/2, y:d.y-8});
-    t.textContent = d.name+'（'+d.sub+'）'; gDev.appendChild(t);
+    const label = d.name+'（'+d.sub+'）';
+    if(d.h > d.w){
+      /* 竖排端子排：标签转 90° 贴在左边，不然横着写会盖住旁边的走线过道 */
+      const tx=d.x-25, ty=d.y+d.h/2;
+      const t=el('text',{class:'dev-name', x:tx, y:ty, transform:'rotate(-90 '+tx+' '+ty+')'});
+      t.textContent=label; gDev.appendChild(t);
+    } else {
+      const t=el('text',{class:'dev-name', x:d.x+d.w/2, y:d.y-8});
+      t.textContent=label; gDev.appendChild(t);
+    }
     return;
   }
   if(d.kind==='fuse'){
