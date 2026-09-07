@@ -358,6 +358,13 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 .p-no .t{font-weight:700;color:var(--red);margin-bottom:3px}
 .p-no ol{margin:0;padding-left:20px}
 .p-no li{margin:2px 0}
+.p-list{
+  margin-top:11px;background:var(--amber-l);border:1px solid var(--amber-b);border-radius:9px;
+  padding:9px 11px;font-size:13.5px;line-height:1.72;color:var(--tx);
+}
+.p-list .t{font-weight:700;color:var(--amber);margin-bottom:3px}
+.p-list ol{margin:0;padding-left:20px}
+.p-list li{margin:2px 0}
 .p-mine{
   margin-top:11px;background:var(--code);border:1px solid var(--line);border-left:3px solid var(--blue);
   border-radius:0 8px 8px 0;padding:9px 11px;font-size:13.5px;line-height:1.72;color:var(--tx2);
@@ -1786,6 +1793,8 @@ function pTask(t){
   if(t.pick) b+='<div class="p-pick"><div class="from">从这些里面选：'+esc(t.pick.from)+'</div>'+
                 '<div class="ans">✓ 选 '+esc(t.pick.ans)+'</div></div>';
   if(t.key)  b+='<div class="p-key">'+t.key+'</div>';
+  if(t.list&&t.list.length) b+='<div class="p-list"><div class="t">要辨识的隐患点</div><ol>'+
+    t.list.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ol></div>';
   b+=pSteps(t);
   if(t.nums&&t.nums.length) b+='<div class="p-nums">'+t.nums.map(function(n){
     return '<div class="p-num"><b>'+n[0]+'</b>'+esc(n[1])+'</div>'}).join('')+'</div>';
