@@ -64,6 +64,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .sym.sel .sym-ring{opacity:1}
 .sw{stroke:var(--tx);stroke-width:2.2;fill:none;stroke-linecap:round;transition:stroke .18s}
 .sw.live{stroke:var(--red);stroke-width:3.2}
+.sdot{fill:var(--tx);transition:fill .18s}
+.sdot.live{fill:var(--red)}
 .sdash{stroke:var(--tx3);stroke-width:1.3;stroke-dasharray:4 3;fill:none}
 .swire{stroke:var(--tx3);stroke-width:2.2;fill:none;stroke-linecap:round;
   transition:stroke .18s,stroke-width .18s}
@@ -179,13 +181,15 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 
   <div class="sbar" id="schemaBar" style="display:none">
     <div class="sbtns">
-      <button data-sb="sb1" class="b-g">按住 SB1<span>绿 · 点动</span></button>
-      <button data-sb="sb2" class="b-b">按住 SB2<span>蓝 · 连续</span></button>
-      <button data-sb="sb3" class="b-r">按住 SB3<span>红 · 停止</span></button>
+      <button data-sb="cont" class="b-g">按住 连续<span>端子排 1、2</span></button>
+      <button data-sb="jog"  class="b-b">按住 点动<span>端子排 5~8</span></button>
+      <button data-sb="stop" class="b-r">按住 停止<span>端子排 11、12</span></button>
     </div>
     <div class="srun off" id="schemaState"></div>
     <div class="stip">按钮要<b>按住</b>再松手 —— 点动和连续的区别只有松手那一下看得出来。
-      图上任一个符号都能点，告诉你它是什么。</div>
+      图上任一个符号都能点，告诉你它是什么。<br>
+      按钮盒上<b>四个端子全用上的那个就是点动</b>；颜色上多半是绿＝连续、黄＝点动、红＝停止，
+      <b>上板看一眼线落在哪几位可以确认</b>。</div>
   </div>
 
   <div class="toolbar" id="browseBar">
@@ -344,19 +348,27 @@ return { id:'k32', k:'K32',
 }
 
 /* ══ K31 单向连续运转 · 带点动控制（单接触器 · 10 根）═══════════
-   拓扑来自考试模拟软件那张 K31-03 原理图，逐个符号放大核过（2026-09-07）：
-   停止 SB3 常闭 之后是一个公共点，往下挂三条并联支路 ——
-     ① SB2 常开（连续启动）  ② SB1 常开（点动）  ③ SB1 常闭 串 KM 13/14（自锁）
-   全电路的眼就在③：自锁支路串了点动按钮的常闭，所以按 SB1 时常闭先断、
-   自锁根本建立不起来，松手即停；按 SB2 时自锁那条路是通的，松手照转。
-   注意这跟按钮颜色的直觉相反：绿色 SB1 是点动，蓝/黄色 SB2 才是连续。
+   **接线以他的实做记录为准**（2026-09-07 他在板子上接完后给的 10 根明细）。
+   早先我按考试模拟软件那张 K31-03 原理图推过一版，拓扑等价但落到端子上处处不同，
+   已经整个换掉了 —— 对不上的地方记在仓库 CLAUDE.md 里。
 
-   端子排 1~12 的分配是从实操板照片读出来的：右侧接按钮盒的 12 根线，
-   线管颜色按「蓝蓝红红」四根一组、三组循环 —— 蓝＝常开那一对，红＝常闭那一对，
-   一组就是一个按钮的四个端子。按钮盒实物从上到下是绿·黄·红，顺着接下来即为
-   1-4 绿(SB1点动) / 5-8 黄(SB2连续) / 9-12 红(SB3停止)。
-   【这一条还没上板实测】考场上用万用表通断档 30 秒可验：表笔搭 11、12 应该响，
-   按住红色按钮就不响了。验完不符只改这里的 labels 和 wires 的 tb 编号 */
+   回路（注意方向跟那张原理图是反的：先过线圈，最后才是停止和热继电器）：
+     L1 → FU2(4号) → KM 线圈 A1→A2 → 公共点 X
+     X ─┬─ 端子排 1 →[连续·动合]→ 端子排 2 ─┐
+        ├─ 端子排 5 →[点动·动合]→ 端子排 6 ─┤→ 公共点 Y
+        └─ 13NO →[KM 自锁]→ 14NO → 7 →[点动·动断]→ 8 ─┘
+     Y → 端子排 11 →[停止·动断]→ 12 → FR 96-95 → FU2(5号) → L2
+
+   全电路的眼仍在第三条支路：**自锁串了点动按钮的动断**，所以按点动时它先断开、
+   自锁接不通，松手即停；按连续时那条路通着，松手照转。
+
+   端子排 1~12（只数接了按钮盒线的那 12 位，板子上物理位数更多，后面还有空位）：
+   线管颜色「蓝蓝红红」四根一组、三组循环 —— 蓝＝动合那一对，红＝动断那一对。
+   他的接线正好落在这个模式上（1-2 动合、5-6 动合、7-8 动断、11-12 动断），
+   反过来印证了这个分组结构。
+   **哪一组是哪个颜色的按钮，是推的**：红色按钮做停止是通例，而第三组（11-12）
+   正是停止用的动断 → 端子排是按按钮盒从上到下（绿·黄·红）顺着接的 →
+   1-4 绿＝连续 / 5-8 黄＝点动 / 9-12 红＝停止。上板看一眼线落在哪几位就能确认。 */
 function defK31(){
 const DEVICES = [
   {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:70, y:40, w:60, h:90,
@@ -393,49 +405,52 @@ const TLABEL = {
   'fr-96':'热继电器96', 'fr-95':'热继电器95',
   'km-a1':'接触器A1', 'km-a2':'接触器A2',
   'km-13':'接触器13NO', 'km-14':'接触器14NO',
-  'tb-1':'端子排1（点动SB1·常开）',  'tb-2':'端子排2（点动SB1·常开）',
-  'tb-3':'端子排3（点动SB1·常闭）',  'tb-4':'端子排4（点动SB1·常闭）',
-  'tb-5':'端子排5（连续SB2·常开）',  'tb-6':'端子排6（连续SB2·常开）',
-  'tb-7':'端子排7（连续SB2·常闭·这题不用）',  'tb-8':'端子排8（连续SB2·常闭·这题不用）',
-  'tb-9':'端子排9（停止SB3·常开·这题不用）',  'tb-10':'端子排10（停止SB3·常开·这题不用）',
-  'tb-11':'端子排11（停止SB3·常闭）', 'tb-12':'端子排12（停止SB3·常闭）'
+  'tb-1':'端子排1（连续·动合）',  'tb-2':'端子排2（连续·动合）',
+  'tb-3':'端子排3（连续·动断·不用）',  'tb-4':'端子排4（连续·动断·不用）',
+  'tb-5':'端子排5（点动·动合）',  'tb-6':'端子排6（点动·动合）',
+  'tb-7':'端子排7（点动·动断）',  'tb-8':'端子排8（点动·动断）',
+  'tb-9':'端子排9（停止·动合·不用）',  'tb-10':'端子排10（停止·动合·不用）',
+  'tb-11':'端子排11（停止·动断）', 'tb-12':'端子排12（停止·动断）'
 };
 
+/* 分组照他记录时的分法（他就是这么分三组记的），不另起炉灶 */
 const GROUPS = [
-  {id:1, name:'电源进线',   hint:'控制电源从 4 号熔断器（L1）进来先过热继电器 95/96；线圈另一头从 5 号熔断器（L2）回去'},
-  {id:2, name:'公共点跳线', hint:'停止按钮之后是一个公共点：12 → 1 → 3 → 5 串成一串，三条支路都从这儿取电'},
-  {id:3, name:'自锁支路',   hint:'点动按钮的常闭（3、4）串在自锁触点 13NO 前面 —— 这一根就是「点动」的全部机关'},
-  {id:4, name:'汇合进线圈', hint:'三条支路在这儿汇合，一起进线圈 A2'}
+  {id:1, name:'线圈与自锁', hint:'4 号熔断器直接进线圈 A1；A2 和 13NO 短接，自锁触点两端分别去端子排 1 和 7'},
+  {id:2, name:'热继电器',   hint:'5 号熔断器 → 热继电器 95，96 出来去端子排 12（停止按钮那一对的另一端）'},
+  {id:3, name:'端子排跳线', hint:'跳完只剩两个公共点：1＝5（接线圈那一侧）、2＝6＝8＝11（回停止按钮那一侧）'}
 ];
-const GCOLOR_HEX = {1:'#c0392b', 2:'#e67e22', 3:'#2b6cb0', 4:'#2f9e44'};
+const GCOLOR_HEX = {1:'#c0392b', 2:'#2f9e44', 3:'#e67e22'};
 
-/* 10 根，数组顺序＝接线顺序，从电源顺着电流往下游排，逐根播放时才连贯。
-   走线的竖向通道各占一条 x（550/570/590/610 在板中间，720/735/750/765 在端子排右侧
-   专走跳线），横向通道各占一条 y（175/190 在上方，530/560/620 在下方），
-   两两不重叠 —— 这样十根线一根都不打结 */
+/* 10 根，顺序照他记录的三组：先线圈与自锁、再热继电器、最后端子排跳线。
+   竖向通道各占一条 x（500 进 A1、560 去端子排1、590 去端子排7、615 去端子排12，
+   720/735/750/765 在端子排右侧专走跳线），横向通道各占一条 y（175 上方、
+   490/555/570/620 下方），两两不重叠。
+   第 1 根和第 5 根必然交叉一次（4 号熔断器在左要往右去线圈，5 号在右要往左去热继电器）——
+   交叉处不打点＝不相连，正好是 4.1 那节讲的规矩，不用为它重排布局 */
 const WIRES = [
-  {id:1,  from:'fu4-out', to:'fr-96',  group:1, waypoints:[[X('fu4-out'),175],[X('fr-96'),175]]},
-  {id:2,  from:'fr-95',   to:'tb-11',  group:1, waypoints:[[280,Y('fr-95')],[280,620],[610,620],[610,Y('tb-11')]]},
-  {id:3,  from:'tb-12',   to:'tb-1',   group:2, waypoints:[[720,Y('tb-12')],[720,Y('tb-1')]]},
-  {id:4,  from:'tb-1',    to:'tb-3',   group:2, waypoints:[[735,Y('tb-1')],[735,Y('tb-3')]]},
-  {id:5,  from:'tb-3',    to:'tb-5',   group:2, waypoints:[[750,Y('tb-3')],[750,Y('tb-5')]]},
-  {id:6,  from:'tb-4',    to:'km-13',  group:3, waypoints:[[590,Y('tb-4')],[590,530],[X('km-13'),530]]},
-  {id:7,  from:'km-14',   to:'tb-2',   group:3, waypoints:[[X('km-14'),560],[570,560],[570,Y('tb-2')]]},
-  {id:8,  from:'tb-2',    to:'tb-6',   group:4, waypoints:[[765,Y('tb-2')],[765,Y('tb-6')]]},
-  {id:9,  from:'tb-6',    to:'km-a2',  group:4, waypoints:[[550,Y('tb-6')],[550,Y('km-a2')]]},
-  {id:10, from:'km-a1',   to:'fu5-out',group:1, waypoints:[[X('km-a1'),190],[X('fu5-out'),190]]}
+  {id:1,  from:'fu4-out', to:'km-a1', group:1, waypoints:[[X('fu4-out'),175],[500,175],[500,Y('km-a1')]]},
+  {id:2,  from:'km-a2',   to:'km-13', group:1, waypoints:[[X('km-a2'),490],[X('km-13'),490]]},
+  {id:3,  from:'km-13',   to:'tb-1',  group:1, waypoints:[[X('km-13'),555],[560,555],[560,Y('tb-1')]]},
+  {id:4,  from:'km-14',   to:'tb-7',  group:1, waypoints:[[X('km-14'),570],[590,570],[590,Y('tb-7')]]},
+  {id:5,  from:'fu5-out', to:'fr-95', group:2, waypoints:[[X('fu5-out'),Y('fr-95')]]},
+  {id:6,  from:'fr-96',   to:'tb-12', group:2, waypoints:[[X('fr-96'),620],[615,620],[615,Y('tb-12')]]},
+  {id:7,  from:'tb-1',    to:'tb-5',  group:3, waypoints:[[720,Y('tb-1')],[720,Y('tb-5')]]},
+  {id:8,  from:'tb-2',    to:'tb-6',  group:3, waypoints:[[735,Y('tb-2')],[735,Y('tb-6')]]},
+  {id:9,  from:'tb-6',    to:'tb-8',  group:3, waypoints:[[750,Y('tb-6')],[750,Y('tb-8')]]},
+  {id:10, from:'tb-8',    to:'tb-11', group:3, waypoints:[[765,Y('tb-8')],[765,Y('tb-11')]]}
 ];
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 
 return { id:'k31', k:'K31',
   name:'电动机单向连续运转接线（带点动控制）',
-  sub:'CJX2s 单接触器 · 10 根导线 · 三个按钮：SB1 点动 / SB2 连续 / SB3 停止',
+  sub:'CJX2s 单接触器 · 10 根导线 · 按实操板实做记录画（2026-09-07）',
   title:'单向连续运转 + 点动 · 实物接线图',
   devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
-  legend:{x:40, y:400}, viewBox:'0 0 860 700', hasSchema:true,
-  warns:['⚠ 按钮颜色会骗人：绿色 SB1 是<b>点动</b>，蓝/黄色 SB2 才是<b>连续</b>',
-         '⚠ 端子排 7~10 这题用不到（SB2 的常闭、SB3 的常开），别顺手接上',
-         '⚠ 端子排 1-12 的按钮对应关系还没上板实测，考场用通断档验一次'] };
+  legend:{x:100, y:512}, viewBox:'0 0 860 700', hasSchema:true,
+  warns:['⚠ <b>四个端子全用上的那个按钮就是点动</b>（端子排 5、6、7、8）——' +
+         '只有它要拿自己的动断去掐自锁。端子排 1、2 那个是连续启动',
+         '⚠ 端子排 <b>3、4、9、10 这题用不到</b>（连续按钮的动断、停止按钮的动合），别顺手接上',
+         '⚠ 有 4 个端子要压两根线：<b>13NO、端子排 1、6、8</b> —— 两个冷压端子一起套上再拧'] };
 }
 
 /* 电路登记表：key 是电路 id（对应实操材料的 K 编号）。
@@ -612,27 +627,30 @@ function buildScene(){
    这一屏要回答的只有一个问题：为什么按 SB2 松手照转、按 SB1 松手就停。
    答案全在「SB1 的动断触点串在自锁支路上」，所以三条并联支路必须分开画清楚。
 ------------------------------------------------------------------ */
+/* 布局按他的实做接法排：**先过线圈，最后才是停止和热继电器** ——
+   跟考试模拟软件那张原理图方向相反，但那是他板子上实际的接法 */
 const S = { XL:70, XB:168, XC:262, XR:318,
-  yIn:26, yFu:58, yFr:114, ySb3:170, yP:216, ySw:260, yKm:308, yQ:352, yCoil:390, yBot:434,
+  yIn:26, yFu:58, yCoil:110, yP:166, ySw:210, yC2:258, yQ:306, ySb3:350, yFr:396, yBot:436,
   H:7 };   /* H = 触点半高：导线段直接画到 y±H，触点自己不再画引脚。
               早先触点两头各画一小段引线、又不属于任何 seg，于是回路通电时
               那两小段永远是灰的，红线中间夹两截灰（截图看出来的） */
 
-/* 开关的机械状态。SB1 是复合按钮，两对触点分开记 ——
-   「常闭先断、常开后合」这个先后顺序就是靠它俩分开才表达得出来 */
-const SW = { sb1no:false, sb1nc:true, sb2no:false, sb3nc:true, fr:true };
+/* 开关的机械状态。**点动按钮是复合的**（动合＋动断各一对），两对分开记 ——
+   「动断先断、动合后合」这个先后顺序就是靠它俩分开才表达得出来 */
+const SW = { contno:false, jogno:false, jognc:true, stopnc:true, fr:true };
 let kmOn = false;
 let symSel = null;
 const SW_DELAY = 260;   /* 复合按钮两对触点动作的时间差，见 pressSB */
 let swTimer = null;
 
 /* 电路求解。c 这一支用的是「上一刻的 kmOn」——自锁的正反馈就是这么出来的，
-   跟 4.4 那节的 ctrlOn() 同一个写法 */
+   跟 4.4 那节的 ctrlOn() 同一个写法。
+   停止和热继电器画在回路末端（照他的接法），但串联位置不影响判断，照旧当总开关 */
 function solve(){
-  const up = SW.fr && SW.sb3nc;
-  const a  = up && SW.sb2no;                 /* 连续启动 */
-  const b  = up && SW.sb1no;                 /* 点动 · 动合 */
-  const c  = up && SW.sb1nc && kmOn;         /* 自锁：串了 SB1 的动断 */
+  const up = SW.fr && SW.stopnc;
+  const a  = up && SW.contno;                /* 连续启动 */
+  const b  = up && SW.jogno;                 /* 点动 · 动合 */
+  const c  = up && kmOn && SW.jognc;         /* 自锁：KM 13-14 串了点动的动断 */
   kmOn = a || b || c;
   return {up:up, a:a, b:b, c:c, km:kmOn};
 }
@@ -640,22 +658,22 @@ function solve(){
 const SYM_DESC = {
   fu:['熔断器 FU2（控制回路两只）',
       '一段细金属丝封在管里，电流大到一定程度自己熔断。控制回路要单独装两只，是因为主回路那几只是按电动机的大电流选的——控制回路这点电流根本熔不断它们，只会让线一直烧。'],
-  fr:['热继电器 FR 的动断触点（95-96）',
-      '主电路里的热元件受热弯曲，把这对触点顶开。它串在控制回路最前面，电动机过载时这一下就把整个控制回路断了。用动断是<b>失效安全</b>：线断了、端子松了，效果和过载一样——设备停。'],
-  sb3:['停止按钮 SB3 · 动断触点',
+  stop:['停止按钮 · 动断触点（端子排 11、12）',
       '画的是「没人按」的样子：动触点臂压在静触点上，那一小横杠就是静触点。<b>按下去才断开。</b>停止一律用动断，理由和热继电器同一条：坏了要往「停」的方向坏。'],
-  sb2:['连续启动 SB2 · 动合触点',
-      '动臂斜着离开静触点＝没人按时是断开的。按一下线圈得电，KM 的 13/14 跟着闭合把自己锁住，<b>松手照转</b>。'],
-  sb1no:['点动 SB1 · 动合触点',
-      'SB1 是复合按钮，这是它的动合那一对。按住时线圈得电、电机转。'],
-  sb1nc:['点动 SB1 · 动断触点 ← 全图的机关',
-      '它<b>串在自锁支路上</b>。按 SB1 时它先断开，自锁那条路根本接不通，所以松手就停——这就是点动。中间那条虚线表示它和上面那个动合触点是<b>同一个按钮</b>机械联动的。'],
+  cont:['连续启动按钮 · 动合触点（端子排 1、2）',
+      '动臂斜着离开静触点＝没人按时是断开的。按一下线圈得电，KM 的 13/14 跟着闭合把自己锁住，<b>松手照转</b>。这个按钮<b>只用动合这一对</b>，它的动断（端子排 3、4）这题空着。'],
+  jogno:['点动按钮 · 动合触点（端子排 5、6）',
+      '点动按钮是复合的，这是它的动合那一对。按住时线圈得电、电机转。<b>四个端子全用上的那个按钮就是点动</b>——这是现场认按钮最快的判据。'],
+  jognc:['点动按钮 · 动断触点（端子排 7、8）← 全图的机关',
+      '它<b>串在自锁支路上</b>。按点动时它先断开，自锁那条路根本接不通，所以松手就停。左边那条折虚线表示它和上面那个动合触点是<b>同一个按钮</b>机械联动的。'],
   km:['接触器 KM 的动合辅助触点（13-14）',
-      '线圈得电它就闭合，把线圈自己的供电锁住，叫<b>自锁</b>。它串在 SB1 的动断后面，所以点动的时候锁不上。接线图上这两个端子就是 13NO / 14NO。'],
+      '线圈得电它就闭合，把线圈自己的供电锁住，叫<b>自锁</b>。它串在点动按钮的动断前面，所以点动的时候锁不上。接线图上这两个端子就是 13NO / 14NO——13 接线圈 A2，14 去端子排 7。'],
   coil:['接触器 KM 的线圈（A1-A2）',
-      '通电产生磁力吸合衔铁，带动主触点（接电动机那三对）和辅助触点 13/14 <b>一起</b>动作。图上所有标 KM 的触点，动作都由这一个线圈决定。'],
-  l1:['电源 L1 侧','控制回路从 L1、L2 两相取电。这条竖线是 L1 侧，经 4 号熔断器进来，第一关是热继电器。'],
-  l2:['电源 L2 侧','线圈的另一头从这条线经 5 号熔断器回 L2。接线图上就是「KM 的 A1 → 5 号熔断器」那一根。']
+      '通电产生磁力吸合衔铁，带动主触点（接电动机那三对）和辅助触点 13/14 <b>一起</b>动作。图上所有标 KM 的触点，动作都由这一个线圈决定。<b>这块板上线圈接在最前面</b>：4 号熔断器直接进 A1。'],
+  fr:['热继电器 FR 的动断触点（95-96）',
+      '主电路里的热元件受热弯曲，把这对触点顶开，电动机过载时这一下就把整个控制回路断了。用动断是<b>失效安全</b>：线断了、端子松了，效果和过载一样——设备停。<b>这块板上它接在回路末端</b>：5 号熔断器 → 95，96 → 端子排 12。'],
+  l1:['电源 L1 侧','控制回路从 L1、L2 两相取电。这条竖线是 L1 侧，经 <b>4 号熔断器</b>进来，第一个碰到的就是线圈 A1。'],
+  l2:['电源 L2 侧','回路的另一头经<b>热继电器和 5 号熔断器</b>回 L2。']
 };
 
 /* 每一段导线：id → [路径点, 有没有电流]。
@@ -666,20 +684,20 @@ function schemaSegs(){
   return [
     /* 熔断器那四段用 13 不用 H：矩形是 26 高，画到 y±7 会被矩形的填充盖掉一截 */
     ['in-l1',  [[s.XL,s.yIn],[s.XL,s.yFu-13]],         function(r){return r.km;}],
-    ['fu-fr',  [[s.XL,s.yFu+13],[s.XL,s.yFr-s.H]],     function(r){return r.km;}],
-    ['fr-sb3', [[s.XL,s.yFr+s.H],[s.XL,s.ySb3-s.H]],   function(r){return r.km;}],
-    ['sb3-p',  [[s.XL,s.ySb3+s.H],[s.XL,s.yP]],        function(r){return r.km;}],
+    ['fu-coil',[[s.XL,s.yFu+13],[s.XL,s.yCoil-11]],    function(r){return r.km;}],
+    ['coil-p', [[s.XL,s.yCoil+11],[s.XL,s.yP]],        function(r){return r.km;}],
     ['bus-top',[[s.XL,s.yP],[s.XC,s.yP]],              function(r){return r.km;}],
     ['a-up',   [[s.XL,s.yP],[s.XL,s.ySw-s.H]],         function(r){return r.a;}],
     ['a-dn',   [[s.XL,s.ySw+s.H],[s.XL,s.yQ]],         function(r){return r.a;}],
     ['b-up',   [[s.XB,s.yP],[s.XB,s.ySw-s.H]],         function(r){return r.b;}],
     ['b-dn',   [[s.XB,s.ySw+s.H],[s.XB,s.yQ]],         function(r){return r.b;}],
     ['c-up',   [[s.XC,s.yP],[s.XC,s.ySw-s.H]],         function(r){return r.c;}],
-    ['c-mid',  [[s.XC,s.ySw+s.H],[s.XC,s.yKm-s.H]],    function(r){return r.c;}],
-    ['c-dn',   [[s.XC,s.yKm+s.H],[s.XC,s.yQ]],         function(r){return r.c;}],
+    ['c-mid',  [[s.XC,s.ySw+s.H],[s.XC,s.yC2-s.H]],    function(r){return r.c;}],
+    ['c-dn',   [[s.XC,s.yC2+s.H],[s.XC,s.yQ]],         function(r){return r.c;}],
     ['bus-bot',[[s.XL,s.yQ],[s.XC,s.yQ]],              function(r){return r.km;}],
-    ['q-coil', [[s.XL,s.yQ],[s.XL,s.yCoil-11]],        function(r){return r.km;}],
-    ['coil-bt',[[s.XL,s.yCoil+11],[s.XL,s.yBot]],      function(r){return r.km;}],
+    ['q-stop', [[s.XL,s.yQ],[s.XL,s.ySb3-s.H]],        function(r){return r.km;}],
+    ['stop-fr',[[s.XL,s.ySb3+s.H],[s.XL,s.yFr-s.H]],   function(r){return r.km;}],
+    ['fr-bot', [[s.XL,s.yFr+s.H],[s.XL,s.yBot]],       function(r){return r.km;}],
     ['bot',    [[s.XL,s.yBot],[s.XR,s.yBot]],          function(r){return r.km;}],
     ['r-up',   [[s.XR,s.yBot],[s.XR,s.yFu+13]],        function(r){return r.km;}],
     ['r-in',   [[s.XR,s.yFu-13],[s.XR,s.yIn]],         function(r){return r.km;}]
@@ -694,6 +712,10 @@ function drawContact(g, key, x, y, kind){
      只让动臂变红的话，红线中间会卡一道黑杠 */
   if(kind==='nc') g.appendChild(el('line',{class:'sw', 'data-bar':key,
     x1:x-6, y1:y-7, x2:x+10, y2:y-7}));
+  /* 动合触点画一个静触点小圆。闭合时动臂是竖直的，跟上下导线连成一条直线——
+     不画这个点的话，屏幕上那一截就是根普通导线，看不出这儿有触点
+     （KM 自锁触点吸合后整条支路成了一根直线，截图才发现） */
+  else g.appendChild(el('circle',{class:'sdot', 'data-dot':key, cx:x, cy:y-7, r:2.6}));
   g.appendChild(el('path',{class:'sw', 'data-arm':key}));
 }
 /* 动臂的四种画法。动断闭合时一定要画成「斜着顶在横杠上」，
@@ -715,6 +737,8 @@ function setArm(key, closed, live){
   p.classList.toggle('live', !!live);
   const bar = svg.querySelector('[data-bar="'+key+'"]');
   if(bar) bar.classList.toggle('live', !!live);
+  const dot = svg.querySelector('[data-dot="'+key+'"]');
+  if(dot) dot.classList.toggle('live', !!live);
 }
 const ARM_POS = {};
 
@@ -733,7 +757,7 @@ function buildSchema(){
   [gDev, gWire, gTerm, gLegend].forEach(function(g){
     while(g.firstChild) g.removeChild(g.firstChild);
   });
-  svg.setAttribute('viewBox','0 0 360 462');
+  svg.setAttribute('viewBox','0 0 360 466');
   const s=S;
   SEG_FN = {};
 
@@ -757,18 +781,20 @@ function buildSchema(){
   });
 
   /* 触点：位置先记进 ARM_POS，setArm 才知道该把动臂画在哪 */
+  /* 支路 C 上两个触点的顺序照他的接线：从公共点数下来先是 KM 13-14，再是点动的动断
+     （X → 13NO → KM → 14NO → 端子排7 → 点动动断 → 端子排8 → Y） */
   ARM_POS.fr    = {x:s.XL, y:s.yFr,  kind:'nc'};
-  ARM_POS.sb3   = {x:s.XL, y:s.ySb3, kind:'nc'};
-  ARM_POS.sb2   = {x:s.XL, y:s.ySw,  kind:'no'};
-  ARM_POS.sb1no = {x:s.XB, y:s.ySw,  kind:'no'};
-  ARM_POS.sb1nc = {x:s.XC, y:s.ySw,  kind:'nc'};
-  ARM_POS.km    = {x:s.XC, y:s.yKm,  kind:'no'};
+  ARM_POS.stop  = {x:s.XL, y:s.ySb3, kind:'nc'};
+  ARM_POS.cont  = {x:s.XL, y:s.ySw,  kind:'no'};
+  ARM_POS.jogno = {x:s.XB, y:s.ySw,  kind:'no'};
+  ARM_POS.km    = {x:s.XC, y:s.ySw,  kind:'no'};
+  ARM_POS.jognc = {x:s.XC, y:s.yC2,  kind:'nc'};
   drawContact(gDev,'fr',    s.XL, s.yFr,  'nc');
-  drawContact(gDev,'sb3',   s.XL, s.ySb3, 'nc');
-  drawContact(gDev,'sb2',   s.XL, s.ySw,  'no');
-  drawContact(gDev,'sb1no', s.XB, s.ySw,  'no');
-  drawContact(gDev,'sb1nc', s.XC, s.ySw,  'nc');
-  drawContact(gDev,'km',    s.XC, s.yKm,  'no');
+  drawContact(gDev,'stop',  s.XL, s.ySb3, 'nc');
+  drawContact(gDev,'cont',  s.XL, s.ySw,  'no');
+  drawContact(gDev,'jogno', s.XB, s.ySw,  'no');
+  drawContact(gDev,'km',    s.XC, s.ySw,  'no');
+  drawContact(gDev,'jognc', s.XC, s.yC2,  'nc');
 
   /* 按钮帽（E 形）＋ 推杆虚线。SB1 那条虚线要一路连到右支路的动断触点上——
      那是「同一个按钮」的唯一视觉证据，也是原图上最容易看漏的一笔 */
@@ -780,8 +806,11 @@ function buildSchema(){
   gDev.appendChild(el('path',{class:'sdash', d:'M'+(s.XL-26)+','+s.ySb3+'L'+(s.XL-2)+','+s.ySb3}));
   cap(s.XL-26, s.ySw);
   gDev.appendChild(el('path',{class:'sdash', d:'M'+(s.XL-26)+','+s.ySw+'L'+(s.XL-2)+','+s.ySw}));
+  /* 点动按钮的联动虚线：它的动合在 (XB,ySw)、动断在 (XC,yC2)，不在同一高度，
+     所以走 L 形折下来。这条线是「这两个触点属于同一个按钮」的唯一视觉证据 */
   cap(s.XB-30, s.ySw);
-  gDev.appendChild(el('path',{class:'sdash', d:'M'+(s.XB-30)+','+s.ySw+'L'+(s.XC-2)+','+s.ySw}));
+  gDev.appendChild(el('path',{class:'sdash',
+    d:'M'+(s.XB-30)+','+s.ySw+'L'+215+','+s.ySw+'L'+215+','+s.yC2+'L'+(s.XC-2)+','+s.yC2}));
 
   /* 线圈 */
   gDev.appendChild(el('rect',{class:'sbox', x:s.XL-19, y:s.yCoil-11, width:38, height:22, rx:2}));
@@ -792,37 +821,43 @@ function buildSchema(){
     if(anchor) e.setAttribute('text-anchor', anchor);
     e.textContent=t; gDev.appendChild(e); return e;
   }
+  /* 标签一律让开各自的点击热区（热区半宽 17，标签起点取 +19 以上），
+     不然选中时那圈虚线环会压在字上。
+     每个触点都配一行小字写它在端子排上的位号 —— 这一屏和接线图对得上全靠这个 */
   lab(s.XL, s.yIn-6, 'L1', 'slbl-b', 'middle');
   lab(s.XR, s.yIn-6, 'L2', 'slbl-b', 'middle');
-  /* 标签一律让开各自的点击热区（热区半宽 17，标签起点取 +19 以上），
-     不然选中时那圈虚线环会压在字上 */
-  lab(s.XL+19, s.yFu+3, 'FU2');
-  lab(s.XR+19, s.yFu+3, 'FU2');
-  lab(s.XL-34, s.yFr+1, 'FR', 'slbl-b', 'end');
-  lab(s.XL-34, s.yFr+13, '95-96', 'snote', 'end');   /* 接线图上就是这两个端子号 */
-  lab(s.XL-38, s.ySb3+3, 'SB3', 'slbl-b', 'end');
-  lab(s.XL-38, s.ySw+3, 'SB2', 'slbl-b', 'end');
-  lab(s.XB-38, s.ySw+3, 'SB1', 'slbl-b', 'end');
-  lab(s.XC+22, s.ySw+3, 'SB1');
-  lab(s.XC+22, s.yKm+1, 'KM', 'slbl-b');
-  lab(s.XC+22, s.yKm+13, '13-14', 'snote');          /* 接线图上的 13NO / 14NO 就是它 */
+  lab(s.XL+19, s.yFu-1, 'FU2', 'slbl');
+  lab(s.XL+19, s.yFu+11, '4号', 'snote');
+  lab(s.XR+19, s.yFu-1, 'FU2', 'slbl');
+  lab(s.XR+19, s.yFu+11, '5号', 'snote');
   lab(s.XL+28, s.yCoil+1, 'KM 线圈', 'slbl-b');
   lab(s.XL+28, s.yCoil+13, 'A1-A2', 'snote');
-  lab(s.XL-34, s.ySw+15, '连续', 'snote', 'end');
-  lab(s.XB-38, s.ySw+15, '点动', 'snote', 'end');
-  lab(s.XC+22, s.ySw+15, '动断', 'snote');
+  lab(s.XL-38, s.ySw+1,  '连续', 'slbl-b', 'end');
+  lab(s.XL-38, s.ySw+13, '1、2', 'snote', 'end');
+  lab(s.XB-38, s.ySw+1,  '点动', 'slbl-b', 'end');
+  lab(s.XB-38, s.ySw+13, '5、6', 'snote', 'end');
+  lab(s.XC+22, s.ySw+1,  'KM', 'slbl-b');
+  lab(s.XC+22, s.ySw+13, '13-14', 'snote');
+  lab(s.XC+22, s.yC2+1,  '点动', 'slbl-b');
+  lab(s.XC+22, s.yC2+13, '7、8', 'snote');
+  lab(s.XL-38, s.ySb3+1,  '停止', 'slbl-b', 'end');
+  lab(s.XL-38, s.ySb3+13, '11、12', 'snote', 'end');
+  lab(s.XL-34, s.yFr+1,  'FR', 'slbl-b', 'end');
+  lab(s.XL-34, s.yFr+13, '95-96', 'snote', 'end');
 
-  /* 可点热区（画最上面，别被导线挡掉） */
+  /* 可点热区（画最上面，别被导线挡掉）。两只熔断器同一个 key，
+     点哪只都亮同一段说明——它们本来就是一回事 */
   gTerm.appendChild(symBox('l1',   s.XL-14, s.yIn-14, 28, 30));
   gTerm.appendChild(symBox('l2',   s.XR-14, s.yIn-14, 28, 30));
   gTerm.appendChild(symBox('fu',   s.XL-14, s.yFu-18, 28, 36));
-  gTerm.appendChild(symBox('fr',   s.XL-16, s.yFr-18, 34, 36));
-  gTerm.appendChild(symBox('sb3',  s.XL-36, s.ySb3-18, 54, 36));
-  gTerm.appendChild(symBox('sb2',  s.XL-36, s.ySw-18, 54, 36));
-  gTerm.appendChild(symBox('sb1no',s.XB-38, s.ySw-18, 56, 36));
-  gTerm.appendChild(symBox('sb1nc',s.XC-16, s.ySw-18, 34, 36));
-  gTerm.appendChild(symBox('km',   s.XC-16, s.yKm-18, 34, 36));
+  gTerm.appendChild(symBox('fu',   s.XR-14, s.yFu-18, 28, 36));
   gTerm.appendChild(symBox('coil', s.XL-22, s.yCoil-14, 44, 28));
+  gTerm.appendChild(symBox('cont', s.XL-36, s.ySw-18, 54, 36));
+  gTerm.appendChild(symBox('jogno',s.XB-38, s.ySw-18, 56, 36));
+  gTerm.appendChild(symBox('km',   s.XC-16, s.ySw-18, 34, 36));
+  gTerm.appendChild(symBox('jognc',s.XC-16, s.yC2-18, 34, 36));
+  gTerm.appendChild(symBox('stop', s.XL-36, s.ySb3-18, 54, 36));
+  gTerm.appendChild(symBox('fr',   s.XL-16, s.yFr-18, 34, 36));
 }
 
 function pickSym(key){
@@ -845,22 +880,25 @@ function renderSchema(){
     const fn = SEG_FN[p.getAttribute('data-seg')];
     p.classList.toggle('live', fn ? !!fn(r) : false);
   });
-  setArm('fr',    SW.fr,    r.km);
-  setArm('sb3',   SW.sb3nc, r.km);
-  setArm('sb2',   SW.sb2no, r.a);
-  setArm('sb1no', SW.sb1no, r.b);
-  setArm('sb1nc', SW.sb1nc, r.c);
-  setArm('km',    r.km,     r.c); /* 自锁触点跟着线圈动，这是「自锁」看得见的那一下 */
+  setArm('fr',    SW.fr,     r.km);
+  setArm('stop',  SW.stopnc, r.km);
+  setArm('cont',  SW.contno, r.a);
+  setArm('jogno', SW.jogno,  r.b);
+  setArm('km',    r.km,      r.c); /* 自锁触点跟着线圈动，这是「自锁」看得见的那一下 */
+  setArm('jognc', SW.jognc,  r.c);
 
   /* 状态条：说清楚「现在靠哪条支路撑着」——松手之后那句话才是这一屏的全部价值 */
   let why;
-  if(!SW.sb3nc)      why = '停止按钮把整个控制回路断在最前面，三条支路一起没电。';
-  else if(r.a && r.c)why = '电流走 SB2 这条支路，同时 KM 的 13/14 已经闭合。<b>现在松手也不会停</b>。';
-  else if(r.a)       why = '电流走 SB2 这条支路。';
-  else if(r.b)       why = '电流走 SB1 的动合触点。注意右边那条自锁支路：<b>SB1 的动断已经被按开了</b>，锁不上——松手就停。';
-  else if(r.c)       why = '按钮都松开了，电流走的是<b>自锁支路</b>：SB1 动断（没按，闭合）→ KM 13/14（线圈得电时闭合）。线圈自己把自己的电锁住了。';
-  else if(SW.sb1nc===false) why = '松手瞬间：SB1 的动合先断开，线圈失电；此时动断还没恢复，自锁那条路也是断的。<b>这零点几秒的空档就是点动能停下来的原因。</b>';
-  else               why = '三条支路都不通，线圈失电。按住 SB2 或 SB1 试试。';
+  if(!SW.stopnc)     why = '停止按钮把整条回路断开了，三条支路一起没电。';
+  else if(r.a && r.c)why = '电流走<b>连续</b>那条支路，同时 KM 的 13/14 已经闭合。<b>现在松手也不会停</b>。';
+  else if(r.a)       why = '电流走<b>连续</b>那条支路（端子排 1、2）。';
+  else if(r.b)       why = '电流走<b>点动</b>的动合触点（端子排 5、6）。注意右边那条自锁支路：' +
+                           '<b>点动按钮的动断（7、8）已经被按开了</b>，锁不上——松手就停。';
+  else if(r.c)       why = '按钮都松开了，电流走的是<b>自锁支路</b>：KM 13-14（线圈得电时闭合）→ ' +
+                           '点动的动断（没按，闭合）。线圈自己把自己的电锁住了。';
+  else if(SW.jognc===false) why = '松手瞬间：点动的动合先断开，线圈失电；此时它的动断还没恢复，' +
+                           '自锁那条路也是断的。<b>这零点几秒的空档就是点动能停下来的原因。</b>';
+  else               why = '三条支路都不通，线圈失电。按住「连续」或「点动」试试。';
 
   const box = document.getElementById('schemaState');
   box.className = 'srun ' + (r.km ? 'on' : 'off');
@@ -875,19 +913,20 @@ function renderSchema(){
    自锁会当场接上——点动就变成连续了，整屏白做（11.6 那节同一个坑） */
 function pressSB(which, down){
   if(swTimer){ clearTimeout(swTimer); swTimer=null; }
-  if(which==='sb3'){ SW.sb3nc = !down; renderSchema(); return; }
-  if(which==='sb2'){ SW.sb2no = down;  renderSchema(); return; }
+  if(which==='stop'){ SW.stopnc = !down; renderSchema(); return; }
+  if(which==='cont'){ SW.contno = down;  renderSchema(); return; }
+  /* 点动是复合按钮：按下＝动断先断、动合后合；松开＝动合先断、动断后合 */
   if(down){
-    SW.sb1nc = false; renderSchema();
-    swTimer = setTimeout(function(){ SW.sb1no = true;  renderSchema(); }, SW_DELAY);
+    SW.jognc = false; renderSchema();
+    swTimer = setTimeout(function(){ SW.jogno = true;  renderSchema(); }, SW_DELAY);
   } else {
-    SW.sb1no = false; renderSchema();
-    swTimer = setTimeout(function(){ SW.sb1nc = true;  renderSchema(); }, SW_DELAY);
+    SW.jogno = false; renderSchema();
+    swTimer = setTimeout(function(){ SW.jognc = true;  renderSchema(); }, SW_DELAY);
   }
 }
 function resetSchema(){
   if(swTimer){ clearTimeout(swTimer); swTimer=null; }
-  SW.sb1no=false; SW.sb1nc=true; SW.sb2no=false; SW.sb3nc=true; SW.fr=true;
+  SW.contno=false; SW.jogno=false; SW.jognc=true; SW.stopnc=true; SW.fr=true;
   kmOn=false; symSel=null;
   document.querySelectorAll('.sbtns button').forEach(function(b){ b.classList.remove('down'); });
 }
