@@ -289,8 +289,48 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 .p-fr .st .b{flex:1;color:var(--tx2)}
 .p-fr .st .b b{color:var(--tx)}
 
+/* ── 实操页的目录条：吸在顶栏底下，横向滚，点一下跳到那一段 ──
+   跳之前先把那一段展开（课程页 data-j="stage" 那条经验：跳过去是一片空的话等于没跳）。
+   --top-h 是顶栏实测高度（JS 写进去的）：顶栏本身是 sticky 的，
+   目录条要贴在它下面，锚点还要再让开目录条自己那一条。 */
+.p-toc{
+  position:sticky;top:var(--top-h,64px);z-index:20;margin:0 -12px 10px;padding:7px 12px;
+  background:var(--bg);border-bottom:1px solid var(--line);
+  display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.p-toc::-webkit-scrollbar{display:none}
+.p-toc button{
+  flex:none;min-height:44px;padding:0 13px;border:1px solid var(--line);background:var(--card);
+  border-radius:999px;font-size:13px;color:var(--tx2);font-family:inherit;cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+}
+.p-toc button b{color:var(--blue);font-weight:700}
+
+/* ── 可折叠的一段（三张说明卡 + 四个大组共用）── */
+.p-fh{
+  width:100%;display:flex;align-items:center;gap:9px;min-height:44px;padding:11px 14px;
+  border:0;background:none;font-family:inherit;text-align:left;cursor:pointer;color:var(--tx);
+}
+.p-fh .ft{flex:1;font-size:15px;font-weight:700;line-height:1.35}
+.p-fh .fs{font-size:12px;color:var(--tx3);white-space:nowrap}
+.p-fb{display:none;padding:0 14px 13px}
+.p-fold.open>.p-fb{display:block}
+.p-fold.open>.p-fh{border-bottom:1px solid var(--line);margin-bottom:11px}
+.p-fold>.p-fh .caret{transition:transform .18s}
+.p-fold.open>.p-fh .caret{transform:rotate(90deg)}
+/* 跳过去时要让开顶栏和目录条两条 */
+[data-anchor]{scroll-margin-top:calc(var(--top-h,64px) + 66px)}
+
 .p-grp{margin-bottom:14px}
-.p-gh{display:flex;align-items:center;gap:9px;margin:0 2px 8px}
+.p-gh{
+  width:100%;display:flex;align-items:center;gap:9px;margin:0 0 8px;min-height:44px;
+  padding:4px 2px;border:0;background:none;font-family:inherit;text-align:left;
+  cursor:pointer;color:var(--tx);
+}
+.p-gb{display:none}
+.p-grp.open .p-gb{display:block}
+.p-grp .p-gh .caret{transition:transform .18s}
+.p-grp.open .p-gh .caret{transform:rotate(90deg)}
 .p-gc{
   flex:none;font-size:12.5px;font-weight:700;color:var(--blue);background:var(--blue-l);
   border:1px solid var(--blue-b);border-radius:7px;padding:4px 9px;
@@ -1753,7 +1793,16 @@ $('#tbPick').onclick=function(e){
    要背的原话（say）默认盖住，点一下才露 —— 和判断题「盖住答案」同一个路子：
    先自己说一遍再翻开，直接看等于白看。
    展开状态存 localStorage，翻回来还在原地。 */
-var pMask=load('pmask',true), pOpen=load('popen',{});
+var pMask=load('pmask',true), pOpen=load('popen',{}), pSec=load('psec',null);
+/* 顶栏是 sticky 的，目录条要贴在它下面、锚点要让开这两条 ——
+   顶栏高度会变（「‹ 电工课」那个链接是 elec-top.js 事后插进去的，标题也会折行），
+   所以实测一次写进 --top-h，别写死 */
+function syncTopH(){
+  var t=document.querySelector('.top');
+  if(t) document.documentElement.style.setProperty('--top-h', Math.round(t.getBoundingClientRect().height)+'px');
+}
+window.addEventListener('resize', syncTopH);
+window.addEventListener('elec:theme', syncTopH);
 
 function pSteps(t){
   if(!t.steps) return '';
@@ -1806,49 +1855,92 @@ function pTask(t){
   return '<div class="p-task'+(open?' open':'')+(pMask?' hid':'')+'" data-tid="'+esc(t.id)+'">'+
          head+'<div class="p-body">'+b+'</div></div>';
 }
+/* 一段折不折 —— 记在 psec 里。默认全展开，只有「器材台」收着：
+   它是查阅用的、又是一页里最长的一块，挡在 K1 前面每次都要划过去。 */
+function secOpen(id){
+  if(pSec && Object.prototype.hasOwnProperty.call(pSec,id)) return !!pSec[id];
+  return id!=='sec-site';
+}
+function setSec(id,on){ pSec=pSec||{}; pSec[id]=on?1:0; save('psec',pSec) }
+/* 折叠段的外壳：标题行永远露着，内容按 open 显隐 */
+function pFold(id,cls,title,side,body){
+  return '<div class="card p-fold'+(secOpen(id)?' open':'')+(cls?' '+cls:'')+'" id="'+id+'" data-anchor>'+
+    '<button class="p-fh" data-sec="'+id+'"><span class="ft">'+esc(title)+'</span>'+
+      (side?'<span class="fs">'+esc(side)+'</span>':'')+'<span class="caret">▶</span></button>'+
+    '<div class="p-fb">'+body+'</div></div>';
+}
 function paintPrac(){
   if(!window.PRACTICAL){$('#prac').innerHTML='<div class="card pad">没找到 practical-data.js</div>';return}
-  var P=PRACTICAL, h='';
+  var P=PRACTICAL, h='', toc=[];
+  /* 目录条 —— 吸在顶栏底下，点一下跳过去（跳之前自动展开那一段） */
+  toc.push(['sec-exam','总览']);
+  toc.push(['sec-frame','骨架']);
+  if(P.site) toc.push(['sec-site','器材台']);
+  P.groups.forEach(function(g){ toc.push(['grp-'+g.id, g.id]) });
+  h+='<div class="p-toc">'+toc.map(function(x){
+       return '<button data-jump="'+x[0]+'">'+esc(x[1])+'</button>';
+     }).join('')+'</div>';
   /* 整场考试的构成 */
-  h+='<div class="card pad"><div class="p-lead"><b>'+esc(P.exam.t)+'</b>　'+P.exam.note+'</div>'+
-     '<div class="p-ex">'+P.exam.parts.map(function(p){
-       return '<span><b>'+esc(p[0])+'</b> '+esc(p[1])+(p[2]?'（'+esc(p[2])+'）':'')+(p[3]&&p[3]!=='—'?' '+esc(p[3]):'')+'</span>';
-     }).join('')+'</div></div>';
+  h+=pFold('sec-exam','',P.exam.t,'总览',
+      '<div class="p-lead">'+P.exam.note+'</div>'+
+      '<div class="p-ex">'+P.exam.parts.map(function(p){
+        return '<span><b>'+esc(p[0])+'</b> '+esc(p[1])+(p[2]?'（'+esc(p[2])+'）':'')+(p[3]&&p[3]!=='—'?' '+esc(p[3]):'')+'</span>';
+      }).join('')+'</div>');
   /* K1 七项共用的骨架 —— 这一页最值钱的东西，放最上面 */
   var F=P.frame;
-  h+='<div class="card pad p-fr"><div class="p-lead"><b>'+esc(F.t)+'</b>　'+esc(F.d)+'</div>'+
-     '<div style="margin-top:8px">'+F.steps.map(function(x){
-       return '<div class="st"><div class="n">'+esc(x[0])+'</div><div class="b">'+x[1]+'</div></div>';
-     }).join('')+'</div>'+
-     '<div class="p-no"><div class="t">七项共有的否定项</div><ol>'+
-       F.no.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol></div>'+
-     '<div class="p-mine"><div class="t">所以真正要单独背的只有这些</div>'+F.tip+'</div></div>';
+  h+=pFold('sec-frame','p-fr',F.t,'',
+      '<div class="p-lead">'+esc(F.d)+'</div>'+
+      '<div style="margin-top:8px">'+F.steps.map(function(x){
+        return '<div class="st"><div class="n">'+esc(x[0])+'</div><div class="b">'+x[1]+'</div></div>';
+      }).join('')+'</div>'+
+      '<div class="p-no"><div class="t">七项共有的否定项</div><ol>'+
+        F.no.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol></div>'+
+      '<div class="p-mine"><div class="t">所以真正要单独背的只有这些</div>'+F.tip+'</div>');
   /* 考场器材台（材料那张照片）—— 放在骨架之后、K1 之前：进考场先认一眼台面 */
   if(P.site){
     var S=P.site;
-    h+='<div class="card pad"><div class="p-lead"><b>'+esc(S.t)+'</b>　'+esc(S.d)+'</div>'+
-       '<div class="p-sh">墙上的面板</div>'+
-       '<div class="p-ex">'+S.panels.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div>'+
-       '<div class="p-sh">台面上的器材</div>'+
-       '<div style="margin-top:2px">'+S.tools.map(function(x){
-         return '<div class="p-tool"><b>'+esc(x[0])+'</b><span>'+x[1]+'</span></div>';
-       }).join('')+'</div>'+
-       '<div class="p-mine"><div class="t">看台面能先解决两件事</div>'+S.mine+'</div></div>';
+    h+=pFold('sec-site','',S.t,'',
+        '<div class="p-lead">'+esc(S.d)+'</div>'+
+        '<div class="p-sh">墙上的面板</div>'+
+        '<div class="p-ex">'+S.panels.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div>'+
+        '<div class="p-sh">台面上的器材</div>'+
+        '<div style="margin-top:2px">'+S.tools.map(function(x){
+          return '<div class="p-tool"><b>'+esc(x[0])+'</b><span>'+x[1]+'</span></div>';
+        }).join('')+'</div>'+
+        '<div class="p-mine"><div class="t">看台面能先解决两件事</div>'+S.mine+'</div>');
   }
-  /* 四个大组 */
+  /* 四个大组 —— 组头就是折叠开关 */
   h+=P.groups.map(function(g){
-    return '<div class="p-grp"><div class="p-gh"><span class="p-gc">'+esc(g.id)+'</span>'+
-      '<span class="p-gt">'+esc(g.t)+'</span>'+(g.sub?'<span class="p-gs">'+esc(g.sub)+'</span>':'')+'</div>'+
+    var gid='grp-'+g.id;
+    return '<div class="p-grp'+(secOpen(gid)?' open':'')+'" id="'+gid+'" data-anchor>'+
+      '<button class="p-gh" data-sec="'+gid+'"><span class="p-gc">'+esc(g.id)+'</span>'+
+      '<span class="p-gt">'+esc(g.t)+'</span>'+(g.sub?'<span class="p-gs">'+esc(g.sub)+'</span>':'')+
+      '<span class="caret">▶</span></button><div class="p-gb">'+
       (function(){
         var n=g.tasks.filter(function(t){return t.todo}).length;
         return n ? '<div class="p-gnote">其中 <b>'+n+' 项</b>材料上只有标题、没有步骤和话术 —— 拿到那几页再补。</div>' : '';
       })()+
-      g.tasks.map(pTask).join('')+'</div>';
+      g.tasks.map(pTask).join('')+'</div></div>';
   }).join('');
   $('#prac').innerHTML=h;
+  syncTopH();
 }
-/* 展开 / 收起一项；点绿底的原话就翻开那一句 */
+/* 目录跳转：跳之前先把那一段展开 —— 跳过去是一片空的等于没跳 */
+function pJump(id){
+  var box=document.getElementById(id); if(!box) return;
+  if(!box.classList.contains('open')){ box.classList.add('open'); setSec(id,true) }
+  box.scrollIntoView({behavior:'smooth',block:'start'});
+}
+/* 展开 / 收起一段、一项；点绿底的原话就翻开那一句 */
 $('#prac').onclick=function(e){
+  var jump=e.target.closest('[data-jump]');
+  if(jump){ pJump(jump.dataset.jump); return }
+  var fh=e.target.closest('[data-sec]');
+  if(fh){
+    var sid=fh.dataset.sec, box=document.getElementById(sid);
+    if(box){ var on=!box.classList.contains('open'); box.classList.toggle('open',on); setSec(sid,on) }
+    return;
+  }
   var say=e.target.closest('.p-say');
   if(say){ say.classList.toggle('on'); return }
   var th=e.target.closest('.p-th[data-tid]');
@@ -1865,12 +1957,20 @@ $('#pMaskB').onclick=function(){
 $('#pOpenB').onclick=function(){
   var all=$$('#prac .p-task:not(.todo)'), allOpen=all.length&&all.every(function(c){return c.classList.contains('open')});
   pOpen = {};
-  if(!allOpen) all.forEach(function(c){ pOpen[c.dataset.tid]=1 });
+  /* 展开时连折起来的分类一起打开 —— 否则展开了的项还藏在收着的组里，屏幕上什么都没变。
+     收起只收「项」，四个组照旧留着当目录用 */
+  if(!allOpen){
+    all.forEach(function(c){ pOpen[c.dataset.tid]=1 });
+    $$('#prac [data-anchor]').forEach(function(b){ setSec(b.id,true) });
+  }
   save('popen',pOpen); paintPrac();
   this.textContent = allOpen ? '全部展开' : '全部收起';
 };
 
 /* ══ 启动 ══ */
+syncTopH();
+/* elec-top.js 的「‹ 电工课」是事后插进顶栏的，会把顶栏顶高一截 —— 落定之后再量一次 */
+setTimeout(syncTopH,300);
 $('#bMask').classList.toggle('on',bMask);
 $('#bTodo').classList.toggle('on',bTodo);
 paintStat();paintBank();
