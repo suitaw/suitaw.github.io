@@ -412,6 +412,10 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 .p-mine .t{font-weight:700;color:var(--blue);margin-bottom:3px;font-size:12.5px}
 .p-mine b{color:var(--tx)}
 .p-todo{margin:10px 0;font-size:13px;color:var(--tx3);line-height:1.7}
+.p-link{margin:12px 0 4px}
+.p-link a{display:block;border:1px solid var(--acc);border-radius:9px;padding:10px 12px;
+  color:var(--acc);font-weight:700;font-size:13.5px;text-decoration:none;background:var(--accbg)}
+.p-link .d{display:block;margin-top:5px;font-size:12px;color:var(--tx3);line-height:1.6}
 .p-gnote{margin:-2px 2px 8px;font-size:12.5px;color:var(--tx3);line-height:1.6}
 .p-sh{margin:12px 0 5px;font-size:12.5px;font-weight:700;color:var(--tx3)}
 .p-tool{display:flex;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px;line-height:1.7}
@@ -1852,6 +1856,9 @@ function pTask(t){
   if(t.no&&t.no.length) b+='<div class="p-no"><div class="t">否定项（碰到就是 0 分）</div><ol>'+
     t.no.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ol></div>';
   if(t.mine) b+='<div class="p-mine"><div class="t">怎么记（材料上没有，我加的）</div>'+t.mine+'</div>';
+  /* 接线类的项目（K3 那组）要能跳去接线训练器练——干背 10 根线记不住 */
+  if(t.link) b+='<div class="p-link"><a href="'+esc(t.link.href)+'">'+esc(t.link.t)+
+                '</a>'+(t.link.d?'<span class="d">'+esc(t.link.d)+'</span>':'')+'</div>';
   return '<div class="p-task'+(open?' open':'')+(pMask?' hid':'')+'" data-tid="'+esc(t.id)+'">'+
          head+'<div class="p-body">'+b+'</div></div>';
 }
