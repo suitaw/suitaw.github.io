@@ -21,10 +21,57 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
   border-radius:8px;padding:5px 9px;white-space:nowrap}
 .sub{width:100%;font-size:.76rem;color:var(--tx3);margin-top:2px}
 
+.circuits{display:flex;gap:6px;margin-bottom:8px}
+.circuits button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--tx3);
+  border-radius:9px;padding:8px 9px;font-size:.72rem;text-align:left;line-height:1.4}
+.circuits button .k{font-weight:700;color:var(--tx);display:block;font-size:.84rem;margin-bottom:1px}
+.circuits button.on{background:var(--accbg);border-color:var(--acc)}
+.circuits button.on .k{color:var(--acc)}
+
 .modes{display:flex;gap:6px;margin-bottom:8px}
 .modes button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--tx2);
   border-radius:9px;padding:9px 6px;font-size:.82rem;font-weight:600}
 .modes button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+
+/* 原理图那一屏：三个「按住」按钮 + 状态条。
+   按钮一律 touch-action:manipulation —— 长按会弹出系统的选中/放大镜，
+   而这里的核心交互恰恰就是长按（手机上实测踩到的） */
+.sbar{margin-bottom:10px}
+.sbtns{display:flex;gap:6px}
+.sbtns button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--tx);
+  border-radius:10px;padding:10px 4px;font-size:.8rem;font-weight:600;line-height:1.25;
+  touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.sbtns button span{display:block;font-size:.66rem;font-weight:400;color:var(--tx3);margin-top:2px}
+.sbtns button.down{transform:translateY(1px)}
+.sbtns .b-g.down{background:var(--greenbg);border-color:var(--green);color:var(--green)}
+.sbtns .b-b.down{background:var(--bluebg);border-color:var(--blue);color:var(--blue)}
+.sbtns .b-r.down{background:var(--redbg);border-color:var(--red);color:var(--red)}
+.sbtns .b-g.down span,.sbtns .b-b.down span,.sbtns .b-r.down span{color:inherit}
+.stip{font-size:.72rem;color:var(--tx3);margin-top:6px;line-height:1.5}
+.srun{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;
+  background:var(--card);font-size:.8rem;line-height:1.6}
+.srun .st{font-weight:700}
+.srun.on{background:var(--greenbg);border-color:var(--green)}
+.srun.on .st{color:var(--green)}
+.srun.off .st{color:var(--tx2)}
+.srun .why{color:var(--tx2);font-size:.76rem;margin-top:3px}
+
+/* 原理图里可点的符号：默认不加任何装饰，选中才描一圈——
+   一上来就全部描边的话，整张图全是框，反而看不出哪个是重点 */
+.sym{cursor:pointer}
+.sym-hit{fill:transparent}
+.sym-ring{fill:none;stroke:var(--acc);stroke-width:1.6;opacity:0;transition:opacity .15s}
+.sym.sel .sym-ring{opacity:1}
+.sw{stroke:var(--tx);stroke-width:2.2;fill:none;stroke-linecap:round;transition:stroke .18s}
+.sw.live{stroke:var(--red);stroke-width:3.2}
+.sdash{stroke:var(--tx3);stroke-width:1.3;stroke-dasharray:4 3;fill:none}
+.swire{stroke:var(--tx3);stroke-width:2.2;fill:none;stroke-linecap:round;
+  transition:stroke .18s,stroke-width .18s}
+.swire.live{stroke:var(--red);stroke-width:3.2}
+.sbox{fill:var(--card);stroke:var(--tx);stroke-width:2}
+.slbl{font-size:10.5px;fill:var(--tx2)}
+.slbl-b{font-size:11px;fill:var(--tx);font-weight:700}
+.snote{font-size:9.5px;fill:var(--tx3)}
 
 .toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
 .grpbtns{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;padding-bottom:2px}
@@ -115,16 +162,30 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 <body>
 <div class="wrap">
   <div class="top">
-    <h1>正反转控制电路 · 实物接线图</h1>
+    <h1 id="pgTitle">实物接线图</h1>
     <a class="back" href="index.html">‹ 电工课</a>
-    <div class="sub">CJX2s 双接触器互锁正反转控制柜 · 14 根导线 · 配 11.6 正反转控制</div>
+    <div class="sub" id="pgSub"></div>
   </div>
 
+  <div class="circuits" id="circuitBtns"></div>
+
   <div class="modes">
+    <button data-mode="schema">原理图</button>
     <button data-mode="browse" class="on">浏览模式</button>
     <button data-mode="step">逐根播放</button>
     <button data-mode="test">自测</button>
     <button data-mode="screw">上螺丝顺序</button>
+  </div>
+
+  <div class="sbar" id="schemaBar" style="display:none">
+    <div class="sbtns">
+      <button data-sb="sb1" class="b-g">按住 SB1<span>绿 · 点动</span></button>
+      <button data-sb="sb2" class="b-b">按住 SB2<span>蓝 · 连续</span></button>
+      <button data-sb="sb3" class="b-r">按住 SB3<span>红 · 停止</span></button>
+    </div>
+    <div class="srun off" id="schemaState"></div>
+    <div class="stip">按钮要<b>按住</b>再松手 —— 点动和连续的区别只有松手那一下看得出来。
+      图上任一个符号都能点，告诉你它是什么。</div>
   </div>
 
   <div class="toolbar" id="browseBar">
@@ -152,8 +213,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
   <div class="hintbar" id="hintbar">
     <div class="g">记法</div>
     <div class="t" id="hintText">点一个分组，看这组怎么记。</div>
-    <div class="warn">⚠ 第 3 组端子号是交叉的 —— 1 配 5，2 配 1</div>
-    <div class="warn">⚠ 每个接触器的辅助端子按 22NC → 21NC → 14NO → 13NO 的顺序接，先常闭后常开</div>
+    <div id="warnBox"></div>
   </div>
   <div class="foot-pad"></div>
 </div>
@@ -165,7 +225,23 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 /* ------------------------------------------------------------------
    数据（唯一真相）：元件外框 + 端子相对偏移 / 导线 from-to / 分组记忆法
    渲染只读这三个常量，不倒过来写死坐标 —— 改布局只改 DEVICES
+
+   每块板子包成一个工厂函数：函数内部先建自己的 TPOS，再拿 X()/Y() 定义 WIRES。
+   不这么做的话，第二块板的 WIRES 求值时会读到第一块板的坐标表——两个电路串味，
+   而且报不出错，只是线画到离谱的地方去（改成多电路时踩的第一个坑）
 ------------------------------------------------------------------ */
+function buildTPOS(devices){
+  const tpos = {};
+  devices.forEach(function(d){
+    d.terminals.forEach(function(t){
+      tpos[t.id] = {x:d.x+t.x, y:d.y+t.y, device:d.id, label:t.label};
+    });
+  });
+  return tpos;
+}
+
+/* ══ K32 正反转（双接触器 · 14 根）══════════════════════════ */
+function defK32(){
 const DEVICES = [
   /* 端子排挪到左上角、竖排——照他实操板拍的照片来的（2026-09-06）。
      其余元件跟着整体右移 30px 让位，彼此之间的相对位置没变，
@@ -205,12 +281,7 @@ const DEVICES = [
 
 /* 端子绝对坐标表：{id:{x,y,device,label}} —— WIRES 的 from/to 全靠它解析，
    waypoints 里需要「跟某个端子对齐」的拐点也靠它取，不写死数字 */
-const TPOS = {};
-DEVICES.forEach(function(d){
-  d.terminals.forEach(function(t){
-    TPOS[t.id] = {x:d.x+t.x, y:d.y+t.y, device:d.id, label:t.label};
-  });
-});
+const TPOS = buildTPOS(DEVICES);
 function X(id){ return TPOS[id].x; }
 function Y(id){ return TPOS[id].y; }
 
@@ -262,13 +333,120 @@ const WIRES = [
 ];
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 
-/* 电路登记表：key 是电路 id（对应实操材料的 K 编号），value 是它自己的 devices/wires/groups。
-   现在只有 K32（正反转），以后加 K31/K33/K34 只要在这里再添一条 —— 下面
-   getTerminalWireCount / buildScrewSteps 都是照 circuitId 查表算的，不认单一全局 WIRES */
-const CIRCUITS = {
-  k32: { id:'k32', name:'三相异步电动机正反转运行的接线及安全操作', devices:DEVICES, wires:WIRES, groups:GROUPS }
+return { id:'k32', k:'K32',
+  name:'三相异步电动机正反转运行的接线及安全操作',
+  sub:'CJX2s 双接触器互锁正反转控制柜 · 14 根导线 · 配 11.6 正反转控制',
+  title:'正反转控制电路 · 实物接线图',
+  devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
+  legend:{x:612, y:14}, viewBox:'0 0 860 700', hasSchema:false,
+  warns:['⚠ 第 3 组端子号是交叉的 —— 1 配 5，2 配 1',
+         '⚠ 每个接触器的辅助端子按 22NC → 21NC → 14NO → 13NO 的顺序接，先常闭后常开'] };
+}
+
+/* ══ K31 单向连续运转 · 带点动控制（单接触器 · 10 根）═══════════
+   拓扑来自考试模拟软件那张 K31-03 原理图，逐个符号放大核过（2026-09-07）：
+   停止 SB3 常闭 之后是一个公共点，往下挂三条并联支路 ——
+     ① SB2 常开（连续启动）  ② SB1 常开（点动）  ③ SB1 常闭 串 KM 13/14（自锁）
+   全电路的眼就在③：自锁支路串了点动按钮的常闭，所以按 SB1 时常闭先断、
+   自锁根本建立不起来，松手即停；按 SB2 时自锁那条路是通的，松手照转。
+   注意这跟按钮颜色的直觉相反：绿色 SB1 是点动，蓝/黄色 SB2 才是连续。
+
+   端子排 1~12 的分配是从实操板照片读出来的：右侧接按钮盒的 12 根线，
+   线管颜色按「蓝蓝红红」四根一组、三组循环 —— 蓝＝常开那一对，红＝常闭那一对，
+   一组就是一个按钮的四个端子。按钮盒实物从上到下是绿·黄·红，顺着接下来即为
+   1-4 绿(SB1点动) / 5-8 黄(SB2连续) / 9-12 红(SB3停止)。
+   【这一条还没上板实测】考场上用万用表通断档 30 秒可验：表笔搭 11、12 应该响，
+   按住红色按钮就不响了。验完不符只改这里的 labels 和 wires 的 tb 编号 */
+function defK31(){
+const DEVICES = [
+  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:70, y:40, w:60, h:90,
+   terminals:[ {id:'fu4-out', label:'出', x:30, y:90} ]},
+  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:200, y:40, w:60, h:90,
+   terminals:[ {id:'fu5-out', label:'出', x:30, y:90} ]},
+  {id:'fr', name:'JR36 热继电器', sub:'', kind:'fr', x:60, y:210, w:110, h:60,
+   terminals:[ {id:'fr-96', label:'96', x:0, y:30}, {id:'fr-95', label:'95', x:110, y:30} ]},
+  /* CJX2s-0911 只有一组辅助触点（13/14 常开 + 21/22 常闭），这题只用到常开那一组。
+     A1 在上方、A2 在下方，都从右侧引出；13/14 在机身下沿 —— 跟 K32 同一块板同一个摆法 */
+  {id:'km', name:'接触器', sub:'CJX2s-0911', kind:'km', x:300, y:230, w:160, h:250,
+   terminals:[
+     {id:'km-a1', label:'A1', x:160, y:20},
+     {id:'km-a2', label:'A2', x:160, y:170},
+     {id:'km-13', label:'13', x:60,  y:250},
+     {id:'km-14', label:'14', x:100, y:250}
+   ]},
+  {id:'tb', name:'端子排', sub:'12 位 · 右侧通按钮盒', kind:'tb', x:640, y:60, w:54, h:520,
+   terminals:(function(){
+     const out=[];
+     for(let i=0;i<12;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:27, y:40+i*40});
+     return out;
+   })()}
+];
+
+const TPOS = buildTPOS(DEVICES);
+function X(id){ return TPOS[id].x; }
+function Y(id){ return TPOS[id].y; }
+
+/* 端子排那 12 位一律带上「这一位通到哪个按钮的哪对触点」，
+   光写「端子排4」的话，自测时根本判断不了该不该接它 */
+const TLABEL = {
+  'fu4-out':'4号熔断器（L1）', 'fu5-out':'5号熔断器（L2）',
+  'fr-96':'热继电器96', 'fr-95':'热继电器95',
+  'km-a1':'接触器A1', 'km-a2':'接触器A2',
+  'km-13':'接触器13NO', 'km-14':'接触器14NO',
+  'tb-1':'端子排1（点动SB1·常开）',  'tb-2':'端子排2（点动SB1·常开）',
+  'tb-3':'端子排3（点动SB1·常闭）',  'tb-4':'端子排4（点动SB1·常闭）',
+  'tb-5':'端子排5（连续SB2·常开）',  'tb-6':'端子排6（连续SB2·常开）',
+  'tb-7':'端子排7（连续SB2·常闭·这题不用）',  'tb-8':'端子排8（连续SB2·常闭·这题不用）',
+  'tb-9':'端子排9（停止SB3·常开·这题不用）',  'tb-10':'端子排10（停止SB3·常开·这题不用）',
+  'tb-11':'端子排11（停止SB3·常闭）', 'tb-12':'端子排12（停止SB3·常闭）'
 };
-const CURRENT_CIRCUIT = 'k32';
+
+const GROUPS = [
+  {id:1, name:'电源进线',   hint:'控制电源从 4 号熔断器（L1）进来先过热继电器 95/96；线圈另一头从 5 号熔断器（L2）回去'},
+  {id:2, name:'公共点跳线', hint:'停止按钮之后是一个公共点：12 → 1 → 3 → 5 串成一串，三条支路都从这儿取电'},
+  {id:3, name:'自锁支路',   hint:'点动按钮的常闭（3、4）串在自锁触点 13NO 前面 —— 这一根就是「点动」的全部机关'},
+  {id:4, name:'汇合进线圈', hint:'三条支路在这儿汇合，一起进线圈 A2'}
+];
+const GCOLOR_HEX = {1:'#c0392b', 2:'#e67e22', 3:'#2b6cb0', 4:'#2f9e44'};
+
+/* 10 根，数组顺序＝接线顺序，从电源顺着电流往下游排，逐根播放时才连贯。
+   走线的竖向通道各占一条 x（550/570/590/610 在板中间，720/735/750/765 在端子排右侧
+   专走跳线），横向通道各占一条 y（175/190 在上方，530/560/620 在下方），
+   两两不重叠 —— 这样十根线一根都不打结 */
+const WIRES = [
+  {id:1,  from:'fu4-out', to:'fr-96',  group:1, waypoints:[[X('fu4-out'),175],[X('fr-96'),175]]},
+  {id:2,  from:'fr-95',   to:'tb-11',  group:1, waypoints:[[280,Y('fr-95')],[280,620],[610,620],[610,Y('tb-11')]]},
+  {id:3,  from:'tb-12',   to:'tb-1',   group:2, waypoints:[[720,Y('tb-12')],[720,Y('tb-1')]]},
+  {id:4,  from:'tb-1',    to:'tb-3',   group:2, waypoints:[[735,Y('tb-1')],[735,Y('tb-3')]]},
+  {id:5,  from:'tb-3',    to:'tb-5',   group:2, waypoints:[[750,Y('tb-3')],[750,Y('tb-5')]]},
+  {id:6,  from:'tb-4',    to:'km-13',  group:3, waypoints:[[590,Y('tb-4')],[590,530],[X('km-13'),530]]},
+  {id:7,  from:'km-14',   to:'tb-2',   group:3, waypoints:[[X('km-14'),560],[570,560],[570,Y('tb-2')]]},
+  {id:8,  from:'tb-2',    to:'tb-6',   group:4, waypoints:[[765,Y('tb-2')],[765,Y('tb-6')]]},
+  {id:9,  from:'tb-6',    to:'km-a2',  group:4, waypoints:[[550,Y('tb-6')],[550,Y('km-a2')]]},
+  {id:10, from:'km-a1',   to:'fu5-out',group:1, waypoints:[[X('km-a1'),190],[X('fu5-out'),190]]}
+];
+WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
+
+return { id:'k31', k:'K31',
+  name:'电动机单向连续运转接线（带点动控制）',
+  sub:'CJX2s 单接触器 · 10 根导线 · 三个按钮：SB1 点动 / SB2 连续 / SB3 停止',
+  title:'单向连续运转 + 点动 · 实物接线图',
+  devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
+  legend:{x:40, y:400}, viewBox:'0 0 860 700', hasSchema:true,
+  warns:['⚠ 按钮颜色会骗人：绿色 SB1 是<b>点动</b>，蓝/黄色 SB2 才是<b>连续</b>',
+         '⚠ 端子排 7~10 这题用不到（SB2 的常闭、SB3 的常开），别顺手接上',
+         '⚠ 端子排 1-12 的按钮对应关系还没上板实测，考场用通断档验一次'] };
+}
+
+/* 电路登记表：key 是电路 id（对应实操材料的 K 编号）。
+   加 K33/K34 只要再写一个 defK33() 挂进来 —— 渲染层全部读「当前电路」，
+   没有任何一处认死某一块板 */
+const CIRCUITS = { k31: defK31(), k32: defK32() };
+const CIRCUIT_ORDER = ['k31','k32'];
+
+/* 「当前电路」的活动引用：loadCircuit() 换的就是这几个，
+   下面所有渲染 / 模式代码照旧读 DEVICES / WIRES / TPOS…，一个字都不用改 */
+let CUR = null, DEVICES, WIRES, GROUPS, TPOS, TLABEL, GCOLOR_HEX, CURRENT_CIRCUIT, TCOUNT;
 
 /* 每个端子被几根线用到，从 wires 数组现算，不要在别处维护一份名单 */
 function getTerminalWireCount(circuitId){
@@ -281,7 +459,6 @@ function getTerminalWireCount(circuitId){
   });
   return counts;
 }
-const TCOUNT = getTerminalWireCount(CURRENT_CIRCUIT);
 function termCount(id){ return TCOUNT[id]||0; }
 
 function wireDesc(w){ return TLABEL[w.from]+' → '+TLABEL[w.to]; }
@@ -333,9 +510,11 @@ function drawDevice(d){
     gDev.appendChild(el('rect',{class:'tb-strip', x:d.x, y:d.y, width:d.w, height:d.h, rx:4}));
     const label = d.name+'（'+d.sub+'）';
     if(d.h > d.w){
-      /* 竖排端子排：标签转 90° 贴在左边，不然横着写会盖住旁边的走线过道 */
-      const tx=d.x-25, ty=d.y+d.h/2;
-      const t=el('text',{class:'dev-name', x:tx, y:ty, transform:'rotate(-90 '+tx+' '+ty+')'});
+      /* 竖排端子排：标签横着写在顶端上方。
+         早先是转 90° 贴在左边，K31 把端子排摆到右边之后，那一竖列文字正好落在
+         「去端子排」的走线通道里，跟第 2 根线叠在一起（截图才看出来）。
+         顶端上方两块板都是空的，横排也比竖排好读 */
+      const t=el('text',{class:'dev-name', x:d.x+d.w/2, y:d.y-8});
       t.textContent=label; gDev.appendChild(t);
     } else {
       const t=el('text',{class:'dev-name', x:d.x+d.w/2, y:d.y-8});
@@ -364,7 +543,6 @@ function drawDevice(d){
   const n1=el('text',{class:'dev-name-in', x:d.x+d.w/2, y:d.y+30}); n1.textContent=d.name; gDev.appendChild(n1);
   const n2=el('text',{class:'dev-sub-in', x:d.x+d.w/2, y:d.y+44}); n2.textContent=d.sub; gDev.appendChild(n2);
 }
-DEVICES.forEach(drawDevice);
 
 function drawTerminal(id){
   const p=TPOS[id];
@@ -389,32 +567,349 @@ function drawTerminal(id){
   hit.addEventListener('mouseleave', function(){ onTermHover(null); });
   hit.addEventListener('click', function(){ onTermClick(id); });
 }
-Object.keys(TPOS).forEach(drawTerminal);
-
-WIRES.forEach(function(w){
-  const p=el('path',{class:'wire', d:wirePathD(w), stroke:w.color,
-    'data-idx':w.id, 'data-group':w.group});
-  gWire.appendChild(p);
-});
 function wirePath(idx){ return gWire.querySelector('path[data-idx="'+idx+'"]'); }
 
-/* 图例：右上角，按功能区分颜色（不是按分组） */
-(function(){
-  const items=[['电源进线','#c0392b'],['常开支路','#2f9e44'],['常闭 / 互锁','#2b6cb0'],['跳线','#e67e22']];
-  const bx=612, by=14;
-  gLegend.appendChild(el('rect',{x:bx, y:by, width:230, height:14+items.length*18+6, rx:8, fill:'#fff', stroke:'#d7dde3'}));
-  const lt=el('text',{class:'lt', x:bx+10, y:by+16}); lt.textContent='图例（按功能）'; gLegend.appendChild(lt);
+/* 图例：项目从当前电路的 GROUPS 现生成，按颜色去重
+   （K32 的第 2、3 组同为蓝色，不去重会并排出现两条一样的蓝线） */
+function drawLegend(){
+  const seen={}, items=[];
+  GROUPS.forEach(function(g){
+    const c=GCOLOR_HEX[g.id];
+    if(seen[c]) return;
+    seen[c]=true; items.push([g.name, c]);
+  });
+  const bx=CUR.legend.x, by=CUR.legend.y;
+  gLegend.appendChild(el('rect',{x:bx, y:by, width:230, height:14+items.length*18+6, rx:8,
+    fill:'var(--card)', stroke:'var(--line)'}));
+  const lt=el('text',{class:'lt', x:bx+10, y:by+16}); lt.textContent='图例（按接线分组）'; gLegend.appendChild(lt);
   items.forEach(function(it,i){
     const y=by+34+i*18;
     gLegend.appendChild(el('line',{x1:bx+12, y1:y-4, x2:bx+34, y2:y-4, stroke:it[1], 'stroke-width':3}));
     const t=el('text',{x:bx+42, y:y}); t.textContent=it[0]; gLegend.appendChild(t);
+  });
+}
+
+/* 整幅图重画一次：换电路时四个图层全部清空重建。
+   只清 innerHTML 不行——端子上挂着 mouseenter/click，留着旧节点会让上一块板的
+   端子还在响应点击（换电路时踩的第二个坑） */
+function buildScene(){
+  [gDev, gWire, gTerm, gLegend].forEach(function(g){
+    while(g.firstChild) g.removeChild(g.firstChild);
+  });
+  svg.setAttribute('viewBox', CUR.viewBox);
+  DEVICES.forEach(drawDevice);
+  Object.keys(TPOS).forEach(drawTerminal);
+  WIRES.forEach(function(w){
+    gWire.appendChild(el('path',{class:'wire', d:wirePathD(w), stroke:w.color,
+      'data-idx':w.id, 'data-group':w.group}));
+  });
+  drawLegend();
+}
+
+/* ==================================================================
+   原理图（只有 K31 有）：三个按钮真的能按住 / 松手，电流路径实时算出来
+
+   这一屏要回答的只有一个问题：为什么按 SB2 松手照转、按 SB1 松手就停。
+   答案全在「SB1 的动断触点串在自锁支路上」，所以三条并联支路必须分开画清楚。
+------------------------------------------------------------------ */
+const S = { XL:70, XB:168, XC:262, XR:318,
+  yIn:26, yFu:58, yFr:114, ySb3:170, yP:216, ySw:260, yKm:308, yQ:352, yCoil:390, yBot:434,
+  H:7 };   /* H = 触点半高：导线段直接画到 y±H，触点自己不再画引脚。
+              早先触点两头各画一小段引线、又不属于任何 seg，于是回路通电时
+              那两小段永远是灰的，红线中间夹两截灰（截图看出来的） */
+
+/* 开关的机械状态。SB1 是复合按钮，两对触点分开记 ——
+   「常闭先断、常开后合」这个先后顺序就是靠它俩分开才表达得出来 */
+const SW = { sb1no:false, sb1nc:true, sb2no:false, sb3nc:true, fr:true };
+let kmOn = false;
+let symSel = null;
+const SW_DELAY = 260;   /* 复合按钮两对触点动作的时间差，见 pressSB */
+let swTimer = null;
+
+/* 电路求解。c 这一支用的是「上一刻的 kmOn」——自锁的正反馈就是这么出来的，
+   跟 4.4 那节的 ctrlOn() 同一个写法 */
+function solve(){
+  const up = SW.fr && SW.sb3nc;
+  const a  = up && SW.sb2no;                 /* 连续启动 */
+  const b  = up && SW.sb1no;                 /* 点动 · 动合 */
+  const c  = up && SW.sb1nc && kmOn;         /* 自锁：串了 SB1 的动断 */
+  kmOn = a || b || c;
+  return {up:up, a:a, b:b, c:c, km:kmOn};
+}
+
+const SYM_DESC = {
+  fu:['熔断器 FU2（控制回路两只）',
+      '一段细金属丝封在管里，电流大到一定程度自己熔断。控制回路要单独装两只，是因为主回路那几只是按电动机的大电流选的——控制回路这点电流根本熔不断它们，只会让线一直烧。'],
+  fr:['热继电器 FR 的动断触点（95-96）',
+      '主电路里的热元件受热弯曲，把这对触点顶开。它串在控制回路最前面，电动机过载时这一下就把整个控制回路断了。用动断是<b>失效安全</b>：线断了、端子松了，效果和过载一样——设备停。'],
+  sb3:['停止按钮 SB3 · 动断触点',
+      '画的是「没人按」的样子：动触点臂压在静触点上，那一小横杠就是静触点。<b>按下去才断开。</b>停止一律用动断，理由和热继电器同一条：坏了要往「停」的方向坏。'],
+  sb2:['连续启动 SB2 · 动合触点',
+      '动臂斜着离开静触点＝没人按时是断开的。按一下线圈得电，KM 的 13/14 跟着闭合把自己锁住，<b>松手照转</b>。'],
+  sb1no:['点动 SB1 · 动合触点',
+      'SB1 是复合按钮，这是它的动合那一对。按住时线圈得电、电机转。'],
+  sb1nc:['点动 SB1 · 动断触点 ← 全图的机关',
+      '它<b>串在自锁支路上</b>。按 SB1 时它先断开，自锁那条路根本接不通，所以松手就停——这就是点动。中间那条虚线表示它和上面那个动合触点是<b>同一个按钮</b>机械联动的。'],
+  km:['接触器 KM 的动合辅助触点（13-14）',
+      '线圈得电它就闭合，把线圈自己的供电锁住，叫<b>自锁</b>。它串在 SB1 的动断后面，所以点动的时候锁不上。接线图上这两个端子就是 13NO / 14NO。'],
+  coil:['接触器 KM 的线圈（A1-A2）',
+      '通电产生磁力吸合衔铁，带动主触点（接电动机那三对）和辅助触点 13/14 <b>一起</b>动作。图上所有标 KM 的触点，动作都由这一个线圈决定。'],
+  l1:['电源 L1 侧','控制回路从 L1、L2 两相取电。这条竖线是 L1 侧，经 4 号熔断器进来，第一关是热继电器。'],
+  l2:['电源 L2 侧','线圈的另一头从这条线经 5 号熔断器回 L2。接线图上就是「KM 的 A1 → 5 号熔断器」那一根。']
+};
+
+/* 每一段导线：id → [路径点, 有没有电流]。
+   一律按「有没有电流」着色，不按「带不带电」——那样整张图上游永远是红的，
+   反而看不出哪条支路在导通 */
+function schemaSegs(){
+  const s=S;
+  return [
+    /* 熔断器那四段用 13 不用 H：矩形是 26 高，画到 y±7 会被矩形的填充盖掉一截 */
+    ['in-l1',  [[s.XL,s.yIn],[s.XL,s.yFu-13]],         function(r){return r.km;}],
+    ['fu-fr',  [[s.XL,s.yFu+13],[s.XL,s.yFr-s.H]],     function(r){return r.km;}],
+    ['fr-sb3', [[s.XL,s.yFr+s.H],[s.XL,s.ySb3-s.H]],   function(r){return r.km;}],
+    ['sb3-p',  [[s.XL,s.ySb3+s.H],[s.XL,s.yP]],        function(r){return r.km;}],
+    ['bus-top',[[s.XL,s.yP],[s.XC,s.yP]],              function(r){return r.km;}],
+    ['a-up',   [[s.XL,s.yP],[s.XL,s.ySw-s.H]],         function(r){return r.a;}],
+    ['a-dn',   [[s.XL,s.ySw+s.H],[s.XL,s.yQ]],         function(r){return r.a;}],
+    ['b-up',   [[s.XB,s.yP],[s.XB,s.ySw-s.H]],         function(r){return r.b;}],
+    ['b-dn',   [[s.XB,s.ySw+s.H],[s.XB,s.yQ]],         function(r){return r.b;}],
+    ['c-up',   [[s.XC,s.yP],[s.XC,s.ySw-s.H]],         function(r){return r.c;}],
+    ['c-mid',  [[s.XC,s.ySw+s.H],[s.XC,s.yKm-s.H]],    function(r){return r.c;}],
+    ['c-dn',   [[s.XC,s.yKm+s.H],[s.XC,s.yQ]],         function(r){return r.c;}],
+    ['bus-bot',[[s.XL,s.yQ],[s.XC,s.yQ]],              function(r){return r.km;}],
+    ['q-coil', [[s.XL,s.yQ],[s.XL,s.yCoil-11]],        function(r){return r.km;}],
+    ['coil-bt',[[s.XL,s.yCoil+11],[s.XL,s.yBot]],      function(r){return r.km;}],
+    ['bot',    [[s.XL,s.yBot],[s.XR,s.yBot]],          function(r){return r.km;}],
+    ['r-up',   [[s.XR,s.yBot],[s.XR,s.yFu+13]],        function(r){return r.km;}],
+    ['r-in',   [[s.XR,s.yFu-13],[s.XR,s.yIn]],         function(r){return r.km;}]
+  ];
+}
+let SEG_FN = {};
+
+/* 一个触点：动臂按开合换角度；动断多画一条静触点横杠。
+   引脚不用画——导线段已经画到 y±7 了 */
+function drawContact(g, key, x, y, kind){
+  /* 静触点横杠也要跟着导通变红：它跟动臂一样是电流经过的地方，
+     只让动臂变红的话，红线中间会卡一道黑杠 */
+  if(kind==='nc') g.appendChild(el('line',{class:'sw', 'data-bar':key,
+    x1:x-6, y1:y-7, x2:x+10, y2:y-7}));
+  g.appendChild(el('path',{class:'sw', 'data-arm':key}));
+}
+/* 动臂的四种画法。动断闭合时一定要画成「斜着顶在横杠上」，
+   不能画成竖直——竖直的话动臂跟上下引线连成一条直线，屏幕上就是一根线穿过一道横杠，
+   完全看不出这儿有个触点（截图才发现）。动合闭合才是竖直的：那时它就是一段导线 */
+function setArm(key, closed, live){
+  const p = svg.querySelector('path[data-arm="'+key+'"]');
+  if(!p) return;
+  const m = ARM_POS[key];
+  const x=m.x, y=m.y;
+  let d;
+  if(m.kind==='nc') d = closed ? 'M'+x+','+(y+7)+'L'+(x+8)+','+(y-7)
+                               : 'M'+x+','+(y+7)+'L'+(x+15)+','+(y-11);
+  else              d = closed ? 'M'+x+','+(y+7)+'L'+x+','+(y-7)
+                               : 'M'+x+','+(y+7)+'L'+(x+13)+','+(y-9);
+  p.setAttribute('d', d);
+  /* 闭合且真有电流流过时，动臂本身就是导线的一部分，要跟着红。
+     不这么做的话红色回路中间会夹一截黑的动臂，看着像那儿断了（截图看出来的） */
+  p.classList.toggle('live', !!live);
+  const bar = svg.querySelector('[data-bar="'+key+'"]');
+  if(bar) bar.classList.toggle('live', !!live);
+}
+const ARM_POS = {};
+
+/* 可点的符号热区：一个透明矩形 + 一圈选中才显示的虚线环 */
+function symBox(key, x, y, w, h){
+  const g = el('g',{class:'sym', 'data-sym':key});
+  g.appendChild(el('rect',{class:'sym-ring', x:x, y:y, width:w, height:h, rx:6,
+    'stroke-dasharray':'4 3'}));
+  const hit = el('rect',{class:'sym-hit', x:x, y:y, width:w, height:h});
+  g.appendChild(hit);
+  hit.addEventListener('click', function(){ pickSym(key); });
+  return g;
+}
+
+function buildSchema(){
+  [gDev, gWire, gTerm, gLegend].forEach(function(g){
+    while(g.firstChild) g.removeChild(g.firstChild);
+  });
+  svg.setAttribute('viewBox','0 0 360 462');
+  const s=S;
+  SEG_FN = {};
+
+  /* 导线（先画，压在符号下面） */
+  schemaSegs().forEach(function(sg){
+    const d = sg[1].map(function(p,i){ return (i?'L':'M')+p[0]+','+p[1]; }).join('');
+    gWire.appendChild(el('path',{class:'swire', d:d, 'data-seg':sg[0]}));
+    SEG_FN[sg[0]] = sg[2];
+  });
+
+  /* 节点黑点：三线汇合的地方都要打点。XL 上那两个（P、Q）也是三线汇合
+     —— 上游下来、横线右去、支路自己下去，漏掉的话「这里是相通的」就没画出来 */
+  [[s.XL,s.yP],[s.XB,s.yP],[s.XC,s.yP],
+   [s.XL,s.yQ],[s.XB,s.yQ],[s.XC,s.yQ]].forEach(function(p){
+    gDev.appendChild(el('circle',{cx:p[0], cy:p[1], r:3.2, fill:'var(--tx)'}));
+  });
+
+  /* 两只熔断器：矩形高度写死 26，别跟着 H 走（H 现在只有 7） */
+  [s.XL, s.XR].forEach(function(x){
+    gDev.appendChild(el('rect',{class:'sbox', x:x-7, y:s.yFu-13, width:14, height:26, rx:2}));
+  });
+
+  /* 触点：位置先记进 ARM_POS，setArm 才知道该把动臂画在哪 */
+  ARM_POS.fr    = {x:s.XL, y:s.yFr,  kind:'nc'};
+  ARM_POS.sb3   = {x:s.XL, y:s.ySb3, kind:'nc'};
+  ARM_POS.sb2   = {x:s.XL, y:s.ySw,  kind:'no'};
+  ARM_POS.sb1no = {x:s.XB, y:s.ySw,  kind:'no'};
+  ARM_POS.sb1nc = {x:s.XC, y:s.ySw,  kind:'nc'};
+  ARM_POS.km    = {x:s.XC, y:s.yKm,  kind:'no'};
+  drawContact(gDev,'fr',    s.XL, s.yFr,  'nc');
+  drawContact(gDev,'sb3',   s.XL, s.ySb3, 'nc');
+  drawContact(gDev,'sb2',   s.XL, s.ySw,  'no');
+  drawContact(gDev,'sb1no', s.XB, s.ySw,  'no');
+  drawContact(gDev,'sb1nc', s.XC, s.ySw,  'nc');
+  drawContact(gDev,'km',    s.XC, s.yKm,  'no');
+
+  /* 按钮帽（E 形）＋ 推杆虚线。SB1 那条虚线要一路连到右支路的动断触点上——
+     那是「同一个按钮」的唯一视觉证据，也是原图上最容易看漏的一笔 */
+  function cap(x,y){
+    gDev.appendChild(el('path',{class:'sw', d:'M'+x+','+(y-8)+'L'+(x-7)+','+(y-8)+
+      'L'+(x-7)+','+(y+8)+'L'+x+','+(y+8)}));
+  }
+  cap(s.XL-26, s.ySb3);
+  gDev.appendChild(el('path',{class:'sdash', d:'M'+(s.XL-26)+','+s.ySb3+'L'+(s.XL-2)+','+s.ySb3}));
+  cap(s.XL-26, s.ySw);
+  gDev.appendChild(el('path',{class:'sdash', d:'M'+(s.XL-26)+','+s.ySw+'L'+(s.XL-2)+','+s.ySw}));
+  cap(s.XB-30, s.ySw);
+  gDev.appendChild(el('path',{class:'sdash', d:'M'+(s.XB-30)+','+s.ySw+'L'+(s.XC-2)+','+s.ySw}));
+
+  /* 线圈 */
+  gDev.appendChild(el('rect',{class:'sbox', x:s.XL-19, y:s.yCoil-11, width:38, height:22, rx:2}));
+
+  /* 标注 */
+  function lab(x,y,t,cls,anchor){
+    const e=el('text',{class:cls||'slbl', x:x, y:y});
+    if(anchor) e.setAttribute('text-anchor', anchor);
+    e.textContent=t; gDev.appendChild(e); return e;
+  }
+  lab(s.XL, s.yIn-6, 'L1', 'slbl-b', 'middle');
+  lab(s.XR, s.yIn-6, 'L2', 'slbl-b', 'middle');
+  /* 标签一律让开各自的点击热区（热区半宽 17，标签起点取 +19 以上），
+     不然选中时那圈虚线环会压在字上 */
+  lab(s.XL+19, s.yFu+3, 'FU2');
+  lab(s.XR+19, s.yFu+3, 'FU2');
+  lab(s.XL-34, s.yFr+1, 'FR', 'slbl-b', 'end');
+  lab(s.XL-34, s.yFr+13, '95-96', 'snote', 'end');   /* 接线图上就是这两个端子号 */
+  lab(s.XL-38, s.ySb3+3, 'SB3', 'slbl-b', 'end');
+  lab(s.XL-38, s.ySw+3, 'SB2', 'slbl-b', 'end');
+  lab(s.XB-38, s.ySw+3, 'SB1', 'slbl-b', 'end');
+  lab(s.XC+22, s.ySw+3, 'SB1');
+  lab(s.XC+22, s.yKm+1, 'KM', 'slbl-b');
+  lab(s.XC+22, s.yKm+13, '13-14', 'snote');          /* 接线图上的 13NO / 14NO 就是它 */
+  lab(s.XL+28, s.yCoil+1, 'KM 线圈', 'slbl-b');
+  lab(s.XL+28, s.yCoil+13, 'A1-A2', 'snote');
+  lab(s.XL-34, s.ySw+15, '连续', 'snote', 'end');
+  lab(s.XB-38, s.ySw+15, '点动', 'snote', 'end');
+  lab(s.XC+22, s.ySw+15, '动断', 'snote');
+
+  /* 可点热区（画最上面，别被导线挡掉） */
+  gTerm.appendChild(symBox('l1',   s.XL-14, s.yIn-14, 28, 30));
+  gTerm.appendChild(symBox('l2',   s.XR-14, s.yIn-14, 28, 30));
+  gTerm.appendChild(symBox('fu',   s.XL-14, s.yFu-18, 28, 36));
+  gTerm.appendChild(symBox('fr',   s.XL-16, s.yFr-18, 34, 36));
+  gTerm.appendChild(symBox('sb3',  s.XL-36, s.ySb3-18, 54, 36));
+  gTerm.appendChild(symBox('sb2',  s.XL-36, s.ySw-18, 54, 36));
+  gTerm.appendChild(symBox('sb1no',s.XB-38, s.ySw-18, 56, 36));
+  gTerm.appendChild(symBox('sb1nc',s.XC-16, s.ySw-18, 34, 36));
+  gTerm.appendChild(symBox('km',   s.XC-16, s.yKm-18, 34, 36));
+  gTerm.appendChild(symBox('coil', s.XL-22, s.yCoil-14, 44, 28));
+}
+
+function pickSym(key){
+  symSel = (symSel===key) ? null : key;
+  svg.querySelectorAll('.sym').forEach(function(g){
+    g.classList.toggle('sel', g.dataset.sym===symSel);
+  });
+  const side = document.getElementById('side');
+  if(!symSel){
+    side.innerHTML = '<span class="empty">点原理图上任一个符号，看它是什么、为什么这么画。</span>';
+    return;
+  }
+  const d = SYM_DESC[symSel];
+  side.innerHTML = '<b>'+d[0]+'</b><br><span style="color:var(--tx2)">'+d[1]+'</span>';
+}
+
+function renderSchema(){
+  const r = solve();
+  svg.querySelectorAll('path.swire[data-seg]').forEach(function(p){
+    const fn = SEG_FN[p.getAttribute('data-seg')];
+    p.classList.toggle('live', fn ? !!fn(r) : false);
+  });
+  setArm('fr',    SW.fr,    r.km);
+  setArm('sb3',   SW.sb3nc, r.km);
+  setArm('sb2',   SW.sb2no, r.a);
+  setArm('sb1no', SW.sb1no, r.b);
+  setArm('sb1nc', SW.sb1nc, r.c);
+  setArm('km',    r.km,     r.c); /* 自锁触点跟着线圈动，这是「自锁」看得见的那一下 */
+
+  /* 状态条：说清楚「现在靠哪条支路撑着」——松手之后那句话才是这一屏的全部价值 */
+  let why;
+  if(!SW.sb3nc)      why = '停止按钮把整个控制回路断在最前面，三条支路一起没电。';
+  else if(r.a && r.c)why = '电流走 SB2 这条支路，同时 KM 的 13/14 已经闭合。<b>现在松手也不会停</b>。';
+  else if(r.a)       why = '电流走 SB2 这条支路。';
+  else if(r.b)       why = '电流走 SB1 的动合触点。注意右边那条自锁支路：<b>SB1 的动断已经被按开了</b>，锁不上——松手就停。';
+  else if(r.c)       why = '按钮都松开了，电流走的是<b>自锁支路</b>：SB1 动断（没按，闭合）→ KM 13/14（线圈得电时闭合）。线圈自己把自己的电锁住了。';
+  else if(SW.sb1nc===false) why = '松手瞬间：SB1 的动合先断开，线圈失电；此时动断还没恢复，自锁那条路也是断的。<b>这零点几秒的空档就是点动能停下来的原因。</b>';
+  else               why = '三条支路都不通，线圈失电。按住 SB2 或 SB1 试试。';
+
+  const box = document.getElementById('schemaState');
+  box.className = 'srun ' + (r.km ? 'on' : 'off');
+  box.innerHTML = '<div class="st">'+(r.km
+      ? 'KM 线圈得电 → 主触点闭合 · 电动机转'
+      : 'KM 线圈失电 · 电动机停')+'</div><div class="why">'+why+'</div>';
+}
+
+/* 按住 / 松手。复合按钮 SB1 的两对触点必须错开动作：
+   按下＝动断先断、动合后合；松开＝动合先断、动断后合。
+   写成同时动作的话，松手那一刻动断已经恢复、KM 又没来得及释放，
+   自锁会当场接上——点动就变成连续了，整屏白做（11.6 那节同一个坑） */
+function pressSB(which, down){
+  if(swTimer){ clearTimeout(swTimer); swTimer=null; }
+  if(which==='sb3'){ SW.sb3nc = !down; renderSchema(); return; }
+  if(which==='sb2'){ SW.sb2no = down;  renderSchema(); return; }
+  if(down){
+    SW.sb1nc = false; renderSchema();
+    swTimer = setTimeout(function(){ SW.sb1no = true;  renderSchema(); }, SW_DELAY);
+  } else {
+    SW.sb1no = false; renderSchema();
+    swTimer = setTimeout(function(){ SW.sb1nc = true;  renderSchema(); }, SW_DELAY);
+  }
+}
+function resetSchema(){
+  if(swTimer){ clearTimeout(swTimer); swTimer=null; }
+  SW.sb1no=false; SW.sb1nc=true; SW.sb2no=false; SW.sb3nc=true; SW.fr=true;
+  kmOn=false; symSel=null;
+  document.querySelectorAll('.sbtns button').forEach(function(b){ b.classList.remove('down'); });
+}
+
+(function(){
+  document.querySelectorAll('.sbtns button').forEach(function(b){
+    const k=b.dataset.sb;
+    function down(e){ e.preventDefault(); b.classList.add('down');    pressSB(k,true);  }
+    function up(e){   e.preventDefault(); b.classList.remove('down'); pressSB(k,false); }
+    b.addEventListener('pointerdown', down);
+    b.addEventListener('pointerup', up);
+    /* 手指划出按钮范围也算松手，否则会卡在「一直按着」 */
+    b.addEventListener('pointerleave', function(e){ if(b.classList.contains('down')) up(e); });
+    b.addEventListener('pointercancel', up);
+    b.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   });
 })();
 
 /* ------------------------------------------------------------------
    状态与三种模式
 ------------------------------------------------------------------ */
-const state = { mode:'browse', activeGroup:null, hoverTerm:null,
+const state = { mode:'browse', activeGroup:null, hoverTerm:null, schemaShown:false,
   step:{index:0, playing:false, timer:null},
   test:{order:[], idx:0, score:0, answers:[], awaiting:false, mistakes:[]} };
 
@@ -488,9 +983,9 @@ function renderStep(){
     setHint(w.group);
   }
   document.getElementById('pPrev').disabled = idx===0;
-  document.getElementById('pNext').disabled = idx===14;
+  document.getElementById('pNext').disabled = idx===WIRES.length;
 }
-function stepNext(){ if(state.step.index<14){ state.step.index++; renderStep(); } else stepStopAuto(); }
+function stepNext(){ if(state.step.index<WIRES.length){ state.step.index++; renderStep(); } else stepStopAuto(); }
 function stepPrev(){ if(state.step.index>0){ state.step.index--; renderStep(); } }
 function stepReset(){ state.step.index=0; stepStopAuto(); renderStep(); }
 function stepStopAuto(){
@@ -503,7 +998,7 @@ function stepToggleAuto(){
   state.step.playing=true;
   document.getElementById('pAuto').textContent='⏸ 暂停';
   state.step.timer=setInterval(function(){
-    if(state.step.index>=14){ stepStopAuto(); return; }
+    if(state.step.index>=WIRES.length){ stepStopAuto(); return; }
     stepNext();
   }, 1200);
 }
@@ -533,16 +1028,16 @@ function renderTest(){
   if(t.idx>=t.order.length){
     const wrong = t.mistakes;
     head.innerHTML =
-      '<div class="result"><div>做完啦，共 14 题</div>'+
+      '<div class="result"><div>做完啦，共 '+t.order.length+' 题</div>'+
       '<div class="big">'+t.score+' / '+t.order.length+'</div>'+
       (wrong.length ? ('<table>'+wrong.map(function(m){
           const w=WIRES.find(function(x){return x.id===m;});
           return '<tr><td>第 '+w.id+' 根</td><td>'+wireDesc(w)+'</td></tr>';
         }).join('')+'</table>')
-        : '<div style="margin-top:8px;color:#1e6b2e">全对，14 根都记住了</div>') +
+        : '<div style="margin-top:8px;color:#1e6b2e">全对，'+WIRES.length+' 根都记住了</div>') +
       '<div class="redo">'+
         (wrong.length ? '<button class="pri" id="redoWrong">只重做错题（'+wrong.length+'）</button>' : '') +
-        '<button id="redoAll">重新开始（14 题全做）</button>'+
+        '<button id="redoAll">重新开始（'+WIRES.length+' 题全做）</button>'+
       '</div></div>';
     document.getElementById('redoAll').addEventListener('click', function(){ startTest(); });
     if(wrong.length) document.getElementById('redoWrong').addEventListener('click', function(){ startTest(wrong); });
@@ -611,12 +1106,33 @@ function renderScrew(){
 function setMode(m){
   state.mode=m;
   document.querySelectorAll('.modes button').forEach(function(b){ b.classList.toggle('on', b.dataset.mode===m); });
+  const wantSchema = (m==='schema');
+  document.getElementById('schemaBar').style.display = wantSchema ? 'block' : 'none';
   document.getElementById('browseBar').style.display = m==='browse' ? 'flex' : 'none';
   document.getElementById('playBar').style.display   = m==='step' ? 'flex' : 'none';
+  /* 上螺丝顺序是一长列步骤（K31 有 16 步），吸底的记法条会浮在列表中间盖住两三步；
+     而这个模式本来也不显示分组记法，直接收起来。原理图那屏有自己的状态条，也不用它 */
+  document.getElementById('hintbar').style.display = (m==='screw'||wantSchema) ? 'none' : 'block';
   document.getElementById('testHead').innerHTML = '';
   document.getElementById('screwHead').innerHTML = '';
+
+  /* 两张图共用同一个 <svg>，只在「要换另一张」时才重建 */
+  if(wantSchema !== state.schemaShown){
+    if(wantSchema){ resetSchema(); buildSchema(); }
+    else buildScene();
+    state.schemaShown = wantSchema;
+  }
+
+  if(wantSchema){
+    document.getElementById('side').innerHTML =
+      '<span class="empty">点原理图上任一个符号，看它是什么、为什么这么画。</span>';
+    resetSchema();
+    renderSchema();
+    return;      /* 下面全是接线图那套，原理图一概不走 */
+  }
+
   document.getElementById('side').innerHTML = '<span class="empty">悬停任意端子，看它接了几根线；点击左侧分组，只看这一组的走线。</span>';
-  WIRES.forEach(function(w){ const p=wirePath(w.id); p.style.opacity=1; p.classList.remove('dim','hi'); });
+  WIRES.forEach(function(w){ const p=wirePath(w.id); if(p){ p.style.opacity=1; p.classList.remove('dim','hi'); } });
   document.querySelectorAll('.term-dot').forEach(function(d){ d.classList.remove('wrong','right','hi'); });
   state.activeGroup=null; state.hoverTerm=null;
   document.querySelectorAll('.grpbtn').forEach(function(b){ b.classList.remove('on'); });
@@ -627,14 +1143,57 @@ function setMode(m){
   if(m==='screw'){ renderScrew(); }
 }
 
-const grpBtnsEl = document.getElementById('grpBtns');
-GROUPS.forEach(function(g){
-  const btn=document.createElement('button');
-  btn.className='grpbtn'; btn.dataset.g=g.id;
-  btn.innerHTML='<span class="dot" style="background:'+GCOLOR_HEX[g.id]+'"></span>'+g.id+'. '+g.name;
-  btn.addEventListener('click', function(){ setGroup(g.id); });
-  grpBtnsEl.appendChild(btn);
-});
+/* 分组按钮跟着电路重建：两块板的组数和颜色都不一样，
+   留着上一块板的按钮会点出 undefined 的组 */
+function buildGroupBtns(){
+  const grpBtnsEl = document.getElementById('grpBtns');
+  grpBtnsEl.innerHTML='';
+  GROUPS.forEach(function(g){
+    const btn=document.createElement('button');
+    btn.className='grpbtn'; btn.dataset.g=g.id;
+    btn.innerHTML='<span class="dot" style="background:'+GCOLOR_HEX[g.id]+'"></span>'+g.id+'. '+g.name;
+    btn.addEventListener('click', function(){ setGroup(g.id); });
+    grpBtnsEl.appendChild(btn);
+  });
+}
+
+/* ---- 换电路：活动引用整组换掉，再把画面和按钮全部重建 ---- */
+function loadCircuit(id){
+  if(!CIRCUITS[id]) return;
+  stepStopAuto();
+  CUR = CIRCUITS[id];
+  CURRENT_CIRCUIT = id;
+  DEVICES = CUR.devices; WIRES = CUR.wires; GROUPS = CUR.groups;
+  TPOS = CUR.tpos; TLABEL = CUR.labels; GCOLOR_HEX = CUR.colors;
+  TCOUNT = getTerminalWireCount(id);      /* 每次重算，别沿用上一块板的 */
+  document.getElementById('pgTitle').textContent = CUR.title;
+  document.getElementById('pgSub').textContent   = CUR.sub;
+  document.getElementById('warnBox').innerHTML =
+    CUR.warns.map(function(w){ return '<div class="warn">'+w+'</div>'; }).join('');
+  document.querySelectorAll('#circuitBtns button').forEach(function(b){
+    b.classList.toggle('on', b.dataset.c===id);
+  });
+  /* 原理图目前只画了 K31 那一张；K32 的原理图是正反转，还没做，
+     与其留一颗点了没反应的按钮，不如整个藏掉 */
+  const sBtn = document.querySelector('.modes button[data-mode="schema"]');
+  if(sBtn) sBtn.style.display = CUR.hasSchema ? '' : 'none';
+  state.schemaShown = false;
+  buildScene();
+  buildGroupBtns();
+  setMode('browse');
+}
+
+(function(){
+  const box = document.getElementById('circuitBtns');
+  CIRCUIT_ORDER.forEach(function(id){
+    const c = CIRCUITS[id];
+    const btn = document.createElement('button');
+    btn.dataset.c = id;
+    btn.innerHTML = '<span class="k">'+c.k+'　'+c.wires.length+' 根</span>'+c.name;
+    btn.addEventListener('click', function(){ loadCircuit(id); });
+    box.appendChild(btn);
+  });
+})();
 
 document.querySelectorAll('.modes button').forEach(function(b){
   b.addEventListener('click', function(){ setMode(b.dataset.mode); });
@@ -647,13 +1206,21 @@ document.getElementById('pNext').addEventListener('click', stepNext);
 document.getElementById('pAuto').addEventListener('click', stepToggleAuto);
 document.getElementById('pReset').addEventListener('click', stepReset);
 
-renderBrowse();
+loadCircuit('k31');
 
-/* 供 jsdom 自测脚本用的最小调试接口，不影响正常使用 */
+/* 供 jsdom 自测脚本用的最小调试接口，不影响正常使用。
+   这几项必须走 getter：换电路时 DEVICES/WIRES… 会被整组重新赋值，
+   写成 DEVICES:DEVICES 的话拿到的永远是页面初始化那一刻的旧数组 */
 window.__MRW = {
-  DEVICES: DEVICES, WIRES: WIRES, GROUPS: GROUPS, TPOS: TPOS,
-  CIRCUITS: CIRCUITS, CURRENT_CIRCUIT: CURRENT_CIRCUIT,
+  get DEVICES(){ return DEVICES; },
+  get WIRES(){ return WIRES; },
+  get GROUPS(){ return GROUPS; },
+  get TPOS(){ return TPOS; },
+  get TLABEL(){ return TLABEL; },
+  get CURRENT_CIRCUIT(){ return CURRENT_CIRCUIT; },
+  CIRCUITS: CIRCUITS, CIRCUIT_ORDER: CIRCUIT_ORDER,
   getTerminalWireCount: getTerminalWireCount, buildScrewSteps: buildScrewSteps,
+  loadCircuit: loadCircuit,
   setMode: setMode, setGroup: setGroup,
   startTest: startTest, answer: answerAttempt,
   getState: function(){ return state; },
