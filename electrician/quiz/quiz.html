@@ -588,6 +588,8 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
   <!-- 练习（原来的「刷题」和「冲刺」合并成这一页）-->
   <section class="page" id="pQuiz">
     <div id="qzSetup">
+      <!-- 上次没做完的那一轮（liveBar 填内容，没有存档就整条藏掉） -->
+      <div class="card pad" id="liveBox" style="display:none"></div>
       <div class="card pad">
         <div style="font-size:15px;font-weight:700;margin-bottom:2px">练一练</div>
         <div style="font-size:12.5px;color:var(--tx3);line-height:1.6">
@@ -981,7 +983,93 @@ function paintStat(){
 }
 
 /* ══ 页签 ══ */
+/* ══ 做到一半的那一轮，存下来 ══
+   手机上切个 App 回来、锁一会儿屏、浏览器把标签页回收了，页面就是重新加载 ——
+   Q / EX / D 三个都只活在内存里，一重载全没。这里把「正在做的那一轮」落盘，
+   回来在练习页顶上给一条「接着做」。
+   **只存题号不存题目本身**（`[t,id]`），恢复时从 ALL / TFALL 查回来。
+   D 和 EX 声明在文件靠后，所以这些一律写成 function 声明靠 hoist，
+   而且都要防 undefined —— 页面初始化那次调用可能早于它们赋值。 */
+function tdLive(){
+  return !!(window.D&&D.list&&D.list.length&&D.i<D.list.length&&
+            $('#tdRun')&&$('#tdRun').style.display!=='none');
+}
+function liveIds(list){return list.map(function(x){return [x.t,x.q.id]})}
+function liveFind(t,id){
+  var arr=(t==='tf')?TFALL:ALL;
+  for(var i=0;i<arr.length;i++)if(arr[i].id===id)return {t:t,q:arr[i]};
+  return null;
+}
+function liveList(ids){
+  return (ids||[]).map(function(a){return liveFind(a[0],+a[1])}).filter(Boolean);
+}
+function liveSave(){
+  var d=null;
+  if(window.EX&&EX.running&&EX.list.length){
+    d={m:'exam',ids:liveIds(EX.list),i:EX.i,pick:EX.pick,flag:EX.flag,used:EX.used,min:EX.min};
+  }else if(window.Q&&Q.list&&Q.list.length&&$('#qzRun').style.display!=='none'){
+    d={m:'step',ids:liveIds(Q.list),i:Q.i,ok:Q.ok,bad:liveIds(Q.bad)};
+  }else if(tdLive()){
+    d={m:'pick',ids:liveIds(D.list.map(function(q){return {t:'tf',q:q}})),i:D.i,ok:D.ok,
+       miss:D.miss.map(function(q){return q.id})};
+  }
+  if(!d){liveClear();return}
+  d.ts=Date.now(); save('live',d);
+}
+function liveClear(){try{localStorage.removeItem(LS+'live')}catch(e){}}
+function liveAgo(ts){
+  var s=Math.floor((Date.now()-ts)/1000);
+  if(s<60)return '刚刚';
+  if(s<3600)return Math.floor(s/60)+' 分钟前';
+  if(s<86400)return Math.floor(s/3600)+' 小时前';
+  return Math.floor(s/86400)+' 天前';
+}
+/* 练习页顶上那条「上次有一套没做完」。没有存档就整条藏掉 */
+function liveBar(){
+  var d=load('live',null), box=$('#liveBox');
+  if(!box)return;
+  if(!d||!d.ids||!d.ids.length){box.style.display='none';return}
+  var name={exam:'模拟考',step:'边练边看',pick:'判断题挑错'}[d.m]||'练习';
+  box.style.display='';
+  box.innerHTML='<div style="font-size:14px;font-weight:700;margin-bottom:2px">上次有一套没做完</div>'+
+    '<div style="font-size:12.5px;color:var(--tx3);line-height:1.6;margin-bottom:9px">'+
+      name+' · 做到第 '+(d.i+1)+' / '+d.ids.length+' 题 · '+liveAgo(d.ts)+
+      (d.m==='exam'&&d.min?'　（限时 '+d.min+' 分钟，已用 '+exMS(d.used||0)+'）':'')+'</div>'+
+    '<button class="big" id="liveGo">接着做</button>'+
+    '<button class="mini" id="liveDrop">丢掉，重新开一套</button>';
+}
+function liveResume(){
+  var d=load('live',null); if(!d||!d.ids)return;
+  var list=liveList(d.ids);
+  if(list.length!==d.ids.length){liveClear();liveBar();alert('这套题对不上了（题库可能更新过），只能重新开一套');return}
+  if(d.m==='exam'){
+    EX={running:true,list:list,i:Math.min(d.i,list.length-1),pick:d.pick||{},flag:d.flag||{},
+        t0:Date.now()-(d.used||0)*1000,used:d.used||0,min:d.min,tm:null};
+    $('#qzSetup').style.display='none';$('#qzRun').style.display='none';$('#qzDone').style.display='none';
+    $('#exDone').style.display='none';$('#exRun').style.display='';
+    EX.tm=setInterval(exTick,1000); exTick(); exShow();
+    goPage('pQuiz');
+  }else if(d.m==='step'){
+    Q={list:list,i:Math.min(d.i,list.length-1),ok:d.ok||0,bad:liveList(d.bad)};
+    $('#qzSetup').style.display='none';$('#qzDone').style.display='none';
+    $('#exRun').style.display='none';$('#exDone').style.display='none';
+    $('#qzRun').style.display='';
+    showQ(); goPage('pQuiz');
+  }else{
+    /* 挑错练习的 D.list 存的是题目本身（不是 {t,q}），恢复时要剥回去 */
+    D={list:list.map(function(x){return x.q}),i:Math.min(d.i,list.length-1),ok:d.ok||0,
+       miss:liveList((d.miss||[]).map(function(id){return ['tf',id]})).map(function(x){return x.q})};
+    $('#tfList').style.display='none';$('#tfDrill').style.display='';
+    $('#tdDone').style.display='none';$('#tdRun').style.display='';
+    tdShow(); goPage('pTF');
+  }
+  window.scrollTo(0,0);
+}
 function goPage(id){
+  /* 挑错练习跑在 pTF 上、却没有自己的页签：那一轮还没做完时点「练习」，
+     要回到那一轮，而不是把人扔回设置页 —— 他报的「切走再回来题就没了」之一。
+     想开别的模式就先点那一页的「结束本轮」 */
+  if(id==='pQuiz'&&tdLive())id='pTF';
   /* 挑错练习（pTF）没有自己的页签，它是「练习」页的第三种模式，导航就高亮练习 */
   var nav=(id==='pTF')?'pQuiz':id;
   $$('.nav button').forEach(function(x){x.classList.toggle('on',x.dataset.p===nav)});
@@ -1206,6 +1294,7 @@ function showQ(){
   paintSyms($('#qzOpts'));
   $('#qzAfter').style.display='none';
   window.scrollTo(0,0);
+  liveSave();
 }
 $('#qzOpts').onclick=function(e){
   var b=e.target.closest('.qz-opt');if(!b||b.disabled)return;
@@ -1231,10 +1320,12 @@ $('#qzOpts').onclick=function(e){
   $('#qzNext').textContent=(Q.i+1>=Q.list.length)?'看成绩':'下一题';
   $('#qzAfter').style.display='';
   $('#qzScore').textContent='答对 '+Q.ok;
+  liveSave();
 };
 $('#qzNext').onclick=function(){Q.i++;if(Q.i>=Q.list.length)finish();else showQ()};
 $('#qzQuit').onclick=function(){if(Q.i||confirm('这一轮还没开始答，确定结束？'))finish()};
 function finish(){
+  liveClear();
   $('#qzRun').style.display='none';$('#qzDone').style.display='';
   var n=Math.max(Q.i,Q.ok)||Q.list.length;
   $('#dScore').textContent=Q.ok+' / '+n;
@@ -1394,6 +1485,7 @@ function tdShow(){
   $('#tdT').textContent=q.question;
   $('#tdAsk').style.display='';$('#tdAfter').style.display='none';
   window.scrollTo(0,0);
+  liveSave();
 }
 $('#tdShow').onclick=function(){
   $('#tdBody').innerHTML=tfAns(D.list[D.i]);
@@ -1411,6 +1503,7 @@ $('#tdYes').onclick=function(){tdGrade(true)};
 $('#tdNo').onclick=function(){tdGrade(false)};
 $('#tdQuit').onclick=function(){if(D.i||confirm('这一轮还没开始，确定结束？'))tdFinish()};
 function tdFinish(){
+  liveClear();
   $('#tdRun').style.display='none';$('#tdDone').style.display='';
   var n=D.i||D.list.length;
   $('#tdS').textContent=D.ok+' / '+n;
@@ -1674,6 +1767,7 @@ function exBuild(){
 function exPaintSetup(){
   $('#qzSetup').style.display='';$('#qzRun').style.display='none';$('#qzDone').style.display='none';
   $('#exRun').style.display='none';$('#exDone').style.display='none';
+  liveBar();
   ['mode','n','mix','src','min','order'].forEach(function(k){
     var el=$('#'+(k==='order'?'order':'ex'+k.charAt(0).toUpperCase()+k.slice(1)));
     el.innerHTML=EXOPT[k].map(function(o){
@@ -1758,6 +1852,13 @@ $('#qzSetup').addEventListener('click',function(e){
   if(k==='order'){rnd=!!EXC.order;save('rnd',rnd)}
   save('excfg',EXC); exPaintSetup();
 });
+$('#liveBox').onclick=function(e){
+  if(e.target.closest('#liveGo')){liveResume();return}
+  if(e.target.closest('#liveDrop')){
+    if(!confirm('丢掉上次那一轮？做过的对错已经算进错题本了，丢的只是进度。'))return;
+    liveClear();liveBar();
+  }
+};
 $('#exGo').onclick=function(){
   var list=drillList(); if(!list.length)return;
   if(EXC.mode==='exam'){exStart(list);return}
@@ -1769,16 +1870,19 @@ $('#exGo').onclick=function(){
 
 function exStart(list){
   if(!list.length)return;
-  EX={running:true,list:list,i:0,pick:{},flag:{},t0:Date.now(),used:0,tm:null};
+  EX={running:true,list:list,i:0,pick:{},flag:{},t0:Date.now(),used:0,min:EXC.min,tm:null};
   $('#qzSetup').style.display='none';$('#qzRun').style.display='none';$('#qzDone').style.display='none';
   $('#exDone').style.display='none';$('#exRun').style.display='';
   EX.tm=setInterval(exTick,1000); exTick(); exShow();
 }
 function exTick(){
   EX.used=Math.floor((Date.now()-EX.t0)/1000);
+  /* 限时读 EX.min 不读 EXC.min：恢复一套旧卷子时，设置里那个值可能早改了 */
+  var lim=(EX.min===undefined)?EXC.min:EX.min;
+  if(EX.used%10===0)liveSave();      // 用时也要落盘，但没必要每秒写一次
   var el=$('#exTimer');
-  if(EXC.min>0){
-    var left=EXC.min*60-EX.used;
+  if(lim>0){
+    var left=lim*60-EX.used;
     if(left<=0){clearInterval(EX.tm);EX.tm=null;alert('时间到，自动交卷');exSubmit(true);return}
     el.textContent='剩 '+exMS(left);
     el.classList.toggle('hot',left<=300);
@@ -1805,6 +1909,7 @@ function exShow(){
   $('#exNext').disabled=(EX.i>=EX.list.length-1);
   exPaintGrid();
   window.scrollTo(0,0);
+  liveSave();
 }
 function exPaintGrid(){
   $('#exGrid').innerHTML=EX.list.map(function(x,i){
@@ -1826,6 +1931,7 @@ $('#exPrev').onclick=function(){if(EX.i>0){EX.i--;exShow()}};
 $('#exNext').onclick=function(){if(EX.i<EX.list.length-1){EX.i++;exShow()}};
 $('#exFlag').onclick=function(){
   if(EX.flag[EX.i])delete EX.flag[EX.i];else EX.flag[EX.i]=1;
+  liveSave();
   $('#exFlag').textContent=EX.flag[EX.i]?'⚑ 已标记':'⚑ 标记';exPaintGrid();
 };
 $('#exSubmit').onclick=function(){exSubmit(false)};
@@ -1833,7 +1939,7 @@ function exSubmit(force){
   var un=EX.list.length-Object.keys(EX.pick).length;
   if(!force&&un&&!confirm('还有 '+un+' 题没答。没答的按错算分，但不会收进错题本。确定交卷？'))return;
   if(EX.tm){clearInterval(EX.tm);EX.tm=null}
-  EX.running=false;
+  EX.running=false; liveClear();
   var ok=0, bad=[], skip=0, byC={}, byT={mc:{n:0,ok:0},tf:{n:0,ok:0}};
   EX.list.forEach(function(it,i){
     var q=it.q, done=(EX.pick[i]!==undefined), right=(EX.pick[i]===q.answer);
@@ -2198,6 +2304,7 @@ setTimeout(syncTopH,300);
 $('#bMask').classList.toggle('on',bMask);
 $('#bTodo').classList.toggle('on',bTodo);
 paintStat();paintBank();
+liveBar();      /* 上次没做完的那一轮，进来就在练习页顶上摆着 */
 
 /* ══ 白天 / 夜间 ══
    按钮挂在顶栏「掌握 N/537」左边。切换后要**重画符号 canvas** ——
