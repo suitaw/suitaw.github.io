@@ -1775,16 +1775,17 @@ $('#exFlag').onclick=function(){
 $('#exSubmit').onclick=function(){exSubmit(false)};
 function exSubmit(force){
   var un=EX.list.length-Object.keys(EX.pick).length;
-  if(!force&&un&&!confirm('还有 '+un+' 题没答，没答的算错。确定交卷？'))return;
+  if(!force&&un&&!confirm('还有 '+un+' 题没答。没答的按错算分，但不会收进错题本。确定交卷？'))return;
   if(EX.tm){clearInterval(EX.tm);EX.tm=null}
   EX.running=false;
-  var ok=0, bad=[], byC={}, byT={mc:{n:0,ok:0},tf:{n:0,ok:0}};
+  var ok=0, bad=[], skip=0, byC={}, byT={mc:{n:0,ok:0},tf:{n:0,ok:0}};
   EX.list.forEach(function(it,i){
-    var q=it.q, right=(EX.pick[i]===q.answer);
+    var q=it.q, done=(EX.pick[i]!==undefined), right=(EX.pick[i]===q.answer);
     var c=byC[q.chap]=byC[q.chap]||{n:0,ok:0,t:q.chapT};
     c.n++; if(right)c.ok++;
     byT[it.t].n++; if(right)byT[it.t].ok++;
     if(right){ok++; if(it.t==='mc')delW(q.id);else tfDelMiss(q.id)}
+    else if(!done){skip++}       /* 没作答：算分时算错（考场上也没分），但不动错题本 */
     else{bad.push(it); if(it.t==='mc'){addW(q.id);setM(q.id,false)}else{tfAddMiss(q.id);tfSetM(q.id,false)}}
   });
   var score=Math.round(ok/EX.list.length*100);
@@ -1793,7 +1794,10 @@ function exSubmit(force){
   $('#exScore').className='n '+(score>=80?'pass':'fail');
   $('#exDetail').innerHTML='对 '+ok+' / '+EX.list.length+'　用时 '+exMS(EX.used)+
     '　<b class="'+(score>=80?'pass':'fail')+'">'+(score>=80?'过了（按 80 分算）':'没到 80 分')+'</b>'+
-    (bad.length?'<br>'+bad.length+' 道错题已收进错题本':'<br>全对');
+    (bad.length?'<br>'+bad.length+' 道错题已收进错题本':(skip?'':'<br>全对'))+
+    /* 没答的只影响这次的分，不进错题本 —— 否则交一张大半没答的卷子，
+       几十道没看过的题会把真正错过的题淹掉 */
+    (skip?'<br><b>'+skip+' 题没答</b>，按错算分，但没收进错题本（你还没做过它们）':'');
   var rows=Object.keys(byC).map(Number).sort(function(a,b){return a-b}).map(function(n){
     var c=byC[n], r=Math.round(c.ok/c.n*100);
     return '<tr><td>第 '+n+' 章 '+esc(c.t)+'</td><td>'+c.ok+'/'+c.n+'</td><td><b class="'+(r>=80?'pass':'fail')+'">'+r+'%</b></td></tr>';
