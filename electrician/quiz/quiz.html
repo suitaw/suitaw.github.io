@@ -724,11 +724,15 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
       <div class="r"><b id="wbB">0</b><span>判断错题</span></div>
       <div class="g"><b id="wbC">0</b><span>已掌握</span></div>
     </div>
-    <div class="note">
+    <!-- 讲规则的说明只在错题本是空的时候露面：有题的时候这一屏已经很长了
+         （统计卡 + 两行筛选 + 两颗大按钮 + 分类的结论条），
+         而「自动进、自动出」这条规则看过一次就够了 -->
+    <div class="note" id="wbNote">
       答错的题会<b>自动</b>收进这里（刷题、判断题练习、冲刺卷都算）。
       答对一次就自动移出去 —— 所以这一页只剩「还没拿下的」。
     </div>
     <div class="bar" id="wbPick"></div>
+    <div class="bar" id="wbView"></div>
     <button class="big" id="wbGo">⚡ 拿这些错题组一套模拟卷</button>
     <button class="big ghost" id="wbClr">清空错题本</button>
     <div id="wbList"></div>
@@ -1376,6 +1380,20 @@ $('#tdMiss').onclick=function(){tdStart(D.miss.slice())};
    进出规则：答错自动进、答对自动出，不用手动维护。 */
 var wbFil=load('wbfil','all');
 var WBFILS=[{k:'all',t:'全部'},{k:'mc',t:'只看单选'},{k:'tf',t:'只看判断'},{k:'hot',t:'错 2 次以上'}];
+/* 两种看法各有各的用处，都留着：
+   分类＝看「我在哪一块最弱」（章 → 知识点，跟题库页同一套折叠结构和同一批考点组）；
+   错得最多＝看「哪几道题反复栽」。默认分类 —— 一屏就能看出弱在哪一章 */
+var wbView=load('wbview','chap');
+var WBVIEWS=[{k:'chap',t:'按章节 · 知识点'},{k:'hot',t:'错得最多在前'}];
+/* 考点组在题库里的先后顺序，分类视图按它排组，跟题库页翻到的顺序一致 */
+var WBGORD=(function(){
+  var m={},i=0;
+  BANK.forEach(function(c){
+    c.mc.forEach(function(g){m['mc:'+g.code]=i++});
+    c.tf.forEach(function(g){m['tf:'+g.code]=i++});
+  });
+  return m;
+})();
 function wbAll(){
   var out=[];
   ALL.forEach(function(q){if(WRONG[q.id])out.push({t:'mc',q:q,n:WRONG[q.id]})});
@@ -1399,30 +1417,100 @@ function paintWB(){
     var n=all.filter(function(x){var s=wbFil;wbFil=f.k;var r=wbHit(x);wbFil=s;return r}).length;
     return '<button class="tgl'+(wbFil===f.k?' on':'')+'" data-w="'+f.k+'">'+f.t+' '+n+'</button>';
   }).join('');
+  $('#wbView').innerHTML=WBVIEWS.map(function(v){
+    return '<button class="tgl'+(wbView===v.k?' on':'')+'" data-wv="'+v.k+'">'+v.t+'</button>';
+  }).join('');
   var its=all.filter(wbHit);
   $('#wbGo').style.display=all.length?'':'none';
   $('#wbClr').style.display=all.length?'':'none';
+  $('#wbNote').style.display=all.length?'none':'';
+  $('#wbView').style.display=all.length?'':'none';
   if(!its.length){
     $('#wbList').innerHTML='<div class="empty">'+(all.length?'这个筛选下没有题':'错题本是空的 —— 去刷几道题，错的会自动收进来')+'</div>';
     return;
   }
-  $('#wbList').innerHTML='<div class="wb-h">共 '+its.length+' 道，错得最多的排在前面</div>'+
-    its.map(function(x){
-      return '<div class="card pad" style="margin-bottom:10px">'+
-        '<div style="margin-bottom:8px">'+
-          '<span class="wb-tag'+(x.t==='tf'?' tf':'')+'">'+(x.t==='tf'?'判断':'单选')+' · 第 '+x.q.chap+' 章</span>'+
-          '<span style="font-size:12px;color:var(--tx3)">'+esc(x.q.chapT)+'</span>'+
-        '</div>'+
-        (x.t==='mc'?qCard(x.q,true):tfCard(x.q,true))+
-        '<button class="mini" data-rm="'+x.t+':'+x.q.id+'" style="margin-top:8px">✓ 拿下了，移出错题本</button>'+
-      '</div>';
-    }).join('');
+  /* 别写成 .map(wbCard)：map 会把下标当第二个参数传进去，下标 1 起就成了 inGrp，
+     平铺视图里从第二题起章标签会莫名其妙消失（qCard 那条老坑，同一个写法栽第三次） */
+  $('#wbList').innerHTML=(wbView==='chap')?wbByChap(its):
+    '<div class="wb-h">共 '+its.length+' 道，错得最多的排在前面</div>'+
+    its.map(function(x){return wbCard(x)}).join('');
   paintSyms($('#wbList'));linkTerms($('#wbList'));
+}
+/* 一道错题的卡片，两种视图共用。
+   inGrp＝已经装在「第 N 章 → 某知识点」里了，卡上那行章标签就是重复的，整行不画。
+   错了几次不用在这儿写 —— qCard / tfCard 自己就带一个「错过 N 次」角标 */
+function wbCard(x,inGrp){
+  var head=inGrp?'':
+    '<div style="margin-bottom:8px">'+
+      '<span class="wb-tag'+(x.t==='tf'?' tf':'')+'">'+(x.t==='tf'?'判断':'单选')+' · 第 '+x.q.chap+' 章</span>'+
+      '<span style="font-size:12px;color:var(--tx3)">'+esc(x.q.chapT)+'</span>'+
+    '</div>';
+  return '<div class="card pad" style="margin-bottom:10px">'+head+
+    (x.t==='mc'?qCard(x.q,true):tfCard(x.q,true))+
+    '<button class="mini" data-rm="'+x.t+':'+x.q.id+'" style="margin-top:8px">✓ 拿下了，移出错题本</button>'+
+  '</div>';
+}
+/* 章 → 知识点两层，复用题库页那套 .chap/.grp 折叠（样式和操作手感跟着一致，
+   折叠状态另存 wbopen —— 跟题库页的 bopen 是两回事，混用会互相顶掉） */
+function wbByChap(its){
+  var open=load('wbopen',{}), byC={};
+  its.forEach(function(x){
+    var c=byC[x.q.chap]||(byC[x.q.chap]={no:x.q.chap,t:x.q.chapT,gs:{},n:0});
+    var key=x.t+':'+(x.q.grp||'·');
+    var g=c.gs[key]||(c.gs[key]={key:key,t:x.t,code:x.q.grp||'',title:x.q.grpT||'（没归组）',its:[]});
+    g.its.push(x); c.n++;
+  });
+  var cs=Object.keys(byC).map(function(k){return byC[k]}).sort(function(a,b){return a.no-b.no});
+  /* 顶上先说结论：错得最集中的那个知识点。分类的价值就在这句话上 */
+  var tops=[];
+  cs.forEach(function(c){Object.keys(c.gs).forEach(function(k){tops.push(c.gs[k])})});
+  tops.sort(function(a,b){return b.its.length-a.its.length});
+  var head='<div class="wb-h">共 '+its.length+' 道，散在 '+cs.length+' 章 '+tops.length+' 个知识点里</div>';
+  if(tops.length&&tops[0].its.length>1){
+    head+='<div class="note" style="margin-bottom:10px">错得最集中的是 <b>'+
+      esc(tops[0].title)+'</b>（'+tops[0].its.length+' 道）'+
+      (tops[1]&&tops[1].its.length>1?'，其次是 <b>'+esc(tops[1].title)+'</b>（'+tops[1].its.length+' 道）':'')+
+      ' —— 这种成堆的错不是马虎，是那一块没学透，回题库页把这一组重看一遍比单题重做管用。</div>';
+  }
+  return head+cs.map(function(c){
+    var gs=Object.keys(c.gs).map(function(k){return c.gs[k]}).sort(function(a,b){
+      var oa=WBGORD[a.key], ob=WBGORD[b.key];
+      return (oa===undefined?1e9:oa)-(ob===undefined?1e9:ob);
+    });
+    return '<details class="chap"'+(open['c'+c.no]!==false?' open':'')+' data-wc="'+c.no+'">'+
+      '<summary><div class="chap-h"><span class="chap-n">'+c.no+'</span>'+
+      '<span class="chap-t">'+esc(c.t)+'</span><span class="chap-c">'+c.n+' 道</span>'+
+      '<span class="caret">▶</span></div></summary><div class="chap-body">'+
+      gs.map(function(g){
+        /* 组内仍按错的次数降序 —— 同一个知识点里，反复栽的那道排前面 */
+        var qs=g.its.slice().sort(function(a,b){return b.n-a.n || a.q.id-b.q.id});
+        return '<details class="grp"'+(open[c.no+'|'+g.key]!==false?' open':'')+' data-wg="'+c.no+'|'+g.key+'">'+
+          '<summary><div class="grp-h">'+
+          '<span class="grp-code'+(g.t==='tf'?' tf':'')+'">'+(g.t==='tf'?'判断':'单选')+
+            (g.code?' '+esc(g.code):'')+'</span>'+
+          '<span class="grp-t">'+esc(g.title)+'</span>'+
+          '<span class="grp-c">'+qs.length+'</span><span class="caret">▶</span></div></summary>'+
+          qs.map(function(x){return wbCard(x,true)}).join('')+'</details>';
+      }).join('')+'</div></details>';
+  }).join('');
 }
 $('#wbPick').onclick=function(e){
   var b=e.target.closest('button[data-w]');if(!b)return;
   wbFil=b.dataset.w;save('wbfil',wbFil);paintWB();
 };
+$('#wbView').onclick=function(e){
+  var b=e.target.closest('button[data-wv]');if(!b)return;
+  wbView=b.dataset.wv;save('wbview',wbView);paintWB();
+};
+/* 分类视图默认全展开，所以存的是「哪几个被收起来了」，跟题库页存「哪几个展开了」正好相反 */
+$('#wbList').addEventListener('toggle',function(e){
+  var d=e.target; if(d.tagName!=='DETAILS')return;
+  var k=d.dataset.wc?('c'+d.dataset.wc):d.dataset.wg;
+  if(!k)return;
+  var open=load('wbopen',{});
+  if(d.open)delete open[k];else open[k]=false;
+  save('wbopen',open);
+},true);
 $('#wbList').addEventListener('click',function(e){
   var rm=e.target.closest('button[data-rm]');
   if(rm){
