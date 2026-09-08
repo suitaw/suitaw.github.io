@@ -1444,7 +1444,7 @@ $('#wbClr').onclick=function(){
   WRONG={};TFW={};save('wrong',WRONG);save('tfwrong',TFW);paintWB();paintStat();
 };
 $('#wbGo').onclick=function(){
-  EXC.src='wrong';EXC.mix='all';EXC.mode='exam';EXC.chap=0;save('excfg',EXC);
+  EXC.src='wrong';EXC.mix='all';EXC.mode='exam';EXC.chaps=[];save('excfg',EXC);
   goPage('pQuiz');
 };
 
@@ -1454,15 +1454,16 @@ $('#wbGo').onclick=function(){
    一套卷子里单选和判断混着出，两套题库的题各带一个 t 标记（'mc' / 'tf'）。 */
 var EXOPT={
   mode:[{v:'step',t:'边练边看'},{v:'exam',t:'模拟考'},{v:'pick',t:'判断题挑错'}],
-  chap:[{v:0,t:'全部 13 章'}].concat(BANK.map(function(c){return {v:c.no,t:'第'+c.no+'章'}})),
   n  :[{v:30,t:'30 题'},{v:50,t:'50 题'},{v:100,t:'100 题'}],
   mix:[{v:'all',t:'单选 + 判断'},{v:'mc',t:'只出单选'},{v:'tf',t:'只出判断'}],
   src:[{v:'weak',t:'弱项优先'},{v:'rand',t:'全库随机'},{v:'wrong',t:'只抽错题'}],
   min:[{v:60,t:'60 分钟'},{v:30,t:'30 分钟'},{v:0,t:'不限时'}],
   order:[{v:1,t:'随机'},{v:0,t:'按题号'}]
 };
-var EXC=load('excfg',{n:100,mix:'all',src:'weak',min:60,chap:0,mode:'step'});
-if(EXC.chap===undefined)EXC.chap=0;
+/* chaps：选中的章号数组，空数组＝全部 13 章都算。可以随意组合多章，不再是单选 */
+var EXC=load('excfg',{n:100,mix:'all',src:'weak',min:60,chaps:[],mode:'step'});
+if(!Array.isArray(EXC.chaps))EXC.chaps=EXC.chap?[EXC.chap]:[];   // 旧版单章设置迁移成数组
+delete EXC.chap;
 if(EXC.mode===undefined)EXC.mode='step';
 EXC.order=rnd?1:0;
 var EX={running:false,list:[],i:0,pick:{},flag:{},t0:0,used:0,tm:null};
@@ -1476,7 +1477,7 @@ function exRank(arr,type){
 }
 function exPool(type){
   var arr=(type==='mc')?ALL.slice():TFALL.slice();
-  if(EXC.chap)arr=arr.filter(function(q){return q.chap===EXC.chap});
+  if(EXC.chaps.length)arr=arr.filter(function(q){return EXC.chaps.indexOf(q.chap)>=0});
   if(EXC.src==='wrong'){
     var W=(type==='mc')?WRONG:TFW;
     arr=arr.filter(function(q){return W[q.id]});
@@ -1492,7 +1493,7 @@ function drillList(){
   if(EXC.mode==='exam')return exBuild();
   if(EXC.mode==='pick'){
     var a=TFNO.slice();
-    if(EXC.chap)a=a.filter(function(q){return q.chap===EXC.chap});
+    if(EXC.chaps.length)a=a.filter(function(q){return EXC.chaps.indexOf(q.chap)>=0});
     if(EXC.src==='wrong')a=a.filter(function(q){return TFW[q.id]});
     else if(EXC.src==='weak')a=exRank(a,'tf');
     else a=exShuffle(a);
@@ -1509,10 +1510,15 @@ function exBuild(){
   else if(EXC.mix==='tf'){wm=0;wt=want}
   /* 单选 6 : 判断 4 是我定的配比，不是考试的真实比例 —— 页面上写明了 */
   else {wm=Math.round(want*0.6);wt=want-wm}
-  var a=exPick('mc',wm), b=exPick('tf',wt), miss=want-a.length-b.length;
-  if(miss>0){                                   // 一边不够就用另一边补满
-    if(a.length<wm) b=exPick('tf',wt+miss);
-    else if(b.length<wt) a=exPick('mc',wm+miss);
+  var a=exPick('mc',wm), b=exPick('tf',wt);
+  /* 只在「单选＋判断」都要的时候才用另一种题型补满缺口——
+     选了「只出单选」/「只出判断」时 wm/wt 有一个本来就是 0，不该被这段悄悄填上另一种题型 */
+  if(EXC.mix==='all'){
+    var miss=want-a.length-b.length;
+    if(miss>0){
+      if(a.length<wm) b=exPick('tf',wt+miss);
+      else if(b.length<wt) a=exPick('mc',wm+miss);
+    }
   }
   return a.concat(b);                            // 单选在前、判断在后，和真卷子一样
 }
@@ -1520,12 +1526,18 @@ function exBuild(){
 function exPaintSetup(){
   $('#qzSetup').style.display='';$('#qzRun').style.display='none';$('#qzDone').style.display='none';
   $('#exRun').style.display='none';$('#exDone').style.display='none';
-  ['mode','chap','n','mix','src','min','order'].forEach(function(k){
+  ['mode','n','mix','src','min','order'].forEach(function(k){
     var el=$('#'+(k==='order'?'order':'ex'+k.charAt(0).toUpperCase()+k.slice(1)));
     el.innerHTML=EXOPT[k].map(function(o){
       return '<button class="tgl'+(EXC[k]===o.v?' on':'')+'" data-v="'+o.v+'">'+o.t+'</button>';
     }).join('');
   });
+  /* 章节是多选：可以随意组合几章一起考，不再只能「单章 / 全部」二选一。
+     「全部 13 章」和具体章号是互斥的一个开关，具体章号之间互相独立 */
+  $('#exChap').innerHTML='<button class="tgl'+(EXC.chaps.length?'':' on')+'" data-all="1">全部 13 章</button>'+
+    BANK.map(function(c){
+      return '<button class="tgl'+(EXC.chaps.indexOf(c.no)>=0?' on':'')+'" data-v="'+c.no+'">第'+c.no+'章</button>';
+    }).join('');
   var M=EXC.mode;
   var show=function(id,on){$(id).style.display=on?'':'none'};
   show('#lbN',M==='exam'); show('#exN',M==='exam');
@@ -1545,17 +1557,19 @@ function exPaintSetup(){
   if(M==='exam')tip+='<b>模拟考</b>：答完统一交卷，中途可以回头改；交卷后按题型和章看正确率。<br>';
   if(M==='pick')tip+='<b>判断题挑错</b>：只出答案是「错误」的那 '+TFNO.length+' 道判断题，'+
     '先自己想「错在哪个词」，再翻答案自评。<b>这一批一律选「错误」就满分，所以不做判对错。</b><br>';
-  if(EXC.chap){
-    var bc=BANK.filter(function(c){return c.no===EXC.chap})[0];
-    tip+='<b>只考第 '+EXC.chap+' 章 '+esc(bc?bc.title:'')+'</b>：这一章一共 '+
-         (ALL.filter(function(q){return q.chap===EXC.chap}).length)+' 道单选 + '+
-         (TFALL.filter(function(q){return q.chap===EXC.chap}).length)+' 道判断'+
-         (n<EXC.n?('，凑不满 '+EXC.n+' 题，这套只有 '+n+' 题'):'')+'。<br>';
+  if(EXC.chaps.length){
+    var bcs=BANK.filter(function(c){return EXC.chaps.indexOf(c.no)>=0});
+    var chapMc=ALL.filter(function(q){return EXC.chaps.indexOf(q.chap)>=0}).length;
+    var chapTf=TFALL.filter(function(q){return EXC.chaps.indexOf(q.chap)>=0}).length;
+    tip+='<b>只考'+bcs.map(function(c){return '第'+c.no+'章'}).join('、')+'</b>：'+
+         (bcs.length>1?'这几章合计':'这一章')+'一共 '+chapMc+' 道单选 + '+chapTf+' 道判断。<br>';
   }
   /* 这几句原来写成 tip='...'（赋值），把上面累积的全冲掉了 —— 一律用 += */
   if(EXC.src==='wrong')tip+='<b>只抽错题</b>：错题本里现在有 '+
-    (Object.keys(WRONG).length+Object.keys(TFW).length)+' 道'+
-    (n<EXC.n&&M==='exam'?('，凑不满 '+EXC.n+' 题，这套只有 '+n+' 题'):'')+'。<br>';
+    (Object.keys(WRONG).length+Object.keys(TFW).length)+' 道。<br>';
+  /* 不管缺口是章节选窄了、只抽错题、还是「只出单选/判断」把另一半题型关掉了，
+     只要凑不够就在这里统一说明——「开始」按钮上的数字本来就是真实能抽到的数，这里只是把原因说清楚 */
+  if(M==='exam'&&n<EXC.n)tip+='<b>题量不够</b>：按当前范围只抽得到 '+n+' 题，凑不满 '+EXC.n+' 题，这套就按 '+n+' 题算。<br>';
   if(EXC.src==='rand')tip+='<b>全库随机</b>：不看你的记录，纯随机抽。<br>';
   if(M==='exam'){
     tip+='单选 : 判断按 <b>6 : 4</b> 抽 —— 这是我定的配比，不是考试的真实比例；'+
@@ -1575,6 +1589,17 @@ function exPaintSetup(){
 }
 function exMS(sec){var m=Math.floor(sec/60),s2=sec%60;return m+':'+(s2<10?'0':'')+s2}
 $('#qzSetup').addEventListener('click',function(e){
+  /* 章节是多选，点法跟其余单选行不一样，单独处理完就地重绘 */
+  var cb=e.target.closest('#exChap button');
+  if(cb){
+    if(cb.dataset.all)EXC.chaps=[];
+    else{
+      var no=+cb.dataset.v, i=EXC.chaps.indexOf(no);
+      if(i>=0)EXC.chaps.splice(i,1); else EXC.chaps.push(no);
+    }
+    save('excfg',EXC); exPaintSetup();
+    return;
+  }
   var b=e.target.closest('.pick button[data-v]');if(!b)return;
   var pid=b.parentNode.id, k=(pid==='order')?'order':pid.slice(2).toLowerCase(), v=b.dataset.v;
   EXC[k]=(k==='mix'||k==='src'||k==='mode')?v:+v;
