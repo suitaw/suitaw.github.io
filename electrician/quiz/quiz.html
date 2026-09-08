@@ -678,6 +678,8 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
         <button class="big ghost" id="exWrongOnly">只练这套答错的</button>
       </div>
       <div id="exList"></div>
+      <!-- 标记过的题：答卷时的临时记号，交卷后在这儿摊开看一遍就算，不落盘 -->
+      <div id="exFlagList"></div>
     </div>
   </section>
 
@@ -1872,6 +1874,24 @@ function exSubmit(force){
         (x.t==='mc'?qCard(x.q,true):tfCard(x.q,true));
     }).join('')+'</div>'):'';
   paintSyms($('#exList'));linkTerms($('#exList'));
+  /* 标记过的题：答卷时按「先跳过、回头再看」按下的记号，交卷后在这儿摊开一遍。
+     **只在这张成绩页上活着，不落盘**（他定的口径）—— 所以答错的那几道就不必在这儿再列一遍，
+     上面「这套答错的题」已经有了；这一块只补上「标记了但答对 / 没答」的那些。 */
+  var flags=EX.list.map(function(it,i){return EX.flag[i]?{it:it,i:i}:null}).filter(Boolean)
+                   .filter(function(x){return bad.indexOf(x.it)<0});
+  $('#exFlagList').innerHTML=flags.length?('<div class="card pad">'+
+    '<div style="font-size:14px;font-weight:700;margin-bottom:2px">这套标记过的题（'+flags.length+' 道）</div>'+
+    '<div style="font-size:12.5px;color:var(--tx3);line-height:1.6;margin-bottom:8px">'+
+      '答错的已经在上面那一块里了，这儿只列标记过、但答对或者没答的。'+
+      '<b>标记只在这张成绩页上留着</b>，离开这一页就没了 —— 想留住就点进题库页标「掌握」，或者去练习页再练一遍。</div>'+
+    flags.map(function(x){
+      var q=x.it.q, done=(EX.pick[x.i]!==undefined), right=(EX.pick[x.i]===q.answer);
+      return '<div style="margin-bottom:6px"><span class="wb-tag'+(x.it.t==='tf'?' tf':'')+'">'+
+        (x.it.t==='tf'?'判断':'单选')+' 第 '+q.id+' 题</span>'+
+        '<span style="font-size:12px;color:var(--tx3)">'+(done?(right?'答对了':'答错了'):'没答')+'</span></div>'+
+        (x.it.t==='mc'?qCard(q,true):tfCard(q,true));
+    }).join('')+'</div>'):'';
+  paintSyms($('#exFlagList'));linkTerms($('#exFlagList'));
   var hs=load('exhist',[]);
   var d=new Date(), pad=function(x){return (x<10?'0':'')+x};
   hs.unshift({d:(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()),
@@ -1880,15 +1900,18 @@ function exSubmit(force){
   paintStat();paintBank();
   window.scrollTo(0,0);
 }
-$('#exList').addEventListener('click',function(e){
-  var b=e.target.closest('button[data-m]');
-  if(b){var id=+b.dataset.m;setM(id,!isM(id));
-    b.classList.toggle('done',isM(id));b.textContent=isM(id)?'✓ 已掌握':'标记掌握';return}
-  var t=e.target.closest('button[data-tm]');
-  if(t){var id2=+t.dataset.tm;tfSetM(id2,!tfIsM(id2));
-    t.classList.toggle('done',tfIsM(id2));t.textContent=tfIsM(id2)?'✓ 已掌握':'标记掌握';return}
-  var sh=e.target.closest('.tf-show');
-  if(sh){sh.closest('.q').classList.add('show')}
+/* 成绩页的两块（答错的、标记过的）用同一套「标记掌握」处理 */
+['#exList','#exFlagList'].forEach(function(sel){
+  $(sel).addEventListener('click',function(e){
+    var b=e.target.closest('button[data-m]');
+    if(b){var id=+b.dataset.m;setM(id,!isM(id));
+      b.classList.toggle('done',isM(id));b.textContent=isM(id)?'✓ 已掌握':'标记掌握';return}
+    var t=e.target.closest('button[data-tm]');
+    if(t){var id2=+t.dataset.tm;tfSetM(id2,!tfIsM(id2));
+      t.classList.toggle('done',tfIsM(id2));t.textContent=tfIsM(id2)?'✓ 已掌握':'标记掌握';return}
+    var sh=e.target.closest('.tf-show');
+    if(sh){sh.closest('.q').classList.add('show')}
+  });
 });
 $('#exAgain').onclick=function(){exPaintSetup();window.scrollTo(0,0)};
 $('#exWrongOnly').onclick=function(){exStart((EX.bad||[]).slice())};
