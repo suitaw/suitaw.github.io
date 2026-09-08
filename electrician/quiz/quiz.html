@@ -1504,12 +1504,14 @@ function drillList(){
   var tf=(EXC.mix==='mc')?[]:exPool('tf').map(function(q){return {t:'tf',q:q}});
   return mc.concat(tf);
 }
+/* 真实考卷的配比：单选 3 : 判断 7（他 2026-09-08 给的口径）。
+   改这个数只改 MC_RATIO 一处 —— 抽题、页面说明、凑不满时的提示都读它 */
+var MC_RATIO=0.3;
 function exBuild(){
   var want=EXC.n, wm, wt;
   if(EXC.mix==='mc'){wm=want;wt=0}
   else if(EXC.mix==='tf'){wm=0;wt=want}
-  /* 单选 6 : 判断 4 是我定的配比，不是考试的真实比例 —— 页面上写明了 */
-  else {wm=Math.round(want*0.6);wt=want-wm}
+  else {wm=Math.round(want*MC_RATIO);wt=want-wm}
   var a=exPick('mc',wm), b=exPick('tf',wt);
   /* 只在「单选＋判断」都要的时候才用另一种题型补满缺口——
      选了「只出单选」/「只出判断」时 wm/wt 有一个本来就是 0，不该被这段悄悄填上另一种题型 */
@@ -1520,7 +1522,9 @@ function exBuild(){
       else if(b.length<wt) a=exPick('mc',wm+miss);
     }
   }
-  return a.concat(b);                            // 单选在前、判断在后，和真卷子一样
+  /* 两种题型打散混排：真卷子不会前 30 题全是单选、后 70 题全是判断。
+     每题上面本来就标着「单选题 / 判断题 · 第 N 章」，混着出不会看不出这题是哪种 */
+  return exShuffle(a.concat(b));
 }
 /* 三种模式共用这一张设置表，只是显示哪几行不一样 */
 function exPaintSetup(){
@@ -1571,9 +1575,13 @@ function exPaintSetup(){
      只要凑不够就在这里统一说明——「开始」按钮上的数字本来就是真实能抽到的数，这里只是把原因说清楚 */
   if(M==='exam'&&n<EXC.n)tip+='<b>题量不够</b>：按当前范围只抽得到 '+n+' 题，凑不满 '+EXC.n+' 题，这套就按 '+n+' 题算。<br>';
   if(EXC.src==='rand')tip+='<b>全库随机</b>：不看你的记录，纯随机抽。<br>';
+  if(M==='exam'&&EXC.mix==='all'){
+    tip+='按真实考卷的配比抽：<b>单选 '+Math.round(MC_RATIO*100)+' : 判断 '+Math.round((1-MC_RATIO)*100)+'</b>'+
+         '（'+EXC.n+' 题里 '+Math.round(EXC.n*MC_RATIO)+' 道单选 + '+(EXC.n-Math.round(EXC.n*MC_RATIO))+' 道判断），'+
+         '<b>两种题型打散混着出</b>，不是前面一片单选、后面一片判断。<br>';
+  }
   if(M==='exam'){
-    tip+='单选 : 判断按 <b>6 : 4</b> 抽 —— 这是我定的配比，不是考试的真实比例；'+
-         '及格线按 <b>80 分</b> 算（必背表第 1 章那句「理论 + 实操，均 80 分合格」）。<br>';
+    tip+='及格线按 <b>80 分</b> 算（必背表第 1 章那句「理论 + 实操，均 80 分合格」）。<br>';
   }
   if(M!=='pick'&&EXC.mix!=='mc'){
     tip+='判断题库 <b>错误 '+TFNO.length+' 题 / 正确 '+TFYES.length+' 题</b>，'+
