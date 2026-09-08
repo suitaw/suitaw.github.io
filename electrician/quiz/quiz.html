@@ -168,6 +168,20 @@ main{padding:12px 12px 20px;max-width:720px;margin:0 auto}
 .hidden-ans .opt.right{background:var(--bg);border-color:transparent}
 .hidden-ans .opt.right .k{color:var(--tx2)}
 .hidden-ans .ans,.hidden-ans .tip{display:none}
+/* ── 盖住答案 ＝ 这张卡就是一道能作答的题 ──
+   点一个选项当场判对错、翻开答案和解析。答了不进错题本、不动「掌握」标记 ——
+   这一页只管「学」，那些归练习页管。 */
+.q.hidden-ans .opt{cursor:pointer;min-height:44px;padding:11px 10px;align-items:center}
+.q.hidden-ans:not(.show) .opt:active{background:var(--line)}
+.q.hidden-ans.show .opt{cursor:default}
+.q.hidden-ans.show .ans{display:block}
+/* 翻开之后正确项要把绿色拿回来（上面那两行是盖住时把它中和掉的） */
+.q.hidden-ans.show .opt.right{background:var(--green-l);border-color:var(--green-b)}
+.q.hidden-ans.show .opt.right .k{color:var(--green)}
+.opt.picked{box-shadow:inset 0 0 0 1px var(--blue)}
+.q-vd{font-size:13.5px;font-weight:700;margin:9px 0 0}
+.q-vd.y{color:var(--green)}
+.q-vd.n{color:var(--red)}
 .ans{font-size:13.5px;font-weight:700;color:var(--green);margin:8px 0 0}
 .ans .no{color:var(--amber);font-weight:700}
 .tip{
@@ -264,11 +278,18 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 .tf-r b{color:var(--green)}
 .tf-wn{background:var(--red-l);border:1px solid var(--red-b);color:var(--tx)}
 .tf-wn .lb{background:var(--red-b);color:var(--red)}
-/* 盖住答案：只留题干，点「看答案」才翻开这一张 */
+/* 盖住答案：只留题干，答一下（或点「看答案」）才翻开这一张。
+   **题干块的红底 / 绿底和「这句话是对的 / 错的」那个角标本身就是答案**，
+   盖的时候必须一起盖掉，只留一个中性底 —— 否则「盖住答案」对判断题等于没盖 */
 .q.hidden-ans .tf-ans{display:none}
+.q.hidden-ans .tf-q{background:var(--bg);border-color:var(--line)}
+.q.hidden-ans .tf-y,.q.hidden-ans .tf-x{display:none}
+.q.hidden-ans.show .tf-q{background:var(--red-l);border-color:var(--red-b)}
+.q.hidden-ans.show .tf-q.yes{background:var(--green-l);border-color:var(--green-b)}
+.q.hidden-ans.show .tf-y,.q.hidden-ans.show .tf-x{display:inline-block}
 .q.hidden-ans.show .tf-ans{display:block}
 .q.hidden-ans.show .tip{display:block}
-.q.show .tf-show{display:none}
+.q.show .tf-show,.q.show .tf-pick{display:none}
 .tf-intro{background:var(--amber-l);border-color:var(--amber-b);color:var(--tx)}
 
 /* ── 实操页（practical-data.js）──
@@ -1006,11 +1027,40 @@ function paintSyms(root){
 }
 function optRow(q,k){
   var right=(k===q.answer);
-  return '<div class="opt'+(right?' right':'')+'"><span class="k">'+k+'</span>'+optBody(q.options[k])+'</div>';
+  /* data-pick 让盖着答案时这一行可点 —— 卡片翻开后点击处理器就不认它了 */
+  return '<div class="opt'+(right?' right':'')+'" data-pick="'+k+'"><span class="k">'+k+'</span>'+optBody(q.options[k])+'</div>';
 }
+/* ── 盖着答案的卡片＝一道能作答的题 ──
+   他的原话：「不显示答案，但是点击一下，显示你选的对还是错，然后你错在哪里」。
+   绑在 document 上是因为这两种卡片被五个容器渲染（题库页、判断题复习、错题本、
+   两个成绩页），逐个绑要绑五处，而且以后再加容器又会漏。
+   `:not(.show)` 保证翻开之后再点没有反应。
+   **答完不进错题本、不动「掌握」标记** —— 这一页只管「学」，那些归练习页管，
+   而且随手点点就往错题本里塞，正是刚修完的那个「错题本被污染」的坑。 */
+document.addEventListener('click',function(e){
+  var card=e.target.closest('.q.hidden-ans:not(.show)');
+  if(!card)return;
+  var hitOpt=e.target.closest('.opt[data-pick]');
+  var hitTf=e.target.closest('.tf-pick');
+  if(!hitOpt&&!hitTf)return;
+  var pick=hitOpt?hitOpt.dataset.pick:hitTf.dataset.v, right=(pick===card.dataset.ans);
+  card.classList.add('show');
+  /* 判断题那两颗按钮翻开后就被 CSS 收走了，不用标；单选要标出「你选的是这个」 */
+  if(hitOpt){
+    hitOpt.classList.add('picked');
+    if(!right)hitOpt.classList.add('wrong');
+  }
+  /* 判定行插在答案 / 解析前面：先说对错，再让他看为什么 */
+  var vd=document.createElement('div');
+  vd.className='q-vd '+(right?'y':'n');
+  vd.textContent=right?'✓ 答对了':('✗ 选错了　正确答案是 '+card.dataset.ans);
+  var anchor=card.querySelector('.ans')||card.querySelector('.tf-ans');
+  if(anchor)card.insertBefore(vd,anchor);
+});
 /* forceOpen：错题本和成绩页要的是「马上看见答案」，不跟复习页那个「盖住答案」开关走 */
 function qCard(q,forceOpen){
-  return '<div class="q'+(isM(q.id)?' masterd':'')+((mask&&!forceOpen)?' hidden-ans':'')+'" data-id="'+q.id+'">'+
+  return '<div class="q'+(isM(q.id)?' masterd':'')+((mask&&!forceOpen)?' hidden-ans':'')+'" data-id="'+q.id+'"'+
+    ' data-ans="'+esc(q.answer)+'">'+
     '<div class="q-top"><span class="q-id">第 '+q.id+' 题</span>'+
       (q.note?'<span class="q-warn">解析有误</span>':'<span class="q-ok">解析可信</span>')+
       (WRONG[q.id]?'<span class="q-warn">错过 '+WRONG[q.id]+' 次</span>':'')+
@@ -1247,7 +1297,8 @@ function tfAns(q){
 }
 function tfCard(q,forceOpen){
   var hide=tfMask&&!forceOpen;
-  return '<div class="q'+(tfIsM(q.id)?' masterd':'')+(hide?' hidden-ans':'')+'" data-id="'+q.id+'">'+
+  return '<div class="q'+(tfIsM(q.id)?' masterd':'')+(hide?' hidden-ans':'')+'" data-id="'+q.id+'"'+
+    ' data-ans="'+esc(q.answer)+'">'+
     '<div class="q-top"><span class="q-id">第 '+q.id+' 题</span>'+
       (q.warn?'<span class="q-warn">存疑 / 解析有误</span>':'')+
       (TFW[q.id]?'<span class="q-warn">错过 '+TFW[q.id]+' 次</span>':'')+
@@ -1256,9 +1307,12 @@ function tfCard(q,forceOpen){
       ? '<div class="tf-q yes"><span class="tf-y">✓ 这句话是对的</span>'+esc(q.question)+'</div>'
       : '<div class="tf-q"><span class="tf-x">✗ 这句话是错的</span>'+esc(q.question)+'</div>')+
     '<div class="tf-ans">'+tfAns(q)+'</div>'+
-    /* 「看答案」和「标记掌握」放同一行 —— 分成两个块的话手机上会各占一行 */
+    /* 盖着的时候先自己判一句对错（这就是这批题的正确用法），点完才翻开。
+       三颗按钮是 390 宽下的上限，所以不再单给一颗「看答案」——
+       想直接看就关掉顶上那个「盖住答案」开关 */
     '<div class="q-acts">'+
-      (hide?'<button class="mini tf-show">看答案</button>':'')+
+      (hide?'<button class="mini tf-pick" data-v="正确">这句是对的</button>'+
+            '<button class="mini tf-pick" data-v="错误">这句是错的</button>':'')+
       '<button class="mini'+(tfIsM(q.id)?' done':'')+'" data-tm="'+q.id+'">'+
       (tfIsM(q.id)?'✓ 已掌握':'标记掌握')+'</button></div>'+
   '</div>';
