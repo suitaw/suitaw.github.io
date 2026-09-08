@@ -1758,9 +1758,14 @@ function paintTable(){
     (nTerm?'<button class="tgl'+(tbWhich==='term'?' on':'')+'" data-w="term">术语表 '+nTerm+' 条</button>':'');
   if(tbWhich==='term'){paintTerms();return}
   var src=(tbWhich==='tf')?TF_CHAPTERS:QUIZ_CHAPTERS, has=src.filter(function(c){return c.table});
-  var html='<div class="note">考前一天把这 '+has.length+' 张表过一遍。数字类的题在真题里占比很高，而且是唯一能靠死记拿分的部分。<br>表格太宽时可以左右滑动。</div>';
+  /* 索引目录：吸在顶栏下面，点一下跳到那一章的表 —— 和实操页 .p-toc 同一个路子，
+     章数一多（判断题这边 10 张）挨个滑过去很烦 */
+  var html='<div class="p-toc">'+has.map(function(c){
+    return '<button data-jump="tb-'+tbWhich+'-'+c.no+'">第'+c.no+'章</button>';
+  }).join('')+'</div>';
+  html+='<div class="note">考前一天把这 '+has.length+' 张表过一遍。数字类的题在真题里占比很高，而且是唯一能靠死记拿分的部分。<br>表格太宽时可以左右滑动。</div>';
   has.forEach(function(c){
-    html+='<div class="card pad"><div class="chap-t" style="margin-bottom:2px">第 '+c.no+' 章 '+esc(c.title)+' · 必背</div>'+
+    html+='<div class="card pad" id="tb-'+tbWhich+'-'+c.no+'" data-anchor><div class="chap-t" style="margin-bottom:2px">第 '+c.no+' 章 '+esc(c.title)+' · 必背</div>'+
       mdTable(c.table)+'</div>';
   });
   $('#tb').innerHTML=html;
@@ -1772,10 +1777,13 @@ function paintTerms(){
     var c=ETERMS[k].c; if(!cats[c]){cats[c]=[];order.push(c)}
     cats[c].push(k);
   });
-  var html='<div class="note">题目和记忆要点里凡是这些词，都<b>带虚下划线、点一下就能看解释</b>，不用翻到这一页来。'+
+  var html='<div class="p-toc">'+order.map(function(c,i){
+    return '<button data-jump="tb-term-'+i+'">'+esc(c)+'</button>';
+  }).join('')+'</div>';
+  html+='<div class="note">题目和记忆要点里凡是这些词，都<b>带虚下划线、点一下就能看解释</b>，不用翻到这一页来。'+
     '<br><b>碰到没收进来的词，直接跟我说，我加。</b></div><div class="tmlist">';
-  order.forEach(function(c){
-    html+='<div class="card"><div class="pad" style="padding-bottom:6px"><div class="chap-t">'+esc(c)+
+  order.forEach(function(c,i){
+    html+='<div class="card" id="tb-term-'+i+'" data-anchor><div class="pad" style="padding-bottom:6px"><div class="chap-t">'+esc(c)+
       '<span class="chap-c" style="margin-left:8px">'+cats[c].length+' 条</span></div></div>';
     cats[c].forEach(function(k){
       var t=ETERMS[k];
@@ -1790,6 +1798,13 @@ function paintTerms(){
 $('#tbPick').onclick=function(e){
   var b=e.target.closest('button[data-w]');if(!b||b.dataset.w===tbWhich)return;
   tbWhich=b.dataset.w;save('tbwhich',tbWhich);paintTable();paintStat();window.scrollTo(0,0);
+};
+/* 目录跳转：这一页的卡片本来就都展开着，不用像实操页那样先 open 一段 */
+$('#tb').onclick=function(e){
+  var jump=e.target.closest('[data-jump]');
+  if(!jump) return;
+  var box=document.getElementById(jump.dataset.jump);
+  if(box) box.scrollIntoView({behavior:'smooth',block:'start'});
 };
 
 /* ══ 实操页（PRACTICAL，来自 practical-data.js）══
