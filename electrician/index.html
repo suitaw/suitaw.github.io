@@ -281,6 +281,7 @@ function seenMap(){
    ['circuit-basics.html','shock','#ff6b6b','回路 · 大地 · 触电','鸟站电线上为什么没事'],
    ['magnet-field.html','magnet','#b07ce8','磁场与磁力线','撒铁粉看通电导线周围'],
    ['lab-circuit.html','lab','#3ecf8e','电路实验室','自己搭电路，里面是真求解器'],
+   ['https://www.falstad.com/circuit/','spark','#ec5990','专业电路仿真器','外部工具 · falstad.com，元件更全、能看波形'],
    ['wiring-trainer.html','refresh','#2f9e8f','正反转接线图','14 根线，浏览·逐根·自测·上螺丝顺序'],
    ['quiz/quiz.html','quiz','#f0a020','考证题库','单选 537 + 判断 723 题'],
    ['parts.html','target','#9fadbd','元件设计规范图','元件长什么样、有哪些状态']
@@ -289,8 +290,9 @@ function seenMap(){
     '<div class="sec-h"><span class="t">配套的几块</span><span class="ln"></span>'+
     '<span class="d">不按章节走</span></div><div class="grid">';
   TOOLS.forEach(function(t){
-    h += '<a class="tile" href="'+t[0]+'" style="--tc:'+t[2]+
-      ';--tb:'+t[2]+'22;--tl:'+t[2]+'4d">'+
+    const ext = t[0].indexOf('http')===0;
+    h += '<a class="tile" href="'+t[0]+'"'+(ext?' target="_blank" rel="noopener"':'')+
+      ' style="--tc:'+t[2]+';--tb:'+t[2]+'22;--tl:'+t[2]+'4d">'+
       '<span class="ic">'+EI.svg(t[1],19)+'</span>'+
       '<span class="t">'+t[3]+'</span><span class="d">'+t[4]+'</span></a>';
   });
