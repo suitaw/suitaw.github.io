@@ -2,7 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<!-- maximum-scale 曾经写成 1，把系统的双指缩放整个禁掉了 —— 而这一页的图
+     在手机上本来就小，等于「看不清还放不大」。现在舞台自己带缩放（见 zoom 那一节），
+     系统缩放也一并放开 -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>正反转控制电路 · 实物接线图</title>
 <style>
 :root{
@@ -23,14 +26,14 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 
 .circuits{display:flex;gap:6px;margin-bottom:8px}
 .circuits button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--tx3);
-  border-radius:9px;padding:8px 9px;font-size:.72rem;text-align:left;line-height:1.4}
+  border-radius:9px;padding:6px 8px;font-size:.68rem;text-align:left;line-height:1.32}
 .circuits button .k{font-weight:700;color:var(--tx);display:block;font-size:.84rem;margin-bottom:1px}
 .circuits button.on{background:var(--accbg);border-color:var(--acc)}
 .circuits button.on .k{color:var(--acc)}
 
 .modes{display:flex;gap:6px;margin-bottom:8px}
 .modes button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--tx2);
-  border-radius:9px;padding:9px 6px;font-size:.82rem;font-weight:600}
+  border-radius:9px;padding:7px 5px;font-size:.78rem;font-weight:600}
 .modes button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 
 /* 原理图那一屏：三个「按住」按钮 + 状态条。
@@ -81,11 +84,62 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
   color:var(--tx2);border-radius:8px;padding:7px 10px;font-size:.76rem;white-space:nowrap}
 .grpbtn .dot{width:9px;height:9px;border-radius:50%;flex:none}
 .grpbtn.on{border-color:var(--acc);background:var(--accbg);color:var(--acc);font-weight:700}
-.chk{display:flex;align-items:center;gap:5px;font-size:.75rem;color:var(--tx2);white-space:nowrap;
-  border:1px solid var(--line);border-radius:8px;padding:6px 9px;background:var(--card)}
+.chk{display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--tx2);white-space:nowrap;
+  border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--card);flex:none}
 
-.stage{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;overflow:hidden}
-.stage svg{display:block;width:100%;height:auto}
+/* 舞台：自己带缩放/平移。touch-action:none 是双指捏合能工作的前提
+   （不写的话浏览器把双指手势当页面缩放吃掉了），所以竖向滚动要靠
+   「单指没落在图上就不拦」——见 zoom 那一节的 onDown */
+.stage{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:6px;overflow:hidden}
+.stage svg{display:block;width:100%;height:auto;touch-action:none;-webkit-user-select:none;user-select:none}
+.zoombar{position:absolute;right:9px;bottom:9px;display:flex;flex-direction:column;gap:4px;z-index:3}
+.zoombar button{width:34px;height:34px;border:1px solid var(--line);background:rgba(255,255,255,.9);
+  color:var(--tx2);border-radius:9px;font-size:1rem;font-weight:700;line-height:1;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);padding:0}
+.zoombar button.rs{font-size:.6rem;font-weight:600}
+/* 提示条放**左下角**：左上是断路器和进线，压在那儿正好挡住这一屏最该先看的东西 */
+.zoomtip{margin-top:6px;font-size:.68rem;color:var(--tx3);line-height:1.45}
+.legendrow{display:flex;align-items:flex-start;gap:8px;margin-top:8px}
+.legend-h{display:flex;flex-wrap:wrap;gap:4px 12px;flex:1 1 auto;font-size:.72rem;color:var(--tx2)}
+.legend-h span{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.legend-h i{width:16px;height:3px;border-radius:2px;flex:none}
+.zlv{position:absolute;left:9px;top:9px;font-size:.64rem;color:var(--acc);font-weight:700;
+  background:var(--accbg);border-radius:6px;padding:2px 7px;pointer-events:none;display:none}
+.zlv.on{display:block}
+
+/* 细节文字（孔号、型号小字）默认不画 —— 全览时它们只有 3px 高，
+   糊成一团反而脏；放大到 1.5 倍以上才露出来，那时正好读得清。
+   这是「一张图既要看全貌又要看孔位」的解法 */
+#svg .p-mark,#svg .p-mark-d,#svg .p-tiny{opacity:0;transition:opacity .2s}
+#svg.zoomed .p-mark,#svg.zoomed .p-mark-d,#svg.zoomed .p-tiny{opacity:1}
+
+/* ── 实物元件的材质色（照实操板拍的照片定的，别跟着主题走）──
+   白色模数化外壳＝断路器和熔断器座；灰机身＋红触点块＝CJX2s 接触器；
+   黑机身＋银散热片＝JR36 热继电器；橙色＝按钮盒；黄铜＝接地铜排 */
+.p-case{fill:#f2f4f6;stroke:#9aa4ae;stroke-width:1.4}
+.p-case2{fill:#e6e9ec;stroke:#9aa4ae;stroke-width:1.2}
+.p-red{fill:#c0392b}
+.p-lever{fill:#d1483a;stroke:#8d2f24;stroke-width:.8}
+.p-kmbody{fill:#8d959e;stroke:#5d656e;stroke-width:1.4}
+.p-kmface{fill:#7c848d;stroke:#5d656e;stroke-width:1}
+.p-blk{fill:#2a2e33;stroke:#15181b;stroke-width:1.2}
+.p-blk2{fill:#3a4046}
+.p-silver{fill:#c9ced3;stroke:#8d949b;stroke-width:1}
+.p-brass{fill:#c9ab53;stroke:#8d7530;stroke-width:1.2}
+.p-orange{fill:#f0921f;stroke:#b56a0c;stroke-width:1.4}
+.p-hole{fill:#1d2126}                        /* 接线孔（没接控制线的那些） */
+.p-screw{fill:#c8cdd2;stroke:#7f868d;stroke-width:.9}
+.p-mark{font-size:7px;fill:#e9edf1;font-family:ui-monospace,Menlo,Consolas,monospace}
+.p-mark-d{font-size:7px;fill:#4a525b;font-family:ui-monospace,Menlo,Consolas,monospace}
+.p-brand{font-size:8.5px;fill:#c0392b;font-weight:700;letter-spacing:.5px}
+.p-model{font-size:9px;fill:#e9edf1;font-weight:700}
+.p-model-d{font-size:8.5px;fill:#39404a;font-weight:700}
+.p-tiny{font-size:6.5px;fill:#8b949d}
+
+/* 主电路：画出来当背景，压暗——练的是控制回路那 14 根 */
+.mainw{fill:none;stroke-width:4.4;stroke-linecap:round;stroke-linejoin:round;opacity:.68}
+.mainlbl{font-size:8.5px;fill:var(--tx3)}
 
 .term-hit{fill:transparent;cursor:pointer}
 .term-dot,.tlabel,.badge-c,.badge-t,.term-ring{pointer-events:none}
@@ -95,13 +149,15 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .term-dot.wrong{fill:var(--red);stroke:var(--red)}
 .term-dot.right{fill:var(--green);stroke:var(--green)}
 .tlabel{font-size:9.5px;fill:var(--tx2);font-family:ui-monospace,Menlo,Consolas,monospace}
+/* 端子排是黑机身，深灰的号码画上去看不见（截图才发现：12 个端子一个号都没有） */
+.tlabel.ondark{fill:#e3e8ec}
 .badge-c{fill:#fff;stroke:var(--tx2);stroke-width:1}
 .badge-t{font-size:8px;fill:var(--tx2);text-anchor:middle;dominant-baseline:middle;font-weight:700}
 .hide-labels .tlabel{display:none}
 
 .dev-box{fill:#eef1f4;stroke:#98a3ad;stroke-width:1.6}
 .dev-km{fill:#5a6472;stroke:#2e343c}
-.dev-name{font-size:11px;fill:var(--tx2);text-anchor:middle}
+.dev-name{font-size:12.5px;fill:var(--tx2);text-anchor:middle}
 .dev-name-in{font-size:11px;fill:#eef1f4;text-anchor:middle;font-weight:700}
 .dev-sub-in{font-size:8.5px;fill:#c4cad2;text-anchor:middle}
 .tb-strip{fill:#e2e7eb;stroke:#98a3ad;stroke-width:1.6}
@@ -158,6 +214,10 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .hintbar .g{color:var(--tx3);font-size:.72rem}
 .hintbar .t{margin-top:2px}
 .hintbar .warn{margin-top:6px;color:#a86200;background:#fdf1de;border-radius:8px;padding:6px 9px;font-size:.76rem}
+/* 注意事项默认收起 —— K32 有三条，全摊开时吸底条高 239px，
+   把图例、悬停面板连同小半张图一起盖掉（截图才发现：DOM 里明明渲染了） */
+.hintbar .warnbtn{margin-left:8px;border:1px solid #e8c98d;background:#fdf1de;color:#a86200;
+  border-radius:7px;padding:2px 8px;font-size:.7rem;font-weight:600}
 .foot-pad{height:8px}
 </style>
 </head>
@@ -194,14 +254,25 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 
   <div class="toolbar" id="browseBar">
     <div class="grpbtns" id="grpBtns"></div>
-    <label class="chk"><input type="checkbox" id="labelChk" checked> 显示端子号</label>
   </div>
 
   <div id="testHead"></div>
   <div id="screwHead"></div>
 
+  <div class="legendrow">
+    <div class="legend-h" id="legendH"></div>
+    <label class="chk"><input type="checkbox" id="labelChk" checked> 端子号</label>
+  </div>
+  <div class="zoomtip" id="zoomTip">双指捏合放大 · 双击放大一档 · 放大后可拖动；点分组或「下一根」会自动凑近看</div>
+
   <div class="stage">
-    <svg id="svg" viewBox="0 0 860 700" xmlns="http://www.w3.org/2000/svg"></svg>
+    <svg id="svg" viewBox="0 0 860 720" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="zlv" id="zoomLv"></div>
+    <div class="zoombar">
+      <button id="zIn" title="放大">＋</button>
+      <button id="zOut" title="缩小">－</button>
+      <button id="zRs" class="rs" title="复位">复位</button>
+    </div>
   </div>
 
   <div class="playbar" id="playBar" style="display:none">
@@ -215,9 +286,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
   <div class="side" id="side"><span class="empty">悬停任意端子，看它接了几根线；点击左侧分组，只看这一组的走线。</span></div>
 
   <div class="hintbar" id="hintbar">
-    <div class="g">记法</div>
+    <div class="g">记法<button class="warnbtn" id="warnBtn" hidden></button></div>
     <div class="t" id="hintText">点一个分组，看这组怎么记。</div>
-    <div id="warnBox"></div>
+    <div id="warnBox" hidden></div>
   </div>
   <div class="foot-pad"></div>
 </div>
@@ -244,43 +315,69 @@ function buildTPOS(devices){
   return tpos;
 }
 
-/* ══ K32 正反转（双接触器 · 14 根）══════════════════════════ */
+/* ══ 元件的真实孔位（照他实操板的照片定的，2026-09-09）══════════
+   CJX2s-0911（德力西）正面印字，放大照片逐个读出来的：
+     上排 1/L1  3/L2  5/L3 ┊ 13NO  21NC  A1
+     下排 2/T1  4/T2  6/T3 ┊ 14NO  22NC  A2
+   主触点三个孔在左、辅助和线圈挤在右侧，这个「左三右三」的排法是认端子的第一眼。
+   JR36-20：上排三个进（接接触器出线）、下排三个出（去电机），
+   右侧一个整定旋钮 + 复位钮，辅助 NC 95-96 / NO 97-98 在右下角。
+   DZ47s C16 是 3P，RT18-32X 是 10×38 熔断器座（AC500V 32A）。
+
+   KM 的端子相对坐标（框 200×150）——两块板共用这一份，别各写一套 */
+const KM_W = 200, KM_H = 150;
+const KM_PINS = [                       /* 主触点：只画孔，不参与接线练习 */
+  [34,18,'1/L1'], [72,18,'3/L2'], [110,18,'5/L3'],
+  [34,132,'2/T1'], [72,132,'4/T2'], [110,132,'6/T3']
+];
+function kmTerms(p){                    /* p = 'km1' / 'km2' / 'km' */
+  return [
+    {id:p+'-13', label:'13', x:142, y:18},
+    {id:p+'-21', label:'21', x:168, y:18},
+    {id:p+'-a1', label:'A1', x:190, y:18},
+    {id:p+'-14', label:'14', x:142, y:132},
+    {id:p+'-22', label:'22', x:168, y:132},
+    {id:p+'-a2', label:'A2', x:190, y:132}
+  ];
+}
+/* 热继电器（框 154×104）：六个主端子画成孔，只有 95/96 是要接的 */
+const FR_PINS = [[28,18,'1'],[60,18,'3'],[92,18,'5'],[28,78,'2'],[60,78,'4'],[92,78,'6']];
+
+/* ══ K32 正反转（双接触器 · 控制回路 14 根）══════════════════
+   2026-09-09 照他 09-09 拍的实操板重排：元件位置、型号、孔位全部对着照片来。
+   主电路（断路器→三只熔断器→两个接触器→热继电器→出线端子排）画出来当背景、
+   压暗，**不纳入练习** —— 练的仍然是控制回路那 14 根。
+   板上的实际状态是「主回路已接、控制回路一根没接」，正好对得上。 */
 function defK32(){
 const DEVICES = [
-  /* 端子排挪到左上角、竖排——照他实操板拍的照片来的（2026-09-06）。
-     其余元件跟着整体右移 30px 让位，彼此之间的相对位置没变，
-     所以大部分导线的拐点是靠 X()/Y() 现算的，改这里不用跟着改那些拐点 */
-  {id:'tb', name:'端子排', sub:'TB', kind:'tb', x:40, y:50, w:50, h:380,
+  {id:'qf', name:'DZ47s C16', sub:'3P 断路器 QF', kind:'mcb', x:56, y:62, w:96, h:92,
+   pins:[[18,6,'1'],[48,6,'3'],[78,6,'5'],[18,86,'2'],[48,86,'4'],[78,86,'6']], terminals:[]},
+  {id:'fu1', name:'RT18-32X ×3', sub:'主回路熔断器 FU1', kind:'fuse3', x:178, y:62, w:96, h:92,
+   pins:[[16,6,''],[48,6,''],[80,6,''],[16,86,''],[48,86,''],[80,86,'']], terminals:[]},
+  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:306, y:62, w:32, h:92,
+   pins:[[16,6,'']], terminals:[ {id:'fu4-out', label:'出', x:16, y:92} ]},
+  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:348, y:62, w:32, h:92, nameDy:-36,
+   pins:[[16,6,'']], terminals:[ {id:'fu5-out', label:'出', x:16, y:92} ]},
+  {id:'km1', name:'1号接触器 KM1', sub:'CJX2s-0911', kind:'km', x:80, y:256, w:KM_W, h:KM_H,
+   pins:KM_PINS, terminals:kmTerms('km1')},
+  {id:'km2', name:'2号接触器 KM2', sub:'CJX2s-0911', kind:'km', x:320, y:256, w:KM_W, h:KM_H,
+   pins:KM_PINS, terminals:kmTerms('km2')},
+  {id:'fr', name:'JR36-20 热继电器', sub:'FR', kind:'fr', x:200, y:500, w:154, h:104,
+   pins:FR_PINS,
+   terminals:[ {id:'fr-96', label:'96', x:154, y:64}, {id:'fr-95', label:'95', x:154, y:88} ]},
+  {id:'tb', name:'端子排', sub:'TB · 12 位通按钮盒', kind:'tb', x:660, y:300, w:48, h:336,
    terminals:(function(){
      const out=[];
-     for(let i=0;i<12;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:25, y:20+i*(340/12)});
-     out.push({id:'tb-last', label:'末', x:25, y:20+12*(340/12)});
+     for(let i=0;i<12;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:14, y:22+i*24});
+     out.push({id:'tb-last', label:'末', x:14, y:22+12*24});
      return out;
    })()},
-  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:120, y:40, w:60, h:90,
-   terminals:[ {id:'fu4-out', label:'出', x:30, y:90} ]},
-  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:550, y:40, w:60, h:90,
-   terminals:[ {id:'fu5-out', label:'出', x:30, y:90} ]},
-  {id:'fr', name:'JR36 热继电器', sub:'', kind:'fr', x:260, y:70, w:110, h:60,
-   terminals:[ {id:'fr-96', label:'96', x:0, y:30}, {id:'fr-95', label:'95', x:110, y:30} ]},
-  {id:'km1', name:'1号接触器', sub:'CJX2s-0911', kind:'km', x:180, y:220, w:160, h:260,
-   terminals:[
-     {id:'km1-a1', label:'A1', x:160, y:20},
-     {id:'km1-a2', label:'A2', x:160, y:160},
-     {id:'km1-14', label:'14', x:40,  y:260},
-     {id:'km1-22', label:'22', x:65,  y:260},
-     {id:'km1-21', label:'21', x:95,  y:260},
-     {id:'km1-13', label:'13', x:120, y:260}
-   ]},
-  {id:'km2', name:'2号接触器', sub:'CJX2s-0911', kind:'km', x:500, y:220, w:160, h:260,
-   terminals:[
-     {id:'km2-a1', label:'A1', x:0,   y:20},
-     {id:'km2-a2', label:'A2', x:0,   y:180},
-     {id:'km2-14', label:'14', x:40,  y:260},
-     {id:'km2-22', label:'22', x:65,  y:260},
-     {id:'km2-21', label:'21', x:95,  y:260},
-     {id:'km2-13', label:'13', x:120, y:260}
-   ]}
+  {id:'tbm', name:'出线端子排', sub:'去电动机 U V W', kind:'tbm', x:80, y:630, w:250, h:34,
+   pins:[[30,17,'U'],[70,17,'V'],[110,17,'W']], terminals:[]},
+  {id:'pe', name:'接地铜排 PE', sub:'', kind:'pe', x:360, y:630, w:120, h:26, terminals:[]},
+  {id:'sb', name:'按钮盒', sub:'绿·红·红', kind:'sb', x:686, y:50, w:116, h:176,
+   btns:[['#2f9e44','正转 SB2','1-4'],['#d0342c','反转 SB3','5-8'],['#c0392b','停止 SB1','9-12']],
+   terminals:[]}
 ];
 
 /* 端子绝对坐标表：{id:{x,y,device,label}} —— WIRES 的 from/to 全靠它解析，
@@ -313,38 +410,94 @@ const GCOLOR_HEX = {1:'#c0392b', 2:'#2b6cb0', 3:'#2b6cb0', 4:'#2f9e44', 5:'#e67e
 
 /* WIRES：from/to 是端子 id，waypoints 只写「中间拐点」，起止点由 from/to 自动取。
    14 根，数组顺序＝实际接线顺序（先常闭后常开：21NC/13NO 在接触器右侧相邻，
-   22NC/14NO 在左侧相邻，先接常开会挡住旁边常闭的螺丝，2026-09-06 改的） */
-/* 碰端子排的六根（2/8/10/12/13/14）单独说一下走法：端子排现在是竖排贴在左边，
-   fu4 的左边缘在 x=120，留出 x=90~120 这条空当当走线的「过道」。
-   凡是要去端子排的线，一律先落到过道里的某个 x（每根错开几像素，视觉上不叠成一股），
-   再顺着过道走到端子排自己那一行的高度，最后从右边横着接进端子——不从端子排上方/
-   下方穿过去，也不会撞见 fu4/km1 的方框 */
+   22NC/14NO 在左侧相邻，先接常开会挡住旁边常闭的螺丝，2026-09-06 改的）。
+
+   走线通道（2026-09-09 重排后的一份，改布局时照这个分配，别随手挑 y）：
+     KM 上方  y=212 / 220 / 228 / 236 / 244 / 250
+     KM 下方  y=414 / 422 / 430 / 438        （446 往下让给主电路）
+     两个 KM 之间   x=292 / 300 / 308
+     KM2 到端子排   x=545 / 560 / 575 / 590
+     端子排左侧跳线 x=648 / 640
+   同一个端子引两根线时，第二根先横移 10~12px 再拐弯，
+   否则两根会在端子附近重叠成一根，选中高亮时看不出是两根 */
 const WIRES = [
-  {id:1,  from:'fu4-out', to:'fr-96',   group:1, waypoints:[[X('fu4-out'),150],[X('fr-96'),150]]},
-  {id:2,  from:'fr-95',   to:'tb-last', group:1, waypoints:[[X('fr-95'),150],[114,150],[114,Y('tb-last')]]},
-  {id:3,  from:'fu5-out', to:'km2-a1',  group:1, waypoints:[[X('fu5-out'),170],[X('km2-a1'),170]]},
-  {id:4,  from:'km2-a1',  to:'km1-a1',  group:1, waypoints:[]},
-  {id:5,  from:'km1-22',  to:'km2-a2',  group:2, waypoints:[[X('km1-22'),505],[400,505],[400,Y('km2-a2')]]},
-  {id:6,  from:'km2-22',  to:'km1-a2',  group:2, waypoints:[[X('km2-22'),515],[440,515],[440,Y('km1-a2')]]},
-  {id:7,  from:'km1-21',  to:'km2-14',  group:3, waypoints:[[X('km1-21'),540],[X('km2-14'),540]]},
-  {id:8,  from:'km2-14',  to:'tb-5',    group:3, waypoints:[[X('km2-14'),560],[108,560],[108,Y('tb-5')]]},
-  {id:9,  from:'km2-21',  to:'km1-14',  group:3, waypoints:[[X('km2-21'),580],[X('km1-14'),580]]},
-  {id:10, from:'km2-21',  to:'tb-1',    group:3, waypoints:[[X('km2-21'),600],[102,600],[102,Y('tb-1')]]},
-  {id:11, from:'km1-13',  to:'km2-13',  group:4, waypoints:[[X('km1-13'),500],[X('km2-13'),500]]},
-  {id:12, from:'km2-13',  to:'tb-2',    group:4, waypoints:[[X('km2-13'),520],[96,520],[96,Y('tb-2')]]},
-  {id:13, from:'tb-2',    to:'tb-6',    group:5, waypoints:[[33,Y('tb-2')],[33,Y('tb-6')]]},
-  {id:14, from:'tb-6',    to:'tb-11',   group:5, waypoints:[[33,Y('tb-6')],[33,Y('tb-11')]]}
+  {id:1,  from:'fu4-out', to:'fr-96',   group:1,
+   waypoints:[[X('fu4-out'),208],[56,208],[56,596],[390,596],[390,Y('fr-96')]]},
+  {id:2,  from:'fr-95',   to:'tb-last', group:1,
+   waypoints:[[400,Y('fr-95')],[400,Y('tb-last')]]},
+  {id:3,  from:'fu5-out', to:'km2-a1',  group:1,
+   waypoints:[[X('fu5-out'),212],[524,212],[524,Y('km2-a1')]]},
+  {id:4,  from:'km2-a1',  to:'km1-a1',  group:1,
+   waypoints:[[X('km2-a1'),228],[X('km1-a1'),228]]},
+  {id:5,  from:'km1-22',  to:'km2-a2',  group:2,
+   waypoints:[[X('km1-22'),414],[X('km2-a2'),414]]},
+  {id:6,  from:'km2-22',  to:'km1-a2',  group:2,
+   waypoints:[[X('km2-22'),422],[X('km1-a2'),422]]},
+  {id:7,  from:'km1-21',  to:'km2-14',  group:3,
+   waypoints:[[X('km1-21'),236],[300,236],[300,430],[X('km2-14'),430]]},
+  {id:8,  from:'km2-14',  to:'tb-5',    group:3,
+   waypoints:[[X('km2-14'),438],[545,438],[545,Y('tb-5')]]},
+  {id:9,  from:'km2-21',  to:'km1-14',  group:3,
+   waypoints:[[478,Y('km2-21')],[478,244],[308,244],[308,438],[X('km1-14'),438]]},
+  {id:10, from:'km2-21',  to:'tb-1',    group:3,
+   waypoints:[[X('km2-21'),250],[560,250],[560,Y('tb-1')]]},
+  {id:11, from:'km1-13',  to:'km2-13',  group:4,
+   waypoints:[[X('km1-13'),220],[X('km2-13'),220]]},
+  {id:12, from:'km2-13',  to:'tb-2',    group:4,
+   waypoints:[[474,Y('km2-13')],[474,208],[590,208],[590,Y('tb-2')]]},
+  {id:13, from:'tb-2',    to:'tb-6',    group:5, waypoints:[[648,Y('tb-2')],[648,Y('tb-6')]]},
+  {id:14, from:'tb-6',    to:'tb-11',   group:5, waypoints:[[640,Y('tb-6')],[640,Y('tb-11')]]}
 ];
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 
+/* 主电路：三相黄绿红，纯坐标折线（不进 WIRES，所以分组/逐根播放/自测/上螺丝
+   一处都不用改）。正反转的眼就在这儿：KM2 的进线把 L1 和 L3 换了个个儿，
+   所以两只接触器绝不能同时吸合 —— 那就是 L1 撞 L3 的相间短路 */
+const L1='#e0a92e', L2='#3fa845', L3='#cf4436';
+const MAINS = [
+  {c:L1, p:[[24,28],[74,28],[74,68]]},            /* 电源三相进 QF */
+  {c:L2, p:[[24,38],[104,38],[104,68]]},
+  {c:L3, p:[[24,48],[134,48],[134,68]]},
+  {c:L1, p:[[74,148],[74,166],[156,166],[156,40],[194,40],[194,68]]},   /* QF 下 → FU1 上 */
+  {c:L2, p:[[104,148],[104,174],[164,174],[164,34],[226,34],[226,68]]},
+  {c:L3, p:[[134,148],[134,182],[172,182],[172,28],[258,28],[258,68]]},
+  {c:L1, p:[[194,148],[194,164],[114,164],[114,274]]},                  /* FU1 下 → KM1 正相序 */
+  {c:L2, p:[[226,148],[226,180],[152,180],[152,274]]},
+  {c:L3, p:[[258,148],[258,196],[190,196],[190,274]]},
+  {c:L1, p:[[194,148],[194,172],[430,172],[430,274]]},                  /* FU1 下 → KM2 换两相 */
+  {c:L2, p:[[226,148],[226,188],[392,188],[392,274]]},
+  {c:L3, p:[[258,148],[258,204],[354,204],[354,274]]},
+  {c:L1, p:[[114,388],[114,448],[354,448],[354,388]]},                  /* 两只 KM 出线并联 */
+  {c:L2, p:[[152,388],[152,456],[392,456],[392,388]]},
+  {c:L3, p:[[190,388],[190,464],[430,464],[430,388]]},
+  {c:L1, p:[[114,388],[114,478],[228,478],[228,518]]},                  /* 并联点 → FR 进 */
+  {c:L2, p:[[152,388],[152,486],[260,486],[260,518]]},
+  {c:L3, p:[[190,388],[190,494],[292,494],[292,518]]},
+  {c:L1, p:[[228,578],[228,610],[110,610],[110,647]]},                  /* FR 出 → 出线端子排 */
+  {c:L2, p:[[260,578],[260,618],[150,618],[150,647]]},
+  {c:L3, p:[[292,578],[292,626],[190,626],[190,647]]}
+];
+/* 按钮盒到端子排右列的 12 根黑线（照片上就是一束黑线）。
+   只画不练——它们是「盒子出厂就带的」，考试也不用你接 */
+const BUS = (function(){
+  const out=[];
+  for(let i=0;i<12;i++){
+    const y = 300+22+i*24, gx = 726+((i%4)*4);
+    out.push([[708,y],[gx,y],[gx,232],[744+(i-6)*3,232],[744+(i-6)*3,226]]);
+  }
+  return out;
+})();
+
 return { id:'k32', k:'K32',
   name:'三相异步电动机正反转运行的接线及安全操作',
-  sub:'CJX2s 双接触器互锁正反转控制柜 · 14 根导线 · 配 11.6 正反转控制',
+  sub:'双接触器互锁 · 练控制回路 14 根（淡色主电路板上已接好）',
   title:'正反转控制电路 · 实物接线图',
   devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
-  legend:{x:612, y:14}, viewBox:'0 0 860 700', hasSchema:false,
+  mains:MAINS, bus:BUS,
+  viewBox:'0 0 880 780', hasSchema:false,
   warns:['⚠ 第 3 组端子号是交叉的 —— 1 配 5，2 配 1',
-         '⚠ 每个接触器的辅助端子按 22NC → 21NC → 14NO → 13NO 的顺序接，先常闭后常开'] };
+         '⚠ 每个接触器的辅助端子按 22NC → 21NC → 14NO → 13NO 的顺序接，先常闭后常开',
+         '⚠ 这 14 根是<b>按材料推的，你还没实做过</b>；淡色的主电路板上已接好'] };
 }
 
 /* ══ K31 单向连续运转 · 带点动控制（单接触器 · 10 根）═══════════
@@ -371,27 +524,39 @@ return { id:'k32', k:'K32',
    1-4 绿＝连续 / 5-8 黄＝点动 / 9-12 红＝停止。上板看一眼线落在哪几位就能确认。 */
 function defK31(){
 const DEVICES = [
-  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:70, y:40, w:60, h:90,
-   terminals:[ {id:'fu4-out', label:'出', x:30, y:90} ]},
-  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:200, y:40, w:60, h:90,
-   terminals:[ {id:'fu5-out', label:'出', x:30, y:90} ]},
-  {id:'fr', name:'JR36 热继电器', sub:'', kind:'fr', x:60, y:210, w:110, h:60,
-   terminals:[ {id:'fr-96', label:'96', x:0, y:30}, {id:'fr-95', label:'95', x:110, y:30} ]},
-  /* CJX2s-0911 只有一组辅助触点（13/14 常开 + 21/22 常闭），这题只用到常开那一组。
-     A1 在上方、A2 在下方，都从右侧引出；13/14 在机身下沿 —— 跟 K32 同一块板同一个摆法 */
-  {id:'km', name:'接触器', sub:'CJX2s-0911', kind:'km', x:300, y:230, w:160, h:250,
+  {id:'qf', name:'DZ47s C16', sub:'3P 断路器 QF', kind:'mcb', x:56, y:62, w:96, h:92,
+   pins:[[18,6,'1'],[48,6,'3'],[78,6,'5'],[18,86,'2'],[48,86,'4'],[78,86,'6']], terminals:[]},
+  {id:'fu1', name:'RT18-32X ×3', sub:'主回路熔断器 FU1', kind:'fuse3', x:178, y:62, w:96, h:92,
+   pins:[[16,6,''],[48,6,''],[80,6,''],[16,86,''],[48,86,''],[80,86,'']], terminals:[]},
+  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:306, y:62, w:32, h:92,
+   pins:[[16,6,'']], terminals:[ {id:'fu4-out', label:'出', x:16, y:92} ]},
+  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:348, y:62, w:32, h:92, nameDy:-36,
+   pins:[[16,6,'']], terminals:[ {id:'fu5-out', label:'出', x:16, y:92} ]},
+  /* CJX2s-0911 有两组辅助（13/14 常开 + 21/22 常闭），这题只用到常开那一组，
+     所以 21/22 只画孔、不登记成端子 —— 登记了会画成白点，看着像也要接 */
+  {id:'km', name:'接触器 KM', sub:'CJX2s-0911', kind:'km', x:200, y:256, w:KM_W, h:KM_H,
+   pins:KM_PINS.concat([[168,18,'21NC'],[168,132,'22NC']]),
    terminals:[
-     {id:'km-a1', label:'A1', x:160, y:20},
-     {id:'km-a2', label:'A2', x:160, y:170},
-     {id:'km-13', label:'13', x:60,  y:250},
-     {id:'km-14', label:'14', x:100, y:250}
+     {id:'km-13', label:'13', x:142, y:18},
+     {id:'km-a1', label:'A1', x:190, y:18},
+     {id:'km-14', label:'14', x:142, y:132},
+     {id:'km-a2', label:'A2', x:190, y:132}
    ]},
-  {id:'tb', name:'端子排', sub:'12 位 · 右侧通按钮盒', kind:'tb', x:640, y:60, w:54, h:520,
+  {id:'fr', name:'JR36-20 热继电器', sub:'FR', kind:'fr', x:200, y:500, w:154, h:104,
+   pins:FR_PINS,
+   terminals:[ {id:'fr-96', label:'96', x:154, y:64}, {id:'fr-95', label:'95', x:154, y:88} ]},
+  {id:'tb', name:'端子排', sub:'TB · 12 位通按钮盒', kind:'tb', x:660, y:300, w:48, h:336,
    terminals:(function(){
      const out=[];
-     for(let i=0;i<12;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:27, y:40+i*40});
+     for(let i=0;i<12;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:14, y:22+i*24});
      return out;
-   })()}
+   })()},
+  {id:'tbm', name:'出线端子排', sub:'去电动机 U V W', kind:'tbm', x:80, y:630, w:250, h:34,
+   pins:[[30,17,'U'],[70,17,'V'],[110,17,'W']], terminals:[]},
+  {id:'pe', name:'接地铜排 PE', sub:'', kind:'pe', x:360, y:630, w:120, h:26, terminals:[]},
+  {id:'sb', name:'按钮盒', sub:'绿·黄·红', kind:'sb', x:686, y:50, w:116, h:176,
+   btns:[['#2f9e44','连续 SB2','1-4'],['#e0a92e','点动 SB3','5-8'],['#c0392b','停止 SB1','9-12']],
+   terminals:[]}
 ];
 
 const TPOS = buildTPOS(DEVICES);
@@ -422,31 +587,66 @@ const GROUPS = [
 const GCOLOR_HEX = {1:'#c0392b', 2:'#2f9e44', 3:'#e67e22'};
 
 /* 10 根，顺序照他记录的三组：先线圈与自锁、再热继电器、最后端子排跳线。
-   竖向通道各占一条 x（500 进 A1、560 去端子排1、590 去端子排7、615 去端子排12，
-   720/735/750/765 在端子排右侧专走跳线），横向通道各占一条 y（175 上方、
-   490/555/570/620 下方），两两不重叠。
-   第 1 根和第 5 根必然交叉一次（4 号熔断器在左要往右去线圈，5 号在右要往左去热继电器）——
+   通道分配跟 K32 同一套（见那边的注释）：接触器右侧 x=420/430 上下走，
+   去端子排走 x=545/560，端子排左侧跳线 x=630~648 四条错开。
+   第 1 根和第 5 根必然交叉一次（4 号熔断器在左要往右去线圈，5 号在右要往下去热继电器）——
    交叉处不打点＝不相连，正好是 4.1 那节讲的规矩，不用为它重排布局 */
 const WIRES = [
-  {id:1,  from:'fu4-out', to:'km-a1', group:1, waypoints:[[X('fu4-out'),175],[500,175],[500,Y('km-a1')]]},
-  {id:2,  from:'km-a2',   to:'km-13', group:1, waypoints:[[X('km-a2'),490],[X('km-13'),490]]},
-  {id:3,  from:'km-13',   to:'tb-1',  group:1, waypoints:[[X('km-13'),555],[560,555],[560,Y('tb-1')]]},
-  {id:4,  from:'km-14',   to:'tb-7',  group:1, waypoints:[[X('km-14'),570],[590,570],[590,Y('tb-7')]]},
-  {id:5,  from:'fu5-out', to:'fr-95', group:2, waypoints:[[X('fu5-out'),Y('fr-95')]]},
-  {id:6,  from:'fr-96',   to:'tb-12', group:2, waypoints:[[X('fr-96'),620],[615,620],[615,Y('tb-12')]]},
-  {id:7,  from:'tb-1',    to:'tb-5',  group:3, waypoints:[[720,Y('tb-1')],[720,Y('tb-5')]]},
-  {id:8,  from:'tb-2',    to:'tb-6',  group:3, waypoints:[[735,Y('tb-2')],[735,Y('tb-6')]]},
-  {id:9,  from:'tb-6',    to:'tb-8',  group:3, waypoints:[[750,Y('tb-6')],[750,Y('tb-8')]]},
-  {id:10, from:'tb-8',    to:'tb-11', group:3, waypoints:[[765,Y('tb-8')],[765,Y('tb-11')]]}
+  {id:1,  from:'fu4-out', to:'km-a1', group:1,
+   waypoints:[[X('fu4-out'),212],[430,212],[430,Y('km-a1')]]},
+  {id:2,  from:'km-a2',   to:'km-13', group:1,
+   waypoints:[[420,Y('km-a2')],[420,236],[X('km-13'),236]]},
+  {id:3,  from:'km-13',   to:'tb-1',  group:1,
+   waypoints:[[334,Y('km-13')],[334,228],[560,228],[560,Y('tb-1')]]},
+  {id:4,  from:'km-14',   to:'tb-7',  group:1,
+   waypoints:[[X('km-14'),430],[545,430],[545,Y('tb-7')]]},
+  {id:5,  from:'fu5-out', to:'fr-95', group:2,
+   waypoints:[[X('fu5-out'),204],[450,204],[450,Y('fr-95')]]},
+  {id:6,  from:'fr-96',   to:'tb-12', group:2,
+   waypoints:[[400,Y('fr-96')],[400,Y('tb-12')]]},
+  {id:7,  from:'tb-1',    to:'tb-5',  group:3, waypoints:[[648,Y('tb-1')],[648,Y('tb-5')]]},
+  {id:8,  from:'tb-2',    to:'tb-6',  group:3, waypoints:[[642,Y('tb-2')],[642,Y('tb-6')]]},
+  {id:9,  from:'tb-6',    to:'tb-8',  group:3, waypoints:[[636,Y('tb-6')],[636,Y('tb-8')]]},
+  {id:10, from:'tb-8',    to:'tb-11', group:3, waypoints:[[630,Y('tb-8')],[630,Y('tb-11')]]}
 ];
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 
+/* 主电路（照片上这块板也接好了）：三相进 QF → 三只熔断器 → 接触器主触点 →
+   热继电器 → 出线端子排。压暗当背景，不纳入练习 */
+const L1='#e0a92e', L2='#3fa845', L3='#cf4436';
+const MAINS = [
+  {c:L1, p:[[24,28],[74,28],[74,68]]},
+  {c:L2, p:[[24,38],[104,38],[104,68]]},
+  {c:L3, p:[[24,48],[134,48],[134,68]]},
+  {c:L1, p:[[74,148],[74,166],[156,166],[156,40],[194,40],[194,68]]},
+  {c:L2, p:[[104,148],[104,174],[164,174],[164,34],[226,34],[226,68]]},
+  {c:L3, p:[[134,148],[134,182],[172,182],[172,28],[258,28],[258,68]]},
+  {c:L1, p:[[194,148],[194,164],[234,164],[234,274]]},
+  {c:L2, p:[[226,148],[226,172],[272,172],[272,274]]},
+  {c:L3, p:[[258,148],[258,180],[310,180],[310,274]]},
+  {c:L1, p:[[234,388],[234,460],[228,460],[228,518]]},
+  {c:L2, p:[[272,388],[272,470],[260,470],[260,518]]},
+  {c:L3, p:[[310,388],[310,480],[292,480],[292,518]]},
+  {c:L1, p:[[228,578],[228,610],[110,610],[110,647]]},
+  {c:L2, p:[[260,578],[260,618],[150,618],[150,647]]},
+  {c:L3, p:[[292,578],[292,626],[190,626],[190,647]]}
+];
+const BUS = (function(){
+  const out=[];
+  for(let i=0;i<12;i++){
+    const y = 300+22+i*24, gx = 726+((i%4)*4);
+    out.push([[708,y],[gx,y],[gx,232],[744+(i-6)*3,232],[744+(i-6)*3,226]]);
+  }
+  return out;
+})();
+
 return { id:'k31', k:'K31',
   name:'电动机单向连续运转接线（带点动控制）',
-  sub:'CJX2s 单接触器 · 10 根导线 · 按实操板实做记录画（2026-09-07）',
+  sub:'单接触器 · 练控制回路 10 根（淡色主电路板上已接好）',
   title:'单向连续运转 + 点动 · 实物接线图',
   devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
-  legend:{x:100, y:512}, viewBox:'0 0 860 700', hasSchema:true,
+  mains:MAINS, bus:BUS,
+  viewBox:'0 0 880 780', hasSchema:true,
   warns:['⚠ <b>四个端子全用上的那个按钮就是点动</b>（端子排 5、6、7、8）——' +
          '只有它要拿自己的动断去掐自锁。端子排 1、2 那个是连续启动',
          '⚠ 端子排 <b>3、4、9、10 这题用不到</b>（连续按钮的动断、停止按钮的动合），别顺手接上',
@@ -514,49 +714,284 @@ function el(tag,attrs){
   return e;
 }
 const svg = document.getElementById('svg');
+/* 图层顺序有讲究：按钮盒那束线在最底（它是背景的背景），元件在其上，
+   主电路画在元件**之上**（线端要落在孔上，画在下面会被机身盖掉），
+   控制回路再上一层，端子和图例最上 */
+const gBus = el('g',{id:'gBus'});
 const gDev = el('g',{id:'gDevices'});
+const gMain = el('g',{id:'gMains'});
 const gWire = el('g',{id:'gWires'});
 const gTerm = el('g',{id:'gTerms'});
 const gLegend = el('g',{id:'gLegend'});
-svg.appendChild(gDev); svg.appendChild(gWire); svg.appendChild(gTerm); svg.appendChild(gLegend);
+[gBus,gDev,gMain,gWire,gTerm,gLegend].forEach(function(g){ svg.appendChild(g); });
+const LAYERS = [gBus,gDev,gMain,gWire,gTerm,gLegend];
+
+/* ==================================================================
+   缩放 / 平移：直接改 viewBox，不套 transform
+
+   改 viewBox 的好处是**线宽和端子热区跟着一起放大** —— 放大以后
+   螺丝孔和端子号真的变大、也真的更好点，而 transform+scale 那套
+   会让 stroke-width 保持屏幕尺寸，放大等于只把图拉开、字还是那么小。
+
+   他的原话是「图不能放大，在手机上看不清具体细节或者说很费力」。
+   页面 <meta viewport> 原来还写死了 maximum-scale=1，等于连系统缩放
+   都禁掉了，两处一起改才算解决。
+------------------------------------------------------------------ */
+let VB = null, VB0 = null;
+const ZMAX = 5;                    /* 最多放大到 5 倍 */
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function applyVB(){
+  svg.setAttribute('viewBox', VB.x+' '+VB.y+' '+VB.w+' '+VB.h);
+  const k = VB0 ? VB0.w/VB.w : 1;
+  svg.classList.toggle('zoomed', k >= 1.5);      /* 细节文字到这一档才露出来 */
+  const lv = document.getElementById('zoomLv');
+  if(lv){ lv.textContent = k.toFixed(1)+'×'; lv.classList.toggle('on', k > 1.02); }
+}
+function setViewBox(str){
+  const a = String(str).trim().split(/\s+/).map(Number);
+  VB0 = {x:a[0], y:a[1], w:a[2], h:a[3]};
+  VB = {x:VB0.x, y:VB0.y, w:VB0.w, h:VB0.h};
+  applyVB();
+}
+function clearLayers(){
+  LAYERS.forEach(function(g){ while(g.firstChild) g.removeChild(g.firstChild); });
+}
+/* 平移之后要兜住：允许图移出去一半，再多就拉不动了 ——
+   完全不限的话手一滑图就飞出屏幕，再也找不回来（只能按复位） */
+function clampPan(){
+  const mx = VB0.w*0.5, my = VB0.h*0.5;
+  VB.x = clamp(VB.x, VB0.x-mx, VB0.x+VB0.w-VB.w+mx);
+  VB.y = clamp(VB.y, VB0.y-my, VB0.y+VB0.h-VB.h+my);
+}
+function zoomAt(factor, ux, uy){
+  const minW = VB0.w/ZMAX;
+  const nw = clamp(VB.w/factor, minW, VB0.w);
+  const k = nw/VB.w;
+  if(k===1) return;
+  VB.x = ux - (ux-VB.x)*k;
+  VB.y = uy - (uy-VB.y)*k;
+  VB.w = nw; VB.h = VB0.h*(nw/VB0.w);
+  clampPan(); applyVB();
+}
+function zoomReset(){ VB={x:VB0.x,y:VB0.y,w:VB0.w,h:VB0.h}; applyVB(); }
+function toUser(cx, cy){
+  const r = svg.getBoundingClientRect();
+  if(!r.width) return {x:VB.x, y:VB.y};
+  return { x: VB.x + (cx-r.left)/r.width*VB.w, y: VB.y + (cy-r.top)/r.height*VB.h };
+}
+(function bindZoom(){
+  const pts = new Map();           /* pointerId → 最近一次的 client 坐标 */
+  let panned = false, start = null, pinch0 = 0;
+  function centerOf(){
+    let sx=0, sy=0, n=0;
+    pts.forEach(function(p){ sx+=p.x; sy+=p.y; n++; });
+    return {x:sx/n, y:sy/n};
+  }
+  function distOf(){
+    const a=[]; pts.forEach(function(p){ a.push(p); });
+    return Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y);
+  }
+  svg.addEventListener('pointerdown', function(e){
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pts.size===1){ panned=false; start={x:e.clientX, y:e.clientY, vx:VB.x, vy:VB.y}; }
+    if(pts.size===2){ pinch0 = distOf(); panned=true; }
+    if(svg.setPointerCapture) try{ svg.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  svg.addEventListener('pointermove', function(e){
+    if(!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    const r = svg.getBoundingClientRect();
+    if(!r.width) return;
+    if(pts.size>=2){
+      const d = distOf();
+      if(pinch0>4 && d>4){
+        const c = centerOf(), u = toUser(c.x, c.y);
+        zoomAt(d/pinch0, u.x, u.y);
+        pinch0 = d;
+      }
+      e.preventDefault();
+      return;
+    }
+    /* 没放大就不许拖 —— 全览时图本来就整个在框里，一拖只会把它推出屏幕，
+       手机上还会跟页面滚动抢手势（实测踩到的） */
+    if(!start || VB.w >= VB0.w-0.5) return;
+    const dx = e.clientX-start.x, dy = e.clientY-start.y;
+    /* 6px 之内不算拖动 —— 手指点端子时总会抖一两个像素，
+       一抖就当 pan 的话，端子就再也点不中了 */
+    if(!panned && Math.hypot(dx,dy) < 6) return;
+    panned = true;
+    VB.x = start.vx - dx/r.width*VB.w;
+    VB.y = start.vy - dy/r.height*VB.h;
+    clampPan(); applyVB();
+    e.preventDefault();
+  });
+  function up(e){
+    pts.delete(e.pointerId);
+    if(pts.size===0){
+      start=null;
+      /* panned 只用来吞掉「拖完松手」那一下 click，用完必须自己清。
+         留着不清的话，**下一次点端子会被静默吞掉**——手势是新的、
+         标志还是旧的（回归测试抓到的） */
+      setTimeout(function(){ panned=false; }, 80);
+    }
+    if(pts.size===1){ const a=[]; pts.forEach(function(p){a.push(p);});
+      start = {x:a[0].x, y:a[0].y, vx:VB.x, vy:VB.y}; }
+  }
+  svg.addEventListener('pointerup', up);
+  svg.addEventListener('pointercancel', up);
+  /* 拖过之后那一下 click 要吞掉，否则松手时会顺带点中底下的端子 */
+  svg.addEventListener('click', function(e){
+    if(panned){ e.stopPropagation(); e.preventDefault(); panned=false; }
+  }, true);
+  /* 双击＝放大一档；已经放到顶了再双击就复位 —— 一个手势管来回，
+     不用先找复位按钮 */
+  svg.addEventListener('dblclick', function(e){
+    if(VB.w <= VB0.w/ZMAX + 0.5){ zoomReset(); }
+    else { const u = toUser(e.clientX, e.clientY); zoomAt(1.8, u.x, u.y); }
+    e.preventDefault();
+  });
+  svg.addEventListener('wheel', function(e){
+    const u = toUser(e.clientX, e.clientY);
+    zoomAt(e.deltaY<0 ? 1.16 : 1/1.16, u.x, u.y);
+    e.preventDefault();
+  }, {passive:false});
+  function mid(){ return {x:VB.x+VB.w/2, y:VB.y+VB.h/2}; }
+  document.getElementById('zIn').addEventListener('click', function(){ const m=mid(); zoomAt(1.6,m.x,m.y); });
+  document.getElementById('zOut').addEventListener('click', function(){ const m=mid(); zoomAt(1/1.6,m.x,m.y); });
+  document.getElementById('zRs').addEventListener('click', zoomReset);
+  setTimeout(function(){ const t=document.getElementById('zoomTip'); if(t) t.style.opacity=0; }, 5000);
+})();
+
+/* ---- 画元件：一律照实物面板画（型号、孔位、颜色都对着照片来）----
+   小零件先包成函数，两块板共用。**孔（pins）和端子（terminals）是两回事**：
+   孔是主电路那些不参与练习的接线位，画成深色实心；端子是要接的，
+   由 drawTerminal 另画成可点的白点 */
+function add(a){ gDev.appendChild(a); return a; }
+function txt(cls, x, y, s, anchor){
+  const t=el('text',{class:cls, x:x, y:y, 'text-anchor':anchor||'middle'});
+  t.textContent=s; return add(t);
+}
+function devName(d, dy){
+  /* 主名一直画着（全览时靠它认元件），型号那行走 p-tiny ——
+     只在放大后出现。两行都常驻的话，全览时 fu4/fu5 这种挨着的会糊成一片 */
+  const y = d.y + (d.nameDy!=null ? d.nameDy : (dy||-20));
+  txt('dev-name', d.x+d.w/2, y, d.name);
+  if(d.sub) txt('p-tiny', d.x+d.w/2, y+10, d.sub);
+}
+function drawPins(d){
+  (d.pins||[]).forEach(function(p){
+    add(el('circle',{class:'p-hole', cx:d.x+p[0], cy:d.y+p[1], r:5}));
+    if(p[2]) txt('p-mark', d.x+p[0], d.y+p[1]+(p[1]<d.h/2 ? 15 : -9), p[2]);
+  });
+}
 
 function drawDevice(d){
-  if(d.kind==='tb'){
-    gDev.appendChild(el('rect',{class:'tb-strip', x:d.x, y:d.y, width:d.w, height:d.h, rx:4}));
-    const label = d.name+'（'+d.sub+'）';
-    if(d.h > d.w){
-      /* 竖排端子排：标签横着写在顶端上方。
-         早先是转 90° 贴在左边，K31 把端子排摆到右边之后，那一竖列文字正好落在
-         「去端子排」的走线通道里，跟第 2 根线叠在一起（截图才看出来）。
-         顶端上方两块板都是空的，横排也比竖排好读 */
-      const t=el('text',{class:'dev-name', x:d.x+d.w/2, y:d.y-8});
-      t.textContent=label; gDev.appendChild(t);
-    } else {
-      const t=el('text',{class:'dev-name', x:d.x+d.w/2, y:d.y-8});
-      t.textContent=label; gDev.appendChild(t);
+  /* ── DZ47s C16 三相断路器：白外壳 + 一根横贯三极的红手柄 ── */
+  if(d.kind==='mcb'){
+    add(el('rect',{class:'p-case', x:d.x, y:d.y, width:d.w, height:d.h, rx:3}));
+    for(let i=1;i<3;i++) add(el('line',{x1:d.x+i*d.w/3, y1:d.y+14, x2:d.x+i*d.w/3, y2:d.y+d.h-14,
+      stroke:'#b9c1c9','stroke-width':1}));
+    add(el('rect',{class:'p-lever', x:d.x+10, y:d.y+d.h/2-9, width:d.w-20, height:16, rx:5}));
+    txt('p-brand', d.x+d.w/2, d.y+26, 'DELIXI');
+    txt('p-model-d', d.x+d.w/2, d.y+37, 'DZ47s C16');
+    drawPins(d); devName(d);
+    return;
+  }
+  /* ── RT18-32X 熔断器座：白外壳 + 可掀的抽芯盖 + 一颗熔断指示红点 ── */
+  if(d.kind==='fuse3' || d.kind==='fuse'){
+    const n = d.kind==='fuse3' ? 3 : 1, unit = d.w/n;
+    for(let i=0;i<n;i++){
+      const bx = d.x+i*unit;
+      add(el('rect',{class:'p-case', x:bx+1, y:d.y, width:unit-2, height:d.h, rx:3}));
+      add(el('rect',{class:'p-case2', x:bx+5, y:d.y+22, width:unit-10, height:d.h-46, rx:2}));
+      add(el('circle',{cx:bx+unit/2, cy:d.y+34, r:2.6, fill:'#c0392b'}));
+      txt('p-tiny', bx+unit/2, d.y+52, 'RT18');
+      txt('p-tiny', bx+unit/2, d.y+61, '32A');
     }
+    drawPins(d); devName(d);
     return;
   }
-  if(d.kind==='fuse'){
-    gDev.appendChild(el('rect',{class:'dev-box', x:d.x, y:d.y, width:d.w, height:d.h, rx:6}));
-    gDev.appendChild(el('rect',{class:'fuse-body', x:d.x+d.w/2-9, y:d.y+16, width:18, height:d.h-32, rx:9}));
-    gDev.appendChild(el('line',{x1:d.x+d.w/2, y1:d.y, x2:d.x+d.w/2, y2:d.y+16, stroke:'#98a3ad','stroke-width':1.6}));
-    const t1=el('text',{class:'dev-name', x:d.x+d.w/2, y:d.y-22}); t1.textContent=d.name; gDev.appendChild(t1);
-    const t2=el('text',{class:'dev-name', x:d.x+d.w/2, y:d.y-9, style:'font-size:9px;fill:var(--tx3)'});
-    t2.textContent=d.sub; gDev.appendChild(t2);
-    return;
-  }
+  /* ── JR36-20 热继电器：黑机身 + 银散热片 + 整定旋钮 + 复位钮 ── */
   if(d.kind==='fr'){
-    gDev.appendChild(el('rect',{class:'dev-box', x:d.x, y:d.y, width:d.w, height:d.h, rx:6}));
-    gDev.appendChild(el('circle',{cx:d.x+d.w/2, cy:d.y+d.h-14, r:6, fill:'#c0392b'}));
-    const t=el('text',{class:'dev-name', x:d.x+d.w/2, y:d.y-8}); t.textContent=d.name; gDev.appendChild(t);
+    add(el('rect',{class:'p-blk', x:d.x, y:d.y, width:d.w, height:d.h, rx:3}));
+    add(el('rect',{class:'p-silver', x:d.x+4, y:d.y+34, width:110, height:34, rx:2}));
+    add(el('circle',{cx:d.x+124, cy:d.y+46, r:17, fill:'#e6e9ec', stroke:'#8d949b','stroke-width':1.2}));
+    add(el('path',{d:'M'+(d.x+124)+','+(d.y+34)+'l4,7h-8z', fill:'#2a2e33'}));
+    txt('p-mark-d', d.x+124, d.y+50, '6.8');
+    txt('p-tiny', d.x+124, d.y+62, 'A');
+    add(el('rect',{class:'p-red', x:d.x+142, y:d.y+16, width:8, height:12, rx:2}));
+    txt('p-model', d.x+56, d.y+16, 'JR36-20', 'middle');
+    /* 95/96 是要接的（drawTerminal 画白点），97/98 只画孔——这题用不到 */
+    add(el('circle',{class:'p-hole', cx:d.x+d.w, cy:d.y+16, r:4}));
+    txt('p-mark-d', d.x+d.w+14, d.y+19, '97', 'middle');
+    add(el('circle',{class:'p-hole', cx:d.x+d.w, cy:d.y+40, r:4}));
+    txt('p-mark-d', d.x+d.w+14, d.y+43, '98', 'middle');
+    drawPins(d); devName(d);
     return;
   }
-  /* km：接触器，深灰机身 + 白字铭牌 + 底部辅助端子条 */
-  gDev.appendChild(el('rect',{class:'dev-box dev-km', x:d.x, y:d.y, width:d.w, height:d.h, rx:8}));
-  gDev.appendChild(el('rect',{class:'aux-strip', x:d.x+18, y:d.y+d.h-46, width:d.w-36, height:26, rx:4}));
-  const n1=el('text',{class:'dev-name-in', x:d.x+d.w/2, y:d.y+30}); n1.textContent=d.name; gDev.appendChild(n1);
-  const n2=el('text',{class:'dev-sub-in', x:d.x+d.w/2, y:d.y+44}); n2.textContent=d.sub; gDev.appendChild(n2);
+  /* ── CJX2s-0911：灰机身 + 正面两块红触点块 + 白铭牌 ── */
+  if(d.kind==='km'){
+    add(el('rect',{class:'p-kmbody', x:d.x, y:d.y, width:d.w, height:d.h, rx:5}));
+    add(el('rect',{class:'p-kmface', x:d.x+8, y:d.y+34, width:d.w-16, height:d.h-68, rx:4}));
+    add(el('rect',{class:'p-red', x:d.x+68, y:d.y+62, width:26, height:26, rx:3}));
+    add(el('rect',{class:'p-red', x:d.x+102, y:d.y+62, width:26, height:26, rx:3}));
+    add(el('rect',{x:d.x+94, y:d.y+70, width:14, height:10, fill:'#8d959e'}));
+    txt('p-brand', d.x+34, d.y+58, 'DELIXI', 'middle');
+    txt('p-model', d.x+34, d.y+76, 'CJX2s', 'middle');
+    txt('p-model', d.x+34, d.y+88, '-0911', 'middle');
+    txt('p-tiny', d.x+d.w-30, d.y+82, 'Uc 380V');
+    drawPins(d); devName(d);
+    return;
+  }
+  /* ── 端子排：竖排双列。左列接柜内元件、右列通按钮盒（照片上就是这么分的）── */
+  if(d.kind==='tb'){
+    add(el('rect',{class:'p-blk', x:d.x, y:d.y, width:d.w, height:d.h, rx:3}));
+    add(el('rect',{x:d.x+d.w/2-5, y:d.y+6, width:10, height:d.h-12, fill:'#e9e4d4'}));
+    (d.terminals||[]).forEach(function(t){
+      add(el('rect',{x:d.x+2, y:d.y+t.y-9, width:d.w-4, height:18, rx:2, fill:'#33383e'}));
+      /* 右列：按钮盒那一头，画成孔 */
+      add(el('circle',{class:'p-hole', cx:d.x+34, cy:d.y+t.y, r:4.6}));
+      add(el('circle',{class:'p-screw', cx:d.x+34, cy:d.y+t.y, r:3}));
+    });
+    devName(d, -14);
+    txt('p-tiny', d.x+d.w+4, d.y-3, '右列＝按钮盒', 'start');
+    return;
+  }
+  /* ── 出线端子排（去电动机的 U V W）：横排 ── */
+  if(d.kind==='tbm'){
+    add(el('rect',{class:'p-blk', x:d.x, y:d.y, width:d.w, height:d.h, rx:3}));
+    for(let i=0;i<12;i++)
+      add(el('rect',{x:d.x+6+i*((d.w-12)/12), y:d.y+3, width:(d.w-12)/12-3, height:d.h-6, rx:2, fill:'#33383e'}));
+    (d.pins||[]).forEach(function(p){
+      add(el('circle',{class:'p-screw', cx:d.x+p[0], cy:d.y+p[1], r:5}));
+      txt('p-mark', d.x+p[0], d.y+p[1]-11, p[2]);
+    });
+    devName(d, -8);
+    return;
+  }
+  /* ── 接地铜排 ── */
+  if(d.kind==='pe'){
+    add(el('rect',{class:'p-brass', x:d.x, y:d.y, width:d.w, height:d.h, rx:2}));
+    for(let i=0;i<5;i++) add(el('circle',{class:'p-screw', cx:d.x+16+i*22, cy:d.y+d.h/2, r:4.4}));
+    devName(d, -8);
+    return;
+  }
+  /* ── 按钮盒：橙色盒 + 三颗按钮（颜色照实物，K31 绿黄红 / K32 绿红红）── */
+  if(d.kind==='sb'){
+    add(el('rect',{class:'p-orange', x:d.x, y:d.y, width:d.w, height:d.h, rx:8}));
+    [[10,10],[d.w-10,10],[10,d.h-10],[d.w-10,d.h-10]].forEach(function(c){
+      add(el('circle',{cx:d.x+c[0], cy:d.y+c[1], r:3.4, fill:'#d9871c', stroke:'#a55f08','stroke-width':.8}));
+    });
+    (d.btns||[]).forEach(function(b,i){
+      const cy = d.y+42+i*48;
+      add(el('circle',{cx:d.x+40, cy:cy, r:19, fill:'#c9ced3', stroke:'#8d949b','stroke-width':1.2}));
+      add(el('circle',{cx:d.x+40, cy:cy, r:14, fill:b[0]}));
+      txt('p-tiny', d.x+66, cy-2, b[1], 'start').setAttribute('style','font-size:8px;fill:#5a3a08');
+      txt('p-tiny', d.x+66, cy+8, '端子 '+b[2], 'start').setAttribute('style','font-size:7px;fill:#7a5512');
+    });
+    devName(d, -8);
+    return;
+  }
 }
 
 function drawTerminal(id){
@@ -571,7 +1006,8 @@ function drawTerminal(id){
   if(shared) g.appendChild(el('circle',{class:'term-ring', cx:p.x, cy:p.y, r:10}));
   const dot=el('circle',{class:'term-dot', cx:p.x, cy:p.y, r:(shared?7:6), 'data-term-dot':id});
   g.appendChild(dot);
-  const lbl=el('text',{class:'tlabel', x:p.x+9, y:p.y-8});
+  const dk = (DEVICES.filter(function(d){return d.id===p.device;})[0]||{}).kind;
+  const lbl=el('text',{class:'tlabel'+(dk==='tb'?' ondark':''), x:p.x+9, y:p.y-8});
   lbl.textContent=p.label; g.appendChild(lbl);
   if(shared){
     g.appendChild(el('circle',{class:'badge-c', cx:p.x+11, cy:p.y+11, r:8}));
@@ -585,7 +1021,11 @@ function drawTerminal(id){
 function wirePath(idx){ return gWire.querySelector('path[data-idx="'+idx+'"]'); }
 
 /* 图例：项目从当前电路的 GROUPS 现生成，按颜色去重
-   （K32 的第 2、3 组同为蓝色，不去重会并排出现两条一样的蓝线） */
+   （K32 的第 2、3 组同为蓝色，不去重会并排出现两条一样的蓝线）。
+
+   **画在 HTML 里不画进 SVG**：画进去就要在图上找一块空地放它，
+   放哪儿都会压住元件（原来压着端子排底下那几位），而且缩放时它会跟着一起
+   放大缩小 —— 图例本来就该待在画布外面 */
 function drawLegend(){
   const seen={}, items=[];
   GROUPS.forEach(function(g){
@@ -593,26 +1033,31 @@ function drawLegend(){
     if(seen[c]) return;
     seen[c]=true; items.push([g.name, c]);
   });
-  const bx=CUR.legend.x, by=CUR.legend.y;
-  gLegend.appendChild(el('rect',{x:bx, y:by, width:230, height:14+items.length*18+6, rx:8,
-    fill:'var(--card)', stroke:'var(--line)'}));
-  const lt=el('text',{class:'lt', x:bx+10, y:by+16}); lt.textContent='图例（按接线分组）'; gLegend.appendChild(lt);
-  items.forEach(function(it,i){
-    const y=by+34+i*18;
-    gLegend.appendChild(el('line',{x1:bx+12, y1:y-4, x2:bx+34, y2:y-4, stroke:it[1], 'stroke-width':3}));
-    const t=el('text',{x:bx+42, y:y}); t.textContent=it[0]; gLegend.appendChild(t);
-  });
+  /* 主电路虽然不参与练习，图例里还是得有一条 —— 不说清楚的话，
+     图上那些淡色的线看着像「没接完的」 */
+  if(CUR.mains && CUR.mains.length) items.push(['主电路（板上已接好，不用练）', '#b0a06a']);
+  document.getElementById('legendH').innerHTML = items.map(function(it){
+    return '<span><i style="background:'+it[1]+'"></i>'+it[0]+'</span>';
+  }).join('');
 }
 
 /* 整幅图重画一次：换电路时四个图层全部清空重建。
    只清 innerHTML 不行——端子上挂着 mouseenter/click，留着旧节点会让上一块板的
    端子还在响应点击（换电路时踩的第二个坑） */
+function polyD(pts){
+  return pts.map(function(p,i){ return (i===0?'M':'L')+p[0]+','+p[1]; }).join(' ');
+}
 function buildScene(){
-  [gDev, gWire, gTerm, gLegend].forEach(function(g){
-    while(g.firstChild) g.removeChild(g.firstChild);
+  clearLayers();
+  setViewBox(CUR.viewBox);
+  (CUR.bus||[]).forEach(function(p){
+    gBus.appendChild(el('path',{d:polyD(p), fill:'none', stroke:'#5f6a75',
+      'stroke-width':1.3, opacity:.45, 'stroke-linejoin':'round'}));
   });
-  svg.setAttribute('viewBox', CUR.viewBox);
   DEVICES.forEach(drawDevice);
+  (CUR.mains||[]).forEach(function(m){
+    gMain.appendChild(el('path',{class:'mainw', d:polyD(m.p), stroke:m.c}));
+  });
   Object.keys(TPOS).forEach(drawTerminal);
   WIRES.forEach(function(w){
     gWire.appendChild(el('path',{class:'wire', d:wirePathD(w), stroke:w.color,
@@ -754,10 +1199,8 @@ function symBox(key, x, y, w, h){
 }
 
 function buildSchema(){
-  [gDev, gWire, gTerm, gLegend].forEach(function(g){
-    while(g.firstChild) g.removeChild(g.firstChild);
-  });
-  svg.setAttribute('viewBox','0 0 360 466');
+  clearLayers();
+  setViewBox('0 0 360 466');      /* 原理图那一屏也能缩放，基准换成它自己的框 */
   const s=S;
   SEG_FN = {};
 
@@ -985,11 +1428,44 @@ function onTermHover(id){
   if(state.mode!=='browse') return;
   state.hoverTerm=id; renderBrowse();
 }
+/* 把一组线（或一根线）的范围框出来，缩放过去。
+   整张图在手机上只有 0.4 倍，点了「第 2 组」还得自己捏合着去找那几根线在哪儿——
+   直接带过去，才有「凑到柜子跟前看这一处」的感觉。再点一次取消分组就复位 */
+function fitTo(pts, pad){
+  if(!pts.length || !VB0) return;
+  let x0=1e9, y0=1e9, x1=-1e9, y1=-1e9;
+  pts.forEach(function(p){
+    if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0];
+    if(p[1]<y0)y0=p[1]; if(p[1]>y1)y1=p[1];
+  });
+  pad = pad||46;
+  x0-=pad; y0-=pad; x1+=pad; y1+=pad;
+  const ratio = VB0.w/VB0.h;
+  let w = Math.max(x1-x0, (y1-y0)*ratio);
+  w = clamp(w, VB0.w/ZMAX, VB0.w);
+  const h = w/ratio;
+  VB.w = w; VB.h = h;
+  VB.x = (x0+x1)/2 - w/2;
+  VB.y = (y0+y1)/2 - h/2;
+  clampPan(); applyVB();
+}
+function wirePts(w){
+  const a = [[TPOS[w.from].x, TPOS[w.from].y]];
+  (w.waypoints||[]).forEach(function(p){ a.push(p); });
+  a.push([TPOS[w.to].x, TPOS[w.to].y]);
+  return a;
+}
 function setGroup(gid){
   state.activeGroup = (state.activeGroup===gid) ? null : gid;
   document.querySelectorAll('.grpbtn').forEach(function(b){
     b.classList.toggle('on', +b.dataset.g===state.activeGroup);
   });
+  if(state.activeGroup==null) zoomReset();
+  else {
+    let pts=[];
+    WIRES.forEach(function(w){ if(w.group===state.activeGroup) pts = pts.concat(wirePts(w)); });
+    fitTo(pts);
+  }
   setHint(state.activeGroup);
   renderBrowse();
 }
@@ -1004,9 +1480,12 @@ function renderStep(){
     else { p.style.opacity=0; p.classList.remove('hi'); }
   });
   const cur = document.getElementById('pCur');
-  if(idx===0){ cur.innerHTML='点击「下一根」开始'; }
+  /* 镜头跟着当前这一根走：接线本来就是「盯着这两个端子」的活，
+     整张图摆在那儿看不清哪两个孔（0.4 倍下端子只有 2px） */
+  if(idx===0){ cur.innerHTML='点击「下一根」开始'; zoomReset(); }
   else{
     const w=WIRES[idx-1];
+    fitTo(wirePts(w), 70);
     let html = '<b>'+idx+'.</b> '+wireDesc(w)+'　（第 '+w.group+' 组：'+GROUPS[w.group-1].name+'）';
     /* 某一端如果还挂着别的线，提醒「两个冷压端子一起压上再拧」，别拧一次松一次 */
     ['from','to'].forEach(function(end){
@@ -1207,8 +1686,11 @@ function loadCircuit(id){
   TCOUNT = getTerminalWireCount(id);      /* 每次重算，别沿用上一块板的 */
   document.getElementById('pgTitle').textContent = CUR.title;
   document.getElementById('pgSub').textContent   = CUR.sub;
-  document.getElementById('warnBox').innerHTML =
-    CUR.warns.map(function(w){ return '<div class="warn">'+w+'</div>'; }).join('');
+  const wb = document.getElementById('warnBox'), wbtn = document.getElementById('warnBtn');
+  wb.innerHTML = CUR.warns.map(function(w){ return '<div class="warn">'+w+'</div>'; }).join('');
+  wb.hidden = true;
+  wbtn.hidden = !CUR.warns.length;
+  wbtn.textContent = '⚠ '+CUR.warns.length+' 条注意';
   document.querySelectorAll('#circuitBtns button').forEach(function(b){
     b.classList.toggle('on', b.dataset.c===id);
   });
@@ -1236,6 +1718,11 @@ function loadCircuit(id){
 
 document.querySelectorAll('.modes button').forEach(function(b){
   b.addEventListener('click', function(){ setMode(b.dataset.mode); });
+});
+document.getElementById('warnBtn').addEventListener('click', function(){
+  const wb = document.getElementById('warnBox');
+  wb.hidden = !wb.hidden;
+  this.textContent = (wb.hidden ? '⚠ ' : '收起 ') + CUR.warns.length + ' 条注意';
 });
 document.getElementById('labelChk').addEventListener('change', function(e){
   svg.classList.toggle('hide-labels', !e.target.checked);
