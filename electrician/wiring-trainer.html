@@ -260,6 +260,8 @@ body.stage-fs-lock{overflow:hidden}
 .dev-name-in{font-size:11px;fill:#eef1f4;text-anchor:middle;font-weight:700}
 .dev-sub-in{font-size:8.5px;fill:#c4cad2;text-anchor:middle}
 .tb-strip{fill:#e2e7eb;stroke:#98a3ad;stroke-width:1.6}
+.dev-tag{font-size:13px;font-weight:700;fill:var(--tx2)}
+.km-tag{font-size:13px;font-weight:800;fill:#232a32;text-anchor:middle}
 .aux-strip{fill:#4a525c}
 .fuse-body{fill:#f6e7b0;stroke:#a98a2e;stroke-width:1.2}
 
@@ -308,7 +310,8 @@ body.stage-fs-lock{overflow:hidden}
   border-radius:8px;padding:8px 12px;font-size:.8rem}
 .result .redo button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
 
-.hintbar{position:sticky;bottom:0;margin-top:14px;background:var(--card);border-top:1px solid var(--line);
+/* 不再吸底：竖版之后图比一屏还高，吸底的记法条会一直盖着图的下半截（截图抓到的） */
+.hintbar{position:static;margin-top:14px;background:var(--card);border-top:1px solid var(--line);
   padding:9px 12px calc(9px + env(safe-area-inset-bottom));font-size:.8rem;color:var(--tx2);line-height:1.5}
 .hintbar .g{color:var(--tx3);font-size:.72rem}
 .hintbar .t{margin-top:2px}
@@ -473,6 +476,26 @@ function kmTerms(p){                    /* p = 'km1' / 'km2' / 'km' */
 /* 热继电器（框 154×104）：六个主端子画成孔，只有 95/96 是要接的 */
 const FR_PINS = [[28,18,'1'],[60,18,'3'],[92,18,'5'],[28,78,'2'],[60,78,'4'],[92,78,'6']];
 
+/* 竖版（2026-09-11，他看了考试模拟软件说「人家这个全屏比例舒服，大小都合适」）：
+   左边一列从上往下 QF → FU1 → 两个接触器 → 热继 → 出线端子排 → 电动机，
+   按钮盒和端子排在右边。主电路和线束按引脚坐标现算，不再手写折线 ——
+   元件挪位置，线自己跟着走 */
+function devPin(devices, id, i){
+  const d = devices.filter(function(x){ return x.id===id; })[0], p = d.pins[i];
+  return [d.x+p[0], d.y+p[1]];
+}
+function elbow(a, b, y){ return [a, [a[0],y], [b[0],y], b]; }
+function mkBus(devices){
+  const tb = devices.filter(function(d){ return d.id==='tb'; })[0];
+  const sb = devices.filter(function(d){ return d.id==='sb'; })[0], out=[];
+  const top = tb.y-30;
+  for(let i=0;i<12;i++){
+    const y = tb.y+22+i*24, gx = tb.x+tb.w+4+(i%4)*4, sx = sb.x+sb.w/2+(i-6)*3;
+    out.push([[tb.x+tb.w,y],[gx,y],[gx,top],[sx,top],[sx,sb.y+sb.h]]);
+  }
+  return out;
+}
+
 /* ══ K32 正反转（双接触器 · 控制回路 16 根）══════════════════
    2026-09-09 照他 09-09 拍的实操板重排：元件位置、型号、孔位全部对着照片来。
    主电路（断路器→三只熔断器→两个接触器→热继电器→出线端子排）画出来当背景、
@@ -501,33 +524,34 @@ const FR_PINS = [[28,18,'1'],[60,18,'3'],[92,18,'5'],[28,78,'2'],[60,78,'4'],[92
    两道都接才是「双重」，考试和现场都按这个来。 */
 function defK32(){
 const DEVICES = [
-  {id:'qf', name:'DZ47s C16', sub:'3P 断路器 QF', kind:'mcb', x:56, y:62, w:96, h:92,
+  /* tag：照模拟软件把名字贴在元件旁边 / 接触器面板上，上方让给主电路走线 */
+  {id:'qf', name:'DZ47s C16', sub:'3P 断路器 QF', tag:'QF', kind:'mcb', x:30, y:40, w:96, h:92,
    pins:[[18,6,'1'],[48,6,'3'],[78,6,'5'],[18,86,'2'],[48,86,'4'],[78,86,'6']], terminals:[]},
-  {id:'fu1', name:'RT18-32X ×3', sub:'主回路熔断器 FU1', kind:'fuse3', x:178, y:62, w:96, h:92,
+  {id:'fu1', name:'RT18-32X ×3', sub:'主回路熔断器 FU1', tag:'FU1', kind:'fuse3', x:32, y:160, w:96, h:92,
    pins:[[16,6,''],[48,6,''],[80,6,''],[16,86,''],[48,86,''],[80,86,'']], terminals:[]},
-  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:306, y:62, w:32, h:92,
+  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:144, y:160, w:32, h:92,
    pins:[[16,6,'']], terminals:[ {id:'fu4-out', label:'出', x:16, y:92} ]},
-  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:348, y:62, w:32, h:92, nameDy:-36,
+  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:186, y:160, w:32, h:92, nameDy:-36,
    pins:[[16,6,'']], terminals:[ {id:'fu5-out', label:'出', x:16, y:92} ]},
-  {id:'km1', name:'1号接触器 KM1', sub:'CJX2s-0911', kind:'km', x:80, y:256, w:KM_W, h:KM_H,
+  {id:'km1', name:'1号接触器 KM1', sub:'CJX2s-0911', tag:'KM1', kind:'km', x:30, y:340, w:KM_W, h:KM_H,
    pins:KM_PINS, terminals:kmTerms('km1')},
-  {id:'km2', name:'2号接触器 KM2', sub:'CJX2s-0911', kind:'km', x:320, y:256, w:KM_W, h:KM_H,
+  {id:'km2', name:'2号接触器 KM2', sub:'CJX2s-0911', tag:'KM2', kind:'km', x:244, y:340, w:KM_W, h:KM_H,
    pins:KM_PINS, terminals:kmTerms('km2')},
-  {id:'fr', name:'JR36-20 热继电器', sub:'FR', kind:'fr', x:200, y:500, w:154, h:104,
+  {id:'fr', name:'JR36-20 热继电器', sub:'FR', tag:'FR', kind:'fr', x:30, y:550, w:154, h:104,
    pins:FR_PINS,
    terminals:[ {id:'fr-96', label:'96', x:154, y:64}, {id:'fr-95', label:'95', x:154, y:88} ]},
-  {id:'tb', name:'端子排', sub:'TB · 12 位通按钮盒', kind:'tb', x:660, y:300, w:62, h:336,
+  {id:'tb', name:'端子排', sub:'TB · 12 位通按钮盒', kind:'tb', x:474, y:236, w:62, h:336,
    terminals:(function(){
      const out=[];
      for(let i=0;i<12;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:14, y:22+i*24});
      out.push({id:'tb-last', label:'末', x:14, y:22+12*24});
      return out;
    })()},
-  {id:'tbm', name:'出线端子排', sub:'去电动机 U V W', kind:'tbm', x:80, y:630, w:250, h:34,
+  {id:'tbm', name:'出线端子排', sub:'去电动机 U V W', kind:'tbm', x:30, y:680, w:250, h:34, nameX:210, nameDy:-8,
    pins:[[30,17,'U'],[70,17,'V'],[110,17,'W']], terminals:[]},
-  {id:'pe', name:'接地铜排 PE', sub:'', kind:'pe', x:360, y:630, w:120, h:26, terminals:[]},
+  {id:'pe', name:'接地铜排 PE', sub:'', kind:'pe', x:300, y:680, w:120, h:26, terminals:[]},
   /* 颜色 2026-09-11 按他说的改成 绿正转 · 黄反转 · 红停止（原来照 09-09 照片画的是绿·红·红） */
-  {id:'sb', name:'按钮盒', sub:'绿·黄·红', kind:'sb', x:686, y:50, w:116, h:176,
+  {id:'sb', name:'按钮盒', sub:'绿·黄·红', kind:'sb', x:440, y:20, w:116, h:176,
    btns:[['#2f9e44','正转 SB2','1-4'],['#e0a92e','反转 SB3','5-8'],['#c0392b','停止 SB1','9-12']],
    terminals:[]}
 ];
@@ -573,94 +597,56 @@ const GROUPS = [
 ];
 const GCOLOR_HEX = {1:'#c0392b', 2:'#2f9e44', 3:'#2b6cb0', 4:'#e67e22'};
 
-/* WIRES：from/to 是端子 id，waypoints 只写「中间拐点」，起止点由 from/to 自动取。
-   16 根，**数组顺序＝实际接线顺序**，照他 K31 板上的实做习惯：电源两头（先 4 号进 A1）
-   → 自锁(13/14) → 互锁与线圈(21/22/A2) → 端子排跳线。
-   早先这里还写着「接触器右侧从里往外接（13→21→A1），先接外面的会挡住里面的螺丝」——
-   那是我从照片推的、没核实过，而且跟他 K31 的实做（第 1 根就接 A1）直接矛盾，2026-09-11 删了。
-
-   走线通道（改布局时照这个分配，别随手挑 y —— 重排时撞过六七次）：
-     KM 上方  y=208 / 212 / 216 / 220 / 228 / 236 / 244
-     KM 下方  y=400 / 408 / 416 / 424 / 432 / 440      （448 往下让给主电路）
-     两个 KM 之间   x=288 / 300 / 308
-     KM2 右侧下行   x=545 / 560 / 575 / 590 / 605 / 620
-       —— 每根去端子排的线各占一条 x，最后那段水平进端子的高度就是它自己那一位，
-          所以竖段不重叠、横段也不重叠
-     端子排左侧跳线 x=648 / 640 / 632 / 624
-     左边空白       x=56（只有第 4 根走，从热继电器绕回 5 号熔断器）*/
+/* WIRES：from/to 是端子 id。14 根，**数组顺序＝实际接线顺序**，照他 K31 板上的实做习惯：
+   电源两头（先 4 号进 A1）→ 自锁(13/14) → 互锁与线圈(21/22/A2) → 端子排跳线。
+   早先还写着「接触器右侧从里往外接」—— 没核实过、跟他 K31 的实做矛盾，2026-09-11 删了。
+   **不写拐点了**：竖版重排时改成跟「自己接线」同一套 freeRoute 自动走直角线
+   （wirePts 见到没有 waypoints 就走它），原来那张「走线通道」表作废 */
 const WIRES = [
   /* ── 1 电源进线：4 号直接进线圈，停止和热继电器都在 5 号那一侧（照 K31 的方向）── */
-  {id:1,  from:'fu4-out', to:'km1-a1', group:1,
-   waypoints:[[X('fu4-out'),208],[X('km1-a1'),208]]},
-  {id:2,  from:'km1-a1',  to:'km2-a1', group:1,
-   waypoints:[[288,Y('km1-a1')],[288,216],[X('km2-a1'),216]]},
-  {id:3,  from:'tb-12',   to:'fr-96',  group:1,
-   waypoints:[[620,Y('tb-12')],[620,608],[400,608],[400,Y('fr-96')]]},
-  {id:4,  from:'fr-95',   to:'fu5-out',group:1,
-   waypoints:[[380,Y('fr-95')],[380,616],[56,616],[56,212],[X('fu5-out'),212]]},
+  {id:1,  from:'fu4-out', to:'km1-a1', group:1},
+  {id:2,  from:'km1-a1',  to:'km2-a1', group:1},
+  {id:3,  from:'tb-12',   to:'fr-96',  group:1},
+  {id:4,  from:'fr-95',   to:'fu5-out',group:1},
   /* ── 2 自锁：公共点 → 两个 13NO；两个 14NO → 各自的启动按钮出线端 ── */
-  {id:5,  from:'tb-5',    to:'km1-13', group:2,
-   waypoints:[[545,Y('tb-5')],[545,236],[X('km1-13'),236]]},
-  {id:6,  from:'km1-13',  to:'km2-13', group:2,
-   waypoints:[[X('km1-13'),244],[X('km2-13'),244]]},
-  {id:7,  from:'km1-14',  to:'tb-2',   group:2,
-   waypoints:[[X('km1-14'),416],[575,416],[575,Y('tb-2')]]},
-  {id:8,  from:'km2-14',  to:'tb-6',   group:2,
-   waypoints:[[X('km2-14'),424],[560,424],[560,Y('tb-6')]]},
-  /* ── 3 互锁与线圈：我的 A2 出来先过对方的 21NC，再去自己那条启动支路 ── */
-  {id:9,  from:'km1-a2',  to:'km2-21', group:3,
-   waypoints:[[X('km1-a2'),432],[300,432],[300,220],[X('km2-21'),220]]},
-  {id:10, from:'km2-22',  to:'tb-2',   group:3,
-   waypoints:[[X('km2-22'),440],[590,440],[590,Y('tb-2')+7],[X('tb-2')-10,Y('tb-2')+7]]},
-  {id:11, from:'km2-a2',  to:'km1-21', group:3,
-   waypoints:[[X('km2-a2'),400],[308,400],[308,228],[X('km1-21'),228]]},
-  {id:12, from:'km1-22',  to:'tb-6',   group:3,
-   waypoints:[[X('km1-22'),408],[605,408],[605,Y('tb-6')+7],[X('tb-6')-10,Y('tb-6')+7]]},
+  {id:5,  from:'tb-5',    to:'km1-13', group:2},
+  {id:6,  from:'km1-13',  to:'km2-13', group:2},
+  {id:7,  from:'km1-14',  to:'tb-2',   group:2},
+  {id:8,  from:'km2-14',  to:'tb-6',   group:2},
+  /* ── 3 互锁与线圈：我的 A2 出来先过对方的 21NC，22 再去自己那个启动按钮的出线端 ── */
+  {id:9,  from:'km1-a2',  to:'km2-21', group:3},
+  {id:10, from:'km2-22',  to:'tb-2',   group:3},
+  {id:11, from:'km2-a2',  to:'km1-21', group:3},
+  {id:12, from:'km1-22',  to:'tb-6',   group:3},
   /* ── 4 端子排跳线：11-1-5 并成公共点 ——
      2026-09-11 改成只有接触器互锁（他要「正转时按反转没反应、不会停」），
      原来那两根交叉跳线 2→7、6→3（按钮互锁）拿掉了，端子排 3、4、7、8 不用 ── */
-  {id:13, from:'tb-11',   to:'tb-1',   group:4, waypoints:[[648,Y('tb-11')],[648,Y('tb-1')]]},
-  {id:14, from:'tb-1',    to:'tb-5',   group:4, waypoints:[[640,Y('tb-1')],[640,Y('tb-5')]]}
+  {id:13, from:'tb-11',   to:'tb-1',   group:4},
+  {id:14, from:'tb-1',    to:'tb-5',   group:4}
 ];
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 
 /* 主电路：三相黄绿红，纯坐标折线（不进 WIRES，所以分组/逐根播放/自测/上螺丝
    一处都不用改）。正反转的眼就在这儿：KM2 的进线把 L1 和 L3 换了个个儿，
    所以两只接触器绝不能同时吸合 —— 那就是 L1 撞 L3 的相间短路 */
-const L1='#e0a92e', L2='#3fa845', L3='#cf4436';
-const MAINS = [
-  {c:L1, p:[[24,28],[74,28],[74,68]]},            /* 电源三相进 QF */
-  {c:L2, p:[[24,38],[104,38],[104,68]]},
-  {c:L3, p:[[24,48],[134,48],[134,68]]},
-  {c:L1, p:[[74,148],[74,166],[156,166],[156,40],[194,40],[194,68]]},   /* QF 下 → FU1 上 */
-  {c:L2, p:[[104,148],[104,174],[164,174],[164,34],[226,34],[226,68]]},
-  {c:L3, p:[[134,148],[134,182],[172,182],[172,28],[258,28],[258,68]]},
-  {c:L1, p:[[194,148],[194,164],[114,164],[114,274]]},                  /* FU1 下 → KM1 正相序 */
-  {c:L2, p:[[226,148],[226,180],[152,180],[152,274]]},
-  {c:L3, p:[[258,148],[258,196],[190,196],[190,274]]},
-  {c:L1, p:[[194,148],[194,172],[430,172],[430,274]]},                  /* FU1 下 → KM2 换两相 */
-  {c:L2, p:[[226,148],[226,188],[392,188],[392,274]]},
-  {c:L3, p:[[258,148],[258,204],[354,204],[354,274]]},
-  {c:L1, p:[[114,388],[114,448],[354,448],[354,388]]},                  /* 两只 KM 出线并联 */
-  {c:L2, p:[[152,388],[152,456],[392,456],[392,388]]},
-  {c:L3, p:[[190,388],[190,464],[430,464],[430,388]]},
-  {c:L1, p:[[114,388],[114,478],[228,478],[228,518]]},                  /* 并联点 → FR 进 */
-  {c:L2, p:[[152,388],[152,486],[260,486],[260,518]]},
-  {c:L3, p:[[190,388],[190,494],[292,494],[292,518]]},
-  {c:L1, p:[[228,578],[228,610],[110,610],[110,647]]},                  /* FR 出 → 出线端子排 */
-  {c:L2, p:[[260,578],[260,618],[150,618],[150,647]]},
-  {c:L3, p:[[292,578],[292,626],[190,626],[190,647]]}
-];
+const L1='#e0a92e', L2='#3fa845', L3='#cf4436', PH=[L1,L2,L3];
+function P(id, i){ return devPin(DEVICES, id, i); }
+/* 下标顺序不能动，SIMSPEC.mains 按下标认段：
+   0-2 电源进 QF / 3-5 QF→FU1 / 6-8 FU1→KM1 / 9-11 FU1→KM2（换两相）/
+   12-14 两只 KM 出线并联 / 15-17 →FR / 18-20 FR→出线端子排 */
+const MAINS = [];
+[0,1,2].forEach(function(i){ const b=P('qf',i), y=38-6*i; MAINS.push({c:PH[i], p:[[4,y],[b[0],y],b]}); });
+[0,1,2].forEach(function(i){ const a=P('qf',3+i), b=P('fu1',i); MAINS.push({c:PH[i], p:elbow(a,b,(a[1]+b[1])/2)}); });
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('fu1',3+i), P('km1',i), P('fu1',3)[1]+14+8*i)}); });
+/* 正反转的眼：KM2 的进线把 L1 和 L3 换了个个儿（L1→5/L3、L3→1/L1），
+   所以两只接触器绝不能同时吸合 —— 那就是 L1 撞 L3 的相间短路 */
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('fu1',3+i), P('km2',2-i), P('fu1',3)[1]+40+8*(2-i))}); });
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('km1',3+i), P('km2',3+i), P('km1',3)[1]+14+8*i)}); });
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('km1',3+i), P('fr',i), P('km1',3)[1]+46+8*i)}); });
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('fr',3+i), P('tbm',i), P('fr',3)[1]+16+8*i)}); });
 /* 按钮盒到端子排右列的 12 根黑线（照片上就是一束黑线）。
    只画不练——它们是「盒子出厂就带的」，考试也不用你接 */
-const BUS = (function(){
-  const out=[];
-  for(let i=0;i<12;i++){
-    const y = 300+22+i*24, gx = 738+((i%4)*4);
-    out.push([[722,y],[gx,y],[gx,232],[746+(i-6)*3,232],[746+(i-6)*3,226]]);
-  }
-  return out;
-})();
+const BUS = mkBus(DEVICES);
 
 /* 通电试车用的电路规格。导线直接用上面的 WIRES，这里只补「元件内部」那一半：
    哪两个端子之间是一对触点、归谁管（按钮 / 接触器 / 热继）、动合还是动断，线圈两头在哪。
@@ -762,7 +748,7 @@ return { id:'k32', k:'K32',
   title:'正反转控制电路 · 实物接线图',
   devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
   mains:MAINS, bus:BUS, sim:SIMSPEC,
-  viewBox:'0 0 880 780', hasSchema:false,
+  viewBox:'0 0 560 830', hasSchema:false,
   warns:['⚠ <b>只有接触器互锁</b>：正转时按反转没反应、也不会停；<b>要换方向先按停止</b>。' +
          '互锁靠对方的 21-22 —— 对方吸着，我这条路就是断的',
          '⚠ 端子排 <b>3、4、7、8、9、10 空着</b>（两个启动按钮的动断、停止按钮的动合都用不到）',
@@ -795,17 +781,17 @@ return { id:'k32', k:'K32',
    1-4 绿＝连续 / 5-8 黄＝点动 / 9-12 红＝停止。上板看一眼线落在哪几位就能确认。 */
 function defK31(){
 const DEVICES = [
-  {id:'qf', name:'DZ47s C16', sub:'3P 断路器 QF', kind:'mcb', x:56, y:62, w:96, h:92,
+  {id:'qf', name:'DZ47s C16', sub:'3P 断路器 QF', tag:'QF', kind:'mcb', x:30, y:40, w:96, h:92,
    pins:[[18,6,'1'],[48,6,'3'],[78,6,'5'],[18,86,'2'],[48,86,'4'],[78,86,'6']], terminals:[]},
-  {id:'fu1', name:'RT18-32X ×3', sub:'主回路熔断器 FU1', kind:'fuse3', x:178, y:62, w:96, h:92,
+  {id:'fu1', name:'RT18-32X ×3', sub:'主回路熔断器 FU1', tag:'FU1', kind:'fuse3', x:32, y:160, w:96, h:92,
    pins:[[16,6,''],[48,6,''],[80,6,''],[16,86,''],[48,86,''],[80,86,'']], terminals:[]},
-  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:306, y:62, w:32, h:92,
+  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:144, y:160, w:32, h:92,
    pins:[[16,6,'']], terminals:[ {id:'fu4-out', label:'出', x:16, y:92} ]},
-  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:348, y:62, w:32, h:92, nameDy:-36,
+  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:186, y:160, w:32, h:92, nameDy:-36,
    pins:[[16,6,'']], terminals:[ {id:'fu5-out', label:'出', x:16, y:92} ]},
   /* CJX2s-0911 有两组辅助（13/14 常开 + 21/22 常闭），这题只用到常开那一组，
      所以 21/22 只画孔、不登记成端子 —— 登记了会画成白点，看着像也要接 */
-  {id:'km', name:'接触器 KM', sub:'CJX2s-0911', kind:'km', x:200, y:256, w:KM_W, h:KM_H,
+  {id:'km', name:'接触器 KM', sub:'CJX2s-0911', tag:'KM', kind:'km', x:30, y:340, w:KM_W, h:KM_H,
    pins:KM_PINS.concat([[168,18,'21NC'],[168,132,'22NC']]),
    terminals:[
      {id:'km-13', label:'13', x:142, y:18},
@@ -813,19 +799,20 @@ const DEVICES = [
      {id:'km-14', label:'14', x:142, y:132},
      {id:'km-a2', label:'A2', x:190, y:132}
    ]},
-  {id:'fr', name:'JR36-20 热继电器', sub:'FR', kind:'fr', x:200, y:500, w:154, h:104,
+  {id:'fr', name:'JR36-20 热继电器', sub:'FR', tag:'FR', kind:'fr', x:30, y:530, w:154, h:104,
    pins:FR_PINS,
    terminals:[ {id:'fr-96', label:'96', x:154, y:64}, {id:'fr-95', label:'95', x:154, y:88} ]},
-  {id:'tb', name:'端子排', sub:'TB · 12 位通按钮盒', kind:'tb', x:660, y:300, w:48, h:336,
+  /* 宽 62 跟 K32 一样：右列的孔画在 x+50，原来宽 48 的话孔落在机身外面 */
+  {id:'tb', name:'端子排', sub:'TB · 12 位通按钮盒', kind:'tb', x:474, y:236, w:62, h:336,
    terminals:(function(){
      const out=[];
      for(let i=0;i<12;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:14, y:22+i*24});
      return out;
    })()},
-  {id:'tbm', name:'出线端子排', sub:'去电动机 U V W', kind:'tbm', x:80, y:630, w:250, h:34,
+  {id:'tbm', name:'出线端子排', sub:'去电动机 U V W', kind:'tbm', x:30, y:660, w:250, h:34, nameX:210, nameDy:-8,
    pins:[[30,17,'U'],[70,17,'V'],[110,17,'W']], terminals:[]},
-  {id:'pe', name:'接地铜排 PE', sub:'', kind:'pe', x:360, y:630, w:120, h:26, terminals:[]},
-  {id:'sb', name:'按钮盒', sub:'绿·黄·红', kind:'sb', x:686, y:50, w:116, h:176,
+  {id:'pe', name:'接地铜排 PE', sub:'', kind:'pe', x:300, y:660, w:120, h:26, terminals:[]},
+  {id:'sb', name:'按钮盒', sub:'绿·黄·红', kind:'sb', x:440, y:20, w:116, h:176,
    btns:[['#2f9e44','连续 SB2','1-4'],['#e0a92e','点动 SB3','5-8'],['#c0392b','停止 SB1','9-12']],
    terminals:[]}
 ];
@@ -858,58 +845,34 @@ const GROUPS = [
 const GCOLOR_HEX = {1:'#c0392b', 2:'#2f9e44', 3:'#e67e22'};
 
 /* 10 根，顺序照他记录的三组：先线圈与自锁、再热继电器、最后端子排跳线。
-   通道分配跟 K32 同一套（见那边的注释）：接触器右侧 x=420/430 上下走，
-   去端子排走 x=545/560，端子排左侧跳线 x=630~648 四条错开。
-   第 1 根和第 5 根必然交叉一次（4 号熔断器在左要往右去线圈，5 号在右要往下去热继电器）——
-   交叉处不打点＝不相连，正好是 4.1 那节讲的规矩，不用为它重排布局 */
+   竖版起不写拐点，跟 K32 一样走 freeRoute 自动直角线 */
 const WIRES = [
-  {id:1,  from:'fu4-out', to:'km-a1', group:1,
-   waypoints:[[X('fu4-out'),212],[430,212],[430,Y('km-a1')]]},
-  {id:2,  from:'km-a2',   to:'km-13', group:1,
-   waypoints:[[420,Y('km-a2')],[420,236],[X('km-13'),236]]},
-  {id:3,  from:'km-13',   to:'tb-1',  group:1,
-   waypoints:[[334,Y('km-13')],[334,228],[560,228],[560,Y('tb-1')]]},
-  {id:4,  from:'km-14',   to:'tb-7',  group:1,
-   waypoints:[[X('km-14'),430],[545,430],[545,Y('tb-7')]]},
-  {id:5,  from:'fu5-out', to:'fr-95', group:2,
-   waypoints:[[X('fu5-out'),204],[450,204],[450,Y('fr-95')]]},
-  {id:6,  from:'fr-96',   to:'tb-12', group:2,
-   waypoints:[[400,Y('fr-96')],[400,Y('tb-12')]]},
-  {id:7,  from:'tb-1',    to:'tb-5',  group:3, waypoints:[[648,Y('tb-1')],[648,Y('tb-5')]]},
-  {id:8,  from:'tb-2',    to:'tb-6',  group:3, waypoints:[[642,Y('tb-2')],[642,Y('tb-6')]]},
-  {id:9,  from:'tb-6',    to:'tb-8',  group:3, waypoints:[[636,Y('tb-6')],[636,Y('tb-8')]]},
-  {id:10, from:'tb-8',    to:'tb-11', group:3, waypoints:[[630,Y('tb-8')],[630,Y('tb-11')]]}
+  {id:1,  from:'fu4-out', to:'km-a1', group:1},
+  {id:2,  from:'km-a2',   to:'km-13', group:1},
+  {id:3,  from:'km-13',   to:'tb-1',  group:1},
+  {id:4,  from:'km-14',   to:'tb-7',  group:1},
+  {id:5,  from:'fu5-out', to:'fr-95', group:2},
+  {id:6,  from:'fr-96',   to:'tb-12', group:2},
+  {id:7,  from:'tb-1',    to:'tb-5',  group:3},
+  {id:8,  from:'tb-2',    to:'tb-6',  group:3},
+  {id:9,  from:'tb-6',    to:'tb-8',  group:3},
+  {id:10, from:'tb-8',    to:'tb-11', group:3}
 ];
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 
 /* 主电路（照片上这块板也接好了）：三相进 QF → 三只熔断器 → 接触器主触点 →
    热继电器 → 出线端子排。压暗当背景，不纳入练习 */
-const L1='#e0a92e', L2='#3fa845', L3='#cf4436';
-const MAINS = [
-  {c:L1, p:[[24,28],[74,28],[74,68]]},
-  {c:L2, p:[[24,38],[104,38],[104,68]]},
-  {c:L3, p:[[24,48],[134,48],[134,68]]},
-  {c:L1, p:[[74,148],[74,166],[156,166],[156,40],[194,40],[194,68]]},
-  {c:L2, p:[[104,148],[104,174],[164,174],[164,34],[226,34],[226,68]]},
-  {c:L3, p:[[134,148],[134,182],[172,182],[172,28],[258,28],[258,68]]},
-  {c:L1, p:[[194,148],[194,164],[234,164],[234,274]]},
-  {c:L2, p:[[226,148],[226,172],[272,172],[272,274]]},
-  {c:L3, p:[[258,148],[258,180],[310,180],[310,274]]},
-  {c:L1, p:[[234,388],[234,460],[228,460],[228,518]]},
-  {c:L2, p:[[272,388],[272,470],[260,470],[260,518]]},
-  {c:L3, p:[[310,388],[310,480],[292,480],[292,518]]},
-  {c:L1, p:[[228,578],[228,610],[110,610],[110,647]]},
-  {c:L2, p:[[260,578],[260,618],[150,618],[150,647]]},
-  {c:L3, p:[[292,578],[292,626],[190,626],[190,647]]}
-];
-const BUS = (function(){
-  const out=[];
-  for(let i=0;i<12;i++){
-    const y = 300+22+i*24, gx = 726+((i%4)*4);
-    out.push([[708,y],[gx,y],[gx,232],[744+(i-6)*3,232],[744+(i-6)*3,226]]);
-  }
-  return out;
-})();
+const L1='#e0a92e', L2='#3fa845', L3='#cf4436', PH=[L1,L2,L3];
+function P(id, i){ return devPin(DEVICES, id, i); }
+/* 下标顺序不能动（SIMSPEC.mains 按下标认段）：
+   0-2 进 QF / 3-5 QF→FU1 / 6-8 FU1→KM / 9-11 KM→FR / 12-14 FR→出线端子排 */
+const MAINS = [];
+[0,1,2].forEach(function(i){ const b=P('qf',i), y=38-6*i; MAINS.push({c:PH[i], p:[[4,y],[b[0],y],b]}); });
+[0,1,2].forEach(function(i){ const a=P('qf',3+i), b=P('fu1',i); MAINS.push({c:PH[i], p:elbow(a,b,(a[1]+b[1])/2)}); });
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('fu1',3+i), P('km',i), P('fu1',3)[1]+14+8*i)}); });
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('km',3+i), P('fr',i), P('km',3)[1]+14+8*i)}); });
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('fr',3+i), P('tbm',i), P('fr',3)[1]+16+8*i)}); });
+const BUS = mkBus(DEVICES);
 
 /* 通电试车用的电路规格（写法见 K32 那份）。这块板的 KM 只用常开 13-14，21-22 不登记 */
 const SIMSPEC = {
@@ -974,7 +937,7 @@ return { id:'k31', k:'K31',
   title:'单向连续运转 + 点动 · 实物接线图',
   devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
   mains:MAINS, bus:BUS, sim:SIMSPEC,
-  viewBox:'0 0 880 780', hasSchema:true,
+  viewBox:'0 0 560 810', hasSchema:true,
   warns:['⚠ <b>四个端子全用上的那个按钮就是点动</b>（端子排 5、6、7、8）——' +
          '只有它要拿自己的动断去掐自锁。端子排 1、2 那个是连续启动',
          '⚠ 端子排 <b>3、4、9、10 这题用不到</b>（连续按钮的动断、停止按钮的动合），别顺手接上',
@@ -1009,9 +972,7 @@ function otherEndText(w, tid){
   return w.from===tid ? '去往 '+TLABEL[w.to]+'（'+w.to+'）' : '来自 '+TLABEL[w.from]+'（'+w.from+'）';
 }
 function wirePathD(w){
-  const p0=TPOS[w.from], p1=TPOS[w.to];
-  const pts=[[p0.x,p0.y]].concat(w.waypoints||[]).concat([[p1.x,p1.y]]);
-  return pts.map(function(p,i){ return (i===0?'M':'L')+p[0]+','+p[1]; }).join(' ');
+  return wirePts(w).map(function(p,i){ return (i===0?'M':'L')+p[0]+','+p[1]; }).join(' ');
 }
 
 /* 按端子分步：每个端子第一次在 wires 里出现的位置决定它排第几步，
@@ -1269,11 +1230,23 @@ function txt(cls, x, y, s, anchor){
   t.textContent=s; return add(t);
 }
 function devName(d, dy){
+  /* 有 tag 的照模拟软件贴：接触器贴在面板上一块白牌子里，QF / FU1 / FR 写在左边 ——
+     竖版里这些元件的上方全是主电路的横线，名字写上面必被线穿过去 */
+  if(d.tag){
+    if(d.kind==='km'){
+      add(el('rect',{x:d.x+140, y:d.y+54, width:50, height:20, rx:3, fill:'#f4f6f8', stroke:'#39424b', 'stroke-width':1}));
+      txt('km-tag', d.x+165, d.y+69, d.tag);
+    } else {
+      txt('dev-tag', d.x-6, d.y+d.h/2+5, d.tag, 'end');
+    }
+    return;
+  }
   /* 主名一直画着（全览时靠它认元件），型号那行走 p-tiny ——
      只在放大后出现。两行都常驻的话，全览时 fu4/fu5 这种挨着的会糊成一片 */
   const y = d.y + (d.nameDy!=null ? d.nameDy : (dy||-20));
-  txt('dev-name', d.x+d.w/2, y, d.name);
-  if(d.sub) txt('p-tiny', d.x+d.w/2, y+10, d.sub);
+  const x = d.x + (d.nameX!=null ? d.nameX : d.w/2);
+  txt('dev-name', x, y, d.name);
+  if(d.sub) txt('p-tiny', x, y+10, d.sub);
 }
 function drawPins(d){
   (d.pins||[]).forEach(function(p){
@@ -2304,8 +2277,14 @@ function termDir(id){
 }
 function freeRoute(w){
   const A=TPOS[w.from], B=TPOS[w.to], da=termDir(w.from), db=termDir(w.to);
-  const L = 12 + (w.id%5)*5;
-  const a1=[A.x+da[0]*L, A.y+da[1]*L], b1=[B.x+db[0]*L, B.y+db[1]*L];
+  /* 接触器的端子离机身边只有 18，伸 12 出去的话横线正好贴着那一排端子走，
+     看着像接在别的端子上（竖版截图抓到的）。接触器的多伸一截，从机身外面绕 */
+  function len(id){
+    const d = DEVICES.filter(function(x){ return x.id===TPOS[id].device; })[0];
+    return (d && d.kind==='km' ? 24 : 12) + (w.id%5)*5;
+  }
+  const La=len(w.from), Lb=len(w.to);
+  const a1=[A.x+da[0]*La, A.y+da[1]*La], b1=[B.x+db[0]*Lb, B.y+db[1]*Lb];
   const corner = da[0]===0 ? [b1[0], a1[1]] : [a1[0], b1[1]];
   const pts=[[A.x,A.y], a1, corner, b1, [B.x,B.y]];
   return pts.filter(function(p,i){ return i===0 || p[0]!==pts[i-1][0] || p[1]!==pts[i-1][1]; });
@@ -2373,13 +2352,14 @@ function svgPoint(cx, cy){
   const u = pt.matrixTransform(m.inverse());
   return {x:u.x, y:u.y, k:m.a};
 }
+/* 两个都返回 [id, 距离]，没有就 null —— 点击时要比一比离谁更近 */
 function nearestTerm(u, maxD){
   let best=null, bd=maxD;
   Object.keys(TPOS).forEach(function(id){
     const p=TPOS[id], d=Math.hypot(p.x-u.x, p.y-u.y);
     if(d<bd){ bd=d; best=id; }
   });
-  return best;
+  return best ? [best, bd] : null;
 }
 function segDist(p, a, b){
   const dx=b[0]-a[0], dy=b[1]-a[1], L=dx*dx+dy*dy;
@@ -2393,14 +2373,20 @@ function nearestWire(u, maxD){
     const pts=freeRoute(w);
     for(let i=1;i<pts.length;i++){ const d=segDist(u, pts[i-1], pts[i]); if(d<bd){ bd=d; best=w.id; } }
   });
-  return best;
+  return best!=null ? [best, bd] : null;
 }
 /* 缩放那套会抢指针捕获，click 落在 svg 本身上 —— 所以在 svg 上听、自己算点中了谁。
    拖过图之后那一下 click 会被缩放那边 preventDefault，这里看到就不当接线 */
 svg.addEventListener('click', function(e){
   if(state.mode!=='free' || e.defaultPrevented) return;
   const u = svgPoint(e.clientX, e.clientY); if(!u) return;
-  const t = nearestTerm(u, clamp(24/u.k, 10, 30));
+  const tt = nearestTerm(u, clamp(24/u.k, 10, 30)), ww = nearestWire(u, clamp(14/u.k, 6, 18));
+  /* 端子的吸附半径大（全览时端子只有几像素），可竖版元件放大后，线常常就从端子旁边
+     二三十单位处经过 —— 手指明明点在线上却吸到了端子（测试抓到的）。
+     线就在手指底下（距离不到端子的一半）时让给线。
+     但点在端子圆点上（10 单位内）一律算端子：线的端头本来就落在它接的端子上，
+     不这么兜的话，点一个已经接了线的端子会选中那根线，第二根就接不上了（测试抓到的） */
+  const t = (tt && (tt[1] <= 10 || !(ww && ww[1]*2 < tt[1]))) ? tt[0] : null;
   if(t){
     FREE.selWire = null;
     if(!FREE.sel){ FREE.sel=t; FREE.msg=''; }
@@ -2410,7 +2396,7 @@ svg.addEventListener('click', function(e){
     return;
   }
   FREE.sel = null;
-  FREE.selWire = nearestWire(u, clamp(14/u.k, 6, 18));
+  FREE.selWire = ww ? ww[0] : null;
   FREE.msg = FREE.selWire!=null ? '选中了一根线，点「删这根」删掉' : '';
   freeRender();
 });
@@ -2669,6 +2655,7 @@ function fitTo(pts, pad){
   clampPan(); applyVB();
 }
 function wirePts(w){
+  if(!w.waypoints) return freeRoute(w);   /* 竖版起标准线不写拐点，跟「自己接线」同一套自动走线 */
   const a = [[TPOS[w.from].x, TPOS[w.from].y]];
   (w.waypoints||[]).forEach(function(p){ a.push(p); });
   a.push([TPOS[w.to].x, TPOS[w.to].y]);
