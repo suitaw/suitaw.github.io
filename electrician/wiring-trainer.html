@@ -268,7 +268,9 @@ body.stage-fs-lock{overflow:hidden}
 .wire{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:miter;
   transition:opacity .25s,stroke-width .2s}
 .wire.dim{opacity:.15}
-.wire.hi{stroke-width:4.4}
+/* 挑出来的线（点中的 / 悬停端子上的 / 逐根播放当前那根）一律蓝色加粗发光 ——
+   K32 控制线全黑，只加粗的话一眼分不出是哪根 */
+.wire.hi{stroke:var(--acc);stroke-width:5.2;filter:drop-shadow(0 0 3px rgba(26,111,212,.75))}
 
 .legend rect{stroke:var(--line);stroke-width:1}
 .legend text{font-size:10.5px;fill:var(--tx2)}
@@ -595,7 +597,9 @@ const GROUPS = [
     '（KM1→端子排 2、KM2→端子排 6）—— 对方吸着，我这条路就是断的'},
   {id:4, name:'端子排跳线', hint:'只有两根：11-1-5 并成公共点（停止按钮进线那一头）'}
 ];
-const GCOLOR_HEX = {1:'#c0392b', 2:'#2f9e44', 3:'#2b6cb0', 4:'#e67e22'};
+/* 控制线一律黑色（2026-09-11 他说的）：原来的红绿蓝橙跟主电路黄绿红撞色，
+   分不清哪根是控制线。分组靠按钮上的号码、点一根线看它是哪组 */
+const GCOLOR_HEX = {1:'#1f2328', 2:'#1f2328', 3:'#1f2328', 4:'#1f2328'};
 
 /* WIRES：from/to 是端子 id。14 根，**数组顺序＝实际接线顺序**，照他 K31 板上的实做习惯：
    电源两头（先 4 号进 A1）→ 自锁(13/14) → 互锁与线圈(21/22/A2) → 端子排跳线。
@@ -1413,6 +1417,8 @@ function drawLegend(){
     if(seen[c]) return;
     seen[c]=true; items.push([g.name, c]);
   });
+  /* 所有组同一个颜色（K32 全黑）时，去重后只剩第一组的名字，得改叫「控制线」 */
+  if(items.length===1 && GROUPS.length>1) items[0][0] = '控制线（要你接的）';
   /* 主电路虽然不参与练习，图例里还是得有一条 —— 不说清楚的话，
      图上那些淡色的线看着像「没接完的」 */
   if(CUR.mains && CUR.mains.length) items.push(['主电路（板上已接好，不用练）', '#b0a06a']);
@@ -2400,6 +2406,28 @@ svg.addEventListener('click', function(e){
   FREE.msg = FREE.selWire!=null ? '选中了一根线，点「删这根」删掉' : '';
   freeRender();
 });
+/* 浏览模式：点一根线把它挑出来（蓝色加粗、其余压暗），点空白处取消。
+   点在端子圆点上（10 单位内）的不算点线 —— 让给端子的悬停说明。
+   **有的线整段叠在一起**（K32 第 7、12 根共用 y=506 那一横：freeRoute 按 id%5 错开，
+   两根余数一样），点那儿只能挑中一根。所以同一处点第二下切到叠着的下一根，
+   轮完一圈才取消 */
+svg.addEventListener('click', function(e){
+  if(state.mode!=='browse' || e.defaultPrevented) return;
+  const u = svgPoint(e.clientX, e.clientY); if(!u) return;
+  const maxD = clamp(14/u.k, 6, 18);
+  const hits = nearestTerm(u, 10) ? [] : WIRES.map(function(w){
+    const pts=wirePts(w); let d=1e9;
+    for(let i=1;i<pts.length;i++) d=Math.min(d, segDist(u, pts[i-1], pts[i]));
+    return [w.id, d];
+  }).filter(function(h){ return h[1]<maxD; });
+  const best = Math.min.apply(null, hits.map(function(h){ return h[1]; }).concat(1e9));
+  const ids = hits.filter(function(h){ return h[1]<=best+2; }).map(function(h){ return h[0]; });
+  const k = ids.indexOf(state.selWire);
+  state.selWire = k<0 ? (ids.length ? ids[0] : null) : (k+1<ids.length ? ids[k+1] : null);
+  state.selStack = ids;
+  if(state.selWire!==null) state.hoverTerm = null;
+  renderBrowse();
+});
 
 /* ---- 交卷 ---- */
 function netsOf(ws){
@@ -2580,7 +2608,7 @@ document.getElementById('side').addEventListener('click', function(e){
 /* ------------------------------------------------------------------
    状态与三种模式
 ------------------------------------------------------------------ */
-const state = { mode:'browse', activeGroup:null, hoverTerm:null, schemaShown:false,
+const state = { mode:'browse', activeGroup:null, hoverTerm:null, selWire:null, selStack:[], schemaShown:false,
   step:{index:0, playing:false, timer:null},
   test:{order:[], idx:0, score:0, answers:[], awaiting:false, mistakes:[]} };
 
@@ -2598,19 +2626,29 @@ function renderBrowse(){
      setMode / renderStep 都会设 `p.style.opacity=1`，内联优先级更高，
      光加类的话 `.wire.dim{opacity:.15}` 一直是不生效的
      —— 「点了分组别的线还全亮着」就是这么来的（截图才发现） */
+  const sel = state.selWire;
   paths.forEach(function(p){
     const g = +p.getAttribute('data-group');
-    const dim = state.hoverTerm ? true : (state.activeGroup!==null && g!==state.activeGroup);
+    const dim = sel!==null ? true : state.hoverTerm ? true : (state.activeGroup!==null && g!==state.activeGroup);
     p.classList.toggle('dim', !!dim);
     p.style.opacity = dim ? '.15' : '1';
     p.classList.remove('hi');
   });
   /* 挑出一组来看时，主电路也退一步 —— 它本来就是背景，
      不退的话那几根黄绿红比要看的那一组还抢眼 */
-  const focus = (state.activeGroup!==null) || !!state.hoverTerm;
+  const focus = (state.activeGroup!==null) || !!state.hoverTerm || sel!==null;
   gMain.style.opacity = focus ? '.3' : '1';
   gBus.style.opacity  = focus ? '.3' : '1';
-  if(state.hoverTerm){
+  if(sel!==null){
+    const w = WIRES.filter(function(x){ return x.id===sel; })[0], pp = wirePath(sel);
+    pp.classList.remove('dim'); pp.style.opacity='1'; pp.classList.add('hi');
+    gWire.appendChild(pp);      /* 挪到最上层，别被交叉的线盖住 */
+    const g = GROUPS.filter(function(x){ return x.id===w.group; })[0];
+    const others = (state.selStack||[]).filter(function(x){ return x!==sel; });
+    document.getElementById('side').innerHTML = '<b>第 '+w.id+' 根</b>（第 '+g.id+' 组「'+g.name+'」）<br>'+
+      TLABEL[w.from]+' → '+TLABEL[w.to]+'<br><span class="empty">'+
+      (others.length ? '这里还叠着第 '+others.join('、')+' 根，同一处再点一下切过去' : '点空白处取消')+'</span>';
+  } else if(state.hoverTerm){
     const id = state.hoverTerm;
     WIRES.forEach(function(w){
       const on = (w.from===id || w.to===id), pp = wirePath(w.id);
@@ -2623,7 +2661,7 @@ function renderBrowse(){
       list.map(function(w){ return '·　第 '+w.id+' 根　'+otherEndText(w, id); }).join('<br>');
   } else {
     document.getElementById('side').innerHTML =
-      '<span class="empty">悬停任意端子，看它接了几根线；点击左侧分组，只看这一组的走线。</span>';
+      '<span class="empty">点一根线单独看它；悬停任意端子，看它接了几根线；点分组，只看这一组的走线。</span>';
   }
 }
 function onTermHover(id){
@@ -2663,6 +2701,7 @@ function wirePts(w){
 }
 function setGroup(gid){
   state.activeGroup = (state.activeGroup===gid) ? null : gid;
+  state.selWire = null;
   document.querySelectorAll('.grpbtn').forEach(function(b){
     b.classList.toggle('on', +b.dataset.g===state.activeGroup);
   });
@@ -2859,10 +2898,10 @@ function setMode(m){
     return;      /* 下面全是接线图那套，原理图一概不走 */
   }
 
-  document.getElementById('side').innerHTML = '<span class="empty">悬停任意端子，看它接了几根线；点击左侧分组，只看这一组的走线。</span>';
+  document.getElementById('side').innerHTML = '<span class="empty">点一根线单独看它；悬停任意端子，看它接了几根线；点分组，只看这一组的走线。</span>';
   WIRES.forEach(function(w){ const p=wirePath(w.id); if(p){ p.style.opacity=1; p.classList.remove('dim','hi'); } });
   document.querySelectorAll('.term-dot').forEach(function(d){ d.classList.remove('wrong','right','hi'); });
-  state.activeGroup=null; state.hoverTerm=null;
+  state.activeGroup=null; state.hoverTerm=null; state.selWire=null;
   document.querySelectorAll('.grpbtn').forEach(function(b){ b.classList.remove('on'); });
   setHint(null);
   if(m==='step'){ state.step.index=0; stepStopAuto(); renderStep(); }
