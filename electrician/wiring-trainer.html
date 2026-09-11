@@ -553,9 +553,9 @@ const TLABEL = {
    每个按钮四位＝动合一对 + 动断一对（照片上「蓝蓝红红」三组循环印证过） */
 const TLABEL2 = {
   'tb-1':'端子排1（正转·动合）',  'tb-2':'端子排2（正转·动合）',
-  'tb-3':'端子排3（正转·动断）',  'tb-4':'端子排4（正转·动断）',
+  'tb-3':'端子排3（正转·动断·不用）',  'tb-4':'端子排4（正转·动断·不用）',
   'tb-5':'端子排5（反转·动合）',  'tb-6':'端子排6（反转·动合）',
-  'tb-7':'端子排7（反转·动断）',  'tb-8':'端子排8（反转·动断）',
+  'tb-7':'端子排7（反转·动断·不用）',  'tb-8':'端子排8（反转·动断·不用）',
   'tb-9':'端子排9（停止·动合·不用）',  'tb-10':'端子排10（停止·动合·不用）',
   'tb-11':'端子排11（停止·动断）', 'tb-12':'端子排12（停止·动断）'
 };
@@ -567,10 +567,9 @@ const GROUPS = [
     '另一头是停止按钮 12 → 热继电器 96-95 → 5 号熔断器'},
   {id:2, name:'自锁',       hint:'公共点（停止按钮进线那一头）送到两个 13NO；' +
     '两个 14NO 各自回到自己那个启动按钮的出线端（KM1→端子排2、KM2→端子排6）'},
-  {id:3, name:'互锁与线圈', hint:'我的 A2 出来<b>先过对方的 21NC</b>，再去自己那条启动支路 ——' +
-    '对方吸着，我这条路就是断的'},
-  {id:4, name:'端子排跳线', hint:'11-1-5 并成公共点；' +
-    '2→7 和 6→3 是交叉的：我的启动出线，接到对方按钮的动断上'}
+  {id:3, name:'互锁与线圈', hint:'我的 A2 出来<b>先过对方的 21NC</b>，22 再去我自己那个启动按钮的出线端' +
+    '（KM1→端子排 2、KM2→端子排 6）—— 对方吸着，我这条路就是断的'},
+  {id:4, name:'端子排跳线', hint:'只有两根：11-1-5 并成公共点（停止按钮进线那一头）'}
 ];
 const GCOLOR_HEX = {1:'#c0392b', 2:'#2f9e44', 3:'#2b6cb0', 4:'#e67e22'};
 
@@ -611,17 +610,17 @@ const WIRES = [
   /* ── 3 互锁与线圈：我的 A2 出来先过对方的 21NC，再去自己那条启动支路 ── */
   {id:9,  from:'km1-a2',  to:'km2-21', group:3,
    waypoints:[[X('km1-a2'),432],[300,432],[300,220],[X('km2-21'),220]]},
-  {id:10, from:'km2-22',  to:'tb-8',   group:3,
-   waypoints:[[X('km2-22'),440],[590,440],[590,Y('tb-8')]]},
+  {id:10, from:'km2-22',  to:'tb-2',   group:3,
+   waypoints:[[X('km2-22'),440],[590,440],[590,Y('tb-2')+7],[X('tb-2')-10,Y('tb-2')+7]]},
   {id:11, from:'km2-a2',  to:'km1-21', group:3,
    waypoints:[[X('km2-a2'),400],[308,400],[308,228],[X('km1-21'),228]]},
-  {id:12, from:'km1-22',  to:'tb-4',   group:3,
-   waypoints:[[X('km1-22'),408],[605,408],[605,Y('tb-4')]]},
-  /* ── 4 端子排跳线：11-1-5 并成公共点，2→7 / 6→3 交叉 ── */
+  {id:12, from:'km1-22',  to:'tb-6',   group:3,
+   waypoints:[[X('km1-22'),408],[605,408],[605,Y('tb-6')+7],[X('tb-6')-10,Y('tb-6')+7]]},
+  /* ── 4 端子排跳线：11-1-5 并成公共点 ——
+     2026-09-11 改成只有接触器互锁（他要「正转时按反转没反应、不会停」），
+     原来那两根交叉跳线 2→7、6→3（按钮互锁）拿掉了，端子排 3、4、7、8 不用 ── */
   {id:13, from:'tb-11',   to:'tb-1',   group:4, waypoints:[[648,Y('tb-11')],[648,Y('tb-1')]]},
-  {id:14, from:'tb-1',    to:'tb-5',   group:4, waypoints:[[640,Y('tb-1')],[640,Y('tb-5')]]},
-  {id:15, from:'tb-2',    to:'tb-7',   group:4, waypoints:[[632,Y('tb-2')],[632,Y('tb-7')]]},
-  {id:16, from:'tb-6',    to:'tb-3',   group:4, waypoints:[[624,Y('tb-6')],[624,Y('tb-3')]]}
+  {id:14, from:'tb-1',    to:'tb-5',   group:4, waypoints:[[640,Y('tb-1')],[640,Y('tb-5')]]}
 ];
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 
@@ -710,7 +709,7 @@ const SIMSPEC = {
      h:'没按就吸合：多半是把启动按钮的两头短接了，或者接到了动断上'},
     {n:'按正转：KM1 吸合',
      f:function(T){ T.press('sb2'); return T.on('km1') && !T.on('km2'); },
-     h:'顺着走一遍：4 号熔断器 → KM1 线圈 → KM2 的 21-22 → 端子排 8 → 7 → 2 → 1 → 公共点 → 停止 11-12 → 热继 96-95 → 5 号熔断器，看哪儿断了'},
+     h:'顺着走一遍：4 号熔断器 → KM1 线圈 → KM2 的 21-22 → 端子排 2 → 1 → 公共点 → 停止 11-12 → 热继 96-95 → 5 号熔断器，看哪儿断了'},
     {n:'松开正转：KM1 保持（自锁）',
      f:function(T){ T.tap('sb2'); return T.on('km1'); },
      h:'自锁那两根：KM1 的 13 接公共点（端子排 1、5、11 那一串），14 接端子排 2'},
@@ -719,35 +718,35 @@ const SIMSPEC = {
      h:'停止的动断 11-12 要串在总回路上：11 接公共点，12 接热继 96'},
     {n:'按反转：KM2 吸合',
      f:function(T){ T.press('sb3'); return T.on('km2') && !T.on('km1'); },
-     h:'顺着走一遍：4 号熔断器 → KM2 线圈 → KM1 的 21-22 → 端子排 4 → 3 → 6 → 5 → 公共点 → 停止 11-12 → 热继 96-95 → 5 号熔断器'},
+     h:'顺着走一遍：4 号熔断器 → KM2 线圈 → KM1 的 21-22 → 端子排 6 → 5 → 公共点 → 停止 11-12 → 热继 96-95 → 5 号熔断器'},
     {n:'松开反转：KM2 保持（自锁）',
      f:function(T){ T.tap('sb3'); return T.on('km2'); },
      h:'KM2 的 13 接公共点，14 接端子排 6'},
-    {n:'正转中直接按反转：换成反转（按钮互锁）',
-     f:function(T){ T.tap('sb2'); if(!T.on('km1')) return null; T.tap('sb3'); return T.on('km2') && !T.on('km1'); },
-     h:'两根交叉跳线 2→7、6→3：按反转时它的动断 7-8 要先把正转那条路断开，KM1 放开 KM2 才吸得上'},
-    {n:'正、反两个一起按：谁都不吸',
-     f:function(T){
-       T.press('sb2'); const a=T.on('km1'); T.reset();
-       T.press('sb3'); const b=T.on('km2'); T.reset();
-       if(!a || !b) return null;          /* 单独按都起不来的话，「一起按不吸」说明不了互锁 */
-       T.press(['sb2','sb3']); return !T.on('km1') && !T.on('km2'); },
-     h:'还是那两根交叉跳线：两道按钮互锁都要接上'},
+    {n:'正转中按反转：没反应，照样正转',
+     f:function(T){ T.tap('sb2'); if(!T.on('km1')) return null; T.tap('sb3'); return T.on('km1') && !T.on('km2'); },
+     h:'这版只要接触器互锁：反转按钮不能去断正转那条路。按反转会停的话，多半是接成了双重互锁（2→7、6→3 那种交叉跳线）'},
+    {n:'反转中按正转：没反应，照样反转',
+     f:function(T){ T.tap('sb3'); if(!T.on('km2')) return null; T.tap('sb2'); return T.on('km2') && !T.on('km1'); },
+     h:'同上：正转按钮不能去断反转那条路'},
+    {n:'要换方向：先按停止，再按反转',
+     f:function(T){ T.tap('sb2'); if(!T.on('km1')) return null; T.tap('sb1'); T.tap('sb3'); return T.on('km2') && !T.on('km1'); },
+     h:'停下以后反转起不来：看 KM2 线圈那条路（KM2-A2 → KM1-21，KM1-22 → 端子排 6 → 5）'},
     {n:'KM1 主触头粘死时按反转：KM2 吸不上（接触器互锁）',
      f:function(T){
        T.press('sb3'); const b=T.on('km2'); T.reset();
        if(!b) return null;                /* 反转本来就起不来，粘死时吸不上不算接触器互锁 */
        T.stick('km1'); T.tap('sb3'); return !T.on('km2'); },
-     h:'KM2 线圈的路要先过 KM1 的常闭：KM2-A2 → KM1-21，KM1-22 → 端子排 4（KM1 那边同理：KM1-A2 → KM2-21）'},
+     h:'KM2 线圈的路要先过 KM1 的常闭：KM2-A2 → KM1-21，KM1-22 → 端子排 6（KM1 那边同理：KM1-A2 → KM2-21，KM2-22 → 端子排 2）'},
     {n:'热继动作：全部释放',
      f:function(T){ T.tap('sb2'); if(!T.on('km1')) return null; T.fr(true); return !T.on('km1'); },
      h:'热继的 95-96 要串在总回路里：96 接停止按钮 12，95 接 5 号熔断器'}
   ],
   explain:function(S){
     const k1=S.km.km1.on, k2=S.km.km2.on, b=S.btn;
-    if(S.qf && !k1 && !k2 && b.sb2.pressed && b.sb3.pressed)
-      return '<b>按钮互锁</b>：两个启动一起按 —— SB2 的动断（3-4）断开了反转那条路，' +
-             'SB3 的动断（7-8）断开了正转那条路，谁都起不来';
+    if(k1 && b.sb3.pressed) return '<b>按反转没反应</b>：KM1 吸着，它的 21-22 是断开的，KM2 线圈那条路过不去 —— ' +
+      '这就是<b>接触器互锁</b>。要换方向先按停止';
+    if(k2 && b.sb2.pressed) return '<b>按正转没反应</b>：KM2 吸着，它的 21-22 是断开的，KM1 线圈那条路过不去 —— ' +
+      '这就是<b>接触器互锁</b>。要换方向先按停止';
     if(k1 && !b.sb2.pressed) return '<b>自锁</b>：松手照转 —— KM1 的 13-14 并在 SB2 两端，自己给自己供电。' +
       '同时 KM1 的 21-22 断开，反转那条路被锁死（<b>接触器互锁</b>）';
     if(k2 && !b.sb3.pressed) return '<b>自锁</b>：松手照转 —— KM2 的 13-14 并在 SB3 两端，自己给自己供电。' +
@@ -759,16 +758,14 @@ const SIMSPEC = {
 
 return { id:'k32', k:'K32',
   name:'三相异步电动机正反转运行的接线及安全操作',
-  sub:'双重互锁 · 练控制回路 16 根（淡色主电路板上已接好）',
+  sub:'接触器互锁 · 练控制回路 14 根（淡色主电路板上已接好）',
   title:'正反转控制电路 · 实物接线图',
   devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
   mains:MAINS, bus:BUS, sim:SIMSPEC,
   viewBox:'0 0 880 780', hasSchema:false,
-  warns:['⚠ <b>两道互锁都要接</b>：接触器互锁（21NC）保命 —— 主触头粘连时按钮互锁拦不住；' +
-         '按钮互锁（动断）只是图方便，能从正转直接按反转',
-         '⚠ 第 4 组那两根跳线是<b>交叉的</b>：<b>2→7</b>（正转出线接反转按钮的动断）、' +
-         '<b>6→3</b>（反转出线接正转按钮的动断）。接反了两个方向都起不来',
-         '⚠ 端子排 <b>9、10 空着</b>（停止按钮的动合用不到）',
+  warns:['⚠ <b>只有接触器互锁</b>：正转时按反转没反应、也不会停；<b>要换方向先按停止</b>。' +
+         '互锁靠对方的 21-22 —— 对方吸着，我这条路就是断的',
+         '⚠ 端子排 <b>3、4、7、8、9、10 空着</b>（两个启动按钮的动断、停止按钮的动合都用不到）',
          '⚠ 有 6 个端子要压两根线：<b>端子排 1、2、5、6 和 KM1-A1、KM1-13</b>',
          '⚠ 接触器右侧三个端子挤在一起（里→外：<b>13NO · 21NC · A1</b>），' +
          '号码印在端子旁边，<b>接之前认准号</b>，别凭位置猜'] };
@@ -1994,6 +1991,9 @@ function simStep(now){
     if(k.on!==k.coil && now-k.t>=(k.coil?PICK:DROP)){
       k.on=k.coil; moved=true;
       simLog(c.name+(k.on ? ' 吸合'+(c.pick||'') : ' 释放'), now);
+      /* 一只先动了，它的触点马上变，后面那只要按新状态算 ——
+         机械上没有真正的「同时」，不这么做的话两个启动一起按会两只同时吸 */
+      r = simSolve();
     }
   });
   if(sp.mainShort && SIM.qf && sp.mainShort.every(function(id){ return SIM.km[id].on; })){
@@ -2449,9 +2449,13 @@ function makeTester(ws){
     for(; i<20; i++){
       const r = solveNet(ws, closed);
       if(r.short){ if(!st.bad) st.bad='short'; sp.coils.forEach(function(c){ st.km[c.id]=false; }); return; }
-      let ch=false;
-      sp.coils.forEach(function(c){ if(st.km[c.id]!==r.coil[c.id]){ st.km[c.id]=r.coil[c.id]; ch=true; } });
-      if(!ch) break;
+      /* 一次只动一只（跟试车里一样）：先动的那只的触点会改变后面那只 */
+      const c = sp.coils.filter(function(c){ return st.km[c.id]!==r.coil[c.id]; })[0];
+      if(!c) break;
+      st.km[c.id] = r.coil[c.id];
+      /* 每动一只就查：KM2 吸上后才把 KM1 放掉的话，最后稳定时只剩一只，
+         但中间两只主触头同时合过一下 —— 那一下就是相间短路，只看最终状态会漏掉 */
+      if(sp.mainShort && !st.bad && sp.mainShort.every(function(id){ return st.km[id]; })) st.bad='both';
     }
     if(i===20 && !st.bad) st.bad='buzz';
     if(sp.mainShort && !st.bad && sp.mainShort.every(function(id){ return st.km[id]; })) st.bad='both';
