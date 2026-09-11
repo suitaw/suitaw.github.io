@@ -31,7 +31,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .circuits button.on{background:var(--accbg);border-color:var(--acc)}
 .circuits button.on .k{color:var(--acc)}
 
-.modes{display:flex;gap:6px;margin-bottom:8px}
+/* 六个模式排成两行三列：一行六颗的话 390 宽下每颗不到 60px，「上螺丝顺序」要折三行 */
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
 .modes button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--tx2);
   border-radius:9px;padding:7px 5px;font-size:.78rem;font-weight:600}
 .modes button.on{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -58,6 +59,54 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .srun.on .st{color:var(--green)}
 .srun.off .st{color:var(--tx2)}
 .srun .why{color:var(--tx2);font-size:.76rem;margin-top:3px}
+.srun.warn{background:var(--redbg);border-color:var(--red)}
+.srun.warn .st{color:var(--red)}
+.srun .path{margin-top:5px;font-size:.76rem;color:var(--tx2);line-height:1.6}
+.srun .path b{color:var(--tx)}
+.sbtns .b-y.down{background:var(--orangebg);border-color:var(--orange);color:var(--orange)}
+
+/* 通电试车：三颗「按住」按钮沿用上面那套 .sbtns；下面一排是开关量（QF / 热继 / 复位） */
+.simsw{display:flex;gap:6px;margin-top:6px}
+.simsw button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--tx2);
+  border-radius:9px;padding:7px 4px;font-size:.76rem;font-weight:600;touch-action:manipulation}
+.simsw button.on{background:var(--greenbg);border-color:var(--green);color:var(--green)}
+.simsw button.warn{background:var(--redbg);border-color:var(--red);color:var(--red)}
+.simlog{margin-top:8px;font-size:.74rem;color:var(--tx2);line-height:1.6}
+.simlog .lg{padding:5px 0;border-top:1px dashed var(--line)}
+.simlog .lg:first-child{border-top:none;padding-top:0}
+.simlog .lh{font-weight:700;color:var(--tx)}
+.simlog .t{display:inline-block;min-width:4.3em;color:var(--tx3);font-family:ui-monospace,Menlo,Consolas,monospace}
+/* 试车时控制线一律退成中性灰，只有这一刻有电流的那几根亮红 ——
+   分组色里本来就有红（第 1 组），不退掉的话分不清哪根是「有电流」 */
+.wire.simw{stroke:#9aa5b1}
+.wire.simw.live{stroke:#ff3b30;stroke-width:4.6;filter:drop-shadow(0 0 2.5px rgba(255,59,48,.75))}
+.mainw.dead{opacity:.15}
+.mainw.run{opacity:1;stroke-width:5.2}
+.flowov{fill:none;stroke:rgba(255,255,255,.95);stroke-width:2;stroke-dasharray:1 8;stroke-linecap:round;
+  display:none;animation:simflow .45s linear infinite}
+.flowov.on{display:inline}
+.flowov.rev{animation-direction:reverse}
+@keyframes simflow{to{stroke-dashoffset:-9}}
+.km-arm{transition:transform .12s}
+.km-arm.in{transform:translateY(7px)}
+.qf-lever{transition:transform .15s}
+.qf-lever.off{transform:translateY(8px)}
+.sbcap{transition:transform .08s,filter .08s;transform-box:fill-box;transform-origin:center}
+.sbcap.down{transform:scale(.8);filter:brightness(.7)}
+.sim-hit{fill:transparent;cursor:pointer}
+.sim-pill-g{pointer-events:none}
+.sim-pill{font-size:9px;font-weight:700;text-anchor:middle;dominant-baseline:middle}
+.sim-pill-g rect{fill:#e9edf1;stroke:#9aa4ae;stroke-width:1}
+.sim-pill-g text{fill:#5b6570}
+.sim-pill-g.ok rect{fill:#2f9e44;stroke:#1e6b2e}
+.sim-pill-g.mid rect{fill:#e8930c;stroke:#a86200}
+.sim-pill-g.warn rect{fill:#c0392b;stroke:#8d2f24}
+.sim-pill-g.ok text,.sim-pill-g.mid text,.sim-pill-g.warn text{fill:#fff}
+.sim-mst{font-size:12px;font-weight:700;fill:var(--tx2)}
+.rotor{transform-box:fill-box;transform-origin:center}
+.rotor.cw{animation:simspin .7s linear infinite}
+.rotor.ccw{animation:simspin .7s linear infinite reverse}
+@keyframes simspin{to{transform:rotate(360deg)}}
 
 /* 原理图里可点的符号：默认不加任何装饰，选中才描一圈——
    一上来就全部描边的话，整张图全是框，反而看不出哪个是重点 */
@@ -259,6 +308,7 @@ body.stage-fs-lock{overflow:hidden}
     <button data-mode="step">逐根播放</button>
     <button data-mode="test">自测</button>
     <button data-mode="screw">上螺丝顺序</button>
+    <button data-mode="sim">通电试车</button>
   </div>
 
   <div class="sbar" id="schemaBar" style="display:none">
@@ -272,6 +322,17 @@ body.stage-fs-lock{overflow:hidden}
       图上任一个符号都能点，告诉你它是什么。<br>
       按钮盒上<b>四个端子全用上的那个就是点动</b>；颜色上多半是绿＝连续、黄＝点动、红＝停止，
       <b>上板看一眼线落在哪几位可以确认</b>。</div>
+  </div>
+
+  <div class="sbar" id="simBar" style="display:none">
+    <div class="sbtns" id="simBtns"></div>
+    <div class="simsw">
+      <button id="simQf">合闸 QF</button>
+      <button id="simFr">模拟过载</button>
+      <button id="simRst">全部复位</button>
+    </div>
+    <div class="stip">先合闸，再按启动。按钮都是按下就弹回的 —— <b>按住</b>和<b>点一下</b>结果不一样的地方（点动）正是要看的。
+      图上按钮盒的按钮、断路器也能直接按。<b>亮红的线＝这一刻有电流流过</b>。</div>
   </div>
 
   <div class="toolbar" id="browseBar">
@@ -559,12 +620,65 @@ const BUS = (function(){
   return out;
 })();
 
+/* 通电试车用的电路规格。导线直接用上面的 WIRES，这里只补「元件内部」那一半：
+   哪两个端子之间是一对触点、归谁管（按钮 / 接触器 / 热继）、动合还是动断，线圈两头在哪。
+   4、5 号熔断器的出线当电源两头（QF 合着才有电） */
+const SIMSPEC = {
+  src:['fu4-out','fu5-out'],
+  coils:[
+    {id:'km1', a:'km1-a1', b:'km1-a2', name:'KM1', pick:'：主触点合上、13-14 接通、21-22 断开'},
+    {id:'km2', a:'km2-a1', b:'km2-a2', name:'KM2', pick:'：主触点合上、13-14 接通、21-22 断开'}
+  ],
+  contacts:[
+    {a:'tb-1',   b:'tb-2',   no:true,  by:'sb2', n:'正转 SB2 动合（1-2）'},
+    {a:'tb-3',   b:'tb-4',   no:false, by:'sb2', n:'正转 SB2 动断（3-4）'},
+    {a:'tb-5',   b:'tb-6',   no:true,  by:'sb3', n:'反转 SB3 动合（5-6）'},
+    {a:'tb-7',   b:'tb-8',   no:false, by:'sb3', n:'反转 SB3 动断（7-8）'},
+    {a:'tb-9',   b:'tb-10',  no:true,  by:'sb1', n:'停止 SB1 动合（9-10）'},
+    {a:'tb-11',  b:'tb-12',  no:false, by:'sb1', n:'停止 SB1 动断（11-12）'},
+    {a:'km1-13', b:'km1-14', no:true,  by:'km1', n:'KM1 自锁 13-14'},
+    {a:'km1-21', b:'km1-22', no:false, by:'km1', n:'KM1 常闭 21-22'},
+    {a:'km2-13', b:'km2-14', no:true,  by:'km2', n:'KM2 自锁 13-14'},
+    {a:'km2-21', b:'km2-22', no:false, by:'km2', n:'KM2 常闭 21-22'},
+    {a:'fr-95',  b:'fr-96',  no:false, by:'fr',  n:'热继 95-96'}
+  ],
+  /* 顺序＝按钮盒上从上到下（图上按钮盒第 i 颗就是这里第 i 个） */
+  buttons:[
+    {id:'sb2', name:'正转', sub:'SB2', tb:'1~4',  cls:'b-g', start:true},
+    {id:'sb3', name:'反转', sub:'SB3', tb:'5~8',  cls:'b-r', start:true},
+    {id:'sb1', name:'停止', sub:'SB1', tb:'9~12', cls:'b-r'}
+  ],
+  motor:{km1:1, km2:-1}, dirName:{'1':'正转', '-1':'反转'},
+  /* 两只同时吸合＝主电路 L1 撞 L3（KM2 的进线换了两相）。互锁接对了就不会发生 */
+  mainShort:['km1','km2'],
+  /* MAINS 下标：0-2 进 QF（QF 上口，常带电）/ 3-5 QF→FU1 / 6-8 FU1→KM1 / 9-11 FU1→KM2 /
+     12-14 两只 KM 出线并联 / 15-17 →FR / 18-20 FR→出线端子排。
+     KM1 转的时候 12-14 只带电、没电流（通到 KM2 断开的主触点就到头了）；
+     KM2 转的时候电流是从 KM2 那头**倒着**走 12-14 回到并联点的 */
+  mains:{ always:[0,1,2], qf:[3,4,5,6,7,8,9,10,11], out:[12,13,14,15,16,17,18,19,20],
+    run:{ km1:[0,1,2,3,4,5,6,7,8,15,16,17,18,19,20],
+          km2:[0,1,2,3,4,5,9,10,11,12,13,14,15,16,17,18,19,20] },
+    rev:{ km2:[12,13,14] } },
+  explain:function(S){
+    const k1=S.km.km1.on, k2=S.km.km2.on, b=S.btn;
+    if(S.qf && !k1 && !k2 && b.sb2.pressed && b.sb3.pressed)
+      return '<b>按钮互锁</b>：两个启动一起按 —— SB2 的动断（3-4）断开了反转那条路，' +
+             'SB3 的动断（7-8）断开了正转那条路，谁都起不来';
+    if(k1 && !b.sb2.pressed) return '<b>自锁</b>：松手照转 —— KM1 的 13-14 并在 SB2 两端，自己给自己供电。' +
+      '同时 KM1 的 21-22 断开，反转那条路被锁死（<b>接触器互锁</b>）';
+    if(k2 && !b.sb3.pressed) return '<b>自锁</b>：松手照转 —— KM2 的 13-14 并在 SB3 两端，自己给自己供电。' +
+      '同时 KM2 的 21-22 断开，正转那条路被锁死（<b>接触器互锁</b>）';
+    if(k1 || k2) return '按着启动按钮时，按钮和自锁 13-14 两条路并联着供电；松手后只剩 13-14 那条';
+    return '';
+  }
+};
+
 return { id:'k32', k:'K32',
   name:'三相异步电动机正反转运行的接线及安全操作',
   sub:'双重互锁 · 练控制回路 16 根（淡色主电路板上已接好）',
   title:'正反转控制电路 · 实物接线图',
   devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
-  mains:MAINS, bus:BUS,
+  mains:MAINS, bus:BUS, sim:SIMSPEC,
   viewBox:'0 0 880 780', hasSchema:false,
   warns:['⚠ <b>两道互锁都要接</b>：接触器互锁（21NC）保命 —— 主触头粘连时按钮互锁拦不住；' +
          '按钮互锁（动断）只是图方便，能从正转直接按反转',
@@ -716,12 +830,46 @@ const BUS = (function(){
   return out;
 })();
 
+/* 通电试车用的电路规格（写法见 K32 那份）。这块板的 KM 只用常开 13-14，21-22 不登记 */
+const SIMSPEC = {
+  src:['fu4-out','fu5-out'],
+  coils:[ {id:'km', a:'km-a1', b:'km-a2', name:'KM', pick:'：主触点合上、13-14 接通'} ],
+  contacts:[
+    {a:'tb-1',  b:'tb-2',  no:true,  by:'sb2', n:'连续 SB2 动合（1-2）'},
+    {a:'tb-3',  b:'tb-4',  no:false, by:'sb2', n:'连续 SB2 动断（3-4）'},
+    {a:'tb-5',  b:'tb-6',  no:true,  by:'sb3', n:'点动 SB3 动合（5-6）'},
+    {a:'tb-7',  b:'tb-8',  no:false, by:'sb3', n:'点动 SB3 动断（7-8）'},
+    {a:'tb-9',  b:'tb-10', no:true,  by:'sb1', n:'停止 SB1 动合（9-10）'},
+    {a:'tb-11', b:'tb-12', no:false, by:'sb1', n:'停止 SB1 动断（11-12）'},
+    {a:'km-13', b:'km-14', no:true,  by:'km',  n:'KM 自锁 13-14'},
+    {a:'fr-95', b:'fr-96', no:false, by:'fr',  n:'热继 95-96'}
+  ],
+  buttons:[
+    {id:'sb2', name:'连续', sub:'SB2', tb:'1~4',  cls:'b-g', start:true},
+    {id:'sb3', name:'点动', sub:'SB3', tb:'5~8',  cls:'b-y', start:true},
+    {id:'sb1', name:'停止', sub:'SB1', tb:'9~12', cls:'b-r'}
+  ],
+  motor:{km:1}, dirName:{'1':'运转'},
+  /* MAINS 下标：0-2 进 QF / 3-5 QF→FU1 / 6-8 FU1→KM / 9-11 KM→FR / 12-14 FR→出线端子排 */
+  mains:{ always:[0,1,2], qf:[3,4,5,6,7,8], out:[9,10,11,12,13,14],
+    run:{ km:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14] }, rev:{} },
+  explain:function(S){
+    const k=S.km.km.on, b=S.btn;
+    if(k && b.sb3.pressed) return '<b>点动</b>：按着 SB3 时它的动断（7-8）已经断开，自锁那条路是断的 —— ' +
+      '线圈只靠 SB3 的动合（5-6）供电，一松手就停';
+    if(k && !b.sb2.pressed) return '<b>自锁</b>：松手照转 —— KM 自己的 13-14 接通，经点动按钮的动断（7-8）' +
+      '回到公共点，等于把 SB2 短接住了';
+    if(k) return '按着 SB2 时，SB2 和 KM 的 13-14 两条路并联着供电；松手后只剩 13-14 那条';
+    return '';
+  }
+};
+
 return { id:'k31', k:'K31',
   name:'电动机单向连续运转接线（带点动控制）',
   sub:'单接触器 · 练控制回路 10 根（淡色主电路板上已接好）',
   title:'单向连续运转 + 点动 · 实物接线图',
   devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
-  mains:MAINS, bus:BUS,
+  mains:MAINS, bus:BUS, sim:SIMSPEC,
   viewBox:'0 0 880 780', hasSchema:true,
   warns:['⚠ <b>四个端子全用上的那个按钮就是点动</b>（端子排 5、6、7、8）——' +
          '只有它要拿自己的动断去掐自锁。端子排 1、2 那个是连续启动',
@@ -796,11 +944,13 @@ const svg = document.getElementById('svg');
 const gBus = el('g',{id:'gBus'});
 const gDev = el('g',{id:'gDevices'});
 const gMain = el('g',{id:'gMains'});
+const gFlow = el('g',{id:'gFlow'});     /* 试车：主电路上流动的白点 */
 const gWire = el('g',{id:'gWires'});
 const gTerm = el('g',{id:'gTerms'});
+const gSim = el('g',{id:'gSim'});       /* 试车：电动机、状态牌、按钮热区 —— 最上层，要点得到 */
 const gLegend = el('g',{id:'gLegend'});
-[gBus,gDev,gMain,gWire,gTerm,gLegend].forEach(function(g){ svg.appendChild(g); });
-const LAYERS = [gBus,gDev,gMain,gWire,gTerm,gLegend];
+[gBus,gDev,gMain,gFlow,gWire,gTerm,gSim,gLegend].forEach(function(g){ svg.appendChild(g); });
+const LAYERS = [gBus,gDev,gMain,gFlow,gWire,gTerm,gSim,gLegend];
 
 /* ==================================================================
    缩放 / 平移：直接改 viewBox，不套 transform
@@ -955,7 +1105,7 @@ function toUser(cx, cy){
   const top = document.getElementById('fsTop'), bot = document.getElementById('fsBot');
   /* 原样搬节点，不复制：按钮上挂的监听、setMode 写的内联 display 全都跟着走。
      每个节点原位留一个注释占位，退出时插回占位前面 */
-  const TOP_IDS = ['circuitBtns','.modes','schemaBar','browseBar','testHead'];
+  const TOP_IDS = ['circuitBtns','.modes','schemaBar','simBar','browseBar','testHead'];
   const BOT_IDS = ['playBar','screwHead','side','hintbar'];
   const held = [];
   function el(k){ return k.charAt(0)==='.' ? document.querySelector(k) : document.getElementById(k); }
@@ -1029,7 +1179,7 @@ function drawDevice(d){
     add(el('rect',{class:'p-case', x:d.x, y:d.y, width:d.w, height:d.h, rx:3}));
     for(let i=1;i<3;i++) add(el('line',{x1:d.x+i*d.w/3, y1:d.y+14, x2:d.x+i*d.w/3, y2:d.y+d.h-14,
       stroke:'#b9c1c9','stroke-width':1}));
-    add(el('rect',{class:'p-lever', x:d.x+10, y:d.y+d.h/2-9, width:d.w-20, height:16, rx:5}));
+    add(el('rect',{class:'p-lever qf-lever', x:d.x+10, y:d.y+d.h/2-9, width:d.w-20, height:16, rx:5}));
     txt('p-brand', d.x+d.w/2, d.y+26, 'DELIXI');
     txt('p-model-d', d.x+d.w/2, d.y+37, 'DZ47s C16');
     drawPins(d); devName(d);
@@ -1071,9 +1221,10 @@ function drawDevice(d){
   if(d.kind==='km'){
     add(el('rect',{class:'p-kmbody', x:d.x, y:d.y, width:d.w, height:d.h, rx:5}));
     add(el('rect',{class:'p-kmface', x:d.x+8, y:d.y+34, width:d.w-16, height:d.h-68, rx:4}));
-    add(el('rect',{class:'p-red', x:d.x+68, y:d.y+62, width:26, height:26, rx:3}));
-    add(el('rect',{class:'p-red', x:d.x+102, y:d.y+62, width:26, height:26, rx:3}));
-    add(el('rect',{x:d.x+94, y:d.y+70, width:14, height:10, fill:'#8d959e'}));
+    /* 正面两块红的是衔铁带着走的触点架：线圈一吸整块往里进（试车时 .km-arm.in 往下挪） */
+    add(el('rect',{class:'p-red km-arm', 'data-km':d.id, x:d.x+68, y:d.y+62, width:26, height:26, rx:3}));
+    add(el('rect',{class:'p-red km-arm', 'data-km':d.id, x:d.x+102, y:d.y+62, width:26, height:26, rx:3}));
+    add(el('rect',{class:'km-arm', 'data-km':d.id, x:d.x+94, y:d.y+70, width:14, height:10, fill:'#8d959e'}));
     txt('p-brand', d.x+34, d.y+58, 'DELIXI', 'middle');
     txt('p-model', d.x+34, d.y+76, 'CJX2s', 'middle');
     txt('p-model', d.x+34, d.y+88, '-0911', 'middle');
@@ -1126,7 +1277,7 @@ function drawDevice(d){
     (d.btns||[]).forEach(function(b,i){
       const cy = d.y+42+i*48;
       add(el('circle',{cx:d.x+40, cy:cy, r:19, fill:'#c9ced3', stroke:'#8d949b','stroke-width':1.2}));
-      add(el('circle',{cx:d.x+40, cy:cy, r:14, fill:b[0]}));
+      add(el('circle',{class:'sbcap', 'data-sbi':i, cx:d.x+40, cy:cy, r:14, fill:b[0]}));
       txt('p-tiny', d.x+66, cy-2, b[1], 'start').setAttribute('style','font-size:8px;fill:#5a3a08');
       txt('p-tiny', d.x+66, cy+8, '端子 '+b[2], 'start').setAttribute('style','font-size:7px;fill:#7a5512');
     });
@@ -1202,14 +1353,16 @@ function buildScene(){
       'stroke-width':1.3, opacity:.45, 'stroke-linejoin':'round'}));
   });
   DEVICES.forEach(drawDevice);
-  (CUR.mains||[]).forEach(function(m){
-    gMain.appendChild(el('path',{class:'mainw', d:polyD(m.p), stroke:m.c}));
+  (CUR.mains||[]).forEach(function(m, i){
+    gMain.appendChild(el('path',{class:'mainw', d:polyD(m.p), stroke:m.c, 'data-mi':i}));
+    gFlow.appendChild(el('path',{class:'flowov', d:polyD(m.p), 'data-mi':i}));
   });
   Object.keys(TPOS).forEach(drawTerminal);
   WIRES.forEach(function(w){
     gWire.appendChild(el('path',{class:'wire', d:wirePathD(w), stroke:w.color,
       'data-idx':w.id, 'data-group':w.group}));
   });
+  buildSim();
   drawLegend();
 }
 
@@ -1535,6 +1688,446 @@ function resetSchema(){
   });
 })();
 
+/* ==================================================================
+   通电试车：实物接线图上合闸、按按钮，电路照真的跑（两块板都有）
+
+   电路模型只有三样东西，全部从当前电路的 sim 规格 + WIRES 现建：
+     导线（WIRES）· 触点（按钮 / 接触器辅助 / 热继 95-96，按状态开合）· 线圈（负载）
+   再加一条「电源边」连 4 号和 5 号熔断器的出线（QF 合着才有）。
+
+   判谁有电流用图论里一条现成的结论：**两条边落在同一个简单回路上
+   ⇔ 它们属于同一个双连通分量**。找出电源边所在的那个分量，里面的线圈就是得电的、
+   里面的导线就是这一刻有电流流过的。这比「从 L1 出发连不连得到」准 ——
+   接到一半的死支路（比如去一颗没按下的按钮）带电但没电流，按连通判会把它也点亮。
+
+   时间上照真的来：复合按钮动断先断、动合后合（SW_DELAY，原理图那屏同一个常量）；
+   线圈得电 PICK 毫秒后才吸合、失电 DROP 毫秒后才释放。正反转直接换向时
+   「先放开 KM1 → KM1 的 21-22 复位 → KM2 才吸得上」这一串，是这几个时间差
+   自然演出来的，不是写死的剧本
+------------------------------------------------------------------ */
+const PICK = 150;
+/* DROP **必须小于 SW_DELAY**：点动松手时动合先断、线圈失电，KM 得赶在点动的动断
+   复位（SW_DELAY 之后）之前放开，否则自锁当场接上，点动变连续（原理图那屏同一个坑） */
+const DROP = 150;
+/* 点一下也算一次完整的按压：慢放之后动合要 SW_DELAY 才合上，而手机上正常点一下
+   只有 100ms 上下 —— 不兜这一下的话「点一下正转没反应」，跟真按钮对不上 */
+const MIN_PRESS = SW_DELAY + PICK + 80;
+const SIM = { on:false, qf:false, frTrip:false, blown:'', motor:0,
+  btn:{}, km:{}, timer:null, log:[], sig:'', held:{}, tLast:0, last:null };
+
+function simReset(){
+  const sp = CUR.sim;
+  SIM.qf=false; SIM.frTrip=false; SIM.blown=''; SIM.motor=0; SIM.log=[]; SIM.sig=''; SIM.held={};
+  SIM.tLast=0; SIM.last=null;
+  SIM.btn={}; sp.buttons.forEach(function(b){ SIM.btn[b.id]={pressed:false, no:false, nc:true, t:0, relAt:0}; });
+  SIM.km={};  sp.coils.forEach(function(c){ SIM.km[c.id]={coil:false, on:false, t:0}; });
+}
+function contactClosed(c){
+  const k = SIM.km[c.by];
+  if(k) return c.no ? k.on : !k.on;
+  if(c.by==='fr') return c.no ? SIM.frTrip : !SIM.frTrip;
+  const b = SIM.btn[c.by];
+  return c.no ? b.no : b.nc;
+}
+/* 电源边所在的双连通分量（Tarjan；按「边」记父亲，平行边也判得对） */
+function srcBlock(E){
+  const adj = {};
+  E.forEach(function(e){
+    (adj[e.a]=adj[e.a]||[]).push([e, e.b]);
+    (adj[e.b]=adj[e.b]||[]).push([e, e.a]);
+  });
+  const disc={}, low={}, stk=[]; let t=0, found=null;
+  function dfs(u, pid){
+    disc[u] = low[u] = ++t;
+    (adj[u]||[]).forEach(function(pr){
+      const e=pr[0], v=pr[1];
+      if(e.id===pid) return;
+      if(disc[v]===undefined){
+        stk.push(e); dfs(v, e.id);
+        low[u] = Math.min(low[u], low[v]);
+        if(low[v] >= disc[u]){
+          const comp=[]; let x;
+          do{ x=stk.pop(); comp.push(x); }while(x!==e);
+          if(!found && comp.some(function(y){ return y.k==='s'; })) found = comp;
+        }
+      } else if(disc[v] < disc[u]){
+        stk.push(e); low[u] = Math.min(low[u], disc[v]);
+      }
+    });
+  }
+  const s = E.filter(function(e){ return e.k==='s'; })[0];
+  if(s) dfs(s.a, null);
+  return found || [];
+}
+function simSolve(){
+  const sp=CUR.sim, E=[];
+  WIRES.forEach(function(w){ E.push({id:'w'+w.id, a:w.from, b:w.to, k:'w'}); });
+  sp.contacts.forEach(function(c,i){ if(contactClosed(c)) E.push({id:'c'+i, a:c.a, b:c.b, k:'c', c:c}); });
+  const res = {coil:{}, cur:{}, edges:[], short:false};
+  sp.coils.forEach(function(c){ res.coil[c.id]=false; });
+  if(!SIM.qf || SIM.blown) return res;
+  /* 不经过任何线圈就把两头连上了＝控制回路短路 */
+  const P={};
+  function fd(x){ if(P[x]===undefined) P[x]=x; while(P[x]!==x){ P[x]=P[P[x]]; x=P[x]; } return x; }
+  E.forEach(function(e){ P[fd(e.a)] = fd(e.b); });
+  if(fd(sp.src[0])===fd(sp.src[1])){ res.short=true; return res; }
+  sp.coils.forEach(function(c){ E.push({id:'k'+c.id, a:c.a, b:c.b, k:'k', coil:c}); });
+  E.push({id:'src', a:sp.src[0], b:sp.src[1], k:'s'});
+  res.edges = srcBlock(E);
+  res.edges.forEach(function(e){ res.cur[e.id]=true; if(e.k==='k') res.coil[e.coil.id]=true; });
+  return res;
+}
+
+/* 动作记录：一次操作（按下 / 松开 / 合闸…）起一组，组里的每一步记相对时间 */
+function simAct(m, t){
+  SIM.log.push({h:m, t0:(t===undefined ? performance.now() : t), items:[]});
+  if(SIM.log.length>3) SIM.log.shift();
+}
+function simLog(m, t){
+  if(t===undefined) t = performance.now();
+  if(!SIM.log.length) simAct('', t);
+  const g = SIM.log[SIM.log.length-1];
+  g.items.push({t:Math.max(0, t-g.t0), m:m});
+  if(g.items.length>12) g.items.shift();
+}
+/* 这对触点这题接了没有 —— 没接的（比如停止按钮的动合）动了也不值得记 */
+function usedPair(bid, no){
+  return CUR.sim.contacts.some(function(c){
+    return c.by===bid && c.no===no && (termCount(c.a)>0 || termCount(c.b)>0);
+  });
+}
+function simBtnSpec(id){ return CUR.sim.buttons.filter(function(x){ return x.id===id; })[0]; }
+function simPress(id, down){
+  const s=SIM.btn[id]; if(!s || !SIM.on) return;
+  const b=simBtnSpec(id), now=performance.now();
+  simAdvance(now);      /* 先把到这一刻为止该发生的事按时间顺序补完，再处理这一下 */
+  if(down){
+    if(s.pressed){ s.relAt=0; return; }
+    s.pressed=true; s.t=now; s.relAt=0; s.nc=false;
+    simAct('按下 '+b.name+' '+b.sub);
+    if(usedPair(id,false)) simLog(b.name+'的动断'+(usedPair(id,true)?'先':'')+'断开');
+  } else {
+    if(!s.pressed) return;
+    if(now - s.t < MIN_PRESS){ s.relAt = s.t + MIN_PRESS; return; }
+    simRelease(id, now);
+  }
+  simTick();
+}
+function simRelease(id, now){
+  const s=SIM.btn[id], b=simBtnSpec(id);
+  s.pressed=false; s.t=now; s.relAt=0; s.no=false;
+  simAct('松开 '+b.name+' '+b.sub, now);
+  if(usedPair(id,true)) simLog(b.name+'的动合'+(usedPair(id,false)?'先':'')+'断开', now);
+}
+function simQF(on){
+  if(!SIM.on) return;
+  simAdvance(performance.now());
+  SIM.qf=on; simAct(on ? 'QF 合闸' : 'QF 分闸'); simTick();
+}
+function simFR(trip){
+  if(!SIM.on) return;
+  simAdvance(performance.now());
+  SIM.frTrip=trip;
+  simAct(trip ? '模拟过载：热继电器脱扣，95-96 断开' : '热继电器复位');
+  simTick();
+}
+
+/* 仿真按 STEP 小步推进，每一步用「那一步的时刻」，不用「这次定时器醒来的时刻」。
+   否则定时器一被拖慢（手机发热、CSS 动画一多），同一次醒来里「松手」会排在
+   「接触器该吸合了」前面处理 —— 轻点正转就起不来（截图环境里抓到过一次） */
+const STEP = 10;
+function simAdvance(now){
+  if(!SIM.tLast || now - SIM.tLast > 2000) SIM.tLast = now - STEP;
+  let t = SIM.tLast;
+  while(t + STEP < now){ t += STEP; simStep(t); }
+  simStep(now);
+  SIM.tLast = now;
+}
+function simTick(){
+  if(!SIM.on) return;
+  simAdvance(performance.now());
+  simRender(SIM.last);
+}
+function simStep(now){
+  const sp=CUR.sim;
+  sp.buttons.forEach(function(b){
+    const s=SIM.btn[b.id];
+    if(s.pressed && s.relAt && now>=s.relAt) simRelease(b.id, s.relAt);
+    if(s.pressed && !s.no && now-s.t>=SW_DELAY){ s.no=true; if(usedPair(b.id,true)) simLog(b.name+'的动合接通', s.t+SW_DELAY); }
+    if(!s.pressed && !s.nc && now-s.t>=SW_DELAY){ s.nc=true; if(usedPair(b.id,false)) simLog(b.name+'的动断复位', s.t+SW_DELAY); }
+  });
+  let r = simSolve();
+  if(r.short){
+    SIM.blown = '控制回路短路，4 号熔断器熔断';
+    simLog('⚠ '+SIM.blown, now);
+    r = simSolve();
+  }
+  let moved=false;
+  sp.coils.forEach(function(c){
+    const k=SIM.km[c.id], e=r.coil[c.id];
+    if(e!==k.coil){ k.coil=e; k.t=now; simLog(c.name+(e?' 线圈得电':' 线圈失电'), now); }
+    if(k.on!==k.coil && now-k.t>=(k.coil?PICK:DROP)){
+      k.on=k.coil; moved=true;
+      simLog(c.name+(k.on ? ' 吸合'+(c.pick||'') : ' 释放'), now);
+    }
+  });
+  if(sp.mainShort && SIM.qf && sp.mainShort.every(function(id){ return SIM.km[id].on; })){
+    SIM.qf=false; moved=true;
+    simLog('⚠ 两只接触器同时吸合 —— 主电路相间短路，QF 跳闸', now);
+  }
+  if(moved) r = simSolve();
+  let dir=0;
+  if(SIM.qf) sp.coils.forEach(function(c){ if(SIM.km[c.id].on) dir += (sp.motor[c.id]||0); });
+  if(dir!==SIM.motor){ SIM.motor=dir; simLog(dir ? '电动机'+sp.dirName[dir] : '电动机停转', now); }
+  SIM.last = r;
+}
+
+/* 电流路径：从 4 号熔断器出发沿着「有电流」的边走一遍，把经过的触点和线圈按顺序念出来 */
+function simPathText(r){
+  const E = r.edges.filter(function(e){ return e.k!=='s'; });
+  if(!E.length) return '';
+  const adj={};
+  E.forEach(function(e){ (adj[e.a]=adj[e.a]||[]).push(e); (adj[e.b]=adj[e.b]||[]).push(e); });
+  const s0=CUR.sim.src[0], seen={}, used={}, out=[], q=[s0];
+  seen[s0]=1;
+  while(q.length){
+    const u=q.shift();
+    (adj[u]||[]).forEach(function(e){
+      if(used[e.id]) return;
+      used[e.id]=1;
+      if(e.k==='c') out.push(e.c.n);
+      if(e.k==='k') out.push('<b>'+e.coil.name+' 线圈</b>');
+      const v = e.a===u ? e.b : e.a;
+      if(!seen[v]){ seen[v]=1; q.push(v); }
+    });
+  }
+  return '4号熔断器 → '+out.join(' → ')+' → 5号熔断器';
+}
+function setPill(id, st){
+  const g = gSim.querySelector('[data-pill="'+id+'"]');
+  if(!g) return;
+  if(!st){ g.style.display='none'; return; }
+  g.style.display='';
+  g.setAttribute('class','sim-pill-g '+st[1]);
+  g.querySelector('text').textContent = st[0];
+}
+function simRender(r){
+  const sp=CUR.sim;
+  const kmS = sp.coils.map(function(c){ const k=SIM.km[c.id]; return (k.coil?1:0)+(k.on?2:0); }).join('');
+  const btS = sp.buttons.map(function(b){ return SIM.btn[b.id].pressed?1:0; }).join('');
+  const lgS = SIM.log.map(function(g){ return g.t0+':'+g.items.length; }).join(',');
+  const sig = [Object.keys(r.cur).sort().join(','), SIM.qf, SIM.frTrip, SIM.blown, SIM.motor, kmS, btS, lgS].join('|');
+  if(sig===SIM.sig) return;
+  SIM.sig = sig;
+
+  WIRES.forEach(function(w){
+    const p=wirePath(w.id); if(!p) return;
+    const on = !!r.cur['w'+w.id];
+    p.classList.add('simw'); p.classList.remove('dim','hi');
+    p.classList.toggle('live', on);
+    p.style.opacity = on ? 1 : .55;
+  });
+  sp.coils.forEach(function(c){
+    const k=SIM.km[c.id];
+    gDev.querySelectorAll('.km-arm[data-km="'+c.id+'"]').forEach(function(a){ a.classList.toggle('in', k.on); });
+    setPill(c.id, k.on ? (k.coil ? ['吸合','ok'] : ['释放中','mid']) : (k.coil ? ['吸合中','mid'] : ['释放','off']));
+  });
+  gDev.querySelectorAll('.qf-lever').forEach(function(l){ l.classList.toggle('off', !SIM.qf); });
+  setPill('qf', SIM.qf ? ['合闸','ok'] : ['分闸','off']);
+  setPill('fr', SIM.frTrip ? ['脱扣','warn'] : null);
+  sp.buttons.forEach(function(b,i){
+    const cap = gDev.querySelector('.sbcap[data-sbi="'+i+'"]');
+    if(cap) cap.classList.toggle('down', SIM.btn[b.id].pressed);
+  });
+  document.querySelectorAll('#simBtns button').forEach(function(bt){
+    bt.classList.toggle('down', !!(SIM.btn[bt.dataset.sim]||{}).pressed);
+  });
+
+  /* 主电路：QF 上口常带电；QF 合上后一路带电到接触器进线；
+     哪只接触器吸着，就从它那一路起有电流（白点往电动机那头流） */
+  const M=sp.mains, live={}, run={}, rev={};
+  M.always.forEach(function(i){ live[i]=1; });
+  if(SIM.qf){
+    M.qf.forEach(function(i){ live[i]=1; });
+    if(sp.coils.some(function(c){ return SIM.km[c.id].on; })) (M.out||[]).forEach(function(i){ live[i]=1; });
+  }
+  if(SIM.motor) sp.coils.forEach(function(c){
+    if(!SIM.km[c.id].on) return;
+    (M.run[c.id]||[]).forEach(function(i){ run[i]=1; });
+    ((M.rev||{})[c.id]||[]).forEach(function(i){ rev[i]=1; });
+  });
+  gMain.querySelectorAll('path.mainw').forEach(function(p){
+    const i = +p.getAttribute('data-mi');
+    p.classList.toggle('dead', !live[i] && !run[i]);
+    p.classList.toggle('run', !!run[i]);
+  });
+  gFlow.querySelectorAll('path.flowov').forEach(function(p){
+    const i = +p.getAttribute('data-mi');
+    p.classList.toggle('on', !!run[i]);
+    p.classList.toggle('rev', !!rev[i]);
+  });
+  const rot = gSim.querySelector('.rotor');
+  if(rot){ rot.classList.toggle('cw', SIM.motor>0); rot.classList.toggle('ccw', SIM.motor<0); }
+  const mt = gSim.querySelector('.sim-mst');
+  if(mt) mt.textContent = SIM.motor ? sp.dirName[SIM.motor] : '停';
+
+  const q=document.getElementById('simQf'), f=document.getElementById('simFr');
+  q.textContent = SIM.qf ? '分闸 QF' : '合闸 QF';     q.classList.toggle('on', SIM.qf);
+  f.textContent = SIM.frTrip ? '热继复位' : '模拟过载'; f.classList.toggle('warn', SIM.frTrip);
+  simPanel(r);
+}
+function simPanel(r){
+  const sp=CUR.sim;
+  let cls='off', st, why='';
+  if(SIM.blown){ cls='warn'; st='熔断器烧了'; why=SIM.blown+'。点「全部复位」换上新的再来'; }
+  else if(!SIM.qf){ st='没通电'; why='先点「合闸 QF」（也可以直接点图上的断路器）—— QF 不合，4、5 号熔断器后面都是空的，按什么都没反应'; }
+  else if(SIM.motor){ cls='on'; st='电动机'+sp.dirName[SIM.motor]+'中'; }
+  else if(SIM.frTrip){ cls='warn'; st='热继电器脱扣了'; why='95-96 断开，整个控制回路断电。现场要先查清过载原因，再按复位'; }
+  else {
+    st='控制回路有电 · 电动机停着';
+    why='按'+sp.buttons.filter(function(b){ return b.start; }).map(function(b){ return '「'+b.name+'」'; }).join('或')+'启动';
+  }
+  const path = simPathText(r);
+  const ex = sp.explain ? sp.explain(SIM) : '';
+  const logH = SIM.log.slice().reverse().map(function(g){
+    return '<div class="lg">'+(g.h ? '<div class="lh">▶ '+g.h+'</div>' : '')+
+      g.items.map(function(it){
+        return '<div><span class="t">+'+(it.t/1000).toFixed(2)+'s</span>'+it.m+'</div>';
+      }).join('')+'</div>';
+  }).join('');
+  document.getElementById('side').innerHTML =
+    '<div class="srun '+cls+'"><div class="st">'+st+'</div>'+
+    (why ? '<div class="why">'+why+'</div>' : '')+
+    (ex ? '<div class="why">'+ex+'</div>' : '')+
+    (path ? '<div class="path"><b>电流路径</b>：'+path+'</div>' : '')+
+    '</div>'+(logH ? '<div class="simlog">'+logH+'</div>' : '');
+}
+
+/* 试车那一层（电动机、状态牌、可按的热区）跟着 buildScene 一起重建，平时藏着 */
+function buildSim(){
+  gSim.style.display = SIM.on ? '' : 'none';
+  const sp = CUR.sim; if(!sp) return;
+  function dev(k){ return DEVICES.filter(function(d){ return d.kind===k; })[0]; }
+  function pill(id, x, y, w){
+    const g = el('g',{'data-pill':id, class:'sim-pill-g off'});
+    g.appendChild(el('rect',{x:x-w/2, y:y-8, width:w, height:16, rx:8}));
+    g.appendChild(el('text',{x:x, y:y+.5, class:'sim-pill'}));
+    gSim.appendChild(g);
+  }
+  sp.coils.forEach(function(c){
+    const d = DEVICES.filter(function(x){ return x.id===c.id; })[0];
+    if(d) pill(c.id, d.x+98, d.y+106, 46);
+  });
+  const qf = dev('mcb');
+  if(qf){
+    pill('qf', qf.x+qf.w/2, qf.y+72, 40);
+    const h = el('rect',{x:qf.x, y:qf.y, width:qf.w, height:qf.h, class:'sim-hit'});
+    /* 不能用 click：缩放那套在 svg 的 pointerdown 里 setPointerCapture，
+       之后的 pointerup/click 全被改投给 svg，这块热区永远收不到 click（探针查出来的）。
+       跟按钮盒一样在 pointerdown 就处理，并挡住冒泡不让缩放抢捕获 */
+    h.addEventListener('pointerdown', function(e){
+      e.stopPropagation(); e.preventDefault();
+      simQF(!SIM.qf);
+    });
+    gSim.appendChild(h);
+  }
+  const fr = dev('fr');
+  if(fr) pill('fr', fr.x+60, fr.y+51, 40);
+  const sb = dev('sb');
+  if(sb) sp.buttons.forEach(function(b,i){
+    const h = el('circle',{cx:sb.x+40, cy:sb.y+42+i*48, r:22, class:'sim-hit'});
+    /* 挡住冒泡：不然缩放那套会把「按住按钮」当成开始拖图 */
+    h.addEventListener('pointerdown', function(e){
+      e.stopPropagation(); e.preventDefault();
+      SIM.held[b.id]=1; simPress(b.id, true);
+    });
+    gSim.appendChild(h);
+  });
+  /* 电动机：画在出线端子排正下方，三根电缆从 U V W 下来 */
+  const tm = dev('tbm');
+  if(tm && tm.pins && tm.pins.length===3){
+    const pins = tm.pins.map(function(p){ return [tm.x+p[0], tm.y+p[1]]; });
+    const cx = pins[1][0], cy = tm.y+tm.h+74;
+    const cols = ['#e0a92e','#3fa845','#cf4436'];
+    pins.forEach(function(p,i){
+      const bx = cx-12+i*12;
+      gSim.appendChild(el('path',{d:'M'+p[0]+','+(p[1]+5)+' L'+p[0]+','+(cy-52)+' L'+bx+','+(cy-44)+' L'+bx+','+(cy-38),
+        fill:'none', stroke:cols[i], 'stroke-width':3, 'stroke-linejoin':'round', opacity:.8}));
+    });
+    gSim.appendChild(el('rect',{x:cx-18, y:cy-40, width:36, height:10, rx:2, fill:'#4a525c'}));
+    gSim.appendChild(el('rect',{x:cx-30, y:cy+26, width:60, height:8, rx:2, fill:'#4a525c'}));
+    gSim.appendChild(el('circle',{cx:cx, cy:cy, r:30, fill:'#6f7a85', stroke:'#39424b', 'stroke-width':1.6}));
+    gSim.appendChild(el('circle',{cx:cx, cy:cy, r:23, fill:'#46505a'}));
+    /* 转子：外面垫一个看不见的整圆，fill-box 的中心才落在轴上（三片叶本身不对称） */
+    const rot = el('g',{class:'rotor'});
+    rot.appendChild(el('circle',{cx:cx, cy:cy, r:22, fill:'none'}));
+    for(let i=0;i<3;i++){
+      rot.appendChild(el('ellipse',{cx:cx, cy:cy-11, rx:5, ry:10, fill:'#cfd6dc',
+        transform:'rotate('+(i*120)+' '+cx+' '+cy+')'}));
+    }
+    rot.appendChild(el('circle',{cx:cx, cy:cy, r:4.5, fill:'#8d959e'}));
+    gSim.appendChild(rot);
+    /* 靠左要写进 style：.dev-name 的 CSS 是居中，class 规则会盖掉 text-anchor 属性 */
+    const t1 = el('text',{x:cx+40, y:cy-6, class:'dev-name', style:'text-anchor:start'});
+    t1.textContent = '电动机 M 3~'; gSim.appendChild(t1);
+    const t2 = el('text',{x:cx+40, y:cy+12, class:'sim-mst', 'text-anchor':'start'});
+    t2.textContent = '停'; gSim.appendChild(t2);
+  }
+}
+function buildSimBtns(){
+  const box = document.getElementById('simBtns');
+  box.innerHTML = CUR.sim.buttons.map(function(b){
+    return '<button data-sim="'+b.id+'" class="'+b.cls+'">按住 '+b.name+'<span>'+b.sub+' · 端子排 '+b.tb+'</span></button>';
+  }).join('');
+  box.querySelectorAll('button').forEach(function(bt){
+    const id = bt.dataset.sim;
+    /* 按住 / 松手靠 _held 记，不看 .down —— .down 是渲染层按仿真状态画的，
+       点一下之后「最短按压时间」里它还亮着，拿它当判据会漏掉松手 */
+    function down(e){ e.preventDefault(); bt._held=true; simPress(id, true); }
+    function up(e){ e.preventDefault(); if(!bt._held) return; bt._held=false; simPress(id, false); }
+    bt.addEventListener('pointerdown', down);
+    bt.addEventListener('pointerup', up);
+    bt.addEventListener('pointerleave', up);
+    bt.addEventListener('pointercancel', up);
+    bt.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  });
+}
+function simEnter(){
+  if(!CUR.sim) return;
+  simReset();
+  buildSimBtns();
+  SIM.on = true;
+  gSim.style.display = '';
+  if(SIM.timer) clearInterval(SIM.timer);
+  SIM.timer = setInterval(simTick, 30);
+  simTick();
+}
+function simExit(){
+  if(!SIM.on) return;
+  SIM.on = false;
+  if(SIM.timer){ clearInterval(SIM.timer); SIM.timer=null; }
+  SIM.held = {};
+  gSim.style.display = 'none';
+  gWire.querySelectorAll('path.wire').forEach(function(p){ p.classList.remove('simw','live'); p.style.opacity=1; });
+  gMain.querySelectorAll('path.mainw').forEach(function(p){ p.classList.remove('dead','run'); });
+  gFlow.querySelectorAll('path.flowov').forEach(function(p){ p.classList.remove('on','rev'); });
+  gDev.querySelectorAll('.km-arm,.qf-lever,.sbcap').forEach(function(e){ e.classList.remove('in','off','down'); });
+}
+/* 图上按钮盒按下去之后，手指在哪儿抬起来都算松手 */
+function simReleaseHeld(){
+  Object.keys(SIM.held).forEach(function(id){ delete SIM.held[id]; simPress(id, false); });
+}
+window.addEventListener('pointerup', simReleaseHeld);
+window.addEventListener('pointercancel', simReleaseHeld);
+/* 连按两下 QF（合了又分）不该触发「双击放大」 */
+gSim.addEventListener('dblclick', function(e){ e.stopPropagation(); });
+document.getElementById('simQf').addEventListener('click', function(){ simQF(!SIM.qf); });
+document.getElementById('simFr').addEventListener('click', function(){ simFR(!SIM.frTrip); });
+document.getElementById('simRst').addEventListener('click', function(){
+  if(!SIM.on) return;
+  simReset(); simAct('全部复位'); simTick();
+});
+
 /* ------------------------------------------------------------------
    状态与三种模式
 ------------------------------------------------------------------ */
@@ -1585,6 +2178,7 @@ function renderBrowse(){
   }
 }
 function onTermHover(id){
+  if(state.mode==='sim') return;     /* 试车时下面那块是仪表盘，悬停说明别来覆盖它 */
   if(state.mode!=='browse') return;
   state.hoverTerm=id; renderBrowse();
 }
@@ -1783,6 +2377,8 @@ function renderScrew(){
 ------------------------------------------------------------------ */
 function setMode(m){
   state.mode=m;
+  simExit();
+  document.getElementById('simBar').style.display = m==='sim' ? 'block' : 'none';
   document.querySelectorAll('.modes button').forEach(function(b){ b.classList.toggle('on', b.dataset.mode===m); });
   const wantSchema = (m==='schema');
   document.getElementById('schemaBar').style.display = wantSchema ? 'block' : 'none';
@@ -1790,7 +2386,7 @@ function setMode(m){
   document.getElementById('playBar').style.display   = m==='step' ? 'flex' : 'none';
   /* 上螺丝顺序是一长列步骤（K31 有 16 步），吸底的记法条会浮在列表中间盖住两三步；
      而这个模式本来也不显示分组记法，直接收起来。原理图那屏有自己的状态条，也不用它 */
-  document.getElementById('hintbar').style.display = (m==='screw'||wantSchema) ? 'none' : 'block';
+  document.getElementById('hintbar').style.display = (m==='screw'||m==='sim'||wantSchema) ? 'none' : 'block';
   document.getElementById('testHead').innerHTML = '';
   document.getElementById('screwHead').innerHTML = '';
 
@@ -1819,6 +2415,7 @@ function setMode(m){
   if(m==='test'){ startTest(); }
   if(m==='browse'){ renderBrowse(); }
   if(m==='screw'){ renderScrew(); }
+  if(m==='sim'){ simEnter(); }
 }
 
 /* 分组按钮跟着电路重建：两块板的组数和颜色都不一样，
@@ -1910,7 +2507,19 @@ window.__MRW = {
   setMode: setMode, setGroup: setGroup,
   startTest: startTest, answer: answerAttempt,
   getState: function(){ return state; },
-  wirePathEl: wirePath
+  wirePathEl: wirePath,
+  sim: {
+    press: function(id, down){ simPress(id, down); },
+    qf: function(on){ simQF(on); },
+    fr: function(t){ simFR(t); },
+    reset: function(){ simReset(); simTick(); },
+    tick: function(){ simTick(); },
+    get S(){ return SIM; },
+    liveWires: function(){
+      return Object.keys(simSolve().cur).filter(function(k){ return k.charAt(0)==='w'; })
+        .map(function(k){ return +k.slice(1); }).sort(function(a,b){ return a-b; });
+    }
+  }
 };
 
 })();
