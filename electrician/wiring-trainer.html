@@ -93,6 +93,14 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .stage{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;
   padding:6px;overflow:hidden}
 .stage svg{display:block;width:100%;height:auto;touch-action:none;-webkit-user-select:none;user-select:none}
+/* 全屏：卡片撑成盖满整个视口的浮层，viewBox 不用变——容器一变大，
+   同一张图自然跟着放大（SVG 默认 preserveAspectRatio 会居中撑满，不裁不变形）。
+   高度优先用 100dvh（跟手机地址栏收放走），不支持的浏览器落回 100vh，
+   两条写在一起靠「不认的属性值整条规则被丢弃」自然降级，不用查 supports */
+.stage.fs{position:fixed;inset:0;z-index:50;border-radius:0;padding:10px 6px;
+  height:100vh;height:100dvh;display:flex;flex-direction:column}
+.stage.fs svg{width:100%;height:100%;flex:1 1 auto;min-height:0}
+body.stage-fs-lock{overflow:hidden}
 .zoombar{position:absolute;right:9px;bottom:9px;display:flex;flex-direction:column;gap:4px;z-index:3}
 .zoombar button{width:34px;height:34px;border:1px solid var(--line);background:rgba(255,255,255,.9);
   color:var(--tx2);border-radius:9px;font-size:1rem;font-weight:700;line-height:1;
@@ -272,6 +280,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
       <button id="zIn" title="放大">＋</button>
       <button id="zOut" title="缩小">－</button>
       <button id="zRs" class="rs" title="复位">复位</button>
+      <button id="zFs" title="全屏">⛶</button>
     </div>
   </div>
 
@@ -908,6 +917,36 @@ function toUser(cx, cy){
   document.getElementById('zOut').addEventListener('click', function(){ const m=mid(); zoomAt(1/1.6,m.x,m.y); });
   document.getElementById('zRs').addEventListener('click', zoomReset);
   setTimeout(function(){ const t=document.getElementById('zoomTip'); if(t) t.style.opacity=0; }, 5000);
+})();
+
+/* 全屏：把 .stage 变成盖满视口的定位。viewBox 本身不用变，
+   容器一变大图跟着变大——但图（860×720，接近正方形）配手机竖屏（又窄又高），
+   默认 xMidYMid meet 会按宽度撑满、上下留一大片空白（实测量出来的，不是猜的）。
+   进全屏那一刻主动放大到「按高度撑满」，代价是左右会被裁掉一部分，
+   反正全屏之后有的是空间拖动，裁掉的部分挪过去就看到了，比空着强 */
+(function bindFullscreen(){
+  const stage = document.querySelector('.stage');
+  const btn = document.getElementById('zFs');
+  function fitHeight(){
+    const r = stage.getBoundingClientRect();
+    if(!r.width || !r.height || !VB0) return;
+    const vbAspect = VB0.w/VB0.h, ctAspect = r.width/r.height;
+    if(ctAspect >= vbAspect) return;         /* 容器比图还宽，meet 已经是按高度撑满了 */
+    const mid = {x:VB0.x+VB0.w/2, y:VB0.y+VB0.h/2};
+    zoomAt(vbAspect/ctAspect, mid.x, mid.y);
+  }
+  function set(on){
+    stage.classList.toggle('fs', on);
+    document.body.classList.toggle('stage-fs-lock', on);
+    btn.textContent = on ? '✕' : '⛶';
+    btn.title = on ? '退出全屏' : '全屏';
+    if(on){ requestAnimationFrame(function(){ requestAnimationFrame(fitHeight); }); }
+    else { zoomReset(); }
+  }
+  btn.addEventListener('click', function(){ set(!stage.classList.contains('fs')); });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && stage.classList.contains('fs')) set(false);
+  });
 })();
 
 /* ---- 画元件：一律照实物面板画（型号、孔位、颜色都对着照片来）----
