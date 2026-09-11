@@ -93,19 +93,33 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .stage{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;
   padding:6px;overflow:hidden}
 .stage svg{display:block;width:100%;height:auto;touch-action:none;-webkit-user-select:none;user-select:none}
-/* 全屏：卡片撑成盖满整个视口的浮层，viewBox 不用变——容器一变大，
-   同一张图自然跟着放大（SVG 默认 preserveAspectRatio 会居中撑满，不裁不变形）。
-   高度优先用 100dvh（跟手机地址栏收放走），不支持的浏览器落回 100vh，
-   两条写在一起靠「不认的属性值整条规则被丢弃」自然降级，不用查 supports */
-.stage.fs{position:fixed;inset:0;z-index:50;border-radius:0;padding:10px 6px;
-  height:100vh;height:100dvh;display:flex;flex-direction:column}
+/* 全屏：#fsBox 是盖满视口的浮层，上中下三段 ——
+   上：电路 / 模式 / 分组 / 自测题；中：舞台（吃掉剩下的高度）；下：逐根播放 / 说明 / 记法。
+   这些工具条是**原样搬进来的节点**（不是复制），事件和状态都跟着走，退出时搬回原位。
+   上下两段各封顶 32%，内容多了自己滚，保证图至少占四成屏。
+   高度优先 100dvh（跟手机地址栏收放走），不认的浏览器整条丢弃、落回 100vh */
+#fsBox:not([hidden]){position:fixed;inset:0;z-index:50;background:var(--bg);
+  display:flex;flex-direction:column;gap:6px;padding:6px 6px 0;height:100vh;height:100dvh}
+.fs-top,.fs-bot{flex:none;max-height:32vh;max-height:32dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.fs-bot{padding-bottom:env(safe-area-inset-bottom)}
+.stage.fs{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 .stage.fs svg{width:100%;height:100%;flex:1 1 auto;min-height:0}
 body.stage-fs-lock{overflow:hidden}
+/* 全屏里一律压紧：电路卡只留「K31 10 根」那一行（名字是裸文本节点，
+   只能靠 font-size:0 藏，.k 自己再把字号要回来） */
+#fsBox .circuits,#fsBox .modes,#fsBox .toolbar{margin-bottom:6px}
+#fsBox .circuits button{font-size:0;padding:5px 8px}
+#fsBox .circuits button .k{font-size:.78rem;margin:0}
+#fsBox .modes button{padding:6px 4px;font-size:.74rem}
+#fsBox .side{margin-top:6px;padding:7px 10px;font-size:.78rem}
+#fsBox .playbar{margin-top:0}
+#fsBox .hintbar{position:static;margin-top:6px;padding:7px 10px}
 .zoombar{position:absolute;right:9px;bottom:9px;display:flex;flex-direction:column;gap:4px;z-index:3}
 .zoombar button{width:34px;height:34px;border:1px solid var(--line);background:rgba(255,255,255,.9);
   color:var(--tx2);border-radius:9px;font-size:1rem;font-weight:700;line-height:1;
   box-shadow:0 1px 3px rgba(0,0,0,.08);padding:0}
 .zoombar button.rs{font-size:.6rem;font-weight:600}
+.zoombar button svg{display:block;margin:auto}
 /* 提示条放**左下角**：左上是断路器和进线，压在那儿正好挡住这一屏最该先看的东西 */
 .zoomtip{margin-top:6px;font-size:.68rem;color:var(--tx3);line-height:1.45}
 .legendrow{display:flex;align-items:flex-start;gap:8px;margin-top:8px}
@@ -280,7 +294,7 @@ body.stage-fs-lock{overflow:hidden}
       <button id="zIn" title="放大">＋</button>
       <button id="zOut" title="缩小">－</button>
       <button id="zRs" class="rs" title="复位">复位</button>
-      <button id="zFs" title="全屏">⛶</button>
+      <button id="zFs" title="全屏"></button>
     </div>
   </div>
 
@@ -300,6 +314,11 @@ body.stage-fs-lock{overflow:hidden}
     <div id="warnBox" hidden></div>
   </div>
   <div class="foot-pad"></div>
+</div>
+
+<div id="fsBox" hidden>
+  <div class="fs-top" id="fsTop"></div>
+  <div class="fs-bot" id="fsBot"></div>
 </div>
 
 <script>
@@ -927,6 +946,37 @@ function toUser(cx, cy){
 (function bindFullscreen(){
   const stage = document.querySelector('.stage');
   const btn = document.getElementById('zFs');
+  /* 四个角的全屏图标自己画：字符 ⛶ 在截图环境里是空方框，手机字体也不一定有 */
+  const ICON_FS = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>';
+  btn.innerHTML = ICON_FS;
+  const box = document.getElementById('fsBox');
+  const top = document.getElementById('fsTop'), bot = document.getElementById('fsBot');
+  /* 原样搬节点，不复制：按钮上挂的监听、setMode 写的内联 display 全都跟着走。
+     每个节点原位留一个注释占位，退出时插回占位前面 */
+  const TOP_IDS = ['circuitBtns','.modes','schemaBar','browseBar','testHead'];
+  const BOT_IDS = ['playBar','screwHead','side','hintbar'];
+  const held = [];
+  function el(k){ return k.charAt(0)==='.' ? document.querySelector(k) : document.getElementById(k); }
+  function move(k, dest, before){
+    const n = el(k); if(!n) return;
+    const ph = document.createComment('fs:'+k);
+    n.parentNode.insertBefore(ph, n);
+    held.push([n, ph]);
+    dest.insertBefore(n, before || null);
+  }
+  function enter(){
+    TOP_IDS.forEach(function(k){ move(k, top); });
+    move('.stage', box, bot);
+    BOT_IDS.forEach(function(k){ move(k, bot); });
+    box.hidden = false;
+  }
+  function leave(){
+    box.hidden = true;
+    held.forEach(function(p){ p[1].parentNode.insertBefore(p[0], p[1]); p[1].remove(); });
+    held.length = 0;
+  }
   function fitHeight(){
     const r = stage.getBoundingClientRect();
     if(!r.width || !r.height || !VB0) return;
@@ -936,9 +986,10 @@ function toUser(cx, cy){
     zoomAt(vbAspect/ctAspect, mid.x, mid.y);
   }
   function set(on){
+    if(on) enter(); else leave();
     stage.classList.toggle('fs', on);
     document.body.classList.toggle('stage-fs-lock', on);
-    btn.textContent = on ? '✕' : '⛶';
+    btn.innerHTML = on ? '✕' : ICON_FS;
     btn.title = on ? '退出全屏' : '全屏';
     if(on){ requestAnimationFrame(function(){ requestAnimationFrame(fitHeight); }); }
     else { zoomReset(); }
