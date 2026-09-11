@@ -150,7 +150,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .term-dot.right{fill:var(--green);stroke:var(--green)}
 .tlabel{font-size:9.5px;fill:var(--tx2);font-family:ui-monospace,Menlo,Consolas,monospace}
 /* 端子排是黑机身，深灰的号码画上去看不见（截图才发现：12 个端子一个号都没有） */
-.tlabel.ondark{fill:#e3e8ec}
+.tlabel.onstrip{fill:#2a2e33;text-anchor:middle;font-size:8.5px;font-weight:700}
 .badge-c{fill:#fff;stroke:var(--tx2);stroke-width:1}
 .badge-t{font-size:8px;fill:var(--tx2);text-anchor:middle;dominant-baseline:middle;font-weight:700}
 .hide-labels .tlabel{display:none}
@@ -348,19 +348,23 @@ const FR_PINS = [[28,18,'1'],[60,18,'3'],[92,18,'5'],[28,78,'2'],[60,78,'4'],[92
    主电路（断路器→三只熔断器→两个接触器→热继电器→出线端子排）画出来当背景、
    压暗，**不纳入练习**。板上的实际状态是「主回路已接、控制回路一根没接」。
 
-   **接线换成了 11.6 那节讲的双重互锁标准接法（2026-09-09 重做）。**
-   早先那版 14 根是错的：`tb-12`（停止按钮动断的另一端）根本没接线，
-   回路不闭合 —— 拓扑走一遍就能发现，当初没走。现在这版逐条验过：
+   **接线是 11.6 那节的双重互锁，方向照 K31 他的实做习惯（2026-09-09 定）。**
+   中间返过两次工，都记下来：
+   ① 最早那版 14 根**回路不闭合** —— `tb-12`（停止按钮动断的另一端）根本没接线。
+   ② 第二版把两只熔断器的角色对调了（4 号去接停止按钮），**他一眼看出来**：
+      「你这 4 号熔断器出来怎么接的端子排？不是应该接 95 吗」。
+      他 K31 板上的实做是 **4 号进线圈 A1、5 号接 FR 95**，停止和热继电器都在 5 号那一侧。
+      两块板方向不一致的话，他等于要记两套 —— 所以统一成 K31 的方向。
 
-     L1 → FU4 → tb11 →[SB1 停止·动断]→ tb12 ─┬─ tb1 ─┬─ tb5
-                                              └─ KM1-13 ── KM2-13
-     正转：tb1 →[SB2 动合]→ tb2 →[跳线]→ tb7 →[SB3 动断]→ tb8
-           → KM2-21 →[KM2 常闭]→ KM2-22 → KM1 线圈 A1
-           自锁：KM1-13 →[KM1 常开]→ KM1-14 → tb2
-     反转：tb5 →[SB3 动合]→ tb6 →[跳线]→ tb3 →[SB2 动断]→ tb4
-           → KM1-21 →[KM1 常闭]→ KM1-22 → KM2 线圈 A1
-           自锁：KM2-13 →[KM2 常开]→ KM2-14 → tb6
-     回：KM1-A2 ── KM2-A2 → FR 95 →[FR 常闭]→ 96 → FU5 → L2
+     L1 → FU4 → KM1-A1 ── KM2-A1              （两个线圈的 A1 并联，直接吃 4 号熔断器）
+     正转：KM1-A2 → KM2-21 →[KM2 常闭]→ KM2-22 → tb8 →[SB3 动断]→ tb7
+           →[跳线]→ tb2 →[SB2 动合]→ tb1 → 公共点 Y
+           自锁：tb2 ← KM1-14 ←[KM1 常开]← KM1-13 ← Y
+     反转：KM2-A2 → KM1-21 →[KM1 常闭]→ KM1-22 → tb4 →[SB2 动断]→ tb3
+           →[跳线]→ tb6 →[SB3 动合]→ tb5 → Y
+           自锁：tb6 ← KM2-14 ←[KM2 常开]← KM2-13 ← Y
+     Y = tb11 · tb1 · tb5 · KM1-13 · KM2-13
+     Y → tb11 →[SB1 停止·动断]→ tb12 → FR 96 →[FR 常闭]→ 95 → FU5 → L2
 
    **两道互锁分工不同**（11.6 屏 4 讲透了的）：接触器互锁（21NC）保命 ——
    主触头粘连时按钮互锁拦不住；按钮互锁只是图方便，能从正转直接按反转。
@@ -382,7 +386,7 @@ const DEVICES = [
   {id:'fr', name:'JR36-20 热继电器', sub:'FR', kind:'fr', x:200, y:500, w:154, h:104,
    pins:FR_PINS,
    terminals:[ {id:'fr-96', label:'96', x:154, y:64}, {id:'fr-95', label:'95', x:154, y:88} ]},
-  {id:'tb', name:'端子排', sub:'TB · 12 位通按钮盒', kind:'tb', x:660, y:300, w:48, h:336,
+  {id:'tb', name:'端子排', sub:'TB · 12 位通按钮盒', kind:'tb', x:660, y:300, w:62, h:336,
    terminals:(function(){
      const out=[];
      for(let i=0;i<12;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:14, y:22+i*24});
@@ -428,13 +432,13 @@ for(const k in TLABEL2) TLABEL[k] = TLABEL2[k];
 TLABEL['tb-last'] = '端子排（末端·这题不用）';
 
 const GROUPS = [
-  {id:1, name:'电源进线',   hint:'4 号熔断器进停止按钮那一对（端子排 11）；' +
-    '5 号熔断器经热继电器 95-96 回来 —— 控制回路的两头'},
-  {id:2, name:'自锁',       hint:'停止按钮出来的公共点送到两个 13NO；' +
+  {id:1, name:'电源进线',   hint:'<b>跟 K31 一个方向</b>：4 号熔断器直接进两个线圈的 A1；' +
+    '另一头是停止按钮 12 → 热继电器 96-95 → 5 号熔断器'},
+  {id:2, name:'自锁',       hint:'公共点（停止按钮进线那一头）送到两个 13NO；' +
     '两个 14NO 各自回到自己那个启动按钮的出线端（KM1→端子排2、KM2→端子排6）'},
-  {id:3, name:'互锁与线圈', hint:'去我的线圈的路，先过对方的 21NC ——' +
-    '对方吸着我就起不来。两个 A2 并起来一起回热继电器'},
-  {id:4, name:'端子排跳线', hint:'12-1-5 并成公共点；' +
+  {id:3, name:'互锁与线圈', hint:'我的 A2 出来<b>先过对方的 21NC</b>，再去自己那条启动支路 ——' +
+    '对方吸着，我这条路就是断的'},
+  {id:4, name:'端子排跳线', hint:'11-1-5 并成公共点；' +
     '2→7 和 6→3 是交叉的：我的启动出线，接到对方按钮的动断上'}
 ];
 const GCOLOR_HEX = {1:'#c0392b', 2:'#2f9e44', 3:'#2b6cb0', 4:'#e67e22'};
@@ -444,45 +448,45 @@ const GCOLOR_HEX = {1:'#c0392b', 2:'#2f9e44', 3:'#2b6cb0', 4:'#e67e22'};
    → 端子排跳线。接触器右侧三个端子挤成一排（里→外：13NO · 21NC · A1），
    **从里往外接**，先接外面那个会把里面的螺丝挡住。
 
-   走线通道（改布局时照这个分配，别随手挑 y —— 重排这版时撞了六七次）：
-     KM 上方  y=208 / 212 / 216 / 220 / 228 / 236 / 244 / 250
-     KM 下方  y=408 / 416 / 424 / 432 / 440       （448 往下让给主电路）
-     两个 KM 之间   x=292 / 300 / 308
-     KM2 右侧下行   x=530 / 545 / 560 / 575 / 590 / 605 / 620
+   走线通道（改布局时照这个分配，别随手挑 y —— 重排时撞过六七次）：
+     KM 上方  y=208 / 212 / 216 / 220 / 228 / 236 / 244
+     KM 下方  y=400 / 408 / 416 / 424 / 432 / 440      （448 往下让给主电路）
+     两个 KM 之间   x=288 / 300 / 308
+     KM2 右侧下行   x=545 / 560 / 575 / 590 / 605 / 620
        —— 每根去端子排的线各占一条 x，最后那段水平进端子的高度就是它自己那一位，
           所以竖段不重叠、横段也不重叠
      端子排左侧跳线 x=648 / 640 / 632 / 624
-     左边空白       x=56（只有第 2 根走，从 5 号熔断器绕到热继电器）*/
+     左边空白       x=56（只有第 4 根走，从热继电器绕回 5 号熔断器）*/
 const WIRES = [
-  /* ── 1 电源进线：控制回路的两头 ── */
-  {id:1,  from:'fu4-out', to:'tb-11',  group:1,
-   waypoints:[[X('fu4-out'),208],[620,208],[620,Y('tb-11')]]},
-  {id:2,  from:'fu5-out', to:'fr-96',  group:1,
-   waypoints:[[X('fu5-out'),212],[56,212],[56,596],[390,596],[390,Y('fr-96')]]},
-  /* ── 2 自锁：公共点 → 两个 13NO；两个 14NO → 各自的启动按钮 ── */
-  {id:3,  from:'tb-5',    to:'km1-13', group:2,
+  /* ── 1 电源进线：4 号直接进线圈，停止和热继电器都在 5 号那一侧（照 K31 的方向）── */
+  {id:1,  from:'fu4-out', to:'km1-a1', group:1,
+   waypoints:[[X('fu4-out'),208],[X('km1-a1'),208]]},
+  {id:2,  from:'km1-a1',  to:'km2-a1', group:1,
+   waypoints:[[288,Y('km1-a1')],[288,216],[X('km2-a1'),216]]},
+  {id:3,  from:'tb-12',   to:'fr-96',  group:1,
+   waypoints:[[620,Y('tb-12')],[620,608],[400,608],[400,Y('fr-96')]]},
+  {id:4,  from:'fr-95',   to:'fu5-out',group:1,
+   waypoints:[[380,Y('fr-95')],[380,616],[56,616],[56,212],[X('fu5-out'),212]]},
+  /* ── 2 自锁：公共点 → 两个 13NO；两个 14NO → 各自的启动按钮出线端 ── */
+  {id:5,  from:'tb-5',    to:'km1-13', group:2,
    waypoints:[[545,Y('tb-5')],[545,236],[X('km1-13'),236]]},
-  {id:4,  from:'km1-13',  to:'km2-13', group:2,
+  {id:6,  from:'km1-13',  to:'km2-13', group:2,
    waypoints:[[X('km1-13'),244],[X('km2-13'),244]]},
-  {id:5,  from:'km1-14',  to:'tb-2',   group:2,
+  {id:7,  from:'km1-14',  to:'tb-2',   group:2,
    waypoints:[[X('km1-14'),416],[575,416],[575,Y('tb-2')]]},
-  {id:6,  from:'km2-14',  to:'tb-6',   group:2,
+  {id:8,  from:'km2-14',  to:'tb-6',   group:2,
    waypoints:[[X('km2-14'),424],[560,424],[560,Y('tb-6')]]},
-  /* ── 3 互锁与线圈：先接 21NC，再接 22NC→A1，最后两个 A2 ── */
-  {id:7,  from:'tb-8',    to:'km2-21', group:3,
-   waypoints:[[590,Y('tb-8')],[590,250],[X('km2-21'),250]]},
-  {id:8,  from:'tb-4',    to:'km1-21', group:3,
-   waypoints:[[605,Y('tb-4')],[605,228],[X('km1-21'),228]]},
-  {id:9,  from:'km2-22',  to:'km1-a1', group:3,
-   waypoints:[[X('km2-22'),432],[300,432],[300,220],[X('km1-a1'),220]]},
-  {id:10, from:'km1-22',  to:'km2-a1', group:3,
-   waypoints:[[X('km1-22'),440],[308,440],[308,216],[X('km2-a1'),216]]},
-  {id:11, from:'km1-a2',  to:'km2-a2', group:3,
-   waypoints:[[X('km1-a2'),408],[X('km2-a2'),408]]},
-  {id:12, from:'km2-a2',  to:'fr-95',  group:3,
-   waypoints:[[530,Y('km2-a2')],[530,470],[380,470],[380,Y('fr-95')]]},
-  /* ── 4 端子排跳线：12-1-5 并成公共点，2→7 / 6→3 交叉 ── */
-  {id:13, from:'tb-12',   to:'tb-1',   group:4, waypoints:[[648,Y('tb-12')],[648,Y('tb-1')]]},
+  /* ── 3 互锁与线圈：我的 A2 出来先过对方的 21NC，再去自己那条启动支路 ── */
+  {id:9,  from:'km1-a2',  to:'km2-21', group:3,
+   waypoints:[[X('km1-a2'),432],[300,432],[300,220],[X('km2-21'),220]]},
+  {id:10, from:'km2-22',  to:'tb-8',   group:3,
+   waypoints:[[X('km2-22'),440],[590,440],[590,Y('tb-8')]]},
+  {id:11, from:'km2-a2',  to:'km1-21', group:3,
+   waypoints:[[X('km2-a2'),400],[308,400],[308,228],[X('km1-21'),228]]},
+  {id:12, from:'km1-22',  to:'tb-4',   group:3,
+   waypoints:[[X('km1-22'),408],[605,408],[605,Y('tb-4')]]},
+  /* ── 4 端子排跳线：11-1-5 并成公共点，2→7 / 6→3 交叉 ── */
+  {id:13, from:'tb-11',   to:'tb-1',   group:4, waypoints:[[648,Y('tb-11')],[648,Y('tb-1')]]},
   {id:14, from:'tb-1',    to:'tb-5',   group:4, waypoints:[[640,Y('tb-1')],[640,Y('tb-5')]]},
   {id:15, from:'tb-2',    to:'tb-7',   group:4, waypoints:[[632,Y('tb-2')],[632,Y('tb-7')]]},
   {id:16, from:'tb-6',    to:'tb-3',   group:4, waypoints:[[624,Y('tb-6')],[624,Y('tb-3')]]}
@@ -521,8 +525,8 @@ const MAINS = [
 const BUS = (function(){
   const out=[];
   for(let i=0;i<12;i++){
-    const y = 300+22+i*24, gx = 726+((i%4)*4);
-    out.push([[708,y],[gx,y],[gx,232],[744+(i-6)*3,232],[744+(i-6)*3,226]]);
+    const y = 300+22+i*24, gx = 738+((i%4)*4);
+    out.push([[722,y],[gx,y],[gx,232],[746+(i-6)*3,232],[746+(i-6)*3,226]]);
   }
   return out;
 })();
@@ -539,7 +543,7 @@ return { id:'k32', k:'K32',
          '⚠ 第 4 组那两根跳线是<b>交叉的</b>：<b>2→7</b>（正转出线接反转按钮的动断）、' +
          '<b>6→3</b>（反转出线接正转按钮的动断）。接反了两个方向都起不来',
          '⚠ 端子排 <b>9、10 空着</b>（停止按钮的动合用不到）',
-         '⚠ 有 6 个端子要压两根线：<b>端子排 1、2、5、6 和 KM1-13、KM2-A2</b>',
+         '⚠ 有 6 个端子要压两根线：<b>端子排 1、2、5、6 和 KM1-A1、KM1-13</b>',
          '⚠ 接触器右侧三个端子挤成一排，<b>从里往外接</b>（13NO → 21NC → A1），' +
          '先接外面的会挡住里面的螺丝'] };
 }
@@ -990,12 +994,15 @@ function drawDevice(d){
   /* ── 端子排：竖排双列。左列接柜内元件、右列通按钮盒（照片上就是这么分的）── */
   if(d.kind==='tb'){
     add(el('rect',{class:'p-blk', x:d.x, y:d.y, width:d.w, height:d.h, rx:3}));
-    add(el('rect',{x:d.x+d.w/2-5, y:d.y+6, width:10, height:d.h-12, fill:'#e9e4d4'}));
+    /* 中间那条米色标签条 —— 实物上端子号就贴在这儿，所以号码也画在它上面。
+       原来号码画在端子点右边，跟下一位的「×2」角标叠在一起，12 个号一个都看不清 */
+    add(el('rect',{x:d.x+22, y:d.y+6, width:18, height:d.h-12, fill:'#e9e4d4'}));
     (d.terminals||[]).forEach(function(t){
       add(el('rect',{x:d.x+2, y:d.y+t.y-9, width:d.w-4, height:18, rx:2, fill:'#33383e'}));
+      add(el('rect',{x:d.x+22, y:d.y+t.y-9, width:18, height:18, fill:'#e9e4d4'}));
       /* 右列：按钮盒那一头，画成孔 */
-      add(el('circle',{class:'p-hole', cx:d.x+34, cy:d.y+t.y, r:4.6}));
-      add(el('circle',{class:'p-screw', cx:d.x+34, cy:d.y+t.y, r:3}));
+      add(el('circle',{class:'p-hole', cx:d.x+50, cy:d.y+t.y, r:4.6}));
+      add(el('circle',{class:'p-screw', cx:d.x+50, cy:d.y+t.y, r:3}));
     });
     devName(d, -14);
     txt('p-tiny', d.x+d.w+4, d.y-3, '右列＝按钮盒', 'start');
@@ -1051,11 +1058,17 @@ function drawTerminal(id){
   const dot=el('circle',{class:'term-dot', cx:p.x, cy:p.y, r:(shared?7:6), 'data-term-dot':id});
   g.appendChild(dot);
   const dk = (DEVICES.filter(function(d){return d.id===p.device;})[0]||{}).kind;
-  const lbl=el('text',{class:'tlabel'+(dk==='tb'?' ondark':''), x:p.x+9, y:p.y-8});
+  const onTb = (dk==='tb');
+  const lbl = onTb
+    ? el('text',{class:'tlabel onstrip', x:p.x+18, y:p.y+3})     /* 标签条上，居中 */
+    : el('text',{class:'tlabel', x:p.x+9, y:p.y-8});
   lbl.textContent=p.label; g.appendChild(lbl);
+  /* 「×2」＝这一颗螺丝上要压两根线。端子排那一列间距只有 24，
+     角标画在右下会盖住下一位的号码，所以挪到端子**左边**去 */
   if(shared){
-    g.appendChild(el('circle',{class:'badge-c', cx:p.x+11, cy:p.y+11, r:8}));
-    const bt=el('text',{class:'badge-t', x:p.x+11, y:p.y+11}); bt.textContent='×'+n; g.appendChild(bt);
+    const bx = onTb ? p.x-13 : p.x+11, by = onTb ? p.y : p.y+11;
+    g.appendChild(el('circle',{class:'badge-c', cx:bx, cy:by, r:7.5}));
+    const bt=el('text',{class:'badge-t', x:bx, y:by}); bt.textContent='×'+n; g.appendChild(bt);
   }
   gTerm.appendChild(g);
   hit.addEventListener('mouseenter', function(){ onTermHover(id); });
@@ -1441,7 +1454,9 @@ const state = { mode:'browse', activeGroup:null, hoverTerm:null, schemaShown:fal
 
 function setHint(gid){
   const g = GROUPS.find(function(x){ return x.id===gid; });
-  document.getElementById('hintText').textContent = g ? ('第'+g.id+'组「'+g.name+'」：'+g.hint) : '点一个分组，看这组怎么记。';
+  /* hint 里写着 <b>，必须走 innerHTML —— 用 textContent 的话标签会原样露在屏幕上
+     （逐根播放那处 1656 行本来就是 innerHTML，两处口径要一致） */
+  document.getElementById('hintText').innerHTML = g ? ('第'+g.id+'组「'+g.name+'」：'+g.hint) : '点一个分组，看这组怎么记。';
 }
 
 /* ---- 浏览模式：分组高亮 + 悬停端子 ---- */
