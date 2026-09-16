@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 74"><style>text{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;font-size:11px;fill:#222}.sm{font-size:9.5px}.r{fill:#c62828}.g{fill:#2e7d32}.gr{fill:#888}.bd{font-weight:bold}.w{fill:#fff}.ln{stroke:#888;stroke-width:1;fill:none}.s{stroke:#222;stroke-width:1.6;fill:none;stroke-linecap:round}.sd{stroke:#888;stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linecap:round}.dot{fill:#222}</style><defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#555"></path></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#c62828"></path></marker>
+<marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1565c0"></path></marker>
+</defs><rect x="0" y="0" width="360" height="74" fill="#fff"/>
+<g class="sm">
+<rect x="4" y="4" width="66" height="24" rx="4" fill="#ffcdd2" stroke="#c62828"></rect><text x="37" y="20" text-anchor="middle">按压 30</text><rect x="4" y="30" width="66" height="20" rx="4" fill="#bbdefb" stroke="#1565c0"></rect><text x="37" y="44" text-anchor="middle">吹气 2</text>
+<rect x="75" y="4" width="66" height="24" rx="4" fill="#ffcdd2" stroke="#c62828"></rect><text x="108" y="20" text-anchor="middle">按压 30</text><rect x="75" y="30" width="66" height="20" rx="4" fill="#bbdefb" stroke="#1565c0"></rect><text x="108" y="44" text-anchor="middle">吹气 2</text>
+<rect x="146" y="4" width="66" height="24" rx="4" fill="#ffcdd2" stroke="#c62828"></rect><text x="179" y="20" text-anchor="middle">按压 30</text><rect x="146" y="30" width="66" height="20" rx="4" fill="#bbdefb" stroke="#1565c0"></rect><text x="179" y="44" text-anchor="middle">吹气 2</text>
+<rect x="217" y="4" width="66" height="24" rx="4" fill="#ffcdd2" stroke="#c62828"></rect><text x="250" y="20" text-anchor="middle">按压 30</text><rect x="217" y="30" width="66" height="20" rx="4" fill="#bbdefb" stroke="#1565c0"></rect><text x="250" y="44" text-anchor="middle">吹气 2</text>
+<rect x="288" y="4" width="66" height="24" rx="4" fill="#ffcdd2" stroke="#c62828"></rect><text x="321" y="20" text-anchor="middle">按压 30</text><rect x="288" y="30" width="66" height="20" rx="4" fill="#bbdefb" stroke="#1565c0"></rect><text x="321" y="44" text-anchor="middle">吹气 2</text>
+</g>
+<text x="180" y="68" text-anchor="middle" class="bd">5 个循环，150 秒内完成</text>
+</svg>

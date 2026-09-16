@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 215"><style>text{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;font-size:11px;fill:#222}.sm{font-size:9.5px}.r{fill:#c62828}.g{fill:#2e7d32}.gr{fill:#888}.bd{font-weight:bold}.w{fill:#fff}.ln{stroke:#888;stroke-width:1;fill:none}.s{stroke:#222;stroke-width:1.6;fill:none;stroke-linecap:round}.sd{stroke:#888;stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linecap:round}.dot{fill:#222}</style><defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#555"></path></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#c62828"></path></marker>
+<marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1565c0"></path></marker>
+</defs><rect x="0" y="0" width="360" height="215" fill="#fff"/>
+<rect x="162" y="28" width="168" height="44" rx="10" fill="#ffcc80" fill-opacity=".35" stroke="#fb8c00" stroke-dasharray="4 3"></rect>
+<path d="M18 50 L40 46 L62 46 L62 54 L40 54 Z" fill="#9e9e9e" stroke="#555"></path>
+<rect x="62" y="40" width="88" height="20" rx="3" fill="#e3f2fd" stroke="#555"></rect>
+<ellipse cx="96" cy="50" rx="14" ry="5" fill="#ff7043" fill-opacity=".85"></ellipse>
+<rect x="122" y="46" width="18" height="8" fill="#8d6e63"></rect>
+<rect x="150" y="30" width="9" height="40" rx="2" fill="#f57c00" stroke="#555"></rect>
+<rect x="159" y="41" width="140" height="18" rx="4" fill="#1565c0"></rect>
+<rect x="299" y="42" width="24" height="16" rx="3" fill="#9e9e9e" stroke="#555"></rect>
+<circle cx="316" cy="50" r="8" fill="#ffb74d" stroke="#e65100"></circle>
+<text x="246" y="20" text-anchor="middle">手握这一段（护环以上）</text>
+<text x="96" y="24" text-anchor="middle" class="sm">氖泡：亮 = 有电</text>
+<line x1="30" y1="56" x2="30" y2="76" class="ln"></line><text x="12" y="90" class="r bd">笔尖金属：严禁触碰</text>
+<line x1="154" y1="70" x2="154" y2="76" class="ln"></line><text x="162" y="90" text-anchor="middle">护环</text>
+<line x1="316" y1="58" x2="316" y2="76" class="ln"></line><text x="352" y="90" text-anchor="end">手指碰尾部金属</text>
+<text x="12" y="112" class="bd">必须右手握；握持位置不规范扣 10 分</text>
+<rect x="20" y="126" width="110" height="80" rx="10" fill="#fafafa" stroke="#555" stroke-width="1.5"></rect>
+<rect x="52" y="152" width="7" height="24" rx="2" fill="#333"></rect><rect x="92" y="152" width="7" height="24" rx="2" fill="#333"></rect>
+<text x="55" y="196" text-anchor="middle" class="sm">左</text><text x="95" y="196" text-anchor="middle" class="sm">右</text>
+<line x1="176" y1="128" x2="106" y2="158" stroke="#1565c0" stroke-width="7" stroke-linecap="round"></line>
+<line x1="106" y1="158" x2="97" y2="163" stroke="#9e9e9e" stroke-width="3"></line>
+<text x="150" y="160">左孔、右孔各测一次</text>
+<text x="150" y="176">灯亮说「有电」，不亮说「无电」</text>
+<text x="150" y="196" class="sm gr">补充：规范接线是 左零右火（相）</text>
+</svg>
