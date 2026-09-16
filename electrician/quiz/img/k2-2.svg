@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200"><style>text{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;font-size:11px;fill:#222}.sm{font-size:9.5px}.r{fill:#c62828}.g{fill:#2e7d32}.gr{fill:#888}.bd{font-weight:bold}.w{fill:#fff}.ln{stroke:#888;stroke-width:1;fill:none}.s{stroke:#222;stroke-width:1.6;fill:none;stroke-linecap:round}.sd{stroke:#888;stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linecap:round}.dot{fill:#222}</style><defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#555"></path></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#c62828"></path></marker>
+<marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1565c0"></path></marker>
+</defs><rect x="0" y="0" width="360" height="200" fill="#fff"/>
+<rect x="2" y="2" width="114" height="194" rx="6" fill="#fafafa" stroke="#ccc"></rect>
+<rect x="123" y="2" width="114" height="194" rx="6" fill="#fafafa" stroke="#ccc"></rect>
+<rect x="244" y="2" width="114" height="194" rx="6" fill="#fafafa" stroke="#ccc"></rect>
+<text x="8" y="20" class="bd">① 导线破损</text>
+<rect x="14" y="40" width="58" height="26" rx="6" fill="#ffb300" stroke="#333"></rect>
+<rect x="34" y="62" width="18" height="40" rx="4" fill="#ffb300" stroke="#333"></rect>
+<rect x="72" y="46" width="12" height="14" fill="#616161"></rect>
+<line x1="84" y1="53" x2="104" y2="53" stroke="#9e9e9e" stroke-width="3"></line>
+<path d="M43 102 C 43 130, 66 120, 78 131" stroke="#222" stroke-width="4" fill="none"></path>
+<path d="M92 137 C 98 142, 100 150, 104 160" stroke="#222" stroke-width="4" fill="none"></path>
+<g stroke="#d84315" stroke-width="1.5"><line x1="78" y1="131" x2="92" y2="137"></line><line x1="79" y1="129" x2="91" y2="134"></line><line x1="78" y1="133" x2="92" y2="140"></line></g>
+<circle cx="85" cy="134" r="11" fill="none" stroke="#c62828" stroke-width="2"></circle>
+<text x="8" y="172" class="sm">移动电动工具导线</text>
+<text x="8" y="188" class="sm r bd">绝缘破损，露铜 ✗</text>
+<text x="129" y="20" class="bd">② 插板电源线</text>
+<rect x="140" y="44" width="84" height="22" rx="5" fill="#fafafa" stroke="#555"></rect>
+<rect x="150" y="50" width="12" height="10" fill="#ddd" stroke="#999"></rect><rect x="168" y="50" width="12" height="10" fill="#ddd" stroke="#999"></rect><rect x="186" y="50" width="12" height="10" fill="#ddd" stroke="#999"></rect>
+<rect x="206" y="50" width="12" height="10" fill="#e53935"></rect>
+<path d="M140 55 C 124 60, 130 100, 150 108" stroke="#9e9e9e" stroke-width="2" fill="none"></path>
+<text x="156" y="104" class="sm r">细塑料线 ✗</text>
+<line x1="140" y1="128" x2="222" y2="128" stroke="#212121" stroke-width="8" stroke-linecap="round"></line>
+<text x="131" y="148" class="sm g">✓ 橡皮护套软电缆</text>
+<text x="129" y="172" class="sm">插板电源线未使用</text>
+<text x="129" y="188" class="sm r bd">橡皮护套软电缆 ✗</text>
+<text x="250" y="20" class="bd">③ 金属平台</text>
+<rect x="250" y="112" width="100" height="12" fill="#90a4ae" stroke="#455a64"></rect>
+<g stroke="#455a64"><line x1="270" y1="112" x2="270" y2="124"></line><line x1="290" y1="112" x2="290" y2="124"></line><line x1="310" y1="112" x2="310" y2="124"></line><line x1="330" y1="112" x2="330" y2="124"></line><line x1="256" y1="124" x2="256" y2="140"></line><line x1="344" y1="124" x2="344" y2="140"></line></g>
+<rect x="262" y="94" width="40" height="16" rx="4" fill="#ffb300" stroke="#333"></rect>
+<rect x="276" y="97" width="10" height="10" fill="none" stroke="#333"></rect><rect x="278.5" y="99.5" width="5" height="5" fill="none" stroke="#333"></rect>
+<path d="M302 102 C 322 100, 318 64, 336 58" stroke="#222" stroke-width="3" fill="none"></path>
+<rect x="330" y="34" width="18" height="24" rx="3" fill="#fafafa" stroke="#555"></rect>
+<rect x="258" y="52" width="36" height="22" fill="#fff" stroke="#c62828" stroke-dasharray="3 2"></rect>
+<text x="276" y="67" text-anchor="middle" class="sm r">漏保?</text>
+<circle cx="317" cy="90" r="7" fill="none" stroke="#c62828" stroke-width="2"></circle>
+<text x="250" y="156" class="sm">金属平台上用Ⅱ类</text>
+<text x="250" y="172" class="sm">工具，没配漏保</text>
+<text x="250" y="188" class="sm r bd">线缆也有破损 ✗</text>
+</svg>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 330"><style>text{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;font-size:11px;fill:#222}.sm{font-size:9.5px}.r{fill:#c62828}.g{fill:#2e7d32}.gr{fill:#888}.bd{font-weight:bold}.w{fill:#fff}.ln{stroke:#888;stroke-width:1;fill:none}.s{stroke:#222;stroke-width:1.6;fill:none;stroke-linecap:round}.sd{stroke:#888;stroke-width:1.6;fill:none;stroke-dasharray:4 3;stroke-linecap:round}.dot{fill:#222}</style><defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#555"></path></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#c62828"></path></marker>
+<marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1565c0"></path></marker>
+</defs><rect x="0" y="0" width="360" height="330" fill="#fff"/>
+<rect x="10" y="44" width="170" height="116" rx="8" fill="#4e342e" stroke="#222" stroke-width="2"></rect>
+<rect x="26" y="58" width="116" height="74" rx="4" fill="#fffde7" stroke="#222"></rect>
+<path d="M40 112 A 48 48 0 0 1 128 112" fill="none" stroke="#333" stroke-width="1.5"></path>
+<line x1="84" y1="126" x2="66" y2="88" stroke="#c62828" stroke-width="2"></line><circle cx="84" cy="126" r="3" fill="#222"></circle>
+<text x="120" y="127" class="sm">MΩ</text>
+<rect x="38" y="36" width="12" height="10" fill="#222"></rect><circle cx="44" cy="30" r="8" fill="#d32f2f" stroke="#222"></circle>
+<rect x="78" y="36" width="12" height="10" fill="#222"></rect><circle cx="84" cy="30" r="8" fill="#222" stroke="#999"></circle>
+<rect x="118" y="36" width="12" height="10" fill="#222"></rect><circle cx="124" cy="30" r="8" fill="#9e9e9e" stroke="#222"></circle>
+<text x="44" y="14" text-anchor="middle" class="bd r">L</text>
+<text x="84" y="14" text-anchor="middle" class="bd">E</text>
+<text x="124" y="14" text-anchor="middle" class="bd gr">G</text>
+<line x1="180" y1="104" x2="204" y2="78" stroke="#222" stroke-width="6" stroke-linecap="round"></line>
+<circle cx="180" cy="104" r="7" fill="#222"></circle><circle cx="206" cy="76" r="7" fill="#8d6e63" stroke="#222"></circle>
+<text x="12" y="178" class="sm">L 接红夹子　E 接黑夹子　G 本项不用</text>
+<text x="12" y="194" class="sm">右边是摇把：每分钟 120 转</text>
+<text x="12" y="210" class="sm gr">表盘上 0 和 ∞ 在哪一头，以实物为准</text>
+<rect x="228" y="6" width="128" height="96" rx="6" fill="#f3f6f9" stroke="#bbb"></rect>
+<text x="236" y="22" class="bd">短路试验</text>
+<path d="M274 70 A 26 26 0 0 1 326 70" fill="none" stroke="#333"></path>
+<line x1="300" y1="70" x2="322" y2="56" stroke="#c62828" stroke-width="2"></line>
+<text x="330" y="60" class="bd r">0</text>
+<text x="236" y="86" class="sm">L、E 两夹子碰在一起</text>
+<text x="236" y="98" class="sm">慢摇半圈 → 指针指 0</text>
+<rect x="228" y="108" width="128" height="96" rx="6" fill="#f3f6f9" stroke="#bbb"></rect>
+<text x="236" y="124" class="bd">开路试验</text>
+<path d="M274 172 A 26 26 0 0 1 326 172" fill="none" stroke="#333"></path>
+<line x1="300" y1="172" x2="278" y2="158" stroke="#c62828" stroke-width="2"></line>
+<text x="270" y="164" text-anchor="end" class="bd r">∞</text>
+<text x="236" y="188" class="sm">L、E 两夹子分开</text>
+<text x="236" y="200" class="sm">120 转/分 → 指针指 ∞</text>
+<line x1="4" y1="220" x2="356" y2="220" stroke="#ddd"></line>
+<text x="12" y="238" class="bd">测相间绝缘（图为黄—绿）</text>
+<rect x="4" y="268" width="12" height="10" fill="#666"></rect>
+<rect x="14" y="250" width="70" height="50" rx="8" fill="#90a4ae" stroke="#333"></rect>
+<text x="49" y="279" text-anchor="middle" class="sm w">电动机</text>
+<line x1="84" y1="258" x2="140" y2="258" stroke="#333" stroke-width="7"></line><line x1="84" y1="258" x2="140" y2="258" stroke="#fbc02d" stroke-width="5"></line>
+<line x1="84" y1="275" x2="140" y2="275" stroke="#333" stroke-width="7"></line><line x1="84" y1="275" x2="140" y2="275" stroke="#43a047" stroke-width="5"></line>
+<line x1="84" y1="292" x2="140" y2="292" stroke="#333" stroke-width="7"></line><line x1="84" y1="292" x2="140" y2="292" stroke="#e53935" stroke-width="5"></line>
+<text x="146" y="262" class="sm">黄</text><text x="146" y="279" class="sm">绿</text><text x="146" y="296" class="sm">红</text>
+<rect x="118" y="250" width="16" height="16" rx="2" fill="#d32f2f"></rect><text x="126" y="262" text-anchor="middle" class="sm w bd">L</text>
+<rect x="118" y="267" width="16" height="16" rx="2" fill="#222"></rect><text x="126" y="279" text-anchor="middle" class="sm w bd">E</text>
+<text x="180" y="256">三组都摇 1 分钟以上：</text>
+<text x="190" y="272">① 黄—绿　② 黄—红</text>
+<text x="190" y="288">③ 绿—红</text>
+<text x="180" y="306" class="r bd">小于 0.5MΩ → 绝缘不良，如实汇报</text>
+<text x="180" y="322" class="sm">完了取下 E（黑）、L（红）表笔</text>
+</svg>

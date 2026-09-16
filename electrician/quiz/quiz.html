@@ -448,6 +448,17 @@ p.para{margin:6px 0;font-size:14px;line-height:1.7;color:var(--tx2)}
 .p-gnote b{color:var(--amber)}
 /* K43 那张灭火器选型表：全局 table 有 min-width:440px，这儿要放开，不然手机上横向滚 */
 #pPrac table{min-width:0}
+/* 配图（figs / figs2）：图片一律白底卡片 —— 百科照片和示意图 SVG 都是按白底画的，
+   深色主题下直接透出暗底会看不清线条。half = 几张小图并排（元件、灭火器那种） */
+.p-figs{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.p-fig{flex:1 1 100%;margin:0;background:#fff;border:1px solid var(--line);border-radius:9px;padding:6px;text-align:center}
+.p-fig.half{flex:1 1 calc(33.3% - 8px);min-width:92px}
+.p-fig a{display:block}
+.p-fig img{display:block;max-width:100%;max-height:300px;margin:0 auto}
+.p-fig.half img{height:92px;width:100%;object-fit:contain}
+.p-fig figcaption{font-size:12px;color:#555;line-height:1.55;margin-top:4px}
+.p-fig figcaption i{font-style:normal;color:#999}
+#pPrac td img.p-sign{display:block;width:48px;height:auto;margin-bottom:3px}
 /* 320 宽下步骤那 82px 的标签列占比太大，改成上下堆叠 */
 @media (max-width:359px){
   .p-step{flex-direction:column;gap:3px}
@@ -2148,6 +2159,17 @@ function pTable(tb){
     tb.rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+c+'</td>'}).join('')+'</tr>'}).join('')+
     '</tbody></table></div>';
 }
+/* 配图：{src, cap, by, half}。src 相对 img/；by 是图片出处（百度百科 / 原材料），写在说明末尾。
+   点图在新标签页打开原图 —— 手机上原理图要放大看 */
+function pFigs(fs){
+  if(!fs||!fs.length) return '';
+  return '<div class="p-figs">'+fs.map(function(f){
+    return '<figure class="p-fig'+(f.half?' half':'')+'"><a href="img/'+esc(f.src)+'" target="_blank">'+
+      '<img src="img/'+esc(f.src)+'" loading="lazy" alt=""></a>'+
+      (f.cap||f.by?'<figcaption>'+(f.cap||'')+(f.by?' <i>（图：'+esc(f.by)+'）</i>':'')+'</figcaption>':'')+
+      '</figure>';
+  }).join('')+'</div>';
+}
 function pTask(t){
   var open=!!pOpen[t.id], meta=[];
   if(t.min) meta.push(t.min+' 分钟');
@@ -2168,10 +2190,12 @@ function pTask(t){
   if(t.lead) b+='<div class="p-lead" style="margin:10px 0">'+t.lead+'</div>';
   if(t.pick) b+='<div class="p-pick"><div class="from">从这些里面选：'+esc(t.pick.from)+'</div>'+
                 '<div class="ans">✓ 选 '+esc(t.pick.ans)+'</div></div>';
+  b+=pFigs(t.figs);
   if(t.key)  b+='<div class="p-key">'+t.key+'</div>';
   if(t.list&&t.list.length) b+='<div class="p-list"><div class="t">要辨识的隐患点</div><ol>'+
     t.list.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ol></div>';
   b+=pSteps(t);
+  b+=pFigs(t.figs2);   /* 放在步骤后面的图（K3 的原理图：先看接线再看原理） */
   if(t.nums&&t.nums.length) b+='<div class="p-nums">'+t.nums.map(function(n){
     return '<div class="p-num"><b>'+n[0]+'</b>'+esc(n[1])+'</div>'}).join('')+'</div>';
   if(t.warn) b+='<div class="p-warn">⚠ '+t.warn+'</div>';
@@ -2231,6 +2255,7 @@ function paintPrac(){
     var S=P.site;
     h+=pFold('sec-site','',S.t,'',
         '<div class="p-lead">'+esc(S.d)+'</div>'+
+        pFigs(S.figs)+
         '<div class="p-sh">墙上的面板</div>'+
         '<div class="p-ex">'+S.panels.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div>'+
         '<div class="p-sh">台面上的器材</div>'+
