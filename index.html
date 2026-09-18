@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>suitaw 的项目</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --card: #ffffff;
+    --text: #1a1a18;
+    --muted: #6b6b66;
+    --line: #e4e4e0;
+    --accent: #b8562f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17171a;
+      --card: #202024;
+      --text: #ececea;
+      --muted: #9a9a94;
+      --line: #32323a;
+      --accent: #e08a5f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 28px 16px 56px;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC",
+          "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  header { margin-bottom: 28px; }
+  h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: -.01em; }
+  .sub { margin: 0; color: var(--muted); font-size: 14px; }
+  section { margin-bottom: 26px; }
+  h2 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li + li { margin-top: 8px; }
+  a.item {
+    display: block;
+    padding: 13px 15px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color .15s, transform .1s;
+  }
+  a.item:hover, a.item:focus-visible {
+    border-color: var(--accent);
+    outline: none;
+  }
+  a.item:active { transform: scale(.99); }
+  .name { font-weight: 600; font-size: 15px; }
+  .desc { margin-top: 2px; color: var(--muted); font-size: 13px; }
+  footer {
+    margin-top: 36px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>suitaw 的项目</h1>
+  <p class="sub">单文件网页，都能直接在手机上打开</p>
+</header>
+
+<section>
+  <h2>电工</h2>
+  <ul>
+    <li><a class="item" href="electrician/index.html">
+      <div class="name">课程首页</div>
+      <div class="desc">跟着《零基础学电工》逐章学，16 章</div></a></li>
+    <li><a class="item" href="electrician/quiz/quiz.html">
+      <div class="name">题库复习</div>
+      <div class="desc">低压电工证 1260 题</div></a></li>
+    <li><a class="item" href="electrician/wiring-trainer.html">
+      <div class="name">接线训练器</div>
+      <div class="desc">正反转控制电路实物接线图，照考试软件做的</div></a></li>
+    <li><a class="item" href="electrician/lab-circuit.html">
+      <div class="name">电路实验室</div>
+      <div class="desc">搭电路看效果</div></a></li>
+    <li><a class="item" href="electrician/book.html">
+      <div class="name">全书</div>
+      <div class="desc">整本书一页读完</div></a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>电工 · 概念图</h2>
+  <ul>
+    <li><a class="item" href="electrician/circuit-basics.html">
+      <div class="name">回路、大地与触电原理</div>
+      <div class="desc">为什么站在地上摸火线会电</div></a></li>
+    <li><a class="item" href="electrician/magnet-field.html">
+      <div class="name">磁场与磁力线</div>
+      <div class="desc">看得见的磁场</div></a></li>
+    <li><a class="item" href="electrician/parts.html">
+      <div class="name">电路元件设计规范图</div>
+      <div class="desc">符号对照</div></a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>军队文职</h2>
+  <ul>
+    <li><a class="item" href="junwenzhi/index.html">
+      <div class="name">考试笔记</div>
+      <div class="desc">按小节拆分的知识点</div></a></li>
+    <li><a class="item" href="junwenzhi/quiz/quiz.html">
+      <div class="name">在线测验</div>
+      <div class="desc">笔记配套真题</div></a></li>
+    <li><a class="item" href="exam-quiz.html">
+      <div class="name">练习测试</div>
+      <div class="desc">609 题，8 个章节</div></a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Python</h2>
+  <ul>
+    <li><a class="item" href="learn-code.html">
+      <div class="name">第一章 · 变量</div>
+      <div class="desc">读代码入门</div></a></li>
+    <li><a class="item" href="learn-code-2.html">
+      <div class="name">第二章 · 判断</div>
+      <div class="desc">if / else</div></a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>理财</h2>
+  <ul>
+    <li><a class="item" href="learn-money.html">
+      <div class="name">第一课 · 钱的时间价值</div>
+      <div class="desc">今天的一百块和明年的一百块</div></a></li>
+    <li><a class="item" href="learn-money-2.html">
+      <div class="name">第二课 · 风险到底是什么</div>
+      <div class="desc">不是"会亏钱"这么简单</div></a></li>
+    <li><a class="item" href="learn-money-3.html">
+      <div class="name">第三课 · 钱该放哪儿</div>
+      <div class="desc">存款、货基、债券、股票</div></a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>工具</h2>
+  <ul>
+    <li><a class="item" href="vocab-ai-v5.html">
+      <div class="name">Vocab AI</div>
+      <div class="desc">背单词</div></a></li>
+    <li><a class="item" href="cube-solver.html">
+      <div class="name">魔方复原助手</div>
+      <div class="desc">输入色块给还原步骤</div></a></li>
+  </ul>
+</section>
+
+<footer>
+  源码在 <a href="https://github.com/suitaw/suitaw.github.io">GitHub</a>
+</footer>
+
+</div>
+</body>
+</html>
