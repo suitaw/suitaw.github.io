@@ -4,7 +4,8 @@
 
 都是单文件 HTML（数据放同目录的 `.js`）。
 
-根目录没有 `index.html`，`https://suitaw.github.io/` 是 404，各项目要用完整路径访问。
+根目录 `index.html` 是导航页，列出所有项目入口。加了新项目要往里补一条。
+`https://suitaw.github.io/daily/` 是**另一个仓库** `suitaw/daily`（本地 `~/daily`），不在这里改。
 
 ---
 
