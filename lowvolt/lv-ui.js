@@ -77,9 +77,8 @@ function ensureSheet(){
       var id=sheetCur; closeSheet();
       var target=document.getElementById('fig-'+id);
       if(target){
-        /* 图可能在收起的折叠块里，先展开再滚过去 */
-        var fold=target.closest('details.fold');
-        if(fold) fold.open=true;
+        /* 图可能埋在两层折叠里，所有祖先都要打开 */
+        openAncestors(target);
         setTimeout(function(){ target.scrollIntoView({block:'center',behavior:'smooth'}); },60);
       }
     }
@@ -199,20 +198,28 @@ function renderSymLib(){
   host.removeAttribute('data-symlib');
 }
 
-/* ══════════ ⑤ 长节折叠 ══════════ */
-function makeFolds(){
-  var sec=document.querySelector('.section');
-  if(!sec) return;
-  var hs=Array.prototype.slice.call(sec.children).filter(function(e){
-    return e.tagName==='H2' && e.classList.contains('h-cn');
-  });
-  if(hs.length<2) return;
+/* ══════════ ⑤ 折叠：两级 ══════════
+   他的原话：「把知识点分得细一点，比如说第一节电路的组成及其应用、
+   第二节那个电路图啥的，把它分得细一点，可折叠」。
+   所以外层按「一、二、三」折，每一块里面再按「1. 2.」折第二层。
+   每个折叠条下面列出它里面有什么（下一级的标题），不点开也知道里面装的啥。 */
 
+function isH2(e){ return e.nodeType===1 && e.tagName==='H2' && e.classList.contains('h-cn'); }
+function isH3(e){ return e.nodeType===1 && e.tagName==='H3' && e.classList.contains('h-num'); }
+function isH4(e){ return e.nodeType===1 && e.tagName==='H4' && e.classList.contains('h-par'); }
+
+/* 把 container 的直接子元素按 isHead 切成若干折叠块 */
+function wrapFolds(container, isHead, cls, minCount){
+  var hs=Array.prototype.slice.call(container.children).filter(isHead);
+  if(hs.length<minCount) return [];
+  var made=[];
   hs.forEach(function(h,i){
-    var d=el('details','fold');
-    var sm=el('summary','','<span class="fc">▶</span><span class="ft"></span>'+
+    var d=el('details',cls);
+    var sm=el('summary','',
+      '<span class="fc">▶</span>'+
+      '<span class="ft"><span class="ft-t"></span></span>'+
       '<span class="fn">'+(i+1)+'/'+hs.length+'</span>');
-    sm.querySelector('.ft').textContent=h.textContent;
+    sm.querySelector('.ft-t').textContent=h.textContent;
     d.appendChild(sm);
     var body=el('div','fold-body');
     d.appendChild(body);
@@ -222,11 +229,61 @@ function makeFolds(){
     h.parentNode.removeChild(h);
     while(n){
       var next=n.nextSibling;
-      if(n.nodeType===1 && n.tagName==='H2' && n.classList.contains('h-cn')) break;
+      if(isHead(n)) break;
       body.appendChild(n);
       n=next;
     }
-    /* 默认只展开第一块：一进来既看得到骨架，又不至于一片空 */
+    made.push(d);
+  });
+  return made;
+}
+
+/* 折叠条的副标题：列出它里面下一级的标题，如「(1) 电源 · (2) 负载 · …」 */
+function addPreview(d){
+  var body=d.querySelector('.fold-body');
+  if(!body) return;
+  var kids=Array.prototype.slice.call(body.children);
+  var names=kids.filter(isH3).map(function(h){return h.textContent.replace(/^\d+\.\s*/,'');});
+  if(!names.length) names=kids.filter(isH4).map(function(h){return h.textContent;});
+  /* 已经折过的第二层：从它们的标题里取 */
+  if(!names.length){
+    names=kids.filter(function(e){return e.classList&&e.classList.contains('fold-in');})
+      .map(function(f){
+        var t=f.querySelector('.ft-t');
+        return t?t.textContent.replace(/^\d+\.\s*/,''):'';
+      }).filter(Boolean);
+  }
+  var txt='';
+  if(names.length>=2) txt=names.join(' · ');
+  else {
+    /* 没有小标题的块（如「2. 电路图」），就报里面有哪些图 / 有没有符号库，
+       让折叠条始终能告诉他里面装的是什么 */
+    var figs=Array.prototype.map.call(d.querySelectorAll('.fold-body figure.fig .fignum'),
+      function(n){return n.textContent.trim();});
+    var bits=[];
+    if(figs.length) bits.push('含 '+figs.join('、'));
+    if(d.querySelector('.fold-body .symgrid')) bits.push('77 个电气符号，可搜索');
+    if(d.querySelector('.fold-body table')) bits.push('含表格');
+    txt=bits.join(' · ');
+  }
+  if(!txt) return;
+  var s=el('span','ft-s', esc(txt));
+  d.querySelector('.ft').appendChild(s);
+}
+
+function makeFolds(){
+  var sec=document.querySelector('.section');
+  if(!sec) return;
+
+  var outer=wrapFolds(sec, isH2, 'fold', 2);
+  if(!outer.length) return;
+
+  outer.forEach(function(d,i){
+    var body=d.querySelector('.fold-body');
+    var inner=wrapFolds(body, isH3, 'fold fold-in', 2);
+    inner.forEach(function(f){ addPreview(f); f.open=false; });
+    addPreview(d);
+    /* 外层默认只展开第一块——一进来看到的是骨架，不是一片空白也不是一堵墙 */
     d.open = (i===0);
   });
 
@@ -239,8 +296,17 @@ function makeFolds(){
     bar.addEventListener('click',function(e){
       var b=e.target.closest('button[data-fold]'); if(!b) return;
       var on=b.getAttribute('data-fold')==='open';
-      sec.querySelectorAll('.fold').forEach(function(d){d.open=on;});
+      sec.querySelectorAll('details.fold').forEach(function(d){d.open=on;});
     });
+  }
+}
+
+/* 目标可能嵌在两层折叠里，得把所有祖先都打开 */
+function openAncestors(node){
+  var p=node;
+  while(p && p!==document.body){
+    if(p.tagName==='DETAILS') p.open=true;
+    p=p.parentElement;
   }
 }
 
@@ -259,8 +325,7 @@ function bind(){
       var target=document.getElementById(id);
       if(!target) return;
       e.preventDefault();
-      var fold=target.closest('details.fold');
-      if(fold) fold.open=true;
+      openAncestors(target);
       setTimeout(function(){ target.scrollIntoView({block:'start',behavior:'smooth'}); },50);
     }
   });
