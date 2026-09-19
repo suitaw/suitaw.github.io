@@ -1,0 +1,339 @@
+/* 低压电工入门考证 · 共享样式
+   全站（index + 每一节）共用这一份，改一处全站变。
+
+   设计约束来自他的两句话：
+   ① 「书上的图尽量还原」 —— 图一律内联 SVG 重画，不用截图，可缩放、深浅色自适应
+   ② 「不能光看文字，然后看不到图」 —— 正文里的「图 1-21」是可点芯片，
+      点了图从底部滑出（.fs 面板），读到哪儿都能立刻看到图，不用滚走。
+      图同时照常出现在正文流里，两条路都通。
+
+   配色取自书本身：封面主色蓝绿、章标题绿、表头橙棕、图号牌蓝。 */
+
+:root{
+  --bg:#f2f5f6;
+  --surface:#ffffff;
+  --surface-2:#e9eff1;
+  --ink:#1c2427;
+  --ink-soft:#5d6b71;
+  --teal:#20707f;        /* 主色：节标题、图号牌、链接 */
+  --teal-deep:#14505c;
+  --green:#3f7d3a;       /* 书里「一、二、三」级标题就是绿的 */
+  --amber:#c4762a;       /* 表头、要点框 */
+  --red:#b0433a;         /* 强调、危险 */
+  --line:#cfdadd;
+  --line-soft:#e2eaec;
+  --nav-h:54px;
+  --font-body:"PingFang SC","Noto Sans SC","Microsoft YaHei",-apple-system,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --shadow:0 2px 10px rgba(20,60,70,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#11171a;--surface:#1a2226;--surface-2:#222d32;--ink:#e6eced;--ink-soft:#9aa9ae;
+    --teal:#5fb8c9;--teal-deep:#8fd3e0;--green:#7fc175;--amber:#e0a462;--red:#e08a80;
+    --line:#2f3d43;--line-soft:#263237;
+    --shadow:0 2px 12px rgba(0,0,0,.4);
+  }
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--font-body);
+  line-height:1.78;font-size:15px;-webkit-text-size-adjust:100%;
+  padding-bottom:calc(30px + env(safe-area-inset-bottom,0px));
+}
+::selection{background:var(--teal);color:#fff;}
+a{color:var(--teal);}
+p{margin:0 0 13px;}
+ul,ol{margin:0 0 13px;padding-left:1.35em;}
+li{margin-bottom:6px;}
+b,strong{color:var(--red);font-weight:700;}
+
+/* ── 顶栏 ── */
+.top{
+  position:sticky;top:0;z-index:30;
+  background:var(--bg);border-bottom:1px solid var(--line);
+  padding:9px 15px 8px;display:flex;align-items:center;gap:10px;
+  min-height:var(--nav-h);
+}
+.top .grow{flex:1;min-width:0;}
+.top .eyebrow{
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--amber);margin:0 0 1px;
+}
+.top h1{font-size:1.06rem;font-weight:700;margin:0;color:var(--teal);line-height:1.3;}
+.top .bk{
+  flex:none;font-size:.82rem;color:var(--ink-soft);text-decoration:none;
+  border:1px solid var(--line);border-radius:999px;padding:7px 13px;
+  min-height:32px;display:inline-flex;align-items:center;white-space:nowrap;
+}
+
+.wrap{max-width:740px;margin:0 auto;padding:18px 16px 10px;}
+
+/* ── 标题层级（书是 节 → 一二三 → 1.2. → (1)(2) → ①②，五级，全都要有区分）── */
+h2.h-cn{                       /* 一、电路 */
+  font-size:1.12rem;font-weight:700;color:var(--green);
+  margin:30px 0 10px;padding-left:11px;border-left:4px solid var(--green);line-height:1.4;
+}
+h3.h-num{                      /* 1. 电路的组成及电路元件的作用 */
+  font-size:1rem;font-weight:700;color:var(--amber);margin:22px 0 8px;line-height:1.45;
+}
+h4.h-par{                      /* （1）电源 */
+  font-size:.94rem;font-weight:700;color:var(--ink);margin:16px 0 6px;
+}
+/* ①②③ 编号条目：书里用带圈数字领起，单独成段 */
+.ol-c{list-style:none;padding-left:0;margin:0 0 13px;}
+.ol-c>li{position:relative;padding-left:1.75em;margin-bottom:9px;}
+.ol-c>li::before{
+  counter-increment:cn;content:counter(cn);
+  position:absolute;left:0;top:.28em;
+  width:1.25em;height:1.25em;border-radius:50%;
+  background:var(--teal);color:#fff;font-size:.72rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.ol-c{counter-reset:cn;}
+
+/* 名词首次出现：加粗蓝绿，和 <b> 的红区分开（红=考点，蓝绿=术语） */
+.term{font-weight:700;color:var(--teal);}
+
+/* ── 图卡（正文流里的那一份）── */
+figure.fig{
+  margin:16px 0;background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;padding:12px 12px 10px;box-shadow:var(--shadow);
+}
+figure.fig .canvas{
+  display:flex;justify-content:center;align-items:center;
+  padding:6px 2px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+}
+figure.fig svg{max-width:100%;height:auto;display:block;}
+figure.fig figcaption{
+  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+  margin-top:8px;padding-top:8px;border-top:1px solid var(--line-soft);
+  font-size:.84rem;color:var(--ink-soft);
+}
+.fignum{
+  flex:none;font-family:var(--font-mono);font-size:.72rem;font-weight:700;
+  color:#fff;background:var(--teal);border-radius:999px;padding:3px 9px;white-space:nowrap;
+}
+figcaption .ft{color:var(--ink);font-weight:700;}
+/* 「这张图在看什么」——书上没有，是我加的导读。
+   他读图不是自明的，给了图还得教怎么看。 */
+.fig-read{
+  margin-top:8px;padding:8px 11px;background:var(--surface-2);
+  border-left:3px solid var(--amber);border-radius:0 7px 7px 0;
+  font-size:.81rem;line-height:1.7;color:var(--ink-soft);
+}
+.fig-read b{color:var(--amber);}
+/* 点图放大 */
+.fig-zoom{
+  margin-left:auto;flex:none;font-size:.72rem;color:var(--teal);
+  border:1px solid var(--line);border-radius:999px;padding:3px 10px;
+  background:var(--surface);cursor:pointer;font-family:inherit;min-height:28px;
+}
+
+/* ── 行内图号芯片：点一下图从底下滑出来 ── */
+.figref{
+  display:inline-flex;align-items:center;gap:3px;
+  font-family:var(--font-mono);font-size:.82em;font-weight:700;
+  color:var(--teal);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:6px;
+  padding:1px 6px;margin:0 1px;cursor:pointer;
+  text-decoration:none;line-height:1.5;position:relative;
+}
+.figref::after{content:"";position:absolute;inset:-12px -7px;}  /* 撑够 44px 热区 */
+.figref .ic{font-size:.9em;opacity:.75;}
+.figref:active{background:var(--teal);color:#fff;}
+
+/* ── 底部滑出图板 ── */
+.fs{
+  position:fixed;inset:0;z-index:60;display:none;
+  background:rgba(10,25,30,.5);backdrop-filter:blur(2px);
+}
+.fs.on{display:block;}
+.fs .panel{
+  position:absolute;left:0;right:0;bottom:0;
+  max-height:84vh;display:flex;flex-direction:column;
+  background:var(--bg);border-radius:16px 16px 0 0;
+  border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  animation:fsUp .2s ease-out;
+}
+@keyframes fsUp{from{transform:translateY(14px);opacity:.4;}to{transform:none;opacity:1;}}
+@media (prefers-reduced-motion:reduce){.fs .panel{animation:none;}}
+.fs .hd{
+  display:flex;align-items:center;gap:9px;padding:12px 14px 10px;
+  border-bottom:1px solid var(--line);
+}
+.fs .hd .ft{flex:1;min-width:0;font-weight:700;font-size:.95rem;line-height:1.35;}
+.fs .x{
+  flex:none;border:1px solid var(--line);background:var(--surface);
+  color:var(--ink-soft);border-radius:999px;padding:6px 13px;
+  font-size:.8rem;cursor:pointer;font-family:inherit;min-height:34px;
+}
+.fs .body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 20px;}
+.fs .body .canvas{display:flex;justify-content:center;padding:4px 0 2px;overflow-x:auto;}
+.fs .body svg{max-width:100%;height:auto;}
+
+/* ── 全屏放大看图 ── */
+.zm{position:fixed;inset:0;z-index:70;display:none;background:var(--bg);}
+.zm.on{display:flex;flex-direction:column;}
+.zm .zhd{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--line);}
+.zm .zhd .ft{flex:1;min-width:0;font-weight:700;font-size:.92rem;}
+.zm .zbody{
+  flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px;
+  display:flex;align-items:center;
+}
+.zm .zbody svg{width:auto;min-width:100%;height:auto;}
+.zm .tip{font-size:.74rem;color:var(--ink-soft);text-align:center;padding:6px 0 10px;}
+
+/* ── 表格 ── */
+.tbl-wrap{
+  overflow-x:auto;-webkit-overflow-scrolling:touch;margin:15px 0;
+  border:1px solid var(--line);border-radius:11px;background:var(--surface);
+}
+table{width:100%;border-collapse:collapse;font-size:.85rem;}
+th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
+th{background:var(--amber);color:#fff;font-weight:700;font-size:.79rem;white-space:nowrap;}
+@media (prefers-color-scheme: dark){th{color:#1a2226;}}
+tr:last-child td{border-bottom:none;}
+.tcap{font-size:.82rem;color:var(--ink-soft);margin:15px 0 -8px;font-weight:700;}
+.tcap .n{font-family:var(--font-mono);color:var(--amber);}
+
+/* ── 要点框（书里「平时我们看电路图的重点」那种牛皮纸条）── */
+.note{
+  background:var(--surface-2);border-left:4px solid var(--amber);
+  border-radius:0 10px 10px 0;padding:11px 14px;margin:16px 0;font-size:.87rem;
+}
+.note .nh{font-weight:700;color:var(--amber);margin-bottom:5px;display:flex;align-items:center;gap:6px;}
+.note p:last-child{margin-bottom:0;}
+.note.key{border-left-color:var(--red);}
+.note.key .nh{color:var(--red);}
+.note.tip{border-left-color:var(--teal);}
+.note.tip .nh{color:var(--teal);}
+
+/* ── 符号库（表1-2 那 22 组，做成可搜索的卡片而不是死表）── */
+.symbar{
+  display:flex;gap:8px;margin:14px 0 8px;
+  background:var(--bg);padding:2px 0;
+}
+.symbar input{
+  flex:1;min-width:0;min-height:42px;padding:8px 13px;font-size:.9rem;font-family:inherit;
+  border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);
+}
+.symbar input::placeholder{color:var(--ink-soft);}
+.symbar .cnt{
+  flex:none;display:flex;align-items:center;font-family:var(--font-mono);
+  font-size:.74rem;color:var(--ink-soft);padding:0 4px;white-space:nowrap;
+}
+/* 77 个卡片铺开是 14000px 长，手机上滚不完（截图量出来的）。
+   所以：符号缩到 96px 宽、卡片压矮，再让网格自己内部滚动，
+   页面上只占一屏多，搜索框始终在上面看得见。 */
+.symgrid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px;
+  margin:0 0 18px;padding:9px;
+  max-height:min(62vh,540px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  border:1px solid var(--line);border-radius:12px;background:var(--surface-2);
+  overscroll-behavior:contain;
+}
+.sym{
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:8px 6px 7px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  text-align:center;
+}
+.sym .pic{
+  height:44px;display:flex;align-items:center;justify-content:center;
+  width:100%;
+}
+.sym .pic svg{width:88px;max-width:100%;height:auto;}
+.sym .nm{font-size:.72rem;line-height:1.35;color:var(--ink);}
+.sym .lt{
+  font-family:var(--font-mono);font-size:.72rem;font-weight:700;
+  color:var(--red);background:var(--surface-2);border-radius:5px;padding:1px 7px;
+}
+.sym .lt.none{color:var(--ink-soft);font-weight:400;font-size:.62rem;background:none;padding:1px 0;}
+.sym.hide{display:none;}
+.symempty{
+  grid-column:1/-1;text-align:center;color:var(--ink-soft);font-size:.85rem;padding:18px 0;
+}
+
+/* ── 视频二维码：书上有码我扫不了，只标位置，别让他以为漏了内容 ── */
+.qr{
+  display:flex;align-items:center;gap:10px;margin:14px 0;padding:10px 13px;
+  background:var(--surface);border:1px dashed var(--line);border-radius:10px;
+  font-size:.81rem;color:var(--ink-soft);
+}
+.qr .qi{flex:none;font-size:1.2rem;}
+.qr b{color:var(--teal);font-weight:700;}
+
+/* ── 折叠块（长节默认收起，一进来先看骨架）── */
+.fold{border:1px solid var(--line);border-radius:12px;margin:13px 0;background:var(--surface);overflow:hidden;}
+.fold>summary{
+  list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+  padding:13px 14px;min-height:50px;font-weight:700;font-size:.95rem;color:var(--ink);
+}
+.fold>summary::-webkit-details-marker{display:none;}
+.fold[open]>summary{border-bottom:1px solid var(--line);background:var(--surface-2);}
+.fold .fc{flex:none;color:var(--amber);font-size:.72rem;transition:transform .18s;}
+.fold[open] .fc{transform:rotate(90deg);}
+.fold .ft{flex:1;min-width:0;line-height:1.4;}
+.fold .fn{flex:none;font-family:var(--font-mono);font-size:.66rem;color:var(--ink-soft);}
+.fold-body{padding:4px 14px 14px;}
+.foldbar{display:flex;gap:8px;margin:14px 0 4px;}
+.foldbar button{
+  flex:1;min-height:42px;border:1px solid var(--line);background:var(--surface);
+  border-radius:9px;color:var(--teal);font-size:.82rem;font-weight:700;
+  cursor:pointer;font-family:inherit;
+}
+@media (prefers-reduced-motion:reduce){.fold .fc{transition:none;}}
+
+/* ── 翻页 ── */
+.pager{display:flex;gap:10px;margin:32px 0 6px;}
+.pager a{
+  flex:1;min-height:54px;border:1px solid var(--line);border-radius:11px;
+  background:var(--surface);text-decoration:none;color:var(--ink);
+  display:flex;flex-direction:column;justify-content:center;padding:8px 14px;
+}
+.pager a .d{font-size:.72rem;color:var(--ink-soft);}
+.pager a .t{font-size:.88rem;font-weight:700;margin-top:1px;}
+.pager a.next{text-align:right;}
+footer.pagefoot{
+  margin-top:28px;padding-top:15px;border-top:1px solid var(--line);
+  color:var(--ink-soft);font-size:.75rem;
+}
+
+/* ── 首页 ── */
+.hero{padding:22px 16px 10px;max-width:740px;margin:0 auto;}
+.hero .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--amber);margin:0 0 5px;}
+.hero h1{font-size:1.5rem;margin:0 0 8px;color:var(--teal);line-height:1.28;}
+.hero .sub{color:var(--ink-soft);font-size:.87rem;margin:0;}
+.chgroup{margin:22px 0 0;}
+.chgroup h2{
+  font-size:1.04rem;margin:0 0 3px;color:var(--ink);
+  display:flex;align-items:center;gap:9px;
+}
+.chgroup h2 .num{
+  font-family:var(--font-mono);font-size:.72rem;font-weight:700;color:#fff;
+  background:var(--teal);border-radius:6px;padding:3px 8px;flex:none;
+}
+.chgroup .sub{font-size:.76rem;color:var(--ink-soft);margin:0 0 9px;}
+.seclist{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;}
+.seclist a,.seclist .todo{
+  display:flex;align-items:center;gap:11px;min-height:58px;
+  background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  padding:11px 13px;text-decoration:none;color:var(--ink);
+}
+.seclist .todo{border-style:dashed;color:var(--ink-soft);opacity:.6;}
+.seclist .n{
+  flex:none;width:32px;height:32px;border-radius:8px;background:var(--surface-2);
+  color:var(--teal);font-family:var(--font-mono);font-weight:700;font-size:.8rem;
+  display:flex;align-items:center;justify-content:center;
+}
+.seclist .todo .n{color:var(--ink-soft);}
+.seclist .body{flex:1;min-width:0;display:flex;flex-direction:column;}
+.seclist .t{font-size:.9rem;font-weight:700;line-height:1.35;}
+.seclist .p{font-family:var(--font-mono);font-size:.7rem;color:var(--ink-soft);margin-top:1px;}
+.seclist .qc{
+  flex:none;font-size:.68rem;color:var(--ink-soft);background:var(--surface-2);
+  border-radius:999px;padding:3px 9px;
+}
