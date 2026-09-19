@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>低压电工入门考证 · 课表</title>
+<link rel="stylesheet" href="lv.css">
+</head>
+<body data-sec="index">
+
+<div class="top">
+  <div class="grow">
+    <p class="eyebrow">Low-voltage Electrician</p>
+    <h1>低压电工入门考证</h1>
+  </div>
+  <a class="bk" href="../index.html">全部项目</a>
+</div>
+
+<div class="hero">
+  <p class="eyebrow">整理自纸质书</p>
+  <h1>低压电工入门考证视频教程</h1>
+  <p class="sub" id="heroSub"></p>
+</div>
+
+<div class="wrap">
+  <div class="note tip">
+    <div class="nh">◆ 这个站怎么用</div>
+    <p>正文里的<b>「图 1-21」都是可以点的</b>——点一下图从屏幕下方弹出来，看完关掉接着读，不用来回滚。图纸看不清就点「放大 ⤢」。</p>
+    <p style="margin-bottom:0">书上那张 77 个电气符号的大表，做成了<b>可搜索的符号库</b>（在 1-2 节里），搜「常开」「KM」「熔断器」都能找到。</p>
+  </div>
+
+  <div id="toc"></div>
+
+  <div class="note">
+    <div class="nh">▨ 关于进度</div>
+    <p style="margin-bottom:0">灰色虚线的是<b>还没整理</b>的小节。按书的顺序往下做，要跳着做哪一节告诉我。<br>
+    书上带二维码的视频我扫不了，遇到<b>内容全在二维码里</b>的地方会在那一节里标出来，不会假装整理过。</p>
+  </div>
+</div>
+
+<footer class="pagefoot" style="max-width:740px;margin:0 auto;padding:0 16px 20px">
+  曹振华 主编，池骋、袁艳霞 副主编 · 化学工业出版社 · 全 208 页
+</footer>
+
+<script src="lv-book.js"></script>
+<script>
+/* 课表：读 lv-book.js 那份 BOOK 铺出来，加新节只改那一处 */
+(function(){
+  var B=window.LV_BOOK; if(!B) return;
+  var html='', done=0, all=0;
+  B.forEach(function(C){
+    var d=C.secs.filter(function(S){return S.f}).length;
+    done+=d; all+=C.secs.length;
+    var label = C.c===7 ? '附录' : '第 '+C.c+' 章';
+    var title = C.c===7 ? C.t.replace(/^附录 · /,'') : C.t;
+    html+='<div class="chgroup">'+
+      '<h2><span class="num">'+label+'</span>'+title+'</h2>'+
+      '<p class="sub">共 '+C.secs.length+' 节 · 已整理 '+d+' 节</p>'+
+      '<ul class="seclist">';
+    C.secs.forEach(function(S){
+      var no=(C.c===7?'附':C.c)+'-'+S.n;
+      var body='<span class="body"><span class="t">'+S.t+'</span>'+
+               '<span class="p">第 '+S.pg+' 页</span></span>';
+      html+= S.f
+        ? '<li><a href="'+S.f+'"><span class="n">'+no+'</span>'+body+'</a></li>'
+        : '<li><span class="todo"><span class="n">'+no+'</span>'+body+
+          '<span class="qc">待整理</span></span></li>';
+    });
+    html+='</ul></div>';
+  });
+  document.getElementById('toc').innerHTML=html;
+  document.getElementById('heroSub').innerHTML=
+    '曹振华 主编 · 化学工业出版社　结构是<b>章 → 节</b>两级。<br>'+
+    '全书 <b>'+all+'</b> 节，已整理 <b>'+done+'</b> 节。<br>'+
+    '<b>进任何一节后点左上角「目录」都能直接跳到别的章节</b>，不用退回这一页。';
+})();
+</script>
+</body>
+</html>
