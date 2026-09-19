@@ -266,19 +266,36 @@ tr:last-child td{border-bottom:none;}
 .qr .qi{flex:none;font-size:1.2rem;}
 .qr b{color:var(--teal);font-weight:700;}
 
-/* ── 折叠块（长节默认收起，一进来先看骨架）── */
+/* ── 折叠块：两级 ──
+   外层 = 「一、二、三」，内层 = 「1. 2.」。
+   折叠条下面那行小字列出里面有什么，不点开也知道装的啥。 */
 .fold{border:1px solid var(--line);border-radius:12px;margin:13px 0;background:var(--surface);overflow:hidden;}
 .fold>summary{
-  list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+  list-style:none;cursor:pointer;display:flex;align-items:flex-start;gap:10px;
   padding:13px 14px;min-height:50px;font-weight:700;font-size:.95rem;color:var(--ink);
 }
 .fold>summary::-webkit-details-marker{display:none;}
 .fold[open]>summary{border-bottom:1px solid var(--line);background:var(--surface-2);}
-.fold .fc{flex:none;color:var(--amber);font-size:.72rem;transition:transform .18s;}
-.fold[open] .fc{transform:rotate(90deg);}
-.fold .ft{flex:1;min-width:0;line-height:1.4;}
-.fold .fn{flex:none;font-family:var(--font-mono);font-size:.66rem;color:var(--ink-soft);}
+.fold .fc{flex:none;color:var(--amber);font-size:.72rem;transition:transform .18s;padding-top:.35em;}
+.fold[open]>summary .fc{transform:rotate(90deg);}
+.fold .ft{flex:1;min-width:0;line-height:1.4;display:flex;flex-direction:column;gap:3px;}
+.fold .ft-t{color:var(--green);}
+.fold .ft-s{
+  font-weight:400;font-size:.73rem;line-height:1.5;color:var(--ink-soft);
+}
+.fold .fn{flex:none;font-family:var(--font-mono);font-size:.66rem;color:var(--ink-soft);padding-top:.45em;}
 .fold-body{padding:4px 14px 14px;}
+
+/* 内层：缩一号、底色换一档，和外层一眼分得开 */
+.fold-in{border-radius:10px;margin:10px 0;background:var(--surface-2);}
+.fold-in>summary{padding:11px 12px;min-height:46px;font-size:.89rem;}
+.fold-in[open]>summary{background:transparent;border-bottom:1px dashed var(--line);}
+.fold-in .ft-t{color:var(--amber);}
+.fold-in .fc{color:var(--teal);}
+.fold-in .fold-body{padding:8px 12px 12px;}
+/* 内层里的小标题不用再挤颜色，降一档 */
+.fold-in .fold-body>h4.h-par{margin-top:14px;}
+.fold-in .fold-body>h4.h-par:first-child{margin-top:4px;}
 .foldbar{display:flex;gap:8px;margin:14px 0 4px;}
 .foldbar button{
   flex:1;min-height:42px;border:1px solid var(--line);background:var(--surface);
