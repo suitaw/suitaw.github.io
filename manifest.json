@@ -1,0 +1,22 @@
+{
+  "name": "Vocab AI",
+  "short_name": "Vocab",
+  "description": "撞见生词就查，连原句一起记住",
+  "start_url": "/vocab-ai-v5.html",
+  "scope": "/vocab-ai-v5.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f2e9",
+  "theme_color": "#b5462f",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "/vocab-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/vocab-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/vocab-icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "share_target": {
+    "action": "/vocab-ai-v5.html",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  }
+}

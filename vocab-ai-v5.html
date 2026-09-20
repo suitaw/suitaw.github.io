@@ -7,6 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Vocab AI v5</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#b5462f">
+<link rel="apple-touch-icon" href="vocab-icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -121,6 +124,8 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .cat-row.drag-placeholder{opacity:.3;background:var(--paper2);border-style:dashed}
 .cat-row .drag-handle{color:var(--ink-dim);font-size:1rem;padding:0 10px;cursor:grab;touch-action:none;align-self:center;min-height:44px;display:flex;align-items:center}
 .az-bubble.show{display:flex}
+.lk-chip{display:inline-block;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 9px;margin:0 5px 5px 0;font-size:.84rem;font-family:inherit;cursor:pointer;min-height:32px}
+.lk-chip:active{background:var(--accent-soft);border-color:var(--accent)}
 .toast{position:fixed;bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:20px;font-size:.78rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
 .import-overlay{display:none;position:fixed;inset:0;background:rgba(43,38,32,.4);z-index:200;overflow-y:auto;padding:20px 12px}
 .import-overlay.open{display:block}
@@ -1015,7 +1020,7 @@ function runSearch(q){
   </div>`).join("")+(hits.length>=50?`<div style="font-size:.8rem;color:var(--ink-dim);margin-top:8px">只显示前 50 个，再输入细化</div>`:"");
 }
 function catName(c){
-  const fixed={nce2:"新概念二",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",__fav__:"我的收藏",codepath:"Codepath 编程",__phrase__:"短语复习"};
+  const fixed={nce2:"新概念二",wild:"野生词",dev:"科技开发",tv:"影视口语",life:"日常生活",biz:"职场商务",academic:"学术阅读",news:"新闻时事",other:"其他",import:"我的收藏",__fav__:"我的收藏",codepath:"Codepath 编程",__phrase__:"短语复习"};
   if(typeof c==="string"&&c.indexOf("art_")===0){const a=articles.find(x=>artCatKey(x.id)===c);return a?("📄 "+a.title):"文章"}
   return fixed[c]||c;
 }
@@ -1076,6 +1081,7 @@ function renderHome(v){
   // 固定候选分类（按顺序），有词才显示
   const fixedCats=[
     {key:"all",name:"全部",desc:"混合所有分类"},
+    {key:"wild",name:"🌍 野生词",desc:"推特·技术文章里撞见的"},
     {key:"nce2",name:"新概念二",desc:"课本基础生词"},
     {key:"dev",name:"科技开发",desc:"编程·报错·文档·AI"},
     {key:"tv",name:"影视口语",desc:"看剧高频·课本不教"},
@@ -1144,8 +1150,13 @@ function renderHome(v){
     </div>`;
 
   v.innerHTML=`<div style="padding-top:8px">
-    <div onclick="openSearch()" style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px;cursor:pointer;color:var(--ink-dim)">
-      🔍 <span style="font-size:.86rem">搜索单词或释义…</span>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <div onclick="openSearch()" style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer;color:var(--ink-dim)">
+        🔍 <span style="font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">搜索单词或释义…</span>
+      </div>
+      <div onclick="pasteLookup()" title="粘贴刚遇到的生词，一步查到" style="flex:none;display:flex;align-items:center;gap:5px;background:var(--accent);color:#fff;border-radius:10px;padding:10px 13px;cursor:pointer;font-size:.86rem;font-weight:600">
+        📋 <span>查生词</span>
+      </div>
     </div>
     ${todayPanel}
     <p style="color:var(--ink-dim);font-size:.82rem;margin-bottom:10px">或按分类自己选 · 长按卡片可拖动排序</p>
@@ -1895,6 +1906,18 @@ function startStudyAt(cat,id){
   roundTotal=queue.length;roundDone=new Set();
   cur=queue[0]||null;saveSession();render();
 }
+// 在原句里高亮目标词。原句里的形态常和词典原形不同（ship / shipped / shipping），
+// 所以取词干做前缀匹配，而不是全词相等。先 escape 再替换，避免注入
+function highlightWord(sent,word){
+  const safe=escapeHtml(sent||"");
+  const w=(word||"").trim();
+  if(!w)return safe;
+  const stem=w.length>5?w.slice(0,Math.max(4,w.length-3)):w;
+  try{
+    const re=new RegExp("\\b("+stem.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\w*)","gi");
+    return safe.replace(re,'<b style="color:var(--accent)">$1</b>');
+  }catch(e){return safe}
+}
 function backHtml(){
   // 短语卡：只展示释义+用法提示，不收藏、无例句、不拆解
   if(cur._phrase){
@@ -1907,6 +1930,11 @@ function backHtml(){
   const fav=mistakes.find(m=>m.id===cur.id)?"★ 已收藏":"☆ 收藏";
   const pos=cur.pos?`<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">${escapeHtml(cur.pos)}</span>`:"";
   const scene=cur.scene?`<div class="tip" style="background:var(--green-soft);border-left:3px solid var(--green)">🎬 ${escapeHtml(cur.scene)}</div>`:"";
+  // 野生词才有：他当初真正遇到这个词的那一句。记忆锚点靠这个，不靠 AI 编的例句
+  const ctxBlock=cur.ctx?`<div style="background:var(--green-soft);border:1px solid var(--green-border);border-left:3px solid var(--green);border-radius:8px;padding:9px 11px;margin:8px 0">
+    <div style="font-size:.72rem;color:var(--ink-dim);margin-bottom:4px">📍 你在这儿遇到它${cur.src?" · "+escapeHtml(cur.src):""}</div>
+    <div style="font-size:.86rem;line-height:1.6">${highlightWord(cur.ctx,cur.word)}</div>
+  </div>`:"";
   return `
   <div class="back">
     <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1914,12 +1942,14 @@ function backHtml(){
       <button class="gear" id="fav-btn" onclick="event.stopPropagation();toggleFav()">${fav}</button>
     </div>
     ${cur.tip?`<div class="tip">💡 ${escapeHtml(cur.tip)}</div>`:""}
+    ${ctxBlock}
     ${scene}
     ${cur.exampleEn?`<div class="ex">${escapeHtml(cur.exampleEn)}</div>`:""}
     ${cur.exampleCn?`<div class="ex-cn">${escapeHtml(cur.exampleCn)}</div>`:""}
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="gear" onclick="event.stopPropagation();if(cur.exampleEn)playAudio(cur.exampleEn,null)">🔊 读例句</button>
-      <button class="gear" id="dissect-btn" onclick="event.stopPropagation();dissectExample()">🔍 拆解这句话</button>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      ${cur.ctx?`<button class="gear" onclick="event.stopPropagation();playAudio(cur.ctx,null)">🔊 读原句</button>`:""}
+      ${cur.exampleEn?`<button class="gear" onclick="event.stopPropagation();playAudio(cur.exampleEn,null)">🔊 读例句</button>`:""}
+      <button class="gear" id="dissect-btn" onclick="event.stopPropagation();dissectExample(${cur.ctx?"cur.ctx":""})">🔍 拆解${cur.ctx?"原句":"这句话"}</button>
     </div>
 
     <div id="dissect-result" style="display:none;margin-top:10px"></div>
@@ -2547,8 +2577,10 @@ function refreshTagBar(){
   const bar=document.getElementById("tag-bar");
   if(bar)bar.innerHTML=tagBtnsHtml();
 }
-async function dissectExample(){
-  if(!cur||!cur.exampleEn)return toast("这个词没有例句");
+async function dissectExample(sentence){
+  // 不传就拆 AI 例句；野生词传 cur.ctx，拆他真正遇到的那句（更值得拆）
+  const sent=(sentence||(cur&&cur.exampleEn)||"").trim();
+  if(!cur||!sent)return toast("这个词没有例句");
   const btn=document.getElementById("dissect-btn");
   const box=document.getElementById("dissect-result");
   btn.disabled=true;btn.textContent="拆解中…";
@@ -2560,7 +2592,7 @@ async function dissectExample(){
 "memory":"给学生一句记住这个目标词或这句话的方法（联想/谐音/场景皆可）"}
 phrases 挑 1-3 个最有价值的，grammar 挑 1-2 个，不要硬凑。`;
   try{
-    const text=await callAI([{role:"user",content:`目标词：${cur.word}（${cur.cn}）\n例句：${cur.exampleEn}\n翻译：${cur.exampleCn||""}`}],sys,1200);
+    const text=await callAI([{role:"user",content:`目标词：${cur.word}（${cur.cn}）\n例句：${sent}\n翻译：${sentence?"":(cur.exampleCn||"")}`}],sys,1200);
     const t=text.replace(/```json|```/g,"").trim();
     let o;try{o=JSON.parse(t)}catch(e){
       const lb=t.indexOf("{"),rb=t.lastIndexOf("}");
@@ -3762,6 +3794,201 @@ function importBackup(input){
 
 // ===== 快速加词：任意页浮动按钮，贴词→AI秒补全→直接入库 =====
 let qaImages=[];  // 快捷加词选的图片 [{b64,mime}, ...]
+// ===== 野生词查词：Twitter / 技术文章里撞见生词，一步查到并连原句一起记住 =====
+// 跟「＋词」的分工：那个是批量入库（贴一堆词/一篇文章），这个是单个词即查即记。
+// 三条原则：① 本地库先查，命中零延迟零成本 ② 只问释义不问例句，AI 调用压到最小
+// ③ 原句(ctx)和来源(src)一起存下来——真正让人记住一个词的是"我在哪儿撞见它的"
+const LOOKUP_CAT="wild";
+let lkCtx="";        // 原句（上下文），可空
+let lkSrc="";        // 来源标记：x.com / 剪贴板 / 分享
+let lkWords=[];      // 原句切出来的可点词，点哪个查哪个（省得手机上手打）
+let lkResult=null;   // 本轮查询结果，供「记住它」入库
+// 切词用：这些词点了也没意义，滤掉免得 chip 刷满屏
+const LK_STOP=new Set("a an the this that these those i you he she it we they my your his her its our their is am are was were be been being do does did have has had will would can could shall should may might must to of in on at by for with from as and or but if so not no its it's don't".split(" "));
+
+// text 可以是一个词，也可以是整句/整段；src 是来源标记
+function openLookup(text,src){
+  lkSrc=src||"";lkResult=null;lkWords=[];
+  const raw=(text||"").replace(/\s+/g," ").trim();
+  const parts=raw?raw.split(" "):[];
+  let q="";
+  // 超过 4 个词就当成原句：切成可点的词，点一下就查，原句自动成为上下文
+  if(parts.length>4){
+    lkCtx=raw;
+    const seen=new Set();
+    parts.forEach(p=>{
+      const w=p.replace(/^[^A-Za-z'-]+|[^A-Za-z'-]+$/g,"");
+      const k=w.toLowerCase();
+      if(w.length<2||LK_STOP.has(k)||seen.has(k))return;
+      seen.add(k);lkWords.push(w);
+    });
+  }else{lkCtx="";q=raw}
+  const ov=document.getElementById("quickadd-overlay");
+  ov.classList.add("open");
+  ov.innerHTML=`<div class="import-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="font-family:Fraunces,serif;font-size:1.3rem">查生词</h2>
+      <button class="gear" onclick="closeLookup()">✕</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <input id="lk-q" value="${escapeHtml(q)}" placeholder="要查的词或短语" autocomplete="off" autocapitalize="off"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();runLookup()}"
+        style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:12px 10px;min-height:44px;font-family:inherit;font-size:.92rem;background:var(--paper);color:var(--ink)">
+      <button class="ai-btn" style="width:auto;margin:0;padding:12px 20px" onclick="runLookup()">查</button>
+    </div>
+    ${lkCtxBoxHtml()}
+    <div id="lk-result" style="margin-top:12px"></div>
+  </div>`;
+  const inp=document.getElementById("lk-q");
+  if(inp)setTimeout(()=>inp.focus(),100);
+}
+function closeLookup(){const ov=document.getElementById("quickadd-overlay");ov.classList.remove("open");ov.innerHTML="";lkResult=null}
+
+// 原句区：显示上下文 + 可点的词。没有原句就整块不出现
+function lkCtxBoxHtml(){
+  if(!lkCtx)return "";
+  return `<div style="margin-top:10px;background:var(--card-soft);border:1px solid var(--line);border-radius:10px;padding:10px">
+    <div style="font-size:.72rem;color:var(--ink-dim);margin-bottom:5px">📍 原句${lkSrc?" · "+escapeHtml(lkSrc):""} — 点哪个词就查哪个</div>
+    <div style="font-size:.84rem;line-height:1.6;margin-bottom:8px">${escapeHtml(lkCtx)}</div>
+    <div>${lkWords.map((w,i)=>`<button class="lk-chip" onclick="lkPick(${i})">${escapeHtml(w)}</button>`).join("")}</div>
+  </div>`;
+}
+function lkPick(i){
+  const w=lkWords[i];if(!w)return;
+  const inp=document.getElementById("lk-q");if(inp)inp.value=w;
+  runLookup();
+}
+
+// 本地库精确查（小写匹配）。命中就不花钱不等待
+function lkLocalHit(q){
+  const k=q.toLowerCase();
+  return allWords().find(w=>(w.word||"").toLowerCase()===k)||null;
+}
+
+async function runLookup(){
+  const inp=document.getElementById("lk-q");
+  const q=((inp&&inp.value)||"").trim();
+  const box=document.getElementById("lk-result");
+  if(!q)return toast("先填要查的词");
+  if(!box)return;
+  lkResult=null;
+  // ① 本地先查
+  const hit=lkLocalHit(q);
+  if(hit){
+    box.innerHTML=`<div style="border:1px solid var(--green-border);background:var(--green-soft);border-radius:10px;padding:12px">
+      <div style="font-size:.74rem;color:var(--green);margin-bottom:6px">✓ 库里已经有了 · ${escapeHtml(catName(hit.cat))}</div>
+      <div style="font-family:Fraunces,serif;font-size:1.25rem;font-weight:600">${escapeHtml(hit.word)}
+        <span style="color:var(--accent);font-size:.85rem">${escapeHtml(hit.phonetic||"")}</span></div>
+      <div style="font-size:.9rem;margin-top:4px">${escapeHtml(hit.cn||"")}</div>
+      ${hit.tip?`<div class="tip" style="margin-top:6px">💡 ${escapeHtml(hit.tip)}</div>`:""}
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="gear" onclick="closeLookup();startStudyAt('${escapeHtml(hit.cat)}','${escapeHtml(hit.id)}')">去背这个词</button>
+        ${lkCtx?`<button class="gear" onclick="runLookupAI()">这句里是什么意思？</button>`:""}
+      </div>
+    </div>`;
+    return;
+  }
+  // ② 没命中才调 AI
+  runLookupAI();
+}
+
+// 只问释义，不问例句——例句留给第一次翻面时 maybeEnrichWord() 自动补，查词这一步要快
+async function runLookupAI(){
+  const inp=document.getElementById("lk-q");
+  const q=((inp&&inp.value)||"").trim();
+  const box=document.getElementById("lk-result");
+  if(!q||!box)return;
+  if(!cfg.apikey&&!(cfg.keys&&cfg.keys[cfg.provider]))return toast("先在设置里填 API Key");
+  box.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
+  const sys=`你是英语词典，面向中文母语学习者。只返回 JSON 数组，数组里一个元素，不要任何其他文字：
+[{"word":"词典原形（用户给的若是变形/复数/过去式，还原成原形）","phonetic":"美式音标带斜杠","pos":"词性缩写如 n./v./adj./phr.","cn":"中文释义，最多3个义项用；隔开","here":"在用户给的原句里它具体是什么意思，一句中文说清；没给原句就填空字符串"}]`;
+  const payload=lkCtx?`词：${q}\n原句：${lkCtx}`:`词：${q}`;
+  try{
+    // token 给足余量：强制思考的模型会先烧一段推理预算，给少了 JSON 会被截断
+    const text=await callAI([{role:"user",content:payload}],sys,500);
+    const arr=parseJsonArrayLoose(text);
+    if(!arr.length||!arr[0].word)throw new Error("没查出来，再试一次");
+    lkResult=arr[0];
+    renderLookupResult(lkResult);
+  }catch(e){
+    box.innerHTML=`<div style="font-size:.84rem;color:var(--accent)">查不到：${escapeHtml(e.message||"检查 Key 和网络")}
+      <button class="gear" style="margin-left:8px" onclick="runLookupAI()">重试</button></div>`;
+  }
+}
+
+function renderLookupResult(o){
+  const box=document.getElementById("lk-result");if(!box)return;
+  box.innerHTML=`<div style="border:1px solid var(--line);background:var(--card);border-radius:10px;padding:12px">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+      <span style="font-family:Fraunces,serif;font-size:1.35rem;font-weight:600">${escapeHtml(o.word)}</span>
+      ${o.phonetic?`<span style="color:var(--accent);font-size:.9rem">${escapeHtml(o.phonetic)}</span>`:""}
+      ${o.pos?`<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic">${escapeHtml(o.pos)}</span>`:""}
+      <button class="gear" style="margin-left:auto" onclick="playAudio('${escapeHtml(o.word).replace(/'/g,"&#39;")}',null)">🔊</button>
+    </div>
+    <div style="font-size:.95rem;margin-top:6px">${escapeHtml(o.cn||"")}</div>
+    ${o.here?`<div class="tip" style="margin-top:8px">💡 这句里：${escapeHtml(o.here)}</div>`:""}
+    <button class="ai-btn" style="margin-top:12px" onclick="saveLookupWord()">＋ 记住它${lkCtx?"（连原句）":""}</button>
+  </div>`;
+}
+
+function saveLookupWord(){
+  if(!lkResult)return;
+  const o=lkResult;
+  if(lkLocalHit(o.word)){toast("库里已经有这个词了");return}
+  // exampleEn 故意留空：第一次翻面时 maybeEnrichWord() 会自动补例句和音标，查词这一步不等它
+  const rec={id:"imp"+Date.now()+"_lk",word:o.word,phonetic:o.phonetic||"",pos:o.pos||"",
+    cn:o.cn||"",tip:o.here||"",exampleEn:"",exampleCn:"",scene:"",cat:LOOKUP_CAT};
+  if(lkCtx)rec.ctx=lkCtx;
+  if(lkSrc)rec.src=lkSrc;
+  imported.push(rec);
+  save(IMP_KEY,imported);
+  lkResult=null;
+  toast("记住了，进「野生词」");
+  const box=document.getElementById("lk-result");
+  if(box)box.innerHTML=`<div style="border:1px solid var(--green-border);background:var(--green-soft);border-radius:10px;padding:14px;text-align:center">
+    <div style="font-size:.9rem;margin-bottom:10px">✓ <b>${escapeHtml(rec.word)}</b> 已存进「野生词」${lkCtx?"，原句一起记下了":""}</div>
+    <div style="display:flex;gap:8px">
+      <button class="gear" style="flex:1" onclick="lkAgain()">再查一个</button>
+      <button class="ai-btn" style="flex:1;margin:0;width:auto" onclick="closeLookup();startStudy('${LOOKUP_CAT}')">现在就背</button>
+    </div>
+  </div>`;
+  if(page==="home"&&!studyStarted)render();   // 首页分类计数在背景刷新
+}
+// 再查一个：留着原句（同一条推文里常有好几个生词），只清输入框和结果
+function lkAgain(){
+  const box=document.getElementById("lk-result");if(box)box.innerHTML="";
+  const inp=document.getElementById("lk-q");if(inp){inp.value="";inp.focus()}
+  lkResult=null;
+}
+
+// 首页入口：读剪贴板直接查。读不到就开空面板让他手动粘贴（Chrome 可能拦剪贴板权限）
+async function pasteLookup(){
+  let t="";
+  try{t=await navigator.clipboard.readText()}catch(e){/* 权限被拒/不支持，走手动 */}
+  openLookup((t||"").trim(),t?"剪贴板":"");
+  if(!t){toast("读不到剪贴板，直接打字或长按粘贴");return}
+  // 单个词：不用他再点一下，直接查
+  const inp=document.getElementById("lk-q");
+  if(inp&&inp.value.trim())runLookup();
+}
+
+// 分享/外链进来：?q= 或 ?text=（Web Share Target 用 text/title/url 三个参数）
+(function handleLookupParam(){
+  const p=new URLSearchParams(location.search);
+  const t=(p.get("q")||p.get("text")||p.get("title")||"").trim();
+  if(!t)return;
+  const u=p.get("url")||"";
+  let src="分享";
+  try{if(u)src=new URL(u).hostname.replace(/^www\./,"")}catch(e){}
+  // 清掉参数：否则刷新一次就重新弹一次，后退也会卡在分享态
+  history.replaceState(null,"",location.pathname);
+  setTimeout(()=>{
+    openLookup(t,src);
+    const inp=document.getElementById("lk-q");
+    if(inp&&inp.value.trim())runLookup();   // 分享过来的是单个词，直接出结果
+  },120);
+})();
+
 function openQuickAdd(){
   const ov=document.getElementById("quickadd-overlay");
   ov.classList.add("open");qaImages=[];
@@ -4441,7 +4668,7 @@ async function agentRunLoop(imgs){
 }
 
 // 构建标记：当前这份代码是哪一版。设置页显示它，checkUpdate() 拿它跟线上比
-const BUILD_STAMP="v5.4.0 · 2026-08-12 · 手机端适配 + 智能体多轮";
+const BUILD_STAMP="v5.5.0 · 2026-09-20 · 野生词查词：分享/粘贴一步查到，连原句一起记";
 (function(){const el=document.getElementById("build-stamp");if(el)el.textContent=BUILD_STAMP})();
 // 检查线上有没有新版：带时间戳抓一份线上的自己，把里面的版本号抠出来跟当前跑的比。
 // 光看"当前正在跑哪版"回答不了"线上已经是哪版了"——缓存住的旧版显示的也是它自己的旧版本号
@@ -4473,6 +4700,14 @@ async function checkUpdate(){
 }
 // location.reload(true) 在现代浏览器里已经是空操作，得换个 URL 才真绕得开缓存
 function hardReload(){location.replace(location.origin+location.pathname+"?v="+Date.now())}
+
+// 注册 Service Worker。唯一目的是让页面可被"安装到桌面"，装了才能进系统分享菜单。
+// scope 收窄到本页：仓库根目录还放着别的项目，不能让这个 SW 拦下整站的请求。
+// file:// 本地打开时直接跳过，否则必然抛错
+if("serviceWorker" in navigator && location.protocol==="https:"){
+  navigator.serviceWorker.register("vocab-sw.js",{scope:"/vocab-ai-v5.html"})
+    .catch(()=>{/* 注册失败不影响任何功能，只是装不了桌面图标 */});
+}
 
 // 启动：若有未完成的背词会话则自动恢复（中途切走/刷新回到原处）
 restoreSession();
