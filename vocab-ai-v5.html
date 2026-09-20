@@ -126,6 +126,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .az-bubble.show{display:flex}
 .lk-chip{display:inline-block;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 9px;margin:0 5px 5px 0;font-size:.84rem;font-family:inherit;cursor:pointer;min-height:32px}
 .lk-chip:active{background:var(--accent-soft);border-color:var(--accent)}
+.lk-chip.known{opacity:.45;font-size:.78rem}
 .toast{position:fixed;bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:20px;font-size:.78rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
 .import-overlay{display:none;position:fixed;inset:0;background:rgba(43,38,32,.4);z-index:200;overflow-y:auto;padding:20px 12px}
 .import-overlay.open{display:block}
@@ -3803,8 +3804,20 @@ let lkCtx="";        // 原句（上下文），可空
 let lkSrc="";        // 来源标记：x.com / 剪贴板 / 分享
 let lkWords=[];      // 原句切出来的可点词，点哪个查哪个（省得手机上手打）
 let lkResult=null;   // 本轮查询结果，供「记住它」入库
-// 切词用：这些词点了也没意义，滤掉免得 chip 刷满屏
-const LK_STOP=new Set("a an the this that these those i you he she it we they my your his her its our their is am are was were be been being do does did have has had will would can could shall should may might must to of in on at by for with from as and or but if so not no its it's don't".split(" "));
+// 切词用：这些词他早就认识，点了也没意义，滤掉免得 chip 刷满屏。
+// 覆盖到最高频那批（功能词 + 谁都认识的基础实词），宁可多滤几个——
+// 真想查被滤掉的词，输入框里打出来照样能查
+const LK_STOP=new Set(("a an the this that these those i you he she it we they me him us them my your his her its our their mine yours "
++"is am are was were be been being do does did done have has had will would can could shall should may might must "
++"to of in on at by for with from as and or but if so not no nor yes than then when where what who whom whose how why which "
++"there here up down out over under again once also just only very more most much many few some any all both each other another "
++"about after before between during through into onto off away back around while because since until though although "
++"one two three first last next new old good bad big small long short high low same different "
++"time day year week month today now live make made making get got go goes going going come came see saw seen look looking "
++"say said tell told know knew think thought want wanted need needed take took use used give gave put let "
++"people man woman thing things way ways part place work works world life home water watch watching read reading "
++"music video videos song songs movie movies show shows play playing "
++"it's don't doesn't didn't isn't aren't wasn't weren't can't won't couldn't shouldn't i'm i've you're we're they're that's there's").split(" "));
 
 // 分享/剪贴板过来的内容里常夹着链接（推特分享推文给的就是一串纯 URL）。
 // 把链接剥出来当来源，剩下的才是要查的文字——否则 URL 会被当成一个"单词"送去问 AI
@@ -3826,12 +3839,20 @@ function openLookup(text,src){
   if(parts.length>4){
     lkCtx=raw;
     const seen=new Set();
+    // 全库词表建一次 Set：库里已有的词排后面并灰掉，让没见过的排在最前
+    const known=new Set(allWords().map(x=>(x.word||"").toLowerCase()));
+    let prevEndsSentence=true;   // 句首的大写是语法要求，不算专有名词
     parts.forEach(p=>{
       const w=p.replace(/^[^A-Za-z'-]+|[^A-Za-z'-]+$/g,"");
+      const atSentenceStart=prevEndsSentence;
+      prevEndsSentence=/[.!?]["')\]]*$/.test(p);
       const k=w.toLowerCase();
       if(w.length<2||LK_STOP.has(k)||seen.has(k))return;
-      seen.add(k);lkWords.push(w);
+      // 句中的大写词基本都是专有名词（YouTube / Japan's），查了也进不了词库
+      if(!atSentenceStart&&/^[A-Z]/.test(w))return;
+      seen.add(k);lkWords.push({w,known:known.has(k)});
     });
+    lkWords.sort((a,b)=>(a.known?1:0)-(b.known?1:0));   // 没见过的排前面
   }else{lkCtx="";q=raw}
   const ov=document.getElementById("quickadd-overlay");
   ov.classList.add("open");
@@ -3869,11 +3890,11 @@ function lkCtxBoxHtml(){
   return `<div style="margin-top:10px;background:var(--card-soft);border:1px solid var(--line);border-radius:10px;padding:10px">
     <div style="font-size:.72rem;color:var(--ink-dim);margin-bottom:5px">📍 原句${lkSrc?" · "+escapeHtml(lkSrc):""} — 点哪个词就查哪个</div>
     <div style="font-size:.84rem;line-height:1.6;margin-bottom:8px">${escapeHtml(lkCtx)}</div>
-    <div>${lkWords.map((w,i)=>`<button class="lk-chip" onclick="lkPick(${i})">${escapeHtml(w)}</button>`).join("")}</div>
+    <div>${lkWords.map((o,i)=>`<button class="lk-chip${o.known?" known":""}" onclick="lkPick(${i})">${escapeHtml(o.w)}</button>`).join("")}</div>
   </div>`;
 }
 function lkPick(i){
-  const w=lkWords[i];if(!w)return;
+  const w=lkWords[i]&&lkWords[i].w;if(!w)return;
   const inp=document.getElementById("lk-q");if(inp)inp.value=w;
   runLookup();
 }
