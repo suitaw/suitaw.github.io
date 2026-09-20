@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>电工符号配对 · 小游戏</title>
+<style>
+/* 配色变量和 lv.css 那一份保持一致，游戏页自包含不引外部样式表
+   （lv.css 是阅读排版，line-height / 标题层级那套用在游戏里会打架） */
+:root{
+  --bg:#f2f5f6; --surface:#ffffff; --surface-2:#e9eff1;
+  --ink:#1c2427; --ink-soft:#5d6b71;
+  --teal:#20707f; --teal-deep:#14505c;
+  --green:#3f7d3a; --amber:#c4762a; --red:#b0433a;
+  --line:#cfdadd; --line-soft:#e2eaec;
+  --font-body:"PingFang SC","Noto Sans SC","Microsoft YaHei",-apple-system,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --shadow:0 2px 10px rgba(20,60,70,.08);
+  --ok-bg:#e4f2e2; --ok-line:#7fb877;
+  --no-bg:#f8e4e2; --no-line:#d89089;
+  --on-teal:#ffffff;   /* 压在 teal 底上的字色：深色模式下 teal 会变亮，白字就看不清了 */
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#11171a; --surface:#1a2226; --surface-2:#222d32;
+    --ink:#e6eced; --ink-soft:#9aa9ae;
+    --teal:#5fb8c9; --teal-deep:#8fd3e0;
+    --green:#7fc175; --amber:#e0a462; --red:#e08a80;
+    --line:#2f3d43; --line-soft:#263237;
+    --shadow:0 2px 12px rgba(0,0,0,.4);
+    --ok-bg:#1e3320; --ok-line:#4e8a48;
+    --no-bg:#3a2220; --no-line:#96514a;
+    --on-teal:#0d1316;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--font-body);
+  font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+}
+button{font-family:inherit;color:inherit;}
+
+/* ── 顶栏 ── */
+.top{
+  position:sticky;top:0;z-index:30;background:var(--bg);
+  border-bottom:1px solid var(--line);padding:9px 15px 8px;
+  display:flex;align-items:center;gap:10px;min-height:54px;
+}
+.top .grow{flex:1;min-width:0;}
+.top .eyebrow{
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--amber);margin:0 0 1px;
+}
+.top h1{font-size:1.06rem;font-weight:700;margin:0;color:var(--teal);line-height:1.3;}
+.top .bk{
+  flex:none;font-size:.82rem;color:var(--ink-soft);text-decoration:none;
+  border:1px solid var(--line);border-radius:999px;padding:7px 13px;
+  min-height:32px;display:inline-flex;align-items:center;
+  white-space:nowrap;background:none;cursor:pointer;
+}
+.wrap{max-width:700px;margin:0 auto;padding:16px 14px 10px;}
+
+/* ── 菜单 ── */
+.modes{display:grid;gap:11px;margin-bottom:20px;}
+.mode{
+  display:block;width:100%;text-align:left;background:var(--surface);
+  border:1px solid var(--line);border-left:4px solid var(--teal);
+  border-radius:12px;padding:13px 15px;box-shadow:var(--shadow);cursor:pointer;
+}
+.mode:active{transform:scale(.99);}
+.mode .mt{font-size:1.04rem;font-weight:700;color:var(--teal);margin-bottom:3px;}
+.mode .md{font-size:.8rem;color:var(--ink-soft);line-height:1.55;}
+.mode .mb{
+  font-family:var(--font-mono);font-size:.68rem;color:var(--amber);
+  margin-top:6px;letter-spacing:.04em;
+}
+.mode[data-m="flip"]{border-left-color:var(--green);}
+.mode[data-m="flip"] .mt{color:var(--green);}
+.mode[data-m="quiz"]{border-left-color:var(--amber);}
+.mode[data-m="quiz"] .mt{color:var(--amber);}
+
+/* ── 范围面板 ── */
+.panel{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;padding:12px 14px;margin-bottom:16px;
+}
+.panel h2{
+  font-size:.88rem;margin:0 0 9px;color:var(--ink);font-weight:700;
+  display:flex;align-items:center;gap:8px;
+}
+.panel h2 .cnt{
+  font-family:var(--font-mono);font-size:.7rem;font-weight:400;
+  color:var(--on-teal);background:var(--teal);border-radius:999px;padding:2px 9px;
+}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{
+  font-size:.75rem;padding:5px 10px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--ink-soft);
+}
+.chip.on{background:var(--teal);border-color:var(--teal);color:var(--on-teal);font-weight:600;}
+.chip.wide{width:100%;text-align:center;}
+.hint{font-size:.74rem;color:var(--ink-soft);line-height:1.6;margin:9px 0 0;}
+.hint b{color:var(--red);}
+
+/* ── 成绩表 ── */
+.recs{width:100%;border-collapse:collapse;font-size:.78rem;}
+.recs td{padding:5px 0;border-bottom:1px solid var(--line-soft);}
+.recs td:last-child{text-align:right;font-family:var(--font-mono);color:var(--teal);}
+.recs tr:last-child td{border-bottom:none;}
+.recs .none{color:var(--ink-soft);}
+
+/* ── 游戏内状态条 ── */
+.hud{
+  display:flex;gap:7px;margin-bottom:12px;
+}
+.hud .box{
+  flex:1;background:var(--surface);border:1px solid var(--line);
+  border-radius:9px;padding:6px 4px;text-align:center;min-width:0;
+}
+.hud .k{
+  font-size:.62rem;color:var(--ink-soft);letter-spacing:.05em;
+  text-transform:uppercase;font-family:var(--font-mono);
+}
+.hud .v{font-size:1.02rem;font-weight:700;font-family:var(--font-mono);line-height:1.35;}
+.hud .v.hot{color:var(--amber);}
+.bar{height:4px;background:var(--surface-2);border-radius:2px;overflow:hidden;margin-bottom:14px;}
+.bar i{display:block;height:100%;background:var(--teal);transition:width .25s;}
+
+/* ── 通用符号显示 ── */
+.pic{color:var(--ink);line-height:0;}
+.pic svg{width:100%;height:auto;display:block;}
+
+/* ── 玩法一：翻牌 ── */
+.board{display:grid;grid-template-columns:repeat(var(--cols,4),1fr);gap:7px;}
+.card{
+  position:relative;aspect-ratio:1/1.1;border:none;padding:0;background:none;
+  cursor:pointer;perspective:600px;
+}
+.card .face{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  border-radius:10px;border:1px solid var(--line);
+  backface-visibility:hidden;transition:transform .32s;padding:5px;overflow:hidden;
+}
+.card .back{
+  background:var(--teal);border-color:var(--teal-deep);color:var(--on-teal);
+  font-size:1.3rem;font-family:var(--font-mono);transform:rotateY(0deg);
+}
+.card .fore{background:var(--surface);transform:rotateY(180deg);flex-direction:column;gap:2px;}
+.card.up .back,.card.done .back{transform:rotateY(-180deg);}
+.card.up .fore,.card.done .fore{transform:rotateY(0deg);}
+.card.done .fore{background:var(--ok-bg);border-color:var(--ok-line);}
+.card.bad .fore{background:var(--no-bg);border-color:var(--no-line);}
+.card .fore .pic{width:100%;}
+.card .fore .nm{
+  font-size:.66rem;line-height:1.28;text-align:center;color:var(--ink);
+  word-break:break-all;
+}
+.card .fore .lt{
+  font-family:var(--font-mono);font-size:.6rem;color:var(--amber);font-weight:700;
+}
+
+/* ── 玩法二：速配 ── */
+/* 左右两列共用一个网格，DOM 顺序是「左1 右1 左2 右2…」，
+   每一行的图和名字高度自动拉齐 —— 拆成两个独立的列会错位，第 3 行就对不上了 */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.mitem{
+  border:1px solid var(--line);background:var(--surface);border-radius:10px;
+  padding:7px 9px;cursor:pointer;text-align:center;min-height:62px;
+  display:flex;align-items:center;justify-content:center;
+}
+.mitem .pic{width:100%;max-width:104px;}
+.mitem .nm{font-size:.79rem;line-height:1.4;}
+.mitem.sel{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal) inset;}
+.mitem.done{background:var(--ok-bg);border-color:var(--ok-line);opacity:.5;pointer-events:none;}
+.mitem.bad{background:var(--no-bg);border-color:var(--no-line);animation:shake .3s;}
+@keyframes shake{
+  0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)}
+  75%{transform:translateX(5px)}
+}
+
+/* ── 玩法三：抢答 ── */
+.ask{
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:16px 14px;margin-bottom:13px;text-align:center;box-shadow:var(--shadow);
+}
+.ask .tag{
+  font-family:var(--font-mono);font-size:.66rem;letter-spacing:.09em;
+  color:var(--amber);text-transform:uppercase;margin-bottom:9px;
+}
+.ask .pic{max-width:190px;margin:0 auto;}
+.ask .big{font-size:1.24rem;font-weight:700;color:var(--teal);line-height:1.45;}
+.ask .code{font-family:var(--font-mono);font-size:2rem;font-weight:700;color:var(--teal);}
+.opts{display:grid;gap:8px;}
+.opts.pics{grid-template-columns:1fr 1fr;}
+.opt{
+  border:1px solid var(--line);background:var(--surface);border-radius:10px;
+  padding:11px 13px;cursor:pointer;text-align:left;font-size:.88rem;line-height:1.45;
+  display:flex;align-items:center;gap:9px;min-height:48px;
+}
+.opts.pics .opt{justify-content:center;padding:12px 9px;}
+.opts.pics .opt .pic{width:100%;max-width:130px;}
+.opt .idx{
+  flex:none;width:21px;height:21px;border-radius:50%;background:var(--surface-2);
+  color:var(--ink-soft);font-family:var(--font-mono);font-size:.7rem;
+  display:flex;align-items:center;justify-content:center;
+}
+.opt.ok{background:var(--ok-bg);border-color:var(--ok-line);}
+.opt.ok .idx{background:var(--ok-line);color:var(--surface);}
+.opt.no{background:var(--no-bg);border-color:var(--no-line);}
+.opt.no .idx{background:var(--no-line);color:var(--surface);}
+.opt:disabled{cursor:default;}
+
+/* ── 讲解条 ── */
+.say{
+  margin-top:13px;border-radius:10px;padding:11px 13px;font-size:.81rem;line-height:1.65;
+  border:1px solid var(--line);background:var(--surface-2);
+}
+.say.ok{background:var(--ok-bg);border-color:var(--ok-line);}
+.say.no{background:var(--no-bg);border-color:var(--no-line);}
+.say .h{font-weight:700;margin-bottom:3px;}
+.say .warn{
+  display:block;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);
+  color:var(--amber);font-size:.76rem;line-height:1.6;
+}
+.say .warn b{font-weight:700;color:inherit;}
+.say code{font-family:var(--font-mono);color:var(--red);font-weight:700;}
+
+/* ── 按钮 ── */
+.btn{
+  display:block;width:100%;border:none;border-radius:10px;padding:13px;
+  font-size:.95rem;font-weight:700;cursor:pointer;background:var(--teal);color:var(--on-teal);
+  margin-top:13px;
+}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--ink-soft);font-weight:400;}
+.btn:active{opacity:.85;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.row2 .btn{margin-top:0;}
+
+/* ── 结算 ── */
+.done-hero{text-align:center;padding:24px 10px 18px;}
+.done-hero .em{font-size:2.6rem;line-height:1;margin-bottom:10px;}
+.done-hero h2{font-size:1.3rem;margin:0 0 6px;color:var(--teal);}
+.done-hero p{font-size:.85rem;color:var(--ink-soft);margin:0;}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0;}
+.stat{
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:10px 4px;text-align:center;
+}
+.stat .k{font-size:.64rem;color:var(--ink-soft);font-family:var(--font-mono);}
+.stat .v{font-size:1.15rem;font-weight:700;font-family:var(--font-mono);color:var(--teal);}
+.newrec{
+  text-align:center;font-size:.8rem;color:var(--amber);font-weight:700;margin:-8px 0 14px;
+}
+.misslist{margin:16px 0 0;}
+.misslist h3{font-size:.85rem;margin:0 0 8px;color:var(--red);}
+.miss{
+  display:flex;align-items:center;gap:11px;background:var(--surface);
+  border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-bottom:7px;
+}
+.miss .pic{flex:none;width:76px;}
+.miss .txt{min-width:0;}
+.miss .n{font-size:.84rem;font-weight:600;}
+.miss .g{font-size:.7rem;color:var(--ink-soft);font-family:var(--font-mono);}
+.foot{
+  text-align:center;font-size:.74rem;color:var(--ink-soft);
+  margin-top:22px;padding-top:14px;border-top:1px solid var(--line-soft);
+}
+.foot a{color:var(--teal);}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="grow">
+    <p class="eyebrow">Symbol Drill</p>
+    <h1 id="ttl">电工符号配对</h1>
+  </div>
+  <button class="bk" id="quit">返回</button>
+</header>
+
+<main class="wrap" id="app"></main>
+
+<script src="lv-syms.js"></script>
+<script>
+(function(){
+'use strict';
+
+var SYMS = (window.LV_SYMS||[]).slice();
+var GROUPS = window.LV_SYM_GROUPS||{};
+var app = document.getElementById('app');
+var quitBtn = document.getElementById('quit');
+var ttl = document.getElementById('ttl');
+
+if(!SYMS.length){
+  app.innerHTML='<p style="color:var(--red)">符号库（lv-syms.js）没载入，游戏起不来。</p>';
+  return;
+}
+
+/* ══════════ ① 预处理 ══════════ */
+
+/* 视觉等价类：77 个符号里有 2 对 SVG 一模一样
+   —— 照明灯/信号灯、接触器线圈/时间继电器线圈。
+   同一道题、同一轮里绝不能同时出现，否则「看图选名字」没有唯一答案。 */
+var firstOf = {};
+SYMS.forEach(function(s,i){
+  s.i = i;
+  if(firstOf[s.s] === undefined) firstOf[s.s] = i;
+  s.eq = firstOf[s.s];
+});
+
+/* 光比 SVG 字符串不够：还有几个书上画法只差矩形宽窄，在小卡片里人眼分不出来
+   （电阻优选形 rect 宽 28，线圈 rect 宽 20，就这点区别）。
+   书上本来也是靠旁边标 R / KM / KT 区分的，所以手工归成一类。 */
+var LOOKALIKE = [
+  ['电阻（优选形）','接触器线圈','时间继电器线圈（一般符号）']
+];
+LOOKALIKE.forEach(function(names){
+  var ids = [];
+  names.forEach(function(n){
+    SYMS.forEach(function(s){ if(s.n===n) ids.push(s.i); });
+  });
+  if(ids.length<2) return;
+  var head = SYMS[ids[0]].eq;
+  ids.forEach(function(i){
+    var old = SYMS[i].eq;
+    SYMS.forEach(function(s){ if(s.eq===old) s.eq=head; });
+  });
+});
+
+var look = {};   /* i -> 同一视觉类里的其他符号 */
+SYMS.forEach(function(a){
+  look[a.i] = SYMS.filter(function(b){ return b.i!==a.i && b.eq===a.eq; });
+});
+/* 「看图选文字符号」只能考图形能唯一确定文字符号的那些：
+   接触器线圈(KM) 和 时间继电器线圈(KT) 图一样但文字符号不同，两个都得排除 */
+SYMS.forEach(function(s){
+  var sameT = look[s.i].every(function(o){ return o.t === s.t; });
+  s.tOK = !!s.t && s.t.indexOf('同操作元件') < 0 && sameT;
+});
+var ALL_T = [];   /* 题库里出现过的全部文字符号，去重 */
+SYMS.forEach(function(s){ if(s.tOK && ALL_T.indexOf(s.t)<0) ALL_T.push(s.t); });
+
+/* ══════════ ② 存档 ══════════ */
+var LS = {
+  get:function(k,d){
+    try{ var v=localStorage.getItem('lvsym.'+k); return v==null?d:JSON.parse(v); }
+    catch(e){ return d; }
+  },
+  set:function(k,v){ try{ localStorage.setItem('lvsym.'+k,JSON.stringify(v)); }catch(e){} }
+};
+function markWrong(i){ var w=LS.get('wrong',{}); w[i]=(w[i]||0)+1; LS.set('wrong',w); }
+function markRight(i){
+  var w=LS.get('wrong',{});
+  if(w[i]){ w[i]--; if(w[i]<=0) delete w[i]; LS.set('wrong',w); }
+}
+function wrongPool(){ var w=LS.get('wrong',{}); return SYMS.filter(function(s){return w[s.i]>0;}); }
+
+/* ══════════ ③ 出题范围 ══════════ */
+var scope = LS.get('scope','all');       /* 'all' | 'wrong' | [组号,...] */
+function pool(){
+  if(scope==='wrong') return wrongPool();
+  if(scope==='all') return SYMS.slice();
+  var g = scope;
+  return SYMS.filter(function(s){ return g.indexOf(s.g)>=0; });
+}
+function scopeName(){
+  if(scope==='wrong') return '错题本';
+  if(scope==='all') return '全部符号';
+  return scope.length+' 个分组';
+}
+
+/* ══════════ ④ 工具 ══════════ */
+function shuffle(a){
+  for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)), t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+function esc(s){
+  return String(s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+  });
+}
+function mmss(ms){
+  var t=Math.floor(ms/1000), m=Math.floor(t/60), s=t%60;
+  return m+':'+(s<10?'0':'')+s;
+}
+/* 抽 n 个符号，保证图形互不相同（eq 去重） */
+function pickUniq(arr,n,usedEq){
+  var used = usedEq ? usedEq.slice() : [], out = [], a = shuffle(arr.slice());
+  for(var i=0;i<a.length && out.length<n;i++){
+    if(used.indexOf(a[i].eq)<0){ used.push(a[i].eq); out.push(a[i]); }
+  }
+  return out;
+}
+/* 干扰项优先从同一分组抽（同组的最像，最能考出区别），不够再从全库补。
+   干扰项永远从全库 SYMS 抽，不受出题范围限制 —— 否则只选一个组时凑不满 4 个选项 */
+function distract(ans,n){
+  var same = SYMS.filter(function(s){ return s.g===ans.g && s.eq!==ans.eq; });
+  var got = pickUniq(same,n,[ans.eq]);
+  if(got.length<n){
+    var eqs=[ans.eq]; got.forEach(function(s){ eqs.push(s.eq); });
+    var rest = SYMS.filter(function(s){ return s.g!==ans.g; });
+    got = got.concat(pickUniq(rest,n-got.length,eqs));
+  }
+  return got;
+}
+function lookWarn(s){
+  var o = look[s.i];
+  if(!o.length) return '';
+  return '<span class="warn">⚠ 这个图和'+o.map(function(x){
+    return '「'+esc(x.n)+'」<code>'+esc(x.t||'—')+'</code>';
+  }).join('、')+' 画得几乎一样，<b>只能靠图旁边标的文字符号区分</b>。'+
+  '所以它们不会出现在同一道题里。</span>';
+}
+function symCard(s){ return '<div class="pic">'+s.s+'</div>'; }
+
+/* 当前屏幕的清理钩子（计时器之类） */
+var cleanup = null;
+function go(render){
+  if(cleanup){ cleanup(); cleanup=null; }
+  window.scrollTo(0,0);
+  render();
+}
+
+/* ══════════ ⑤ 主菜单 ══════════ */
+function menu(){
+  ttl.textContent='电工符号配对';
+  quitBtn.textContent='返回书站';
+  quitBtn.onclick=function(){ location.href='index.html'; };
+
+  var n = pool().length, wn = wrongPool().length;
+  var best = LS.get('best',{});
+  var groups = Object.keys(GROUPS).map(Number).sort(function(a,b){return a-b;});
+
+  var chips = '<button class="chip wide'+(scope==='all'?' on':'')+'" data-g="all">'+
+              '全部 '+SYMS.length+' 个符号</button>';
+  if(wn) chips += '<button class="chip wide'+(scope==='wrong'?' on':'')+'" data-g="wrong">'+
+                  '只练错题（'+wn+' 个）</button>';
+  groups.forEach(function(g){
+    var cnt = SYMS.filter(function(s){return s.g===g;}).length;
+    var on = scope!=='all' && scope!=='wrong' && scope.indexOf(g)>=0;
+    chips += '<button class="chip'+(on?' on':'')+'" data-g="'+g+'">'+
+             esc(GROUPS[g])+' <span style="opacity:.65">'+cnt+'</span></button>';
+  });
+
+  function rec(k,fmt){
+    var v = best[k];
+    return v ? '<td>'+fmt(v)+'</td>' : '<td class="none">还没记录</td>';
+  }
+
+  app.innerHTML =
+    '<div class="panel">'+
+      '<h2>出题范围 <span class="cnt">'+n+' 个</span></h2>'+
+      '<div class="chips" id="chips">'+chips+'</div>'+
+      '<p class="hint">点分组可以<b>多选</b>，再点一下取消。答错的符号会自动进错题本，'+
+      '在错题本里答对一次就消一次。</p>'+
+    '</div>'+
+
+    '<div class="modes">'+
+      '<button class="mode" data-m="flip">'+
+        '<div class="mt">① 翻牌记忆</div>'+
+        '<div class="md">符号卡和名称卡混在一起扣着，翻两张，对上就留下。'+
+        '适合第一次认脸，把图和名字绑在一起。</div>'+
+        '<div class="mb">计步数 · 计时 · 8 对牌</div>'+
+      '</button>'+
+      '<button class="mode" data-m="match">'+
+        '<div class="mt">② 左右速配</div>'+
+        '<div class="md">左边一列符号，右边一列打乱的名称，点一个再点一个连起来。'+
+        '五个一批，配完换下一批。</div>'+
+        '<div class="mb">计时 · 数错误 · 最多 20 个一局</div>'+
+      '</button>'+
+      '<button class="mode" data-m="quiz">'+
+        '<div class="mt">③ 抢答四选一</div>'+
+        '<div class="md">三种题型随机出：看图选名称、看名称选图、看图选文字符号（KM / FR / QS）。'+
+        '答错当场讲，错的进错题本。</div>'+
+        '<div class="mb">连击 · 正确率 · 最多 20 题一局</div>'+
+      '</button>'+
+    '</div>'+
+
+    '<div class="panel">'+
+      '<h2>最好成绩</h2>'+
+      '<table class="recs"><tbody>'+
+        '<tr><td>翻牌记忆（8 对）</td>'+rec('flip8',function(v){return v.moves+' 步 / '+mmss(v.ms);})+'</tr>'+
+        '<tr><td>左右速配</td>'+rec('match',function(v){return mmss(v.ms)+' / 错 '+v.bad;})+'</tr>'+
+        '<tr><td>抢答四选一</td>'+rec('quiz',function(v){return v.right+'/'+v.total+' · 连击 '+v.combo;})+'</tr>'+
+      '</tbody></table>'+
+      '<p class="hint">成绩只按玩法记，<b>不区分出题范围</b> —— 只练一个组的成绩和练全部的没法比，心里有数就行。</p>'+
+    '</div>'+
+
+    '<p class="foot">77 个符号出自《低压电工入门考证视频教程》表 1-2。'+
+    '想查某个符号去 <a href="c1-2.html">1-2 节的符号库</a>，能搜。</p>';
+
+  document.getElementById('chips').onclick=function(e){
+    var b = e.target.closest('.chip'); if(!b) return;
+    var g = b.dataset.g;
+    if(g==='all'||g==='wrong'){ scope = g; }
+    else{
+      g = +g;
+      if(scope==='all'||scope==='wrong') scope=[g];
+      else{
+        var k = scope.indexOf(g);
+        if(k<0) scope = scope.concat([g]); else scope = scope.filter(function(x){return x!==g;});
+        if(!scope.length) scope='all';
+      }
+    }
+    LS.set('scope',scope);
+    go(menu);
+  };
+  Array.prototype.forEach.call(app.querySelectorAll('.mode'),function(b){
+    b.onclick=function(){
+      /* eq 去重后真正能用的数量。
+         门槛只跟「范围里要有几个符号」有关：
+         翻牌要凑 8 对；速配一批至少 2 个能配；
+         抢答的干扰项是从全库抽的，范围里有 1 个就能出题。 */
+      var need = {flip:8, match:2, quiz:1}[b.dataset.m];
+      var p = pool();
+      var uniq = pickUniq(p,p.length).length;
+      if(uniq<need){
+        alert('这个范围只有 '+uniq+' 个能用的符号，'+
+              (b.dataset.m==='flip'?'翻牌要 8 个不同的符号才凑得齐 8 对':'至少要 '+need+' 个')+
+              '。再多选几个分组。');
+        return;
+      }
+      if(b.dataset.m==='flip') go(flipGame);
+      else if(b.dataset.m==='match') go(matchGame);
+      else go(quizGame);
+    };
+  });
+}
+
+/* 游戏中统一的「退出」 */
+function inGame(name){
+  ttl.textContent=name;
+  quitBtn.textContent='退出';
+  quitBtn.onclick=function(){
+    if(confirm('退出这一局？进度不保存。')) go(menu);
+  };
+}
+
+/* 每局共用的计时器 */
+function ticker(el){
+  var t0 = Date.now(), id = setInterval(function(){
+    if(el.isConnected) el.textContent = mmss(Date.now()-t0);
+  },500);
+  cleanup = function(){ clearInterval(id); };
+  return { start:t0, stop:function(){ clearInterval(id); return Date.now()-t0; } };
+}
+
+/* ══════════ ⑥ 玩法一：翻牌记忆 ══════════ */
+function flipGame(){
+  inGame('翻牌记忆');
+  var PAIRS = 8;
+  var picked = pickUniq(pool(),PAIRS);
+  var cards = [];
+  picked.forEach(function(s){
+    cards.push({sym:s,kind:'s'});
+    cards.push({sym:s,kind:'n'});
+  });
+  shuffle(cards);
+
+  app.innerHTML =
+    '<div class="hud">'+
+      '<div class="box"><div class="k">已配对</div><div class="v" id="hDone">0/'+PAIRS+'</div></div>'+
+      '<div class="box"><div class="k">步数</div><div class="v" id="hMove">0</div></div>'+
+      '<div class="box"><div class="k">用时</div><div class="v" id="hTime">0:00</div></div>'+
+    '</div>'+
+    '<div class="bar"><i id="hBar" style="width:0%"></i></div>'+
+    '<div class="board" style="--cols:4" id="board">'+
+      cards.map(function(c,k){
+        var face = c.kind==='s'
+          ? symCard(c.sym)
+          : '<div class="nm">'+esc(c.sym.n)+'</div>'+
+            (c.sym.t?'<div class="lt">'+esc(c.sym.t)+'</div>':'');
+        return '<button class="card" data-k="'+k+'">'+
+               '<span class="face back">?</span>'+
+               '<span class="face fore">'+face+'</span></button>';
+      }).join('')+
+    '</div>'+
+    '<p class="hint" style="margin-top:14px">一张是图，一张是名字，凑成一对就消。'+
+    '<b>名称卡右下角的 KM / FR 是文字符号</b>，顺便记一下。</p>';
+
+  var board = document.getElementById('board');
+  var eDone = document.getElementById('hDone'), eMove = document.getElementById('hMove');
+  var eBar = document.getElementById('hBar');
+  var clock = ticker(document.getElementById('hTime'));
+  var open = [], moves = 0, done = 0, lock = false;
+
+  board.onclick = function(e){
+    var b = e.target.closest('.card'); if(!b || lock) return;
+    var k = +b.dataset.k;
+    if(b.classList.contains('up') || b.classList.contains('done')) return;
+
+    b.classList.add('up');
+    open.push({k:k,el:b,c:cards[k]});
+    if(open.length<2) return;
+
+    moves++; eMove.textContent = moves;
+    var a = open[0], z = open[1];
+
+    if(a.c.sym.i === z.c.sym.i && a.k !== z.k){
+      a.el.classList.add('done'); z.el.classList.add('done');
+      a.el.classList.remove('up'); z.el.classList.remove('up');
+      open = [];
+      done++;
+      eDone.textContent = done+'/'+PAIRS;
+      eBar.style.width = (done/PAIRS*100)+'%';
+      if(done===PAIRS){
+        var ms = clock.stop();
+        setTimeout(function(){ flipResult(moves,ms,PAIRS,picked); },420);
+      }
+    }else{
+      lock = true;
+      a.el.classList.add('bad'); z.el.classList.add('bad');
+      setTimeout(function(){
+        a.el.classList.remove('up','bad'); z.el.classList.remove('up','bad');
+        open = []; lock = false;
+      },700);
+    }
+  };
+}
+
+function flipResult(moves,ms,pairs,used){
+  cleanup = null;
+  ttl.textContent='这一局结束';
+  quitBtn.textContent='返回';
+  quitBtn.onclick=function(){ go(menu); };
+
+  var perfect = pairs;   /* 理论最少步数 = 对数 */
+  var best = LS.get('best',{}), key='flip'+pairs, isNew=false;
+  var cur = {moves:moves,ms:ms};
+  if(!best[key] || moves<best[key].moves || (moves===best[key].moves && ms<best[key].ms)){
+    best[key]=cur; LS.set('best',best); isNew=true;
+  }
+  var grade = moves<=perfect*1.5 ? ['🎯','记性可以'] :
+              moves<=perfect*2.2 ? ['👍','正常水平'] : ['🧩','再来一局就熟了'];
+
+  app.innerHTML =
+    '<div class="done-hero"><div class="em">'+grade[0]+'</div>'+
+    '<h2>'+grade[1]+'</h2><p>'+pairs+' 对全部配上了</p></div>'+
+    (isNew?'<p class="newrec">★ 新纪录</p>':'')+
+    '<div class="stats">'+
+      '<div class="stat"><div class="k">步数</div><div class="v">'+moves+'</div></div>'+
+      '<div class="stat"><div class="k">理论最少</div><div class="v">'+perfect+'</div></div>'+
+      '<div class="stat"><div class="k">用时</div><div class="v">'+mmss(ms)+'</div></div>'+
+    '</div>'+
+    '<div class="misslist"><h3 style="color:var(--teal)">这一局考了这 '+pairs+' 个</h3>'+
+      used.map(function(s){
+        return '<div class="miss"><div class="pic">'+s.s+'</div><div class="txt">'+
+               '<div class="n">'+esc(s.n)+'</div>'+
+               '<div class="g">'+esc(GROUPS[s.g]||'')+(s.t?' · '+esc(s.t):'')+'</div></div></div>';
+      }).join('')+
+    '</div>'+
+    '<div class="row2" style="margin-top:16px">'+
+      '<button class="btn ghost" id="bMenu">回菜单</button>'+
+      '<button class="btn" id="bAgain">再来一局</button>'+
+    '</div>';
+  document.getElementById('bMenu').onclick=function(){ go(menu); };
+  document.getElementById('bAgain').onclick=function(){ go(flipGame); };
+}
+
+/* ══════════ ⑦ 玩法二：左右速配 ══════════ */
+function matchGame(){
+  inGame('左右速配');
+  var PER = 5;
+  var all = pickUniq(pool(),20);
+  var rounds = [];
+  for(var i=0;i<all.length;i+=PER){
+    var r = all.slice(i,i+PER);
+    if(r.length>=2) rounds.push(r);   /* 剩 1 个凑不成一批，丢掉 */
+  }
+  var ri = 0, bad = 0, matched = 0, total = 0;
+  rounds.forEach(function(r){ total += r.length; });
+
+  app.innerHTML =
+    '<div class="hud">'+
+      '<div class="box"><div class="k">进度</div><div class="v" id="hDone">0/'+total+'</div></div>'+
+      '<div class="box"><div class="k">连错</div><div class="v" id="hBad">0</div></div>'+
+      '<div class="box"><div class="k">用时</div><div class="v" id="hTime">0:00</div></div>'+
+    '</div>'+
+    '<div class="bar"><i id="hBar" style="width:0%"></i></div>'+
+    '<div id="stage"></div>'+
+    '<p class="hint" style="margin-top:14px">先点<b>左边的图</b>，再点<b>右边对应的名字</b>。'+
+    '点错了图会抖一下，错误次数 +1。</p>';
+
+  var stage = document.getElementById('stage');
+  var eDone = document.getElementById('hDone'), eBad = document.getElementById('hBad');
+  var eBar = document.getElementById('hBar');
+  var clock = ticker(document.getElementById('hTime'));
+
+  function drawRound(){
+    var r = rounds[ri];
+    var left = shuffle(r.slice()), right = shuffle(r.slice());
+    /* 一个网格按行交错输出，左右两边才会对齐在同一条线上 */
+    stage.innerHTML =
+      '<div class="mgrid">'+
+        left.map(function(s,k){
+          return '<button class="mitem" data-side="L" data-i="'+s.i+'">'+symCard(s)+'</button>'+
+                 '<button class="mitem" data-side="R" data-i="'+right[k].i+'">'+
+                 '<span class="nm">'+esc(right[k].n)+'</span></button>';
+        }).join('')+
+      '</div>';
+
+    var sel = null;
+    stage.onclick = function(e){
+      var b = e.target.closest('.mitem'); if(!b) return;
+      if(b.classList.contains('done')) return;
+
+      if(!sel){
+        if(b.dataset.side!=='L') return;      /* 必须先点左边的图 */
+        sel = b; b.classList.add('sel'); return;
+      }
+      if(b.dataset.side==='L'){               /* 改选另一张图 */
+        sel.classList.remove('sel'); sel=b; b.classList.add('sel'); return;
+      }
+      if(b.dataset.i === sel.dataset.i){
+        b.classList.add('done'); sel.classList.add('done');
+        sel.classList.remove('sel'); sel=null;
+        markRight(+b.dataset.i);
+        matched++;
+        eDone.textContent = matched+'/'+total;
+        eBar.style.width = (matched/total*100)+'%';
+        if(!stage.querySelector('.mitem:not(.done)')){
+          ri++;
+          if(ri<rounds.length) setTimeout(drawRound,380);
+          else{
+            var ms = clock.stop();
+            setTimeout(function(){ matchResult(ms,bad,total,all); },380);
+          }
+        }
+      }else{
+        bad++; eBad.textContent = bad;
+        markWrong(+sel.dataset.i);
+        var wrongEl = b, selEl = sel;
+        wrongEl.classList.add('bad'); selEl.classList.remove('sel');
+        sel = null;
+        setTimeout(function(){ wrongEl.classList.remove('bad'); },340);
+      }
+    };
+  }
+  drawRound();
+}
+
+function matchResult(ms,bad,total,used){
+  cleanup = null;
+  ttl.textContent='这一局结束';
+  quitBtn.textContent='返回';
+  quitBtn.onclick=function(){ go(menu); };
+
+  var best = LS.get('best',{}), isNew=false;
+  if(!best.match || bad<best.match.bad || (bad===best.match.bad && ms<best.match.ms)){
+    best.match={ms:ms,bad:bad}; LS.set('best',best); isNew=true;
+  }
+  var grade = bad===0 ? ['💯','一次没错'] : bad<=3 ? ['👌','基本记住了'] : ['📖','还得再看看表 1-2'];
+
+  app.innerHTML =
+    '<div class="done-hero"><div class="em">'+grade[0]+'</div>'+
+    '<h2>'+grade[1]+'</h2><p>'+total+' 个符号全配完了</p></div>'+
+    (isNew?'<p class="newrec">★ 新纪录</p>':'')+
+    '<div class="stats">'+
+      '<div class="stat"><div class="k">用时</div><div class="v">'+mmss(ms)+'</div></div>'+
+      '<div class="stat"><div class="k">点错</div><div class="v">'+bad+'</div></div>'+
+      '<div class="stat"><div class="k">符号数</div><div class="v">'+total+'</div></div>'+
+    '</div>'+
+    '<div class="row2" style="margin-top:16px">'+
+      '<button class="btn ghost" id="bMenu">回菜单</button>'+
+      '<button class="btn" id="bAgain">再来一局</button>'+
+    '</div>'+
+    '<p class="foot">配错过的符号已经记进错题本，回菜单能单独练。</p>';
+  document.getElementById('bMenu').onclick=function(){ go(menu); };
+  document.getElementById('bAgain').onclick=function(){ go(matchGame); };
+}
+
+/* ══════════ ⑧ 玩法三：抢答四选一 ══════════ */
+function quizGame(){
+  inGame('抢答四选一');
+  var p = pool();
+  var uniq = pickUniq(p,p.length).length;
+  /* 范围小就少出几题，别拿 3 个符号硬凑 20 题反复问 */
+  var TOTAL = Math.min(20, Math.max(5, uniq));
+  var qs = pickUniq(p,Math.min(TOTAL,p.length));
+  while(qs.length<TOTAL && p.length) qs = qs.concat(pickUniq(p,Math.min(TOTAL-qs.length,p.length)));
+  qs = qs.slice(0,TOTAL);
+
+  var qi=0, right=0, combo=0, bestCombo=0, missed=[];
+
+  app.innerHTML =
+    '<div class="hud">'+
+      '<div class="box"><div class="k">进度</div><div class="v" id="hNo">1/'+qs.length+'</div></div>'+
+      '<div class="box"><div class="k">答对</div><div class="v" id="hOK">0</div></div>'+
+      '<div class="box"><div class="k">连击</div><div class="v" id="hCb">0</div></div>'+
+      '<div class="box"><div class="k">用时</div><div class="v" id="hTime">0:00</div></div>'+
+    '</div>'+
+    '<div class="bar"><i id="hBar" style="width:0%"></i></div>'+
+    '<div id="stage"></div>';
+
+  var stage=document.getElementById('stage');
+  var eNo=document.getElementById('hNo'), eOK=document.getElementById('hOK');
+  var eCb=document.getElementById('hCb'), eBar=document.getElementById('hBar');
+  var clock = ticker(document.getElementById('hTime'));
+
+  function ask(){
+    var s = qs[qi];
+    /* 题型：能考文字符号的三选一，不能的两选一 */
+    var kinds = s.tOK ? ['s2n','n2s','s2t'] : ['s2n','n2s'];
+    var kind = kinds[Math.floor(Math.random()*kinds.length)];
+    var opts, head, cls='';
+
+    if(kind==='s2t'){
+      var others = shuffle(ALL_T.filter(function(t){return t!==s.t;})).slice(0,3);
+      opts = shuffle([s.t].concat(others)).map(function(t){
+        return {ok:t===s.t, html:'<span class="nm">'+esc(t)+'</span>'};
+      });
+      head = '<div class="tag">这个符号的文字符号是</div>'+symCard(s);
+    }else if(kind==='s2n'){
+      var d1 = distract(s,3);
+      opts = shuffle([s].concat(d1)).map(function(x){
+        return {ok:x.i===s.i, html:'<span class="nm">'+esc(x.n)+'</span>'};
+      });
+      head = '<div class="tag">这是什么</div>'+symCard(s);
+    }else{
+      var d2 = distract(s,3);
+      opts = shuffle([s].concat(d2)).map(function(x){
+        return {ok:x.i===s.i, html:symCard(x)};
+      });
+      /* 题干只给名称，不给文字符号 —— 印上 KA 等于把「名称↔文字符号」这一半答案送掉 */
+      head = '<div class="tag">哪个是它</div><div class="big">'+esc(s.n)+'</div>';
+      cls = ' pics';
+    }
+
+    stage.innerHTML =
+      '<div class="ask">'+head+'</div>'+
+      '<div class="opts'+cls+'" id="opts">'+
+        opts.map(function(o,k){
+          return '<button class="opt" data-k="'+k+'">'+
+                 (cls?'':'<span class="idx">'+'ABCD'[k]+'</span>')+o.html+'</button>';
+        }).join('')+
+      '</div>'+
+      '<div id="say"></div>';
+
+    document.getElementById('opts').onclick = function(e){
+      var b = e.target.closest('.opt'); if(!b || b.disabled) return;
+      var k = +b.dataset.k, hit = opts[k].ok;
+      var btns = stage.querySelectorAll('.opt');
+      Array.prototype.forEach.call(btns,function(x,j){
+        x.disabled = true;
+        if(opts[j].ok) x.classList.add('ok');
+        else if(j===k) x.classList.add('no');
+      });
+
+      if(hit){
+        right++; combo++; if(combo>bestCombo) bestCombo=combo;
+        markRight(s.i);
+      }else{
+        combo=0; markWrong(s.i);
+        if(missed.indexOf(s)<0) missed.push(s);
+      }
+      eOK.textContent=right; eCb.textContent=combo;
+      eCb.className = 'v'+(combo>=3?' hot':'');
+
+      document.getElementById('say').innerHTML =
+        '<div class="say '+(hit?'ok':'no')+'">'+
+          '<div class="h">'+(hit?'✓ 对了':'✗ 正确答案：'+esc(
+            kind==='s2t' ? s.t : s.n
+          ))+'</div>'+
+          esc(s.n)+'　<code>'+esc(s.t||'（无文字符号）')+'</code>　'+
+          '<span style="color:var(--ink-soft)">'+esc(GROUPS[s.g]||'')+'</span>'+
+          lookWarn(s)+
+        '</div>'+
+        '<button class="btn" id="bNext">'+(qi+1<qs.length?'下一题':'看结果')+'</button>';
+
+      document.getElementById('bNext').onclick = next;
+      if(hit) setTimeout(function(){
+        var nb=document.getElementById('bNext'); if(nb) next();
+      }, 1100);
+    };
+  }
+
+  var advanced=false;
+  function next(){
+    if(advanced) return; advanced=true;
+    qi++;
+    eBar.style.width = (qi/qs.length*100)+'%';
+    if(qi>=qs.length){
+      var ms=clock.stop();
+      quizResult(right,qs.length,bestCombo,ms,missed);
+      return;
+    }
+    eNo.textContent=(qi+1)+'/'+qs.length;
+    advanced=false;
+    ask();
+  }
+  ask();
+}
+
+function quizResult(right,total,combo,ms,missed){
+  cleanup = null;
+  ttl.textContent='这一局结束';
+  quitBtn.textContent='返回';
+  quitBtn.onclick=function(){ go(menu); };
+
+  var pct = Math.round(right/total*100);
+  var best = LS.get('best',{}), isNew=false;
+  /* 范围小的时候题数会少于 20，所以比正确率不比对题数，否则不同局没法比 */
+  var bp = best.quiz ? best.quiz.right/best.quiz.total : -1;
+  if(right/total>bp || (right/total===bp && combo>best.quiz.combo)){
+    best.quiz={right:right,total:total,combo:combo,ms:ms}; LS.set('best',best); isNew=true;
+  }
+  var grade = pct===100 ? ['🏆','全对'] : pct>=85 ? ['🎯','稳了'] :
+              pct>=60 ? ['👍','大半记住了'] : ['📖','先回去看表 1-2'];
+
+  app.innerHTML =
+    '<div class="done-hero"><div class="em">'+grade[0]+'</div>'+
+    '<h2>'+grade[1]+'</h2><p>'+total+' 题答对 '+right+' 题</p></div>'+
+    (isNew?'<p class="newrec">★ 新纪录</p>':'')+
+    '<div class="stats">'+
+      '<div class="stat"><div class="k">正确率</div><div class="v">'+pct+'%</div></div>'+
+      '<div class="stat"><div class="k">最高连击</div><div class="v">'+combo+'</div></div>'+
+      '<div class="stat"><div class="k">用时</div><div class="v">'+mmss(ms)+'</div></div>'+
+    '</div>'+
+    (missed.length ?
+      '<div class="misslist"><h3>答错的 '+missed.length+' 个（已进错题本）</h3>'+
+        missed.map(function(s){
+          return '<div class="miss"><div class="pic">'+s.s+'</div><div class="txt">'+
+                 '<div class="n">'+esc(s.n)+'</div>'+
+                 '<div class="g">'+esc(GROUPS[s.g]||'')+(s.t?' · '+esc(s.t):'')+'</div></div></div>';
+        }).join('')+
+      '</div>'
+      : '<p class="foot" style="border:none;margin-top:0">一个没错，错题本没新增。</p>')+
+    '<div class="row2" style="margin-top:16px">'+
+      '<button class="btn ghost" id="bMenu">回菜单</button>'+
+      '<button class="btn" id="bAgain">再来一局</button>'+
+    '</div>';
+  document.getElementById('bMenu').onclick=function(){ go(menu); };
+  document.getElementById('bAgain').onclick=function(){ go(quizGame); };
+}
+
+go(menu);
+})();
+</script>
+</body>
+</html>
