@@ -3806,10 +3806,20 @@ let lkResult=null;   // 本轮查询结果，供「记住它」入库
 // 切词用：这些词点了也没意义，滤掉免得 chip 刷满屏
 const LK_STOP=new Set("a an the this that these those i you he she it we they my your his her its our their is am are was were be been being do does did have has had will would can could shall should may might must to of in on at by for with from as and or but if so not no its it's don't".split(" "));
 
+// 分享/剪贴板过来的内容里常夹着链接（推特分享推文给的就是一串纯 URL）。
+// 把链接剥出来当来源，剩下的才是要查的文字——否则 URL 会被当成一个"单词"送去问 AI
+const LK_URL_RE=/https?:\/\/\S+/gi;
+function lkSplitUrl(t){
+  const urls=(t||"").match(LK_URL_RE)||[];
+  return {rest:(t||"").replace(LK_URL_RE," ").replace(/\s+/g," ").trim(), url:urls[0]||""};
+}
 // text 可以是一个词，也可以是整句/整段；src 是来源标记
 function openLookup(text,src){
+  const parsed=lkSplitUrl(text||"");
+  // 文本里自带链接时，域名就是最准的来源，比外面传进来的泛泛标记好
+  if(parsed.url){try{src=new URL(parsed.url).hostname.replace(/^www\./,"")}catch(e){}}
   lkSrc=src||"";lkResult=null;lkWords=[];
-  const raw=(text||"").replace(/\s+/g," ").trim();
+  const raw=parsed.rest;
   const parts=raw?raw.split(" "):[];
   let q="";
   // 超过 4 个词就当成原句：切成可点的词，点一下就查，原句自动成为上下文
@@ -3839,6 +3849,15 @@ function openLookup(text,src){
     ${lkCtxBoxHtml()}
     <div id="lk-result" style="margin-top:12px"></div>
   </div>`;
+  // 分享/复制过来的只有一条链接：推特 App 就是这种情况，说清楚下一步怎么办
+  if(!raw&&parsed.url){
+    const box=document.getElementById("lk-result");
+    if(box)box.innerHTML=`<div style="border:1px solid var(--line);background:var(--card-soft);border-radius:10px;padding:12px;font-size:.84rem;line-height:1.7">
+      📎 分享过来的只有一条链接（${escapeHtml(lkSrc||"网页")}），没有文字。<br>
+      <b>推特 App 选中文字后只有「复制」，没有「分享」</b> —— 复制完回到这儿，
+      长按上面的输入框粘贴就行。整句粘进来也可以，会切成词让你点。
+    </div>`;
+  }
   const inp=document.getElementById("lk-q");
   if(inp)setTimeout(()=>inp.focus(),100);
 }
@@ -3976,7 +3995,7 @@ async function pasteLookup(){
 (function handleLookupParam(){
   const p=new URLSearchParams(location.search);
   const t=(p.get("q")||p.get("text")||p.get("title")||"").trim();
-  if(!t)return;
+  if(!t&&!p.get("url"))return;
   const u=p.get("url")||"";
   let src="分享";
   try{if(u)src=new URL(u).hostname.replace(/^www\./,"")}catch(e){}
