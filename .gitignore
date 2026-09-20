@@ -15,6 +15,9 @@ AGENTS.md
 output/
 *.jpg
 *.png
+
+# PWA 图标要发布：装到桌面才能进系统分享菜单，从上面的 *.png 里单独放行
+!vocab-icon-*.png
 *.webp
 
 # 《Python编程：从入门到实践》章节笔记，本机参考用，不公开发布
