@@ -3800,7 +3800,8 @@ let qaImages=[];  // 快捷加词选的图片 [{b64,mime}, ...]
 // 三条原则：① 本地库先查，命中零延迟零成本 ② 只问释义不问例句，AI 调用压到最小
 // ③ 原句(ctx)和来源(src)一起存下来——真正让人记住一个词的是"我在哪儿撞见它的"
 const LOOKUP_CAT="wild";
-let lkCtx="";        // 原句（上下文），可空
+let lkCtx="";        // 分享/粘贴进来的整段，面板上原样显示
+let lkCtxPick="";    // 要查的词所在的那一句——入库和问 AI 都只用这一句
 let lkSrc="";        // 来源标记：x.com / 剪贴板 / 分享
 let lkWords=[];      // 原句切出来的可点词，点哪个查哪个（省得手机上手打）
 let lkResult=null;   // 本轮查询结果，供「记住它」入库
@@ -3826,12 +3827,27 @@ function lkSplitUrl(t){
   const urls=(t||"").match(LK_URL_RE)||[];
   return {rest:(t||"").replace(LK_URL_RE," ").replace(/\s+/g," ").trim(), url:urls[0]||""};
 }
+// 分享整个页面时带过来的常是一大段（好几句）。存一大段当记忆锚点反而看着累，
+// 所以只挑出目标词所在的那一句。缩写（Mr. / e.g.）会切错，但对查词影响很小
+function lkSplitSentences(t){
+  // 过滤掉不含字母的碎片：句尾的孤立引号会被切成一"句"，
+  // 那会让下面"是不是本来就只有一句"的判断失准
+  return ((t||"").match(/[^.!?]+[.!?]*/g)||[]).map(x=>x.trim()).filter(x=>/[A-Za-z]/.test(x));
+}
+function lkSentenceOf(word){
+  const sents=lkSplitSentences(lkCtx);
+  if(sents.length<2)return lkCtx;          // 本来就一句，不用挑
+  const k=(word||"").toLowerCase();
+  // 按词边界切开比 indexOf 准：否则查 all 会命中 really
+  const hit=sents.find(sn=>sn.toLowerCase().split(/[^a-z'-]+/).includes(k));
+  return hit||lkCtx;
+}
 // text 可以是一个词，也可以是整句/整段；src 是来源标记
 function openLookup(text,src){
   const parsed=lkSplitUrl(text||"");
   // 文本里自带链接时，域名就是最准的来源，比外面传进来的泛泛标记好
   if(parsed.url){try{src=new URL(parsed.url).hostname.replace(/^www\./,"")}catch(e){}}
-  lkSrc=src||"";lkResult=null;lkWords=[];
+  lkSrc=src||"";lkResult=null;lkWords=[];lkCtxPick="";
   const raw=parsed.rest;
   const parts=raw?raw.split(" "):[];
   let q="";
@@ -3912,6 +3928,7 @@ async function runLookup(){
   if(!q)return toast("先填要查的词");
   if(!box)return;
   lkResult=null;
+  lkCtxPick=lkCtx?lkSentenceOf(q):"";   // 整段里挑出这个词所在那一句
   // ① 本地先查
   const hit=lkLocalHit(q);
   if(hit){
@@ -3942,7 +3959,7 @@ async function runLookupAI(){
   box.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
   const sys=`你是英语词典，面向中文母语学习者。只返回 JSON 数组，数组里一个元素，不要任何其他文字：
 [{"word":"词典原形（用户给的若是变形/复数/过去式，还原成原形）","phonetic":"美式音标带斜杠","pos":"词性缩写如 n./v./adj./phr.","cn":"中文释义，最多3个义项用；隔开","here":"在用户给的原句里它具体是什么意思，一句中文说清；没给原句就填空字符串"}]`;
-  const payload=lkCtx?`词：${q}\n原句：${lkCtx}`:`词：${q}`;
+  const payload=lkCtxPick?`词：${q}\n原句：${lkCtxPick}`:`词：${q}`;
   try{
     // token 给足余量：强制思考的模型会先烧一段推理预算，给少了 JSON 会被截断
     const text=await callAI([{role:"user",content:payload}],sys,500);
@@ -3978,7 +3995,7 @@ function saveLookupWord(){
   // exampleEn 故意留空：第一次翻面时 maybeEnrichWord() 会自动补例句和音标，查词这一步不等它
   const rec={id:"imp"+Date.now()+"_lk",word:o.word,phonetic:o.phonetic||"",pos:o.pos||"",
     cn:o.cn||"",tip:o.here||"",exampleEn:"",exampleCn:"",scene:"",cat:LOOKUP_CAT};
-  if(lkCtx)rec.ctx=lkCtx;
+  if(lkCtxPick)rec.ctx=lkCtxPick;
   if(lkSrc)rec.src=lkSrc;
   imported.push(rec);
   save(IMP_KEY,imported);
@@ -3998,7 +4015,7 @@ function saveLookupWord(){
 function lkAgain(){
   const box=document.getElementById("lk-result");if(box)box.innerHTML="";
   const inp=document.getElementById("lk-q");if(inp){inp.value="";inp.focus()}
-  lkResult=null;
+  lkResult=null;lkCtxPick="";
 }
 
 // 首页入口：读剪贴板直接查。读不到就开空面板让他手动粘贴（Chrome 可能拦剪贴板权限）
