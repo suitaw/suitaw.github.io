@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>实操图符号 · K31</title>
+<style>
+/* K31 实操接线图里的符号（2026-09-21）。
+   来源：他截的四张考试接线图 K31-02 / 03 / 04 / 05（单相电能表照明、单向连续带点动、
+   带仪表和电流互感器、正反转）。只收这四张图里真出现的符号，按图上的画法重画成 SVG。
+   配色变量和 lv.css / sym-game.html 保持一致，页面自包含。 */
+:root{
+  --bg:#f2f5f6; --surface:#ffffff; --surface-2:#e9eff1;
+  --ink:#1c2427; --ink-soft:#5d6b71;
+  --teal:#20707f; --teal-deep:#14505c;
+  --green:#3f7d3a; --amber:#c4762a; --red:#b0433a;
+  --line:#cfdadd; --line-soft:#e2eaec;
+  --font-body:"PingFang SC","Noto Sans SC","Microsoft YaHei",-apple-system,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --shadow:0 2px 10px rgba(20,60,70,.08);
+  --ok-bg:#e4f2e2; --ok-line:#7fb877;
+  --no-bg:#f8e4e2; --no-line:#d89089;
+  --on-teal:#ffffff;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#11171a; --surface:#1a2226; --surface-2:#222d32;
+    --ink:#e6eced; --ink-soft:#9aa9ae;
+    --teal:#5fb8c9; --teal-deep:#8fd3e0;
+    --green:#7fc175; --amber:#e0a462; --red:#e08a80;
+    --line:#2f3d43; --line-soft:#263237;
+    --shadow:0 2px 12px rgba(0,0,0,.4);
+    --ok-bg:#1e3320; --ok-line:#4e8a48;
+    --no-bg:#3a2220; --no-line:#96514a;
+    --on-teal:#0d1316;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.6;
+  -webkit-text-size-adjust:100%;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+button{font-family:inherit;color:inherit}
+.top{position:sticky;top:0;z-index:30;background:var(--bg);border-bottom:1px solid var(--line);
+  padding:9px 15px 0;}
+.top .row{display:flex;align-items:center;gap:10px;min-height:44px}
+.top .grow{flex:1;min-width:0}
+.top .eyebrow{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.11em;color:var(--amber);margin:0 0 1px}
+.top h1{font-size:1.06rem;font-weight:700;margin:0;color:var(--teal);line-height:1.3}
+.top .bk{flex:none;font-size:.82rem;color:var(--ink-soft);text-decoration:none;border:1px solid var(--line);
+  border-radius:999px;padding:7px 13px;min-height:32px;display:inline-flex;align-items:center;white-space:nowrap}
+.tabs{display:flex;margin-top:6px}
+.tab{flex:1;min-height:44px;background:none;border:none;border-bottom:3px solid transparent;font-size:.92rem;
+  color:var(--ink-soft);cursor:pointer}
+.tab.on{color:var(--teal);font-weight:700;border-bottom-color:var(--teal)}
+.wrap{max-width:700px;margin:0 auto;padding:14px 14px 10px}
+.pane{display:none}.pane.on{display:block}
+.note{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:10px;
+  padding:10px 13px;font-size:.88rem;color:var(--ink-soft);margin-bottom:14px}
+.note b{color:var(--ink)}
+.chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
+.chip{flex:none;min-height:36px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);
+  font-size:.84rem;cursor:pointer}
+.chip.on{background:var(--teal);border-color:var(--teal);color:var(--on-teal);font-weight:600}
+.cards{display:grid;grid-template-columns:1fr;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);
+  display:grid;grid-template-columns:92px 1fr;gap:12px;padding:12px}
+.card .pic{background:var(--surface-2);border-radius:9px;display:flex;align-items:center;justify-content:center;
+  color:var(--ink);padding:4px;align-self:start}
+.card .pic svg{width:84px;height:auto;display:block}
+.card h3{margin:0;font-size:1rem;line-height:1.35}
+.card .code{font-family:var(--font-mono);color:var(--amber);font-weight:700;font-size:.9rem;margin-left:6px}
+.card .figs{margin:3px 0 5px;display:flex;gap:4px;flex-wrap:wrap}
+.card .figs span{font-size:.7rem;font-family:var(--font-mono);padding:0 6px;border-radius:5px;background:var(--surface-2);color:var(--ink-soft)}
+.card p{margin:3px 0;font-size:.87rem}
+.card .how{color:var(--ink-soft)}
+.card .how b{color:var(--teal)}
+/* 测验 */
+.qhead{display:flex;align-items:center;gap:10px;font-size:.84rem;color:var(--ink-soft);margin-bottom:8px}
+.qhead .bar{flex:1;height:6px;border-radius:3px;background:var(--line-soft);overflow:hidden}
+.qhead .bar i{display:block;height:100%;background:var(--teal);transition:width .25s}
+.qbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow)}
+.qtype{font-size:.75rem;color:var(--amber);font-family:var(--font-mono);letter-spacing:.05em}
+.qtext{font-size:1.02rem;font-weight:600;margin:4px 0 10px}
+.qpic{background:var(--surface-2);border-radius:10px;display:flex;justify-content:center;padding:8px;margin-bottom:12px;color:var(--ink)}
+.qpic svg{width:150px;height:auto}
+.opts{display:grid;gap:9px}
+.opts.pics{grid-template-columns:1fr 1fr}
+.opt{min-height:48px;text-align:left;padding:10px 13px;border-radius:10px;border:1.5px solid var(--line);
+  background:var(--surface);font-size:.94rem;cursor:pointer;line-height:1.45}
+.opts.pics .opt{display:flex;justify-content:center;align-items:center;padding:8px;color:var(--ink)}
+.opts.pics .opt svg{width:100px;height:auto}
+.opt.ok{background:var(--ok-bg);border-color:var(--ok-line)}
+.opt.no{background:var(--no-bg);border-color:var(--no-line)}
+.opt:disabled{cursor:default}
+.explain{margin-top:12px;font-size:.9rem;padding:10px 12px;border-radius:9px;background:var(--surface-2)}
+.explain b{color:var(--teal)}
+.btn{min-height:46px;padding:0 18px;border-radius:10px;border:none;background:var(--teal);color:var(--on-teal);
+  font-size:.95rem;font-weight:600;cursor:pointer}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btns{display:flex;gap:9px;margin-top:12px;flex-wrap:wrap}
+.btns .btn{flex:1}
+.menu{display:grid;gap:10px}
+.mode{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);
+  border-left:4px solid var(--teal);border-radius:12px;padding:13px 15px;box-shadow:var(--shadow);cursor:pointer}
+.mode b{display:block;font-size:1rem;color:var(--teal)}
+.mode span{font-size:.84rem;color:var(--ink-soft)}
+.mode:disabled{opacity:.45;cursor:default}
+.score{text-align:center;padding:10px 0}
+.score .big{font-size:2.4rem;font-weight:800;color:var(--teal);line-height:1.2}
+.wrongs{margin-top:12px}
+.wrongs .w{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:.87rem}
+.wrongs .w .a{color:var(--green);font-weight:600}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="row">
+    <div class="grow">
+      <p class="eyebrow">K31-02 ~ 05 · 实操接线图</p>
+      <h1>接线图里的符号</h1>
+    </div>
+    <a class="bk" href="index.html">课表</a>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-p="0">符号表</button>
+    <button class="tab" data-p="1">测验</button>
+  </div>
+</div>
+
+<div class="wrap">
+<section class="pane on" id="p0">
+  <div class="note">只收<b>你截的四张实操图</b>里真出现的符号，照图上的画法重画。
+  图上有的是横着画的，这里一律竖着画——<b>认形状，不认方向</b>。<br>
+  标题下面的 <b>02 / 03 / 04 / 05</b> 是它出现在哪张图（K31-02 照明、03 点动+连续、04 带仪表、05 正反转）。</div>
+  <div class="chips" id="chips"></div>
+  <div class="cards" id="cards"></div>
+</section>
+
+<section class="pane" id="p1">
+  <div id="quiz"></div>
+</section>
+</div>
+
+<script>
+'use strict';
+/* ══ 画符号 ══════════════════════════════════════════
+   viewBox 0 0 80 56，竖向，线色 currentColor（深色模式自动反色）。
+   竖向触点：上引线 y 4→20，下引线 y 38→52，动片以 (40,38) 为支点。 */
+function S(inner){
+  return '<svg viewBox="0 0 80 56" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" role="img">' + inner + '</svg>';
+}
+function L(x1,y1,x2,y2){ return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'"/>'; }
+function P(d, extra){ return '<path d="'+d+'"'+(extra||'')+'/>'; }
+function T(x,y,s,sz){ return '<text x="'+x+'" y="'+y+'" font-size="'+(sz||11)+'" fill="currentColor" stroke="none" '+
+  'text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-weight="600">'+s+'</text>'; }
+function DOT(x,y){ return '<circle cx="'+x+'" cy="'+y+'" r="3" fill="currentColor" stroke="none"/>'; }
+function RING(x,y){ return '<circle cx="'+x+'" cy="'+y+'" r="3.2"/>'; }
+const DASH = ' stroke-dasharray="3 3" stroke-width="1.5"';
+
+/* 触点零件（x = 竖线位置） */
+function leads(x){ return L(x,4,x,20) + L(x,38,x,52); }
+function noBlade(x){ return L(x,38,x-9,21); }                 // 动合：斜着，没碰到
+function ncBlade(x){ return L(x,20,x+9,20) + L(x,38,x+8,18); } // 动断：搭在小横线上
+function eBtn(toX){ return P('M20 22 H14 V36 H20') + '<line x1="14" y1="29" x2="'+toX+'" y2="29"'+DASH+'/>'; }
+function thermo(toX){ return P('M12 22 H19 V29 H12 V36') + '<line x1="19" y1="29" x2="'+toX+'" y2="29"'+DASH+'/>'; }
+
+const DRAW = {
+  lines: S(L(24,14,74,14)+L(24,28,74,28)+L(24,42,74,42,'')+T(11,14,'L',10)+T(11,28,'N',10)+T(11,42,'PE',9)),
+  dot:   S(L(8,34,72,34)+L(40,34,40,8)+DOT(40,34)),
+  cross: S(L(8,28,72,28)+L(40,6,40,50)),
+  ring:  S(L(40,4,40,20)+RING(40,23)+RING(40,33)+L(40,36,40,52)),
+  ground:S(L(40,6,40,28)+L(24,28,56,28)+L(29,35,51,35)+L(34,42,46,42)),
+  kwh:   S('<rect x="8" y="4" width="64" height="30" rx="2"'+DASH+'/>'+
+          '<circle cx="24" cy="19" r="8"/>'+L(16,19,32,19)+L(24,11,24,27)+
+          [14,30,46,62].map(function(x,i){ return '<rect x="'+(x-4)+'" y="38" width="9" height="11"/>'+T(x+.5,43.5,i+1,8); }).join('')),
+  qf2:   S(leads(28)+noBlade(28)+P('M25 17 l6 6 M31 17 l-6 6')+
+          leads(56)+noBlade(56)+P('M53 17 l6 6 M59 17 l-6 6')+'<line x1="23" y1="30" x2="51" y2="30"'+DASH+'/>'),
+  qf3:   S([20,40,60].map(function(x){ return leads(x)+noBlade(x)+P('M'+(x-3)+' 17 l6 6 M'+(x+3)+' 17 l-6 6'); }).join('')+
+          '<line x1="15" y1="30" x2="55" y2="30"'+DASH+'/>'),
+  fuse:  S(L(40,4,40,52)+'<rect x="33" y="14" width="14" height="28" rx="1"/>'),
+  sw:    S(L(40,4,40,14)+RING(40,17)+L(40,42,40,52)+RING(40,39)+L(40,36,29,20)),
+  sw2:   S(L(12,28,24,28)+RING(27,28)+L(29,26,53,15)+RING(56,14)+RING(56,42)+L(59,14,72,14)+L(59,42,72,42)),
+  lamp:  S(L(4,28,26,28)+L(54,28,76,28)+'<circle cx="40" cy="28" r="14"/>'+L(30,18,50,38)+L(50,18,30,38)),
+  tube:  S(L(2,20,8,20)+L(2,36,8,36)+L(72,20,78,20)+L(72,36,78,36)+'<rect x="8" y="14" width="64" height="28" rx="3"/>'+
+          P('M8 20 h6 v16 h-6')+P('M72 20 h-6 v16 h6')),
+  ballast:S(L(4,28,16,28)+L(64,28,76,28)+'<rect x="16" y="16" width="48" height="24" rx="2"/>'+
+          P('M22 30 a4 4 0 0 1 8 0 a4 4 0 0 1 8 0 a4 4 0 0 1 8 0 a4 4 0 0 1 8 0')),
+  socket:S('<rect x="20" y="10" width="40" height="36" rx="4"/>'+'<rect x="29" y="22" width="5" height="12" rx="1"/>'+
+          '<rect x="46" y="22" width="5" height="12" rx="1"/>'+'<rect x="37" y="14" width="6" height="5" rx="1"/>'),
+  kmMain:S(leads(40)+noBlade(40)+P('M40 10 a5 5 0 0 0 0 10')),
+  link:  S(leads(28)+noBlade(28)+leads(60)+noBlade(60)+'<line x1="22" y1="30" x2="54" y2="30"'+DASH+'/>'),
+  frHeat:S(L(40,4,40,14)+'<rect x="24" y="14" width="32" height="28" rx="1"/>'+P('M40 14 V22 H32 V34 H40 V42')+L(40,42,40,52)),
+  frNC:  S(leads(46)+ncBlade(46)+thermo(42)),
+  sbNC:  S(leads(46)+ncBlade(46)+eBtn(44)),
+  sbNO:  S(leads(46)+noBlade(46)+eBtn(40)),
+  sbDual:S(leads(40)+noBlade(40)+leads(66)+ncBlade(66)+P('M16 22 H10 V36 H16')+'<line x1="10" y1="29" x2="68" y2="29"'+DASH+'/>'),
+  kmNO:  S(leads(40)+noBlade(40)),
+  kmNC:  S(leads(40)+ncBlade(40)),
+  coil:  S(L(40,4,40,18)+L(40,38,40,52)+'<rect x="24" y="18" width="32" height="20" rx="1"/>'),
+  motor: S(L(28,2,32,17)+L(40,2,40,15)+L(52,2,48,17)+'<circle cx="40" cy="34" r="18"/>'+T(40,28,'M',12)+T(40,41,'3~',10)),
+  ct:    S(L(30,4,30,52)+P('M34 16 a4 4 0 0 1 0 8 a4 4 0 0 1 0 8 a4 4 0 0 1 0 8')+L(34,16,56,16)+L(34,40,56,40)),
+  amm:   S(L(4,28,24,28)+L(56,28,76,28)+'<circle cx="40" cy="28" r="15"/>'+T(40,28,'A',15))
+};
+
+/* ══ 符号数据 ══════════════════════════════════════════
+   g：分组；code：文字符号（codeOK=false 的不考「选代号」）；figs：出现在哪几张图 */
+const GROUPS = ['全部','电源与导线','保护与开关','按钮与触点','接触器与热继电器','负载与仪表'];
+const SYMS = [
+ {id:'lines', g:1, n:'相线 L、零线 N、保护线 PE', code:'L N PE', codeOK:false, figs:['02','03','04','05'], noPic:true,
+  role:'单相用 L、N 供电，PE 专门接地保护；三相图上是 L1、L2、L3。',
+  how:'<b>看字母</b>：L 相线（火线）、N 零线、PE 保护地线（黄绿线）。'},
+ {id:'dot', g:1, n:'导线连接点（实心黑点）', code:'—', codeOK:false, figs:['02','03','04','05'],
+  role:'两根或几根导线在这里<b>接在一起</b>，是同一个电位。',
+  how:'<b>有黑点＝连</b>。数一数一个节点有几个端子，就知道要接几根线。'},
+ {id:'cross', g:1, n:'导线交叉不连接', code:'—', codeOK:false, figs:['02','05'],
+  role:'两根线只是在图上跨过去，<b>实际不相连</b>。',
+  how:'<b>十字交叉、没有黑点</b>。正反转图 KM2 下口 L1、L3 对调那里就是这么画的。'},
+ {id:'ring', g:1, n:'端子 / 待接的连接点（空心圈）', code:'—', codeOK:false, figs:['02','03','04'],
+  role:'图上标出<b>要你动手接的那一处</b>：K31-02 标「锡焊连接」、03 标「导线连接」、04 标「T 字型导线连接」。',
+  how:'<b>空心小圆</b>，旁边一般写着连接方式。考的是接头工艺，不是元件。'},
+ {id:'ground', g:1, n:'接地', code:'PE', codeOK:true, figs:['03','04','05'],
+  role:'电机外壳、电流互感器二次侧接大地。漏电时电流走地线，保护人。',
+  how:'<b>一竖下面三横、越来越短</b>。'},
+ {id:'kwh', g:2, n:'单相电能表', code:'kWh', codeOK:false, figs:['02'],
+  role:'计量用了多少度电。<b>1 进相线、2 出相线、3 进零线、4 出零线</b>（1、3 进，2、4 出）。',
+  how:'<b>虚线框＋圆里一个十字＋底下 1234 四个端子</b>。图上写的是「kW·h 单相电度表」。'},
+ {id:'qf2', g:2, n:'断路器（两极）', code:'QF', codeOK:true, figs:['02'],
+  role:'照明回路的总开关 / 分路开关，<b>短路、过载自动跳闸</b>。K31-02 的 QF1、QF2、QF3 都是它，同时断 L 和 N。',
+  how:'<b>触点上画 ×</b>＝断路器；两个触点被虚线连着＝两极一起动。'},
+ {id:'qf3', g:2, n:'断路器（三极）', code:'QF', codeOK:true, figs:['03','04','05'],
+  role:'三相电机回路的总开关，短路、过载时三相<b>一起跳</b>。',
+  how:'<b>三个带 × 的触点＋虚线联动</b>。'},
+ {id:'fuse', g:2, n:'熔断器', code:'FU', codeOK:true, figs:['03','04','05'],
+  role:'短路时熔体熔断保护电路。<b>FU1 保护主电路</b>（三只），<b>FU2 保护控制回路</b>（两只）。',
+  how:'<b>长方块，中间一根线穿过去</b>。'},
+ {id:'sw', g:2, n:'单控开关', code:'S', codeOK:true, figs:['02'],
+  role:'控制一盏灯的通断（K31-02 的 S3 控制日光灯）。开关要接在<b>相线</b>上。',
+  how:'<b>两个空心圈，中间一根斜刀片</b>。'},
+ {id:'sw2', g:2, n:'双控开关', code:'S', codeOK:true, figs:['02'],
+  role:'<b>两个地方控制同一盏灯</b>（K31-02 的 S1、S2 控制白炽灯 EL），比如楼上楼下。',
+  how:'<b>一个公共端，刀片可以拨到两边</b>中的一个。'},
+ {id:'sbNC', g:3, n:'停止按钮（常闭按钮）', code:'SB', codeOK:true, figs:['03','04','05'],
+  role:'<b>串</b>在控制回路公共段，按下断开，所有接触器释放。',
+  how:'<b>E＋虚线</b>＝手按操作；<b>动片搭在小横线上</b>＝常闭。'},
+ {id:'sbNO', g:3, n:'启动按钮（常开按钮）', code:'SB', codeOK:true, figs:['03','04','05'],
+  role:'按下接通，给接触器线圈送电。松手就断开，所以要配<b>自锁</b>。',
+  how:'<b>E＋虚线</b>＝按钮；<b>动片斜着没碰到</b>＝常开。'},
+ {id:'sbDual', g:3, n:'复合按钮（点动用）', code:'SB', codeOK:true, figs:['03'],
+  role:'一颗按钮带<b>一对常开＋一对常闭</b>。K31-03 的 SB1：常开接通线圈，常闭切断自锁支路，所以松手就停＝<b>点动</b>。',
+  how:'<b>一个 E，一条虚线同时连着一个常开、一个常闭</b>。'},
+ {id:'kmNO', g:3, n:'接触器常开辅助触点', code:'KM', codeOK:true, figs:['03','04','05'],
+  role:'<b>并</b>在启动按钮两端做<b>自锁</b>：接触器一吸合它就闭合，松手也不停。端子号 13-14（或 43-44）。',
+  how:'<b>没有 E、没有虚线</b>的常开＝接触器自己的辅助触点，旁边标 KM。'},
+ {id:'kmNC', g:3, n:'接触器常闭辅助触点', code:'KM', codeOK:true, figs:['05'],
+  role:'<b>串</b>在<b>对方</b>线圈回路里做<b>互锁</b>：我吸合，它就断开，对方吸不上。端子号 21-22（或 31-32）。',
+  how:'<b>没有 E 的常闭</b>，旁边标的是<b>另一个</b>接触器的名字。'},
+ {id:'kmMain', g:4, n:'接触器主触点', code:'KM', codeOK:true, figs:['03','04','05'],
+  role:'接在<b>主电路</b>里，通断电机的大电流。线圈得电就闭合。',
+  how:'<b>触点顶上有个小半圆</b>＝灭弧，只有主触点才画。'},
+ {id:'link', g:4, n:'机械联动（虚线）', code:'—', codeOK:false, figs:['02','03','04','05'],
+  role:'被一条虚线连着的几个触点<b>属于同一个元件，一起动作</b>。',
+  how:'<b>触点之间一条横虚线</b>。三极断路器、接触器三个主触点都这么画。'},
+ {id:'coil', g:4, n:'接触器线圈', code:'KM', codeOK:true, figs:['03','04','05'],
+  role:'通电后接触器吸合，<b>它所有的主触点、辅助触点同时动作</b>。端子 A1、A2。',
+  how:'<b>一个扁长方块</b>，两头各一根线。'},
+ {id:'frHeat', g:4, n:'热继电器热元件', code:'FR', codeOK:true, figs:['03','04','05'],
+  role:'串在<b>主电路</b>里，电机电流流过它。长时间过载就发热弯曲，推动它的常闭触点断开。',
+  how:'<b>方框里一根线拐了个直角弯</b>（三相就是三个并排）。'},
+ {id:'frNC', g:4, n:'热继电器常闭触点', code:'FR', codeOK:true, figs:['03','04','05'],
+  role:'串在<b>控制回路</b>里（端子 95-96）。过载时断开，电机停，哪个方向都停。',
+  how:'<b>常闭触点＋左边一个拐弯的热元件标志＋虚线</b>。'},
+ {id:'motor', g:5, n:'三相异步电动机', code:'M', codeOK:true, figs:['03','04','05'],
+  role:'负载。U、V、W 三根线进，外壳接 PE。调换任意两相就反转。',
+  how:'<b>圆圈里写 M 3~</b>（3~ ＝ 三相交流）。'},
+ {id:'lamp', g:5, n:'白炽灯 / 信号灯', code:'EL', codeOK:true, figs:['02'],
+  role:'照明负载。K31-02 里由两个双控开关控制。',
+  how:'<b>圆圈里一个叉</b>。'},
+ {id:'tube', g:5, n:'日光灯管', code:'EL', codeOK:false, figs:['02'],
+  role:'照明负载，要配镇流器才能点亮。',
+  how:'<b>长方框，两头各有一段灯丝</b>。'},
+ {id:'ballast', g:5, n:'镇流器', code:'L', codeOK:false, figs:['02'],
+  role:'日光灯启动时产生高压点亮灯管，点亮后限制电流。<b>串</b>在日光灯回路里。',
+  how:'图上画成<b>方框写「镇流器 L」</b>，本质是一个电感线圈（L）。'},
+ {id:'socket', g:5, n:'插座', code:'XS', codeOK:true, figs:['02'],
+  role:'给用电器供电。三孔插座：<b>左零右火上接地</b>。K31-02 里单独用 QF2 保护。',
+  how:'图上画的是<b>插座面板的样子</b>，标 XS。'},
+ {id:'ct', g:5, n:'电流互感器', code:'TA', codeOK:true, figs:['04'],
+  role:'把主电路的大电流按比例变成小电流，送给电流表。<b>二次侧一端必须接地，运行中不能开路</b>。',
+  how:'<b>一根主线旁边贴着一串小半圆（线圈）</b>。图上没标代号，国标写 TA。'},
+ {id:'amm', g:5, n:'电流表', code:'PA', codeOK:true, figs:['04'],
+  role:'测电流。K31-04 里接在电流互感器二次侧，三相各一块。',
+  how:'<b>圆圈里一个 A</b>。图上没标代号，国标写 PA。'}
+];
+SYMS.forEach(function(s){ s.svg = DRAW[s.id]; });
+
+/* 概念题：不是「认符号」，是「看懂图」 */
+const CONCEPT = [
+ {q:'原理图上的触点画的是什么状态？', a:'没通电、没按下时的状态', o:['通电工作时的状态','按钮按下时的状态','随便画，看习惯'],
+  e:'原理图一律画<b>常态</b>：线圈没电、按钮没按、热继电器没动作。所以常开画成断开，常闭画成闭合。'},
+ {q:'两根导线交叉，交叉处没有黑点，表示？', a:'不相连', o:['相连','要焊接','接地'], e:'<b>有黑点才连</b>，没黑点只是图上跨过去。'},
+ {q:'触点旁边画了「E」和一条虚线，表示这个触点？', a:'是按钮，用手按动作', o:['是热继电器的','是接触器主触点','是断路器'], e:'「E」是手按操作的标志，<b>E＋虚线＝按钮</b>。'},
+ {q:'触点旁边画了一个拐直角弯的小符号和虚线，表示？', a:'热继电器的触点，受热动作', o:['按钮','时间继电器','接触器的辅助触点'], e:'那个拐弯的是<b>热元件标志</b>，所以这是 FR 的触点（控制回路里用 95-96 常闭）。'},
+ {q:'接触器的触点上画了一个小半圆，说明它是？', a:'主触点（带灭弧）', o:['辅助常开触点','辅助常闭触点','线圈'], e:'主触点通断大电流会拉弧，要灭弧罩。<b>半圆＝灭弧＝主触点</b>。'},
+ {q:'断路器触点上的「×」表示？', a:'这是断路器，能自动跳闸', o:['这里断线了','这里要接地','这里不能接线'], e:'<b>× 是断路器的标志</b>，区别于普通开关、隔离开关。'},
+ {q:'同一张图里，线圈、主触点、辅助触点都标着 KM1，说明？', a:'它们是同一个接触器的不同部分', o:['图上有三个 KM1','它们要接在一起','它们互相没关系'], e:'原理图把一个元件<b>拆开画</b>在各自的回路里，靠<b>同一个文字符号</b>认出它们是一家的。线圈一得电，所有 KM1 触点同时动作。'},
+ {q:'停止按钮用它的哪对触点？', a:'常闭', o:['常开','常开、常闭都要用','不用触点'], e:'停止要「按下断开」，所以用<b>常闭</b>，串在公共段。'},
+ {q:'自锁触点应该怎么接？', a:'自己的常开，并在启动按钮两端', o:['对方的常闭，串在线圈回路','自己的常闭，串在启动按钮上','对方的常开，并在停止按钮上'], e:'口诀：<b>自锁「自己、常开、并」</b>。'},
+ {q:'互锁触点应该怎么接？', a:'对方的常闭，串在自己线圈回路', o:['自己的常开，并在启动按钮两端','对方的常开，并在线圈两端','自己的常闭，串在停止按钮后'], e:'口诀：<b>互锁「对方、常闭、串」</b>。K31-05 正反转图里 KM1 线圈上面那个就是 KM2 的常闭。'},
+ {q:'热继电器的热元件和常闭触点分别接在哪？', a:'热元件在主电路，常闭触点在控制回路', o:['都在主电路','都在控制回路','热元件在控制回路，常闭触点在主电路'], e:'热元件要<b>感受电机电流</b>所以在主电路；触点负责<b>切断线圈</b>所以在控制回路。'},
+ {q:'K31-03 里 SB1 是复合按钮，它的作用是？', a:'点动：按住转、松手停', o:['停止','连续运转','反转'], e:'它的常开接通线圈，常闭同时<b>切断自锁支路</b>，所以松手就停。'},
+ {q:'单相电能表的四个端子怎么接？', a:'1 进相线、2 出相线、3 进零线、4 出零线', o:['1、2 进，3、4 出','1 进相线、2 进零线、3、4 出','随便接，能计量就行'], e:'口诀「<b>1、3 进，2、4 出</b>」：1、2 是相线，3、4 是零线。'},
+ {q:'电流互感器的二次侧运行时要注意什么？', a:'一端接地，而且不能开路', o:['不能短路','必须接熔断器','不用接地'], e:'二次开路会感应出<b>很高的电压</b>，危及人身和设备，所以绝不能开路，并且一端接地。'},
+ {q:'K31-02 里插座 XS 为什么单独用一个 QF2？', a:'插座回路和照明回路分开保护', o:['插座不需要保护','QF2 是计量用的','为了让灯更亮'], e:'插座接的用电器功率不定，<b>单独一路</b>保护，出故障不影响照明。'},
+ {q:'K31-05 正反转主电路里，KM2 下口 L1 和 L3 交叉，是为了？', a:'调换相序，让电机反转', o:['防止短路','接地保护','省导线'], e:'<b>调换任意两相，旋转磁场反向，电机就反转</b>。'}
+];
+
+/* ══ 符号表 ══ */
+let grp = 0;
+function renderChips(){
+  document.getElementById('chips').innerHTML = GROUPS.map(function(g,i){
+    const n = i ? SYMS.filter(function(s){ return s.g === i; }).length : SYMS.length;
+    return '<button class="chip'+(i===grp?' on':'')+'" data-i="'+i+'">'+g+' '+n+'</button>';
+  }).join('');
+}
+function renderCards(){
+  const list = SYMS.filter(function(s){ return !grp || s.g === grp; });
+  document.getElementById('cards').innerHTML = list.map(function(s){
+    return '<div class="card"><div class="pic">'+s.svg+'</div><div>'+
+      '<h3>'+s.n+(s.code !== '—' ? '<span class="code">'+s.code+'</span>' : '')+'</h3>'+
+      '<div class="figs">'+s.figs.map(function(f){ return '<span>'+f+'</span>'; }).join('')+'</div>'+
+      '<p>'+s.role+'</p><p class="how">怎么认：'+s.how+'</p></div></div>';
+  }).join('');
+}
+document.getElementById('chips').addEventListener('click', function(e){
+  const b = e.target.closest('.chip'); if(!b) return;
+  grp = +b.dataset.i; renderChips(); renderCards();
+});
+renderChips(); renderCards();
+
+/* ══ 测验 ══════════════════════════════════════════ */
+const WKEY = 'lv_k31_wrong';
+function loadWrong(){ try{ return JSON.parse(localStorage.getItem(WKEY) || '[]'); }catch(e){ return []; } }
+function saveWrong(a){ try{ localStorage.setItem(WKEY, JSON.stringify(a)); }catch(e){} }
+function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function pick(a, n){ return shuffle(a).slice(0, n); }
+
+/* 每道题一个 key，错题本存 key，重练时按 key 重新生成同一道题（选项重新洗） */
+function makeQ(key){
+  const k = key.split(':'), type = k[0];
+  if(type === 'c'){
+    const c = CONCEPT[+k[1]];
+    return {key:key, type:'看懂图', text:c.q, opts:shuffle([c.a].concat(c.o)), ans:c.a, exp:c.e};
+  }
+  const s = SYMS.find(function(x){ return x.id === k[1]; });
+  const others = SYMS.filter(function(x){ return x.id !== s.id; });
+  if(type === 'n'){        // 看图选名称
+    return {key:key, type:'看符号 · 选名称', text:'这个符号是什么？', pic:s.svg,
+      opts:shuffle([s.n].concat(pick(others,3).map(function(x){ return x.n; }))), ans:s.n,
+      exp:'<b>'+s.n+'</b>。怎么认：'+s.how};
+  }
+  if(type === 'p'){        // 看名称选图
+    const ds = pick(others.filter(function(x){ return !x.noPic; }), 3);
+    return {key:key, type:'看名称 · 选符号', text:'哪个是「'+s.n+'」？', picOpts:true,
+      opts:shuffle([s.id].concat(ds.map(function(x){ return x.id; }))), ans:s.id,
+      exp:'怎么认：'+s.how};
+  }
+  if(type === 't'){        // 选文字符号：干扰项代号必须跟正确答案不同
+    const codes = [];
+    SYMS.forEach(function(x){ if(x.codeOK && x.code !== s.code && codes.indexOf(x.code) < 0) codes.push(x.code); });
+    return {key:key, type:'看符号 · 选文字符号', text:'这个符号旁边该标什么字母？', pic:s.svg,
+      opts:shuffle([s.code].concat(pick(codes,3))), ans:s.code,
+      exp:'<b>'+s.code+'</b>：'+s.n+'。'};
+  }
+  if(type === 'r'){        // 选作用
+    const strip = function(h){ return h.replace(/<[^>]+>/g,''); };
+    return {key:key, type:'看符号 · 选作用', text:'这个符号在电路里干什么？', pic:s.svg,
+      opts:shuffle([strip(s.role)].concat(pick(others,3).map(function(x){ return strip(x.role); }))), ans:strip(s.role),
+      exp:'这是<b>'+s.n+'</b>。'};
+  }
+}
+function allKeys(){
+  const ks = [];
+  SYMS.forEach(function(s){
+    if(!s.noPic){ ks.push('n:'+s.id); ks.push('p:'+s.id); ks.push('r:'+s.id); }
+    if(s.codeOK) ks.push('t:'+s.id);
+  });
+  CONCEPT.forEach(function(c,i){ ks.push('c:'+i); });
+  return ks;
+}
+
+const Q = { list:[], i:0, right:0, wrongs:[], done:false };
+const quiz = document.getElementById('quiz');
+
+function menu(){
+  const w = loadWrong();
+  quiz.innerHTML =
+    '<div class="note">每轮 <b>10 题</b>，五种题型混着出：看图选名称、看名称选图、选文字符号、选作用、看懂图。' +
+    '答错的自动进<b>错题本</b>，答对一次就移出去。</div>' +
+    '<div class="menu">' +
+    '<button class="mode" data-m="all"><b>随机 10 题</b><span>从全部 '+allKeys().length+' 道题里抽</span></button>' +
+    '<button class="mode" data-m="concept"><b>只练「看懂图」</b><span>'+CONCEPT.length+' 道：常态、黑点、E、半圆、自锁互锁……</span></button>' +
+    '<button class="mode" data-m="wrong"'+(w.length?'':' disabled')+'><b>错题本</b><span>'+(w.length ? '还有 '+w.length+' 道' : '空的')+'</span></button>' +
+    '</div>';
+}
+quiz.addEventListener('click', function(e){
+  const m = e.target.closest('.mode');
+  if(m && !m.disabled){ start(m.dataset.m); return; }
+  const o = e.target.closest('.opt');
+  if(o && !o.disabled){ answer(o); return; }
+  const b = e.target.closest('[data-act]');
+  if(!b) return;
+  if(b.dataset.act === 'next') next();
+  if(b.dataset.act === 'menu') menu();
+  if(b.dataset.act === 'again') start(Q.mode);
+});
+
+function start(mode){
+  let ks;
+  if(mode === 'wrong') ks = shuffle(loadWrong()).slice(0, 10);
+  else if(mode === 'concept') ks = pick(CONCEPT.map(function(c,i){ return 'c:'+i; }), 10);
+  else ks = pick(allKeys(), 10);
+  Q.mode = mode; Q.list = ks.map(makeQ); Q.i = 0; Q.right = 0; Q.wrongs = [];
+  show();
+  window.scrollTo(0, 0);
+}
+function show(){
+  const q = Q.list[Q.i], n = Q.list.length;
+  let opts;
+  if(q.picOpts){
+    opts = '<div class="opts pics">' + q.opts.map(function(id){
+      return '<button class="opt" data-v="'+id+'">'+DRAW[id]+'</button>'; }).join('') + '</div>';
+  }else{
+    opts = '<div class="opts">' + q.opts.map(function(t){
+      return '<button class="opt" data-v="'+t.replace(/"/g,'&quot;')+'">'+t+'</button>'; }).join('') + '</div>';
+  }
+  quiz.innerHTML =
+    '<div class="qhead"><span>'+(Q.i+1)+' / '+n+'</span><span class="bar"><i style="width:'+(Q.i/n*100)+'%"></i></span><span>对 '+Q.right+'</span></div>' +
+    '<div class="qbox"><div class="qtype">'+q.type+'</div><div class="qtext">'+q.text+'</div>' +
+    (q.pic ? '<div class="qpic">'+q.pic+'</div>' : '') + opts +
+    '<div id="after"></div></div>';
+}
+function answer(o){
+  const q = Q.list[Q.i], ok = o.dataset.v === q.ans;
+  quiz.querySelectorAll('.opt').forEach(function(b){
+    b.disabled = true;
+    if(b.dataset.v === q.ans) b.classList.add('ok');
+  });
+  let w = loadWrong();
+  if(ok){ Q.right++; w = w.filter(function(k){ return k !== q.key; }); }
+  else{
+    o.classList.add('no'); Q.wrongs.push(q);
+    if(w.indexOf(q.key) < 0) w.push(q.key);
+  }
+  saveWrong(w);
+  const last = Q.i === Q.list.length - 1;
+  document.getElementById('after').innerHTML =
+    '<div class="explain">'+(ok ? '✓ 对了。' : '✗ 不对。')+q.exp+'</div>' +
+    '<div class="btns"><button class="btn" data-act="next">'+(last ? '看成绩' : '下一题')+'</button></div>';
+}
+function next(){
+  if(Q.i < Q.list.length - 1){ Q.i++; show(); return; }
+  const n = Q.list.length;
+  quiz.innerHTML =
+    '<div class="qbox score"><div class="big">'+Q.right+' / '+n+'</div>' +
+    '<div>'+(Q.right === n ? '全对！' : '错了 '+(n-Q.right)+' 道，已记进错题本')+'</div></div>' +
+    (Q.wrongs.length ? '<div class="wrongs">' + Q.wrongs.map(function(q){
+      const a = q.picOpts ? SYMS.find(function(s){ return s.id === q.ans; }).n : q.ans;
+      return '<div class="w">'+q.text+(q.picOpts ? '' : q.pic ? '（看符号）' : '')+'<br>答案：<span class="a">'+a+'</span></div>';
+    }).join('') + '</div>' : '') +
+    '<div class="btns"><button class="btn" data-act="again">再来一轮</button><button class="btn ghost" data-act="menu">回菜单</button></div>';
+}
+menu();
+
+/* ══ 标签页 ══ */
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click', function(){
+    document.querySelectorAll('.tab').forEach(function(x){ x.classList.toggle('on', x === t); });
+    document.querySelectorAll('.pane').forEach(function(p, i){ p.classList.toggle('on', i === +t.dataset.p); });
+    window.scrollTo(0, 0);
+  });
+});
+</script>
+</body>
+</html>
