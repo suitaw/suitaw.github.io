@@ -1,85 +1,23 @@
 # suitaw.github.io
 
-个人项目仓库，GitHub Pages 托管。项目之间互不依赖，**改任何文件前先确认改的是哪个项目**。
+个人项目仓库，GitHub Pages 托管。项目互不依赖，**改任何文件前先确认改的是哪个项目**。
 
-都是单文件 HTML（数据放同目录的 `.js`）。
+- 根目录 `index.html` 是导航页，加新项目要往里补一条
+- `suitaw.github.io/daily/` 是**另一个仓库** `suitaw/daily`（本地 `~/daily`），不在这里改
+- 截图用法见 `~/CLAUDE.md`；截图容器被重置了照 `DEBIAN-CONTAINER.md` 重装
 
-根目录 `index.html` 是导航页，列出所有项目入口。加了新项目要往里补一条。
-`https://suitaw.github.io/daily/` 是**另一个仓库** `suitaw/daily`（本地 `~/daily`），不在这里改。
+## electrician/ 与 lowvolt/ —— 两本不同的电工书，互不依赖
 
----
-
-## debian 容器（截图环境）—— 2026-08-17 重装记录
-
-容器 rootfs 被重置过一次，连 `node`、`curl` 都没了。重装踩的坑按顺序记在这儿，
-**下次再被重置，照这个走能省掉一整轮试错**。
-
-**① 镜像源：北外和清华在这个网络下都 403，用阿里云或中科大。**
-北外对 `pool/main/n/node-*` 和整个 debian-security 返回 403，
-表现是 apt 下到一半报一串「无法下载 ... 403」然后**整批回滚**（apt 是原子的，
-一个包下不来就全不装）—— 看着像装了半天什么都没装上。
-换源前先用 Termux 这边的 `curl` 挨个探一遍再动手，别直接 apt 试。
-原 `sources.list` 备份在容器 `/etc/apt/sources.list.bak-0817`。
-
-**② proot 的 `--link2symlink` 会把 dpkg 的状态文件弄丢**（最坑的一个）。
-症状：`dpkg: 无法恢复的致命错误，中止: 新建备份文件 '/var/lib/dpkg/status-old' 时出错: 不允许的操作`，
-而且**每次 apt 都在同一处倒下**。
-原理：dpkg 写状态时要 `link(status, status-old)`；proot 用
-`.l2s.<名字><4位序号>` 这套文件来模拟硬链接。**如果目录里已经有同名的
-`.l2s.status0001` 残留（上次中断留下的），转换就会失败，而原文件已经被移走了 ——
-于是 `/var/lib/dpkg/status` 直接消失，apt 彻底不能用。**
-- **`force-unsafe-io` 不解决这个，别浪费时间试**（它管的是 fsync，不是 link）
-- 恢复：内容还在 `.l2s.status0001.000N` 里，挑 `grep -c '^Package:'` 最多、时间最新的那个
-  → `cp` 出来备份 → **删掉所有 `.l2s.status*`** → 复原成 `status` → `dpkg --configure -a`
-- 判据：清完残留后手动 `ln status status-old` 能成功，就修好了
-- `libpam-systemd` / `libgtk-3-0t64` 配置失败是正常的（proot 里没 systemd），不影响 headless chromium
-
-**③ npm 不用装**：`playwright-core` 是**零依赖**包，
-`curl` 下 npmmirror 的 tarball（3MB）解压到 `/root/node_modules/playwright-core` 就能 require。
-Debian 的 `npm` 包要拖一长串 `node-*` 依赖，正是 403 最密集的那批。
-
-**④ 中文字体和 emoji 字体都得装**（`fonts-noto-cjk` + `fonts-noto-color-emoji`）。
-少了 emoji 字体，页面里的 ⚡✅⛔ 会渲染成豆腐块 —— 而 **canvas 里的气泡文字也带 emoji，
-宽度会算错**，等于截图白截。你手机上是有这些字体的，所以这纯粹是截图环境要补齐。
-
-**shot.js 的新位置和用法**（放共享目录，容器再被重置也不会丢；模块在容器里，重装即可）：
-```
-~/deb-run.sh "node /root/sdcard/webdev/shot.js <输入> <输出.png> [选项] [选择器...]"
-```
-- **输入输出一律写绝对路径**（`/root/sdcard/webdev/xxx`）。`cd` 过去再传相对路径会拼成
-  `file://circuit-basics.html/` 直接报 ERR_INVALID_URL
-- `--vp` 只截视口那一屏 —— **验吸顶栏/sticky 必须加**，`fullPage` 对 fixed/sticky 会画错位
-- 末尾可以跟**多个选择器**，按顺序依次点击（每次等 400ms），
-  用来验「点两下才出现」的状态：`'.tab[data-i="1"]' '#b1 button[data-s="C"]'`
-- 有 JS 报错会打 `CONSOLE ERRORS`（`pageerror` 也接了）
-
----
-
-## lowvolt/ —— 低压电工考证（2026-09-19 起）
-
-第二本电工书：曹振华《低压电工入门考证视频教程》（化工社，208 页，6 章 + 附录 32 节）。
-**和 `electrician/` 是两本不同的书，两个项目互不依赖，改之前先确认改的是哪个。**
-
-进度、文件清单、设计理由、已知的坑全在 `lowvolt/OUTLINE.md`，**做下一节前先读它**。
-
-要点：
-- **加新节只改 `lv-book.js` 里 BOOK 那一行的 `f`** —— 首页课表和目录抽屉都读那一份
-- **书上的图一律内联 SVG 重画**（`lv-figs.js`），不截图：矢量不糊、深色模式自动反色
-- **正文里的图号是可点芯片**，点一下图从底部滑出来 —— 这是他明确要求的
-  （「不能光看文字，然后看不到图」），加新图时别忘了在正文写 `<a data-fig="x-y">`
-- **每张图配一句「怎么看这张图」**，书上没有，是加的
-- **SVG 子图标签容易顶出 viewBox 被裁掉**，加完标签必须截图看一眼，坐标断言查不出这个
-  （2026-09-19 实测：图 1-27 / 1-30 的 `(a)` `(d)` 都被裁过，图 1-31 标签和线糊成一团）
-- 书上大量二维码视频**扫不了**，遇到内容全在码里的（如 1-1 节）在页面上明确标出来，
-  不假装整理过
-
-截图验证用 `/sdcard/webdev/lowvolt/` 里的 `_figtest.html`（11 张图一次铺开）
-和 `_symtest.html`（77 个符号），比截整页快得多。
-
----
+- `electrician/`：《零基础学电工》，规则在 `electrician/CLAUDE.md`（进目录自动加载）
+- `lowvolt/`：曹振华《低压电工入门考证视频教程》（6 章 + 附录 32 节）。
+  **做下一节前先读 `lowvolt/OUTLINE.md`**（进度、文件清单、设计理由、坑）
+  - 加新节只改 `lv-book.js` 里 BOOK 那一行的 `f`
+  - 书上的图一律内联 SVG 重画（`lv-figs.js`），不截图
+  - **正文图号是可点芯片**（他明确要求），加新图要写 `<a data-fig="x-y">`；每张图配一句「怎么看这张图」
+  - **SVG 子图标签容易顶出 viewBox 被裁**，加完必须截图看（1-27/1-30/1-31 都栽过）。
+    用 `/sdcard/webdev/lowvolt/_figtest.html`（图）和 `_symtest.html`（符号）截，比整页快
+  - 二维码视频扫不了，内容全在码里的节在页面上明确标出，不假装整理过
 
 ## exam-quiz.html
 
-609 题题库应用，8 个章节。
-
-**硬性约定：只改 `exam-quiz.html`，永远不要动 `questions.js`。**
+609 题题库，8 章。**只改 `exam-quiz.html`，永远不要动 `questions.js`。**
