@@ -3340,6 +3340,10 @@ $('btnSolve').onclick = () => {
 
 const TABS = [['tabIn','pIn'], ['tabGo','pGo'], ['tabPr','pPr'], ['tabTu','pTu'], ['tabPat','pPat']];
 function goTab(i){
+  // 记住上次停在哪一页，下次打开直接回来；进过任意一页就算「欢迎页看过了」。
+  // ②跟着复原记成①：解法不存盘，下次打开②页是空的
+  try{ localStorage.setItem('cube_last_tab', String(i === 1 ? 0 : i));
+       localStorage.setItem('cube_welcomed', '1'); }catch(e){}
   // ④教程把③页那块魔方借走了，离开这一页就得还回去 —— 不然切到③页会是个空框。
   // 反过来进④页时，正开着的那一课要把它再借过来（tuEnter）
   if(i !== 3) tuRelease();
@@ -5399,8 +5403,19 @@ patSetPicked(false);            // ⑤页同样停在第一步「想摆什么花
 // 把存下来的设置铺到界面上（箭头按钮的高亮、计时器显示与否都在这儿定）
 prSetPut('vib', prSetIdx.vib);
 tuListRender();
-goHome();                       // 一进来先落在首页。必须排在这儿：goHome 会调 tuRelease，
-                                // 那函数读的 tuBorrow 是教程那一节里的 let，早于它就是死区
+// 启动落点：首页只在第一次打开时出现（当欢迎页），之后直接回上次那一页 ——
+// 四个入口和底部四个页签是重复的，每次都停在选择页等于多点一下。
+// 必须排在这儿：goHome/goTab 会调 tuRelease，它读的 tuBorrow 是教程那一节里的 let，早于它就是死区
+(function launch(){
+  let welcomed = false, last = 0;
+  try{ welcomed = !!localStorage.getItem('cube_welcomed');
+       last = +localStorage.getItem('cube_last_tab') || 0; }catch(e){}
+  if(!welcomed || ![0,2,3,4].includes(last)){ goHome(); return; }
+  goTab(last);
+  // 落在复原页、魔方还是复原态 = 他一格没填过：跟首页「解开我手上这个」一样先腾空，
+  // 不然一进来就是一个复原的魔方 + 求解，那个假引导又回来了
+  if(last === 0 && net.every((v,i)=> v === SOLVED_FACELET[i])) inClearAll();
+})();
 window.addEventListener('resize', () => {
   // 教程页那块魔方就是 prCv，prResize 一并管到了
   inResize(); inRender(); prResize(); prRender(); patResize(); patRender();
@@ -5409,7 +5424,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 01:51';
+const BUILD = '2026-09-23 01:56';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
