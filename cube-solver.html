@@ -645,6 +645,59 @@
   #patNetBox>summary::-webkit-details-marker{display:none}
   #patNetBox>summary::before{content:'▸ ';color:var(--acc)}
   #patNetBox[open]>summary::before{content:'▾ '}
+
+  /* ---- 提示语挪到魔方下面单占一行，不再压在魔方上（用户反馈挡住底下一排块）----
+     舞台改成竖排 flex：画布拿剩余高度，提示语在最底下一条。练习页开局后直接藏掉（说明在 ⋯ 抽屉里） */
+  #inStage,#stage,#prStage,#patStage{display:flex;flex-direction:column}
+  #inCv,#cv,#prCv,#patCv{flex:1 1 0;min-height:0;height:auto}
+  #inHint,#hint,#prHint2,#patHint{position:static;flex:none;background:none;padding:3px 12px 8px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #pPr.started #prHint2{display:none}
+
+  /* ---- 练习页压紧：手机 Chrome 带地址栏只剩约 670px 高（原来按 844 测的，没发现）---- */
+  #pPr.started #prMsg{min-height:20px;line-height:20px;font-size:13px;margin:6px 0 0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #pPr.started #prPlan{margin-top:6px;padding:8px 10px}
+  #pPr.started #prKbdTog{margin-top:8px;padding:8px 10px}
+  #pPr.started #prKeys{gap:5px;margin-top:6px}
+  #pPr.started #prKeys button{padding:8px 0 10px}
+  #pPr.following #prMain>.row.hi{display:none}
+
+  /* ---- ②跟着复原：整页一屏，「下一步」必须和魔方同屏（原来要往下滚才按得到，一滚魔方就出屏）---- */
+  #pGo.on{display:flex;flex-direction:column;overflow-y:auto;padding-bottom:0;
+    height:calc(100vh - 62px - env(safe-area-inset-bottom));
+    height:calc(100dvh - 62px - env(safe-area-inset-bottom))}
+  #pGo>*{flex:none}
+  #pGo #stage{flex:1 1 0;min-height:170px;aspect-ratio:auto;max-height:none}
+  #pGo #goCard{margin:8px 0}
+  #pGo>.row+.row{margin-bottom:10px}
+
+  /* ---- 课程页：演示栏紧贴魔方，说明文字在自己的框里滚，上一步/下一步始终在屏幕里 ---- */
+  #pTu.lesson{padding-bottom:0}
+  #tuLesson{display:flex;flex-direction:column;overflow-y:auto;
+    height:calc(100vh - 62px - 16px - env(safe-area-inset-bottom));
+    height:calc(100dvh - 62px - 16px - env(safe-area-inset-bottom))}
+  #tuLesson>*{flex:none}
+  #tuHd{order:1} #tuStageSlot{order:2} #tuPlanSlot{order:3} #tuDots{order:4}
+  #tuBody{order:5} #tuNav{order:6} #tuLesson>.row{order:7} #tuLegend{order:8}
+  #tuStageSlot{flex:1 1 0;min-height:170px;display:flex}
+  #tuStageSlot #prStage{flex:1;aspect-ratio:auto;max-height:none}
+  #tuBody{flex:0 1 auto;min-height:70px;overflow-y:auto}
+  #tuLesson>.row{margin-bottom:10px}
+
+  /* ---- 花色页：求解在顶栏，吸底藏掉 ---- */
+  #patDock{display:none!important}
+  #pPat{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+  .appBar #patSolve{flex:none;padding:7px 14px;font-size:14px;margin-right:2px}
+  /* ②页解法条：一百多步折成四行占 120px，把「下一步」挤出屏 → 改单行横滑，大字记号缩一号 */
+  #pGo #goCard{padding:10px 12px}
+  #pGo #now{margin:0 0 4px}
+  #pGo #nowMove{font-size:34px}
+  #pGo #nowDesc{margin-top:2px;font-size:13px}
+  #pGo #prog{margin:8px 2px 5px}
+  #pGo #phases{margin-top:8px}
+  #pGo #seq{white-space:nowrap;word-break:normal;overflow-x:auto;overflow-y:hidden;max-height:none;
+    line-height:1.7;padding:5px 8px;margin-top:8px}
 </style>
 
 <!-- 底部导航（App 式）。DOM 顺序和 id 都没动 —— goTab(i) 的下标全篇硬编码十来处；
@@ -782,7 +835,7 @@
     <b>摆成这个花色</b>
     <button id="patMoreBtn" class="ic" title="更多"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg></button>
   </div>
-  <p class="sub1">魔方上画的是<b>目标</b>，可以接着改。手上的魔方默认按复原态算，不是的话用下面两颗按钮告诉我</p>
+  <p class="sub1">画的是<b>目标</b>花色 · 手上的魔方默认按复原态算</p>
 
   <div id="patStage"><canvas id="patCv"></canvas>
     <div id="patHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
@@ -2700,6 +2753,7 @@ function paintPatNet(){
   // 这页填满就浮出来，不像①页要求同时没填错：
   // 画的花色本来就可能不合法，「自动修成合法」正是为这种情况准备的
   $('patDock').classList.toggle('on', !left);
+  $('patSolve').disabled = !!left;           // 这颗已经搬到顶栏（见初始化），dock 本身藏了
 
   PAT.mark = bad ? bad.gis[0] : patNext();
   PAT.markCol = bad ? 'rgba(255,120,120,.98)' : 'rgba(255,255,255,.95)';
@@ -3449,7 +3503,8 @@ function renderStep(){
     sq.appendChild(s); sq.appendChild(document.createTextNode(' '));
   });
   const c = sq.querySelector('.cur');
-  if(c) c.scrollIntoView({block:'nearest'});
+  // 解法条在②页是单行横滑（见 #pGo #seq），当前那步要横向滚到中间
+  if(c) c.scrollIntoView({block:'nearest', inline:'center'});
 
   $('btnPrev').disabled = playing || cur===0;
   $('btnNext').disabled = playing || done;
@@ -4283,6 +4338,8 @@ function prPlanSync(){
 function prPlanRender(){
   PR.arrow = null;
   $('prPlan').classList.toggle('on', !!prPlan);
+  // 跟随模式：解法条在的时候藏掉「打乱 / 复原它」，给键盘和魔方腾地方；点解法条上的 × 退出就回来
+  $('pPr').classList.toggle('following', !!prPlan);
   if(!prPlan) return;
   const n = prPlan.qm.length, i = prPlan.i, done = i >= n;
   $('prPlanOff').classList.toggle('on', prPlan.off && !done);
@@ -4827,6 +4884,7 @@ function tuOpen(i, step){
   tuLesson = i; tuStep = step || 0;
   $('tuHome').style.display = 'none';
   $('tuLesson').style.display = '';
+  $('pTu').classList.add('lesson');      // 课程页整页一屏（CSS 里 #pTu.lesson）
   $('tuName').textContent = TU_LESSONS[i].name;
   $('tuPractice').style.display = TU_LESSONS[i].phase < 0 ? 'none' : '';
   $('tuLegend').innerHTML =
@@ -4846,6 +4904,7 @@ $('tuBack').onclick = () => {
   tuLesson = -1;
   $('tuHome').style.display = '';
   $('tuLesson').style.display = 'none';
+  $('pTu').classList.remove('lesson');
 };
 
 /* ---- 走到第 n 步 ---- */
@@ -5413,13 +5472,27 @@ prLoad(solvedState());
 prSetStarted(false);
 // 版本号挪进设置面板：App 里它属于「关于」，不该压在每一页底下
 $('setCard').appendChild($('ver'));
+// ②页底下那段「怎么看记号 · 两种解法的区别」挪进复原页的 ? 抽屉：②页要整页一屏给魔方和「下一步」，
+// 而「两种解法」本来就是在复原页选的
+{ const lg = $('pGo').querySelector('details.legend'), card = $('inHelp').querySelector('.sheetCard');
+  if(lg){ lg.style.marginTop = '12px'; card.insertBefore(lg, card.querySelector('.shClose')); } }
+// 花色页「求解成这个花色」从吸底挪到顶栏右上：吸底那条正好盖住调色板，
+// 而在魔方上画图案离不开调色板（670px 高的手机上实测被盖住）
+$('patSolve').textContent = '求解';
+$('patSolve').classList.remove('big');
+$('patMain').querySelector('.appBar').insertBefore($('patSolve'), $('patMoreBtn'));
 // 练习页魔方区域是 flex 剩余空间，解法条出现/收起、键盘开合都会改它的尺寸 —— 跟着重量画布
 if(window.ResizeObserver){
   let roT = 0;
-  const fit = () => { if(!$('pPr').classList.contains('on')) return;
+  const fit = () => { if(!$('pPr').classList.contains('on') && !$('pTu').classList.contains('lesson')) return;
     if(prBusy){ roT = setTimeout(fit, 80); return; }     // 正转着就等转完再量，别跳过
     prResize(); prRender(); };
-  new ResizeObserver(() => { clearTimeout(roT); roT = setTimeout(fit, 0); }).observe($('prStageHost'));
+  const ro = new ResizeObserver(() => { clearTimeout(roT); roT = setTimeout(fit, 0); });
+  ro.observe($('prStageHost')); ro.observe($('tuStageSlot'));
+  // ②跟着复原那块也是 flex 剩余空间
+  let goT = 0;
+  new ResizeObserver(() => { clearTimeout(goT); goT = setTimeout(() => {
+    if($('pGo').classList.contains('on') && !playing){ resize(); render(); } }, 0); }).observe($('stage'));
 }
 // 四块主画布同理：恢复上下文后变换矩阵被重置，得重新量尺寸（resize 里会 setTransform）再画
 for(const [id, fix] of [['cv', () => { resize(); render(); }], ['inCv', () => { inResize(); inRender(); }],
@@ -5450,7 +5523,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 03:34';
+const BUILD = '2026-09-23 03:55';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
