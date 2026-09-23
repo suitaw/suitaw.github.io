@@ -553,17 +553,102 @@
   .seg.on{background:linear-gradient(180deg,rgba(247,209,20,.20),rgba(247,209,20,.07));
     border-color:rgba(247,209,20,.55);color:var(--accL);font-weight:600}
   .seg i{font-style:normal;font-size:11px;opacity:.8;font-weight:400}
+
+  /* ================= App 化（2026-09-23）=================
+     原来像网页：顶部一排带编号的文字页签、长页面往下滚、一屏 26 个按钮、说明常驻。
+     改成：底部图标导航、每页一条顶栏、魔方占大半屏、低频操作收进 ⋯ 抽屉 */
+  body{-webkit-user-select:none;user-select:none;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+  input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text}
+  /* 只淡入不位移：.page 里有 position:fixed 的 .dock，带 transform 的祖先会把它拽离屏幕底 */
+  .page.on{animation:pgIn .18s ease}
+  @keyframes pgIn{from{opacity:0}}
+
+  #tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:30;gap:0;
+    padding:5px 4px calc(5px + env(safe-area-inset-bottom));
+    background:rgba(13,15,19,.94);border-top:1px solid var(--line);border-bottom:none}
+  #tabs button,#tabs button#tabSet{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:6px 0 4px;font-size:10.5px;color:var(--dim2);letter-spacing:.02em}
+  #tabs button svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round}
+  #tabs button.on{color:var(--accL);font-weight:600}
+  #tabs button.on::after{display:none}
+  #tabGo,#tabHome,#tabs .tabSep{display:none!important}
+  #tabIn{order:1} #tabTu{order:2} #tabPr{order:3} #tabPat{order:4} #tabSet{order:5}
+  .page{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+  #pIn,#pPat{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+  .dock{bottom:calc(61px + env(safe-area-inset-bottom))}
+  #ver{padding:14px 0 0}
+
+  /* 顶栏：标题 + 圆形图标按钮 */
+  .appBar{display:flex;align-items:center;gap:2px;min-height:44px;margin:-8px 0 8px}
+  .appBar b{flex:1;font-size:18px;font-weight:700;letter-spacing:.02em}
+  .appBar button.ic{flex:none;width:42px;height:42px;padding:0;display:inline-flex;align-items:center;
+    justify-content:center;border-radius:50%;background:transparent;border-color:transparent;
+    box-shadow:none;color:var(--txt)}
+  .appBar button.ic:active{background:var(--panel2);transform:none}
+  .appBar button.ic svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+  .appBar button.back{margin-left:-10px}
+  #pPr .appBar button.ic{display:none}
+  #pPr.started .appBar button.ic{display:inline-flex}
+
+  /* 练习页：魔方放大，用时/步数浮在魔方上 */
+  #prStageHost{position:relative}
+  #pPr.started #prStage{aspect-ratio:1/1.08;max-height:58vh}
+  #prBar{position:absolute;left:12px;right:12px;top:9px;z-index:2;display:none;margin:0;padding:0;
+    background:none;border:none;pointer-events:none}
+  #pPr.started #prBar{display:flex}
+  #prBar b{font-size:20px}
+  #prKbdTog{display:block;width:100%;margin-top:10px}
+  #prKeys{display:none;margin-top:8px}
+  #pPr.kbd #prKeys{display:grid}
+
+  /* 底部抽屉 */
+  .sheet{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center;
+    background:rgba(6,8,11,.62)}
+  .sheet.on{display:flex}
+  .sheetCard{width:100%;max-width:620px;max-height:82vh;overflow-y:auto;background:var(--panel);
+    border-radius:18px 18px 0 0;border-top:1px solid var(--line2);
+    padding:8px 14px calc(18px + env(safe-area-inset-bottom));animation:shUp .2s ease}
+  .sheetCard::before{content:'';display:block;width:38px;height:4px;border-radius:2px;
+    background:var(--line2);margin:2px auto 14px}
+  @keyframes shUp{from{transform:translateY(60px);opacity:.3}}
+
+  /* 顶栏下面那一行小字（持方 / 这页干嘛），替代原来的 h2 + 一整段说明 */
+  .sub1{font-size:12.5px;color:var(--dim);margin:-6px 0 10px;line-height:1.6}
+  .sub1 b{color:var(--txt);font-weight:600}
+  /* 图标工具条：六个一排，图标 + 两个字 */
+  .tools{display:flex;gap:4px;margin-top:8px;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--r);padding:4px}
+  .tools button{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:7px 0 6px;background:transparent;border-color:transparent;box-shadow:none;font-size:11px;
+    color:var(--dim);border-radius:var(--r2)}
+  .tools button:active{background:var(--panel2);transform:none}
+  .tools button svg{width:21px;height:21px;fill:none;stroke:var(--txt);stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round}
+  #inHelp .lbl{margin-top:4px}
+  #patSheet .row{margin-top:8px}
+  #patSheet .row:first-child{margin-top:0}
+  #patNetBox{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:10px 12px;margin-top:10px}
+  #patNetBox>summary{font-size:12.5px;color:var(--dim);cursor:pointer;list-style:none}
+  #patNetBox>summary::-webkit-details-marker{display:none}
+  #patNetBox>summary::before{content:'▸ ';color:var(--acc)}
+  #patNetBox[open]>summary::before{content:'▾ '}
 </style>
 
+<!-- 底部导航（App 式）。DOM 顺序和 id 都没动 —— goTab(i) 的下标全篇硬编码十来处；
+     显示顺序靠 CSS order。②跟着复原是①的下游，不占页签（进去了①亮着），
+     ⌂ 也藏了：四个页签就是首页那四个入口 -->
 <div id="tabs">
-  <button id="tabSet" title="设置">⚙</button>
+  <button id="tabSet" title="设置"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg><span>设置</span></button>
   <button id="tabHome" title="回首页">⌂</button>
   <i class="tabSep"></i>
-  <button id="tabIn" class="on">① 输入</button>
-  <button id="tabGo">② 跟着复原</button>
-  <button id="tabPr">③ 自己练</button>
-  <button id="tabTu">④ 学</button>
-  <button id="tabPat">⑤ 花色</button>
+  <button id="tabIn" class="on"><svg viewBox="0 0 24 24"><path d="M12 2.8 20.5 7.5v9L12 21.2 3.5 16.5v-9zM3.5 7.5 12 12.2l8.5-4.7M12 12.2v9"/></svg><span>复原</span></button>
+  <button id="tabGo">跟着复原</button>
+  <button id="tabPr"><svg viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M9.5 2.8h5M12 2.8V6"/></svg><span>练习</span></button>
+  <button id="tabTu"><svg viewBox="0 0 24 24"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5c.8 0 1.5-.7 1.5-1.5z"/></svg><span>学习</span></button>
+  <button id="tabPat"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/></svg><span>花色</span></button>
 </div>
 
 <!-- ============ 首页（分流）============ -->
@@ -590,27 +675,13 @@
   <!-- 六个持方胶囊原来常驻，占掉 62px 把魔方往下推。它是"拿不准时查一眼"的东西，
        不是每秒都要看的 —— 收进标题右边那颗「?」里。
        标题本身留着：直接点页签进来的人没经过首页，持方还是得说一次 -->
-  <div class="pgHd">
-    <h2>按 <b style="color:#f2f4f7">白色朝下</b>、<b style="color:var(--cF)">绿色朝前</b> 拿好魔方</h2>
-    <button id="inGripBtn" class="hlp" title="六个面各是什么颜色">?</button>
+  <!-- 顶栏 + 一行持方。原来的持方胶囊和「怎么填（三步）」常驻首屏，
+       现在收进 ? 抽屉（#inHelp）；第一次开始手工填时自动弹一次（cube_in_help_seen） -->
+  <div class="appBar">
+    <b>输入魔方</b>
+    <button id="inGripBtn" class="ic" title="怎么填 · 六个面各是什么颜色"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4M12 16.8v.2"/></svg></button>
   </div>
-  <div id="grip">
-    <span style="--c:var(--cU)"><i></i>上 黄</span><span style="--c:var(--cD)"><i></i>下 白</span>
-    <span style="--c:var(--cF)"><i></i>前 绿</span><span style="--c:var(--cB)"><i></i>后 蓝</span>
-    <span style="--c:var(--cR)"><i></i>右 橙</span><span style="--c:var(--cL)"><i></i>左 红</span>
-  </div>
-  <!-- 读一次就够的东西，开始填色后自动收起（见 paintNet）。
-       去掉 details.help 那圈框：这在首屏上，加个卡片反而比裸列表更重 -->
-  <details class="help" id="inSteps"
-           style="margin:0 0 11px;background:transparent;border:none;padding:0">
-    <summary>怎么填（三步）</summary>
-    <ol class="steps" style="margin-bottom:0">
-      <li><b>先点一个颜色</b>，再把魔方上这个颜色的格子挨个点掉，填完自动换下一色。</li>
-      <li>色块上的数字是<b>这色还差几格</b>；中心块不用填。</li>
-      <li>点填过的格子可以清掉重填，<b>填错了会当场告诉你</b>，不用等填满 48 格。</li>
-    </ol>
-  </details>
-
+  <p class="sub1">按 <b style="color:#f2f4f7">白色朝下</b>、<b style="color:var(--cF)">绿色朝前</b> 拿好魔方</p>
   <!-- inpHost/inpBox：填色这一整块是可以整体搬走的。③自己练和⑤花色要手工填时，
        把 inpBox 搬进 #inpOv 覆盖层，关掉再搬回来 —— 三页共用同一份填色 UI，
        不再各抄一套（花色页那份 patNet/PAT/pat 是照抄①页的，抄第三遍就该改三处了） -->
@@ -621,20 +692,17 @@
        它得在一进来就看得见的地方。用 pri2（淡黄）：比灰按钮重，
        又明显轻于吸底那颗实心黄的「求解」 -->
   <div class="row" style="margin-top:10px">
-    <button id="btnCam" class="pri2" style="flex:1 1 100%">📷 拍照 / 摄像头识别（不用一格格点）</button>
+    <button id="btnCam" class="pri2" style="flex:1 1 100%">📷 拍照识别（不用一格格点）</button>
   </div>
 
-  <!-- 挨着模型放，填色时手不用跑远。分两排是因为这两组事不一样：
-       上排换个角度看，下排改填错的地方。挤在一排 6 个字都放不下 -->
-  <div class="row tight" style="margin-top:8px">
-    <button id="inFlip">翻到背面</button>
-    <button id="inBottom">看底面</button>
-    <button id="inHome">摆正视角</button>
-  </div>
-  <div class="row tight" style="margin-top:6px">
-    <button id="inClearOne">清掉这格</button>
-    <button id="btnBack">退一格</button>
-    <button id="btnSolved">填复原态</button>
+  <!-- 两排六个文字按钮 → 一排图标工具条。仍放在 inpBox 里：练习/花色页借这块当弹窗时也要用 -->
+  <div class="tools">
+    <button id="inFlip"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg><span>翻面</span></button>
+    <button id="inBottom"><svg viewBox="0 0 24 24"><path d="M12 3v11M7.5 9.5 12 14l4.5-4.5M5 19.5h14"/></svg><span>底面</span></button>
+    <button id="inHome"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span>摆正</span></button>
+    <button id="inClearOne"><svg viewBox="0 0 24 24"><path d="M15.5 4.5 20 9l-9 9H6.5L4 15.5z"/><path d="M9.5 10.5 14 15M8 20h12"/></svg><span>清格</span></button>
+    <button id="btnBack"><svg viewBox="0 0 24 24"><path d="M9 5.5h11v13H9L3.5 12z"/><path d="M12 9.5l5 5M17 9.5l-5 5"/></svg><span>退格</span></button>
+    <button id="btnSolved"><svg viewBox="0 0 24 24"><path d="M12 2.8 20.5 7.5v9L12 21.2 3.5 16.5v-9z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span>复原态</span></button>
   </div>
   <div id="palwrap"><div id="pal"></div></div>
   <div id="tally"></div>
@@ -660,6 +728,25 @@
        只剩「填复原态」，挪到上面模型旁边那排去了 -->
 
   <div class="dock" id="inDock"><button id="btnSolve" class="pri big">求解</button></div>
+
+  <div id="inHelp" class="sheet"><div class="sheetCard">
+    <div class="lbl">拿法：六个面各是什么颜色</div>
+  <div id="grip" class="on">
+    <span style="--c:var(--cU)"><i></i>上 黄</span><span style="--c:var(--cD)"><i></i>下 白</span>
+    <span style="--c:var(--cF)"><i></i>前 绿</span><span style="--c:var(--cB)"><i></i>后 蓝</span>
+    <span style="--c:var(--cR)"><i></i>右 橙</span><span style="--c:var(--cL)"><i></i>左 红</span>
+  </div>
+  <details class="help" id="inSteps"
+           style="margin:12px 0 0;background:transparent;border:none;padding:0">
+    <summary>怎么填（三步）</summary>
+    <ol class="steps" style="margin-bottom:0">
+      <li><b>先点一个颜色</b>，再把魔方上这个颜色的格子挨个点掉，填完自动换下一色。</li>
+      <li>色块上的数字是<b>这色还差几格</b>；中心块不用填。</li>
+      <li>点填过的格子可以清掉重填，<b>填错了会当场告诉你</b>，不用等填满 48 格。</li>
+    </ol>
+  </details>
+    <button class="shClose" style="width:100%;margin-top:14px">知道了</button>
+  </div></div>
 </div>
 
 <!-- ============ 花色页 ============ -->
@@ -669,7 +756,8 @@
        第一步只问「摆什么」—— 这是这页的主线；「你手上那个现在什么样」是次要的，
        而且有个合理默认（复原态），不该拿它挡在最前面 -->
   <div id="patStart">
-    <h2 style="margin:2px 0 12px">想摆什么花色？</h2>
+    <div class="appBar"><b>摆花色</b></div>
+    <p class="sub1">想摆什么花色？</p>
     <div class="card">
       <div class="lbl">现成的（点一下就选中）</div>
       <div id="patLib"></div>
@@ -679,34 +767,29 @@
   </div>
 
   <div id="patMain">
-  <div class="pgHd">
-    <h2>把手上的魔方，转成这个花色</h2>
-    <button id="patAgain" class="sub" style="flex:none;padding:7px 11px;font-size:12px">换个花色</button>
+  <div class="appBar">
+    <button id="patAgain" class="ic back" title="换个花色"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg></button>
+    <b>摆成这个花色</b>
+    <button id="patMoreBtn" class="ic" title="更多"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg></button>
   </div>
-  <p class="muted">魔方上画的是<b>目标</b>花色，可以接着改。<b>当前</b>魔方长什么样，
-    用下面那两颗按钮告诉我 —— 不说的话就按复原态算。求解用①页选的那种解法。</p>
+  <p class="sub1">魔方上画的是<b>目标</b>，可以接着改。手上的魔方默认按复原态算，不是的话用下面两颗按钮告诉我</p>
 
   <div id="patStage"><canvas id="patCv"></canvas>
     <div id="patHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
   <!-- 这页画的是「目标」，可求解还得知道「当前」是什么样 —— 那个原来只能去①页填。
        拍一下就有了，不用离开这页 -->
   <div class="row" style="margin-top:10px">
-    <button id="patCurCam" class="pri2" style="flex:1 1 100%">📷 拍照识别我手上的魔方（当前状态）</button>
-  </div>
-  <div class="row" style="margin-top:6px">
-    <button id="patCurFill" style="flex:1 1 100%">✏️ 一格一格填我手上的魔方（当前状态）</button>
+    <button id="patCurCam" class="pri2">📷 拍手上的魔方</button>
+    <button id="patCurFill">✏️ 填手上的魔方</button>
   </div>
 
-  <!-- 跟①页一样分两排：上排换角度看，下排改填错的地方 -->
-  <div class="row tight" style="margin-top:8px">
-    <button id="patFlip">翻到背面</button>
-    <button id="patBottom">看底面</button>
-    <button id="patHome">摆正视角</button>
-  </div>
-  <div class="row tight" style="margin-top:6px">
-    <button id="patClearOne">清掉这格</button>
-    <button id="patBack">退一格</button>
-    <button id="patSolvedBtn">填复原态</button>
+  <div class="tools">
+    <button id="patFlip"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg><span>翻面</span></button>
+    <button id="patBottom"><svg viewBox="0 0 24 24"><path d="M12 3v11M7.5 9.5 12 14l4.5-4.5M5 19.5h14"/></svg><span>底面</span></button>
+    <button id="patHome"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span>摆正</span></button>
+    <button id="patClearOne"><svg viewBox="0 0 24 24"><path d="M15.5 4.5 20 9l-9 9H6.5L4 15.5z"/><path d="M9.5 10.5 14 15M8 20h12"/></svg><span>清格</span></button>
+    <button id="patBack"><svg viewBox="0 0 24 24"><path d="M9 5.5h11v13H9L3.5 12z"/><path d="M12 9.5l5 5M17 9.5l-5 5"/></svg><span>退格</span></button>
+    <button id="patSolvedBtn"><svg viewBox="0 0 24 24"><path d="M12 2.8 20.5 7.5v9L12 21.2 3.5 16.5v-9z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span>复原态</span></button>
   </div>
   <div id="patPalwrap"><div id="patPal"></div></div>
   <div id="patTally"></div>
@@ -744,19 +827,28 @@
     <div id="patPairGallery"></div>
   </div>
 
+  <!-- 「其它」折叠跟①页一起删了：清空用不着（点有颜色的格子就清掉了），
+       「随便来一个花色」上面那排现成花色里挑一个更直接。
+       「填复原态」挪到模型旁边那排去了 -->
+
+  <div class="dock" id="patDock"><button id="patSolve" class="pri big">求解成这个花色</button></div>
+  </div><!-- /patMain -->
+
+  <!-- ⋯ 抽屉：拍花色、自动修合法、拿去练习、不摆了复原、展开图 —— 一次性或偶尔用的 -->
+  <div id="patSheet" class="sheet"><div class="sheetCard">
   <div class="row">
-    <button id="patCam" style="flex:1 1 100%">📷 拍照/传图识别花色（六张图，一面一张）</button>
+    <button id="patCam" class="shClose" style="flex:1 1 100%">📷 拍照/传图识别花色（六张图，一面一张）</button>
   </div>
 
   <div class="row">
-    <button id="patFix" class="sub" style="flex:1 1 100%">✨ 自动修成合法（画的不合法也没关系）</button>
+    <button id="patFix" class="shClose" style="flex:1 1 100%">✨ 自动修成合法（画的不合法也没关系）</button>
   </div>
   <div class="row" style="margin-top:8px">
-    <button id="patToPr" class="sub" style="flex:1 1 100%">把这个花色拿去③自己练</button>
+    <button id="patToPr" class="shClose" style="flex:1 1 100%">把这个花色拿去练习</button>
   </div>
   <!-- 摆完了想还原回去，不用换页 —— 拿当前魔方去求解，跟①页那颗「求解」同一条路 -->
   <div class="row" style="margin-top:8px">
-    <button id="patUndoAll" class="sub" style="flex:1 1 100%">↩ 不摆了，把手上的魔方复原</button>
+    <button id="patUndoAll" class="shClose" style="flex:1 1 100%">↩ 不摆了，把手上的魔方复原</button>
   </div>
 
   <details id="patNetBox">
@@ -764,16 +856,19 @@
     <div id="patNetDiv"></div>
   </details>
 
-  <!-- 「其它」折叠跟①页一起删了：清空用不着（点有颜色的格子就清掉了），
-       「随便来一个花色」上面那排现成花色里挑一个更直接。
-       「填复原态」挪到模型旁边那排去了 -->
-
-  <div class="dock" id="patDock"><button id="patSolve" class="pri big">求解成这个花色</button></div>
-  </div><!-- /patMain -->
+  </div></div>
 </div>
 
 <!-- ============ 练习页 ============ -->
 <div id="pPr" class="page">
+  <!-- 顶栏：标题 + 高频的两个图标（撤销、提示）+ ⋯ 更多。
+       原来这两个是大按钮压在记号键下面，一局按好几次却要往下找 -->
+  <div class="appBar">
+    <b>自己练</b>
+    <button id="prUndo" class="ic" title="撤销"><svg viewBox="0 0 24 24"><path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H11"/></svg></button>
+    <button id="prTip" class="ic" title="提示下一步"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg></button>
+    <button id="prMoreBtn" class="ic" title="更多"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg></button>
+  </div>
   <!-- 从④教程「出一道题」过来的返回条，平时收着 -->
   <div id="prBackTu"><button id="prBackTuBtn">‹ 回到教程 · <b id="prBackTuName"></b></button></div>
 
@@ -781,6 +876,12 @@
        所以给它一个固定的家：还回来时往这儿一放就是原位 -->
   <div id="prStageHost">
     <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层（能一口气拖 180°）· 留白拖=转视角、快划=整体翻一格 · 双指拧正</div></div>
+    <!-- 用时/步数浮在魔方上面，不再单独占一整条卡片。
+         放在 host 里而不是 #prStage 里：教程借走 #prStage 时它不该跟过去 -->
+    <div id="prBar">
+      <span id="prTimeWrap"><b id="prTime">0:00</b>用时</span>
+      <span><b id="prCount">0</b>步</span>
+    </div>
   </div>
 
   <!-- 第一步：先问「练哪个」。原来一上来就是 18 个记号键加六颗操作按钮，
@@ -794,14 +895,10 @@
     <button class="hCard" id="prCam"><em>📷</em><div>
       <b>拍照识别我手上的</b><i>对着实物魔方拍六个面</i></div></button>
     <button class="hCard" id="prFill"><em>✏️</em><div>
-      <b>一格一格填</b><i>在 3D 魔方上点格子填色，跟①输入页是同一套</i></div></button>
+      <b>一格一格填</b><i>在 3D 魔方上点格子填色，跟「复原」页填色是同一套</i></div></button>
   </div>
 
   <div id="prMain">
-  <div id="prBar">
-    <span id="prTimeWrap"><b id="prTime">0:00</b>用时</span>
-    <span><b id="prCount">0</b>步</span>
-  </div>
   <!-- 消息行和解法条也会被④教程借走（教程里演示的就是这一套），一起给个家 -->
   <div id="prPlanHost">
     <div id="prMsg"></div>
@@ -825,37 +922,32 @@
     </div>
   </div>
 
-  <div class="lbl" style="margin-top:16px">转一层 · 带 2 的是 180°</div>
-  <div id="prKeys" style="margin-top:0"></div>
-
-  <!-- 一局练习的实际动线：打乱 → 自己转 → 卡住 → 提示／跟着解法 → 撤销。
-       这四个是每局都要按好几次的，做大放前面；摆正视角和回到复原态一局按一两次；
-       摄像头和两个跳页整个生命周期按一次，收进「更多」 -->
-  <div class="row hi" style="margin-top:14px">
+  <!-- 页面底部只留两颗主操作。其余按一局频率收：撤销/提示上顶栏，
+       摆正视角、回复原、换魔方、转动记录、说明进 ⋯ 弹出面板 -->
+  <div class="row hi" style="margin-top:12px">
     <button id="prScram" class="pri">打乱</button>
-    <button id="prUndo">撤销</button>
-  </div>
-  <div class="row hi" style="margin-top:8px">
-    <button id="prTip">提示下一步</button>
     <!-- 原来叫「跟着解法转」，没说出"这会把你的魔方复原" —— 它就是这页的复原入口 -->
     <button id="prSolveIt">复原它 · 跟着转</button>
   </div>
-  <div class="row" style="margin-top:8px">
-    <button id="prHome" class="sub">摆正视角</button>
-    <button id="prReset" class="sub">回到复原态</button>
-    <button id="prAgain" class="sub">换一个魔方</button>
-  </div>
+  <!-- 18 个记号键默认收起：主操作是拖魔方，记号键是给拖不顺手的人备用的。开关记在 cube_pr_kbd -->
+  <button id="prKbdTog" class="sub">⌨ 记号键盘 · 带 2 的是 180°</button>
+  <div id="prKeys"></div>
+  </div><!-- /prMain -->
 
-  <!-- 「更多」折叠删了：拍照识别提到模型底下去了（它是这页的输入口，不该藏），
-       两个「拿去别的页」也没了 —— ①⑤两页现在自己都能输入，不用从这儿中转 -->
-
+  <!-- ⋯ 弹出面板（底部抽屉）。带 shClose 的按钮点完顺手收起 -->
+  <div id="prSheet" class="sheet"><div class="sheetCard">
+    <div class="row">
+      <button id="prHome" class="shClose">摆正视角</button>
+      <button id="prReset" class="shClose">回到复原态</button>
+      <button id="prAgain" class="shClose">换一个魔方</button>
+    </div>
   <div id="prLog">
     <div id="prLogHd"><span>转动记录 · <b id="prLogN">0 步</b></span>
       <span style="flex:1"></span><button id="prCopy">复制</button></div>
     <div id="prScramTxt"></div>
     <div id="prMoves"><em>还没转过</em></div>
   </div>
-
+    <button id="prSetBtn" class="sub" style="width:100%;margin-top:12px">⚙ 设置（震动、动画速度、快划…）</button>
   <details class="legend help">
     <summary>怎么玩（手势、按钮、转动记录）</summary>
     <b>拖魔方 = 转层。</b>按住往某个方向拖，那一层就<b>跟着手指转</b>，像真魔方一样。
@@ -884,20 +976,16 @@
     转岔了会提示，撤销回去就接着走。</div>
     <div style="margin-top:6px">不认记号就开着<b>「箭头」</b>：该转的那一层上会画一个
     黄色箭头，照着箭头方向拧就行（开关状态记住，下次还是这样）。
-    解法用第①页选的算法：最短解法约 20 步、分步教学约 120 步。</div>
+    解法用「复原」页选的算法：最短解法约 20 步、分步教学约 120 步。</div>
   </details>
-  </div><!-- /prMain -->
+  </div></div>
 </div>
 
 <!-- ============ 教程页 ============ -->
 <div id="pTu" class="page">
   <div id="tuHome">
-    <h2>照着学，一步一步把魔方还原</h2>
-    <p class="muted" style="margin:0 0 14px">
-      八课，跟第②页「分步教学」的解法是同一套 —— 这里讲的公式，就是求解器实际会用的那几条。
-      每课讲完可以<b style="color:var(--txt)">当场出一个卡在这一步的魔方</b>练，
-      转到位了它自己知道。<b style="color:var(--txt)">课程不锁</b>，会哪课跳哪课。
-    </p>
+    <div class="appBar"><b>学习</b></div>
+    <p class="sub1">一课一个阶段，学完<b>当场出题练</b>，转到位了它自己知道。课程不锁，会哪课跳哪课</p>
     <div class="lbl" id="tuProg"></div>
     <div id="tuList"></div>
   </div>
@@ -957,12 +1045,13 @@
 
 <!-- ============ 复原页 ============ -->
 <div id="pGo" class="page">
+  <div class="appBar"><button id="goBack" class="ic back" title="返回"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg></button><b>跟着复原</b></div>
   <div id="stage"><canvas id="cv"></canvas><div id="hint">拖动可转视角</div></div>
 
   <!-- .empty 由 renderStep 挂上：没解法时把进度条那套藏掉，别让空页看着像坏了 -->
   <div class="card empty" id="goCard">
-    <div id="now"><div id="nowMove">—</div><div id="nowDesc">先在第①页输入魔方状态</div></div>
-    <button id="goToIn" class="sub">去第①页输入 →</button>
+    <div id="now"><div id="nowMove">—</div><div id="nowDesc">先在「复原」页输入魔方状态</div></div>
+    <button id="goToIn" class="sub">去输入 →</button>
     <div id="prog"><span id="progL">—</span><span id="progR"></span></div>
     <div id="bar"><i style="width:0"></i></div>
     <div id="phases"></div>
@@ -1740,12 +1829,15 @@ let ctx = cv.getContext('2d');   // 参考姿势小图会临时把它指向另�
 // 和「白色朝下、绿色朝前」拿着魔方时眼睛看到的一致
 let W=0,H=0,yaw=-0.62,pitch=0.42;
 const CAM_D=9.4, GAP=1.045, STICK=0.93;
+// 画布分辨率上限。原来卡 2：2D 时代够用，换成 3D 后块体的圆角和高光细节多了，
+// 2.75 倍屏的手机上按 2 倍画再被放大，黑色块体看着发糊（用户真机截图反馈）
+const DPR_MAX = 3;
 // 标准持方视角：黄顶、绿前、橙右（pitch 取正才是从斜上方往下看）。
 // 输入页和练习页都拿它当初始视角，所以放在这儿 —— 定义得比两边都早
 const PR_CAM0 = mmul(rotM(0,0.42), rotM(1,-0.62));
 
 function resize(){
-  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const dpr = Math.min(window.devicePixelRatio||1, DPR_MAX);
   const r = cv.getBoundingClientRect();
   W = Math.max(1,Math.round(r.width)); H = Math.max(1,Math.round(r.height));
   cv.width = W*dpr; cv.height = H*dpr;
@@ -1877,11 +1969,11 @@ function glInit(){
     const fill = new T.DirectionalLight(0xffffff, K_FILL); fill.position.set(...L_FILL); scene.add(fill);
     const camera = new T.PerspectiveCamera(30, 1, 1, CAM_D*3);
     camera.position.set(0, 0, CAM_D);
-    // 黑色塑料块体：圆角 0.11，半哑光。贴纸：圆角方片，略亮一点的清漆感。
+    // 黑色塑料块体：圆角 0.08，亮面塑料（高光收得紧：shininess 28 时高光摊成一大片，看着像柔焦）。贴纸：圆角方片，略亮一点的清漆感。
     // 用 Phong 不用 Standard：Phong 的漫反射就是 色×(AMB+Σ光·cos)，和 2D 的 litOf 同一个式子；
     // Standard 讲能量守恒，同样的灯整体暗一截，橙和绿发闷（真机截图看出来的）
-    const bodyGeo = glRoundedBox(T, 0.11, 12), stGeo = glRoundedRect(T, 0.86, 0.12);
-    const bodyMat = new T.MeshPhongMaterial({color:0x1d2129, specular:0x3a3a3a, shininess:28});
+    const bodyGeo = glRoundedBox(T, 0.08, 12), stGeo = glRoundedRect(T, 0.86, 0.12);
+    const bodyMat = new T.MeshPhongMaterial({color:0x1a1d24, specular:0x5a5a5a, shininess:72});
     const bodyDim = new T.MeshPhongMaterial({color:0x0d0f13, specular:0x111111, shininess:20});
     const pool = [];
     for(let k=0;k<26;k++){
@@ -1897,14 +1989,24 @@ function glInit(){
       }
       grp.userData = {body, st}; scene.add(grp); pool.push(grp);
     }
-    canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); GL = false; });
+    // 上下文丢了（切后台、内存紧、GPU 进程崩）就永久退回 2D，并把所有画面重画一遍 ——
+    // 光改标志不够：GPU 进程崩的时候，已经画好的 2D 画布（缩略图）会被一起清空。
+    // 这是在截图容器里撞到的：课表 8 张缩略图 + 花色库全成了透明
+    canvas.addEventListener('webglcontextlost', e => {
+      e.preventDefault(); GL = false;
+      setTimeout(() => {
+        for(const c of MINIS){ if(c.isConnected) c._redraw(); else MINIS.delete(c); }
+        for(const f of [() => render(), () => inRender(), () => prRender(), () => patRender()])
+          try{ f(); }catch(_){}
+      }, 0);
+    });
     return (GL = {T, renderer, scene, camera, pool, bodyMat, bodyDim, canvas, w:0, h:0, col:new T.Color()});
   }catch(e){ return (GL = false); }
 }
 // 画成功返回 true；返回 false 时 render 走原来的 2D 画法
 function glDraw(V, cam, anim, W, H){
   const g = glInit(); if(!g) return false;
-  const dpr = Math.min(window.devicePixelRatio||1, 2), pw = Math.round(W*dpr), ph = Math.round(H*dpr);
+  const dpr = Math.min(window.devicePixelRatio||1, DPR_MAX), pw = Math.round(W*dpr), ph = Math.round(H*dpr);
   if(g.w !== pw || g.h !== ph){ g.renderer.setSize(pw, ph, false); g.w = pw; g.h = ph; }
   const f = Math.min(W,H)*1.5;
   g.camera.fov = 2*Math.atan((H/2)/f)*180/Math.PI; g.camera.aspect = W/H; g.camera.updateProjectionMatrix();
@@ -2200,10 +2302,23 @@ const netLeft = f => 9 - net.filter(c => c === f).length;
 // 下一个还没填的格子，用来在 3D 上标出来当提示
 const netNext = () => { for(const gi of ORDER) if(!net[gi]) return gi; return -1; };
 
-$('inGripBtn').onclick = () => {
-  const g = $('grip').classList.toggle('on');
-  $('inGripBtn').classList.toggle('on', g);
-};
+// ? = 打开「怎么填 + 六面颜色」抽屉（原来是就地展开一排持方胶囊）
+function sheetBind(id){
+  const el = $(id);
+  el.addEventListener('click', e => {
+    if(e.target === el || e.target.closest('.shClose')) el.classList.remove('on');
+  });
+  return el;
+}
+const inHelp = sheetBind('inHelp');
+$('inGripBtn').onclick = () => inHelp.classList.add('on');
+// 第一次开始手工填时自动弹一次，之后只在点 ? 时出现
+function inHelpOnce(){
+  if(!$('pIn').classList.contains('on')) return;     // 练习/花色借填色块用时不弹
+  try{ if(localStorage.getItem('cube_in_help_seen')) return;
+       localStorage.setItem('cube_in_help_seen', '1'); }catch(e){}
+  inHelp.classList.add('on');
+}
 
 // 三条填法说明只收一次：用户手动点开之后就别再跟他抢
 let stepsFolded = false;
@@ -2257,6 +2372,7 @@ function inClearAll(){
   // 清空就是「我要开始手工填了」，这时候才把三条填法说明放出来。
   // 要放在 paintNet 之后：那里面填满时会去关它
   stepsFolded = false; $('inSteps').open = true;
+  inHelpOnce();
 }
 $('btnBack').onclick = () => {                 // 退一格 = 把最后填的那格清掉
   for(let i=ORDER.length-1;i>=0;i--) if(net[ORDER[i]]){ net[ORDER[i]] = null; break; }
@@ -2376,7 +2492,7 @@ const IN = {ctx:inCv.getContext('2d'), W:0, H:0,
             cubies:[], collect:true, picks:[], hl:null, mark:-1};
 let inBusy = false;
 function inResize(){
-  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const dpr = Math.min(window.devicePixelRatio||1, DPR_MAX);
   const r = inCv.getBoundingClientRect();
   IN.W = Math.max(1, Math.round(r.width));
   IN.H = Math.max(1, Math.round(r.height));
@@ -2593,7 +2709,7 @@ const PAT = {ctx:patCv.getContext('2d'), W:0, H:0,
             cubies:[], collect:true, picks:[], hl:null, mark:-1};
 let patBusy = false;
 function patResize(){
-  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const dpr = Math.min(window.devicePixelRatio||1, DPR_MAX);
   const r = patCv.getBoundingClientRect();
   PAT.W = Math.max(1, Math.round(r.width));
   PAT.H = Math.max(1, Math.round(r.height));
@@ -2930,16 +3046,22 @@ function buildShapeOptions(cells, T){
    opt.cam：讲底面的课必须给仰视角（TU_CAM_UP），拿默认俯视角画的话
             亮着的块全在背面，缩略图就是一片黑 —— 和教程正文里那条坑同源
    opt.focus：不相关的块压暗（render 里那套），"这一课管哪一部分"一眼就看出来 */
+const MINIS = new Set();          // 画过的缩略图，WebGL 丢上下文时要重画（见 glInit）
 function miniCube(fc, SIZE, opt){
   SIZE = SIZE || 72; opt = opt || {};
   const cv = document.createElement('canvas');
-  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const dpr = Math.min(window.devicePixelRatio||1, DPR_MAX);
   cv.width = SIZE*dpr; cv.height = SIZE*dpr;
   cv.style.cssText = `width:${SIZE}px;height:${SIZE}px;border-radius:8px;flex:none`;
   const ctx = cv.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  render(null, {ctx, W:SIZE, H:SIZE, cam:opt.cam||PR_CAM0, cubies:buildGeo(fc),
-                focus:opt.focus||null});
+  // setTransform 放进 draw 里：画布恢复上下文后状态全被重置，不重设就按 1 倍画进左上角四分之一
+  const draw = () => ctx.setTransform(dpr,0,0,dpr,0,0) || render(null, {ctx, W:SIZE, H:SIZE, cam:opt.cam||PR_CAM0, cubies:buildGeo(fc),
+                                   focus:opt.focus||null});
+  draw();
+  cv._redraw = draw; MINIS.add(cv);
+  // GPU 进程崩的时候 2D 画布自己也会丢上下文，那一刻往上画是无效的（实测重画后 alpha 仍是 0），
+  // 得等浏览器恢复它（contextrestored）再画一次
+  cv.addEventListener('contextrestored', draw);
   return cv;
 }
 
@@ -3015,6 +3137,8 @@ function patSetPicked(v){
   if(v){ patResize(); patRender(); }
 }
 $('patAgain').onclick = () => patSetPicked(false);
+const patSheet = sheetBind('patSheet');
+$('patMoreBtn').onclick = () => patSheet.classList.add('on');
 // 「自己画」：不动 patNet，就从当前这个（默认复原态）在 3D 上接着改
 $('patDraw').onclick = () => {
   for(const el of $('patLib').children) el.classList.remove('on');
@@ -3169,7 +3293,7 @@ function loadPlan(steps){
     renderStep();
     return;
   }
-  showMsg('解出来了，共 '+plan.length+' 步。切到第②页跟着转。', 'ok');
+  showMsg('解出来了，共 '+plan.length+' 步，跟着转吧。', 'ok');
   goTab(1);
   resize(); renderStep();
 }
@@ -3220,7 +3344,8 @@ function goTab(i){
   // 反过来进④页时，正开着的那一课要把它再借过来（tuEnter）
   if(i !== 3) tuRelease();
   TABS.forEach(([t,p],k)=>{
-    $(t).classList.toggle('on', k===i);
+    // ②跟着复原不占页签，在它里面时让「复原」亮着
+    $(t).classList.toggle('on', k===i || (t==='tabIn' && i===1));
     $(p).classList.toggle('on', k===i);
   });
   $('pHome').classList.remove('on');
@@ -3233,6 +3358,7 @@ function goTab(i){
 }
 TABS.forEach(([t],i)=> $(t).onclick = () => goTab(i));
 $('goToIn').onclick = () => goTab(0);            // 第②页空着的时候那颗引路按钮
+$('goBack').onclick = () => goTab(0);             // ②页左上角的返回
 
 // 首页刻意不进 TABS：进去的话每个 goTab(i) 的 i 都得挪一位，
 // 而 goTab(0)/goTab(2)/goTab(4) 这种硬编码全篇有十来处，改一处漏一处就跳错页
@@ -3281,7 +3407,7 @@ function renderStep(){
   $('nowMove').style.color = nx ? 'var(--txt)' : hasPlan ? 'var(--ok)' : 'var(--dim)';
   $('nowDesc').textContent =
       nx      ? describe(nx.move)
-    : !hasPlan? '先在第①页输入魔方状态，再点求解'
+    : !hasPlan? '先在「复原」页输入魔方状态，再点求解'
     : total   ? '魔方已经复原了'
     :           '你输入的就是复原状态，不需要转';
   $('progL').textContent = total ? ('第 '+Math.min(cur+1,total)+' / '+total+' 步')
@@ -3413,7 +3539,7 @@ let prHist = [], prCount = 0, prBusy = false, prScramSeq = '';
 let prT0 = 0, prElapsed = 0, prTick = 0;
 
 function prResize(){
-  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const dpr = Math.min(window.devicePixelRatio||1, DPR_MAX);
   const r = prCv.getBoundingClientRect();
   PR.W = Math.max(1, Math.round(r.width));
   PR.H = Math.max(1, Math.round(r.height));
@@ -4296,6 +4422,7 @@ function prSetStarted(v){
   prStarted = v;
   $('prStart').classList.toggle('on', !v);
   $('prMain').classList.toggle('on', v);
+  $('pPr').classList.toggle('started', v);   // 顶栏图标、浮层计时、放大的魔方都挂在这个类上
   if(v){ prResize(); prRender(); }
 }
 function prLoad(st, scram){
@@ -4348,6 +4475,21 @@ $('prTip').onclick = () => {
   }catch(e){ prMsg('这个状态算不出提示（应该是 bug）'); }
 };
 $('prSolveIt').onclick = prPlanStart;
+
+// ---- ⋯ 抽屉 + 记号键盘开关 ----
+const prSheet = $('prSheet');
+$('prMoreBtn').onclick = () => prSheet.classList.add('on');
+// 点遮罩收起；带 shClose 的按钮自己的 onclick 先跑（事件先到按钮再冒泡到这），跑完顺手收起
+prSheet.addEventListener('click', e => {
+  if(e.target === prSheet || e.target.closest('.shClose')) prSheet.classList.remove('on');
+});
+$('prSetBtn').onclick = () => { prSheet.classList.remove('on'); $('tabSet').click(); };
+function prKbdSet(v){
+  $('pPr').classList.toggle('kbd', v);
+  try{ localStorage.setItem('cube_pr_kbd', v ? '1' : '0'); }catch(e){}
+}
+$('prKbdTog').onclick = () => prKbdSet(!$('pPr').classList.contains('kbd'));
+try{ if(localStorage.getItem('cube_pr_kbd') === '1') prKbdSet(true); }catch(e){}
 
 /* ==========================================================
    10. 教程：八课，跟层先法的七个阶段一一对应
@@ -4666,14 +4808,14 @@ function tuOpen(i, step){
   $('tuName').textContent = TU_LESSONS[i].name;
   $('tuPractice').style.display = TU_LESSONS[i].phase < 0 ? 'none' : '';
   $('tuLegend').innerHTML =
-    '<b>魔方就是③自己练那一块。</b>可以拖着转层、留白处拖转视角 —— ' +
+    '<b>魔方就是「练习」页那一块。</b>可以拖着转层、留白处拖转视角 —— ' +
     '想跟着这条公式自己转一遍就直接转，<b>转对了它自己往下走</b>，转岔了会告诉你。' +
     '看不懂记号就开着「箭头」。<b>「↺ 回到这一步」</b>随时把魔方摆回这一步的起点。' +
     (TU_LESSONS[i].phase < 0 ? '' :
      '<div style="margin-top:6px"><b>「出一个卡在这步的魔方来练」</b>会随机打乱一个魔方、' +
-     '把这一课之前的部分先替你做好，然后跳到第③页。' +
+     '把这一课之前的部分先替你做好，然后跳到「练习」页。' +
      '你只要把这一课的目标做出来就行 —— 做到了它会自己告诉你，不用做到整个复原。' +
-     '③页顶上会挂一条「‹ 回到教程」，练完随时按回来。</div>');
+     '练习页顶上会挂一条「‹ 回到教程」，练完随时按回来。</div>');
   tuWhenIdle(() => { tuBorrowPr(); tuGo(tuStep); });
   tuListRender();
 }
@@ -5247,6 +5389,12 @@ prLoad(solvedState());
 // 必须排在 prLoad 后面：prLoad 会把「已经选好练哪个」置上，
 // 而这一句就是页面初始化那次调用 —— 得把它按回第一步
 prSetStarted(false);
+// 版本号挪进设置面板：App 里它属于「关于」，不该压在每一页底下
+$('setCard').appendChild($('ver'));
+// 四块主画布同理：恢复上下文后变换矩阵被重置，得重新量尺寸（resize 里会 setTransform）再画
+for(const [id, fix] of [['cv', () => { resize(); render(); }], ['inCv', () => { inResize(); inRender(); }],
+                        ['prCv', () => { prResize(); prRender(); }], ['patCv', () => { patResize(); patRender(); }]])
+  $(id).addEventListener('contextrestored', () => { try{ fix(); }catch(_){} });
 patSetPicked(false);            // ⑤页同样停在第一步「想摆什么花色？」
 // 把存下来的设置铺到界面上（箭头按钮的高亮、计时器显示与否都在这儿定）
 prSetPut('vib', prSetIdx.vib);
@@ -5261,7 +5409,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 00:00';
+const BUILD = '2026-09-23 01:51';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
