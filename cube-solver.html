@@ -738,6 +738,29 @@
       height:calc(100vh - var(--navH) - 26px);height:calc(100dvh - var(--navH) - 26px);min-height:0}
     #tuBody{max-height:none;overflow:visible}
   }
+
+  /* ---- 触控尺寸 / 对比度（脚本扫过：手指目标 ≥40px，文字对比 ≥4.5:1）---- */
+  #tabs button,#tabs button#tabSet{color:#98a1ae;font-size:11px}     /* 原来 --dim2 在深底上只有 3.6:1 */
+  #homeSet{width:40px;height:40px;font-size:18px}
+  #prKbdTog,#pPr.started #prKbdTog{min-height:40px}
+  .appBar #patSolve{min-height:40px}
+  #prPlanHd button{min-height:40px;min-width:40px}
+  #prPlanBar button{min-height:40px}
+  #prPlanSeq span{min-height:36px;display:inline-flex;align-items:center}
+  #pGo #phases div{height:32px}
+  #pGo #seq{line-height:1}
+  #pGo #seq span{display:inline-block;padding:10px 4px;min-width:40px;text-align:center}
+  #prPlanSeq span{min-width:40px;justify-content:center}
+  /* 阶段条七格一排，宽只有 45px 加不上去；它横跨整行、按哪格都不难中，高度留 32 */
+  #prCoach{display:none;position:absolute;inset:0;z-index:5;align-items:center;justify-content:center;
+    background:rgba(8,10,14,.72);border-radius:var(--r);padding:16px}
+  #pPr.started #prCoach.on{display:flex}
+  #prCoach>div{background:var(--panel);border:1px solid var(--line2);border-radius:var(--r);padding:14px 16px;
+    max-width:300px;width:100%;box-shadow:0 18px 40px -18px rgba(0,0,0,.9)}
+  #prCoach b{display:block;font-size:16px;margin-bottom:8px}
+  #prCoach p{margin:6px 0;font-size:13.5px;color:var(--dim);line-height:1.5}
+  #prCoach em{font-style:normal;color:var(--txt);font-weight:600;margin-right:6px}
+  #prCoach button{width:100%;margin-top:10px}
 </style>
 
 <!-- 底部导航（App 式）。DOM 顺序和 id 都没动 —— goTab(i) 的下标全篇硬编码十来处；
@@ -981,6 +1004,14 @@
     <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层（能一口气拖 180°）· 留白拖=转视角、快划=整体翻一格 · 双指拧正</div></div>
     <!-- 用时/步数浮在魔方上面，不再单独占一整条卡片。
          放在 host 里而不是 #prStage 里：教程借走 #prStage 时它不该跟过去 -->
+    <!-- 第一次开局的手势引导：开局后舞台提示语藏了，新人不知道魔方能直接拖（cube_pr_coach） -->
+    <div id="prCoach"><div>
+      <b>三种手势</b>
+      <p><em>☝ 按住魔方拖</em>转一层，像真魔方一样</p>
+      <p><em>☝ 在魔方外面拖</em>转视角看别的面</p>
+      <p><em>⚡ 在外面快划一下</em>整个魔方翻一格</p>
+      <button id="prCoachOk" class="pri">知道了</button>
+    </div></div>
     <div id="prBar">
       <span id="prTimeWrap"><b id="prTime">0:00</b>用时</span>
       <span><b id="prCount">0</b>步</span>
@@ -4538,6 +4569,8 @@ function prSetStarted(v){
   $('prStart').classList.toggle('on', !v);
   $('prMain').classList.toggle('on', v);
   $('pPr').classList.toggle('started', v);   // 顶栏图标、浮层计时、放大的魔方都挂在这个类上
+  if(v && !tuMode){ let seen = true; try{ seen = !!localStorage.getItem('cube_pr_coach'); }catch(e){}
+    $('prCoach').classList.toggle('on', !seen); }
   if(v){ prResize(); prRender(); }
 }
 function prLoad(st, scram){
@@ -4590,6 +4623,8 @@ $('prTip').onclick = () => {
   }catch(e){ prMsg('这个状态算不出提示（应该是 bug）'); }
 };
 $('prSolveIt').onclick = prPlanStart;
+$('prCoachOk').onclick = () => { $('prCoach').classList.remove('on');
+  try{ localStorage.setItem('cube_pr_coach', '1'); }catch(e){} };
 
 // ---- ⋯ 抽屉 + 记号键盘开关 ----
 const prSheet = $('prSheet');
@@ -5569,7 +5604,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 04:12';
+const BUILD = '2026-09-23 04:18';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
