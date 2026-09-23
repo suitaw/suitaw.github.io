@@ -766,6 +766,33 @@
   #prCoach p{margin:6px 0;font-size:13.5px;color:var(--dim);line-height:1.5}
   #prCoach em{font-style:normal;color:var(--txt);font-weight:600;margin-right:6px}
   #prCoach button{width:100%;margin-top:10px}
+  /* 成绩栏（⋯ 抽屉里） */
+  #prStats{margin:12px 0 0;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
+  #prStats .stHd{display:flex;align-items:center;font-size:12px;color:var(--dim);margin-bottom:8px}
+  #prStats .stHd button{margin-left:auto;padding:5px 10px;font-size:12px;border-radius:var(--r3);min-height:32px}
+  #prStats em{font-style:normal;font-size:12.5px;color:var(--dim2)}
+  #prStats .stRow{display:flex;gap:8px}
+  #prStats .stRow div{flex:1;text-align:center;font-size:11px;color:var(--dim);background:var(--panel);border-radius:var(--r3);padding:8px 2px}
+  #prStats .stRow b{display:block;font-size:18px;color:var(--txt);font-family:ui-monospace,Menlo,monospace;margin-bottom:2px}
+  #prStats .stList{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  #prStats .stList span{font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:4px 8px;border-radius:6px;background:var(--panel)}
+  #prStats .stList span.as{opacity:.55}
+  #prStats .stList i{font-style:normal;font-size:10px;color:var(--dim2);margin-left:5px}
+  /* 复原那一刻的消息带成绩，可能比一行长：只有这时允许折行 */
+  #pPr.started #prMsg.win{white-space:normal;line-height:1.4;font-size:14px}
+  /* 画画模式 */
+  #pPat.drawing #patSolve,#pPat.drawing #patCurRow{display:none}
+  #pPat.drawing #patSub b{color:var(--accL)}
+  /* 「选模板面」那排六色块跟调色板长得一模一样、容易点错 —— 出方案时自动认，这排藏掉 */
+  #patTplFace{display:none}
+  /* 画画模式下顶栏右上是「出方案」（原来那颗在 757px，屏幕外），平时藏着 */
+  .appBar #patGoBtn{display:none;flex:none;padding:7px 14px;font-size:14px;margin-right:2px;min-height:40px}
+  #pPat.drawing .appBar #patGoBtn{display:inline-block}
+  /* 画画模式下调色板只当「挑颜色」用：「每色还差几格 / 填满打勾」在画图案时没意义，
+     填满后六块全压暗打 ✓，反而挑不出颜色 */
+  #pPat.drawing #patPal .sw.done{box-shadow:none}
+  #pPat.drawing #patPal .sw i{visibility:hidden}
+  #pPat.drawing #patTally{display:none}
 </style>
 
 <!-- 底部导航（App 式）。DOM 顺序和 id 都没动 —— goTab(i) 的下标全篇硬编码十来处；
@@ -900,16 +927,17 @@
   <div id="patMain">
   <div class="appBar">
     <button id="patAgain" class="ic back" title="换个花色"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg></button>
-    <b>摆成这个花色</b>
+    <b id="patTitle">摆成这个花色</b>
+    <button id="patGoBtn" class="pri">出方案</button>
     <button id="patMoreBtn" class="ic" title="更多"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg></button>
   </div>
-  <p class="sub1">画的是<b>目标</b>花色 · 手上的魔方默认按复原态算</p>
+  <p class="sub1" id="patSub">画的是<b>目标</b>花色 · 手上的魔方默认按复原态算</p>
 
   <div id="patStage"><canvas id="patCv"></canvas>
     <div id="patHint">点格子填色 · 拖=转视角 · 快划=翻面</div></div>
   <!-- 这页画的是「目标」，可求解还得知道「当前」是什么样 —— 那个原来只能去①页填。
        拍一下就有了，不用离开这页 -->
-  <div class="row" style="margin-top:10px">
+  <div class="row" id="patCurRow" style="margin-top:10px">
     <button id="patCurCam" class="pri2">📷 拍手上的魔方</button>
     <button id="patCurFill">✏️ 填手上的魔方</button>
   </div>
@@ -930,7 +958,7 @@
     <div class="lbl">自己画：只画一面，自动套满六面</div>
     <!-- 一句话够用的留在外面，两种模式怎么挑是读一次的东西，收起来。
          原来这十行常驻，把下面的模式按钮和「出方案」整个压到屏幕外 -->
-    <p class="muted" style="margin:0 0 8px">先把其中一面画好，选中那一面，点「出方案」。</p>
+    <p class="muted" style="margin:0 0 8px">在魔方任意一面画好图案，点「出方案」—— 画的是哪一面会自动认出来。</p>
     <details class="help" style="margin:0 0 10px;background:transparent;border:none;padding:0">
       <summary>这是怎么算的？为什么有的花色做不出来？</summary>
       <div class="muted">我从你画的那一面读出<b>分组</b> —— 颜色一样的格子算同一组。
@@ -1080,6 +1108,7 @@
       <button id="prReset" class="shClose">回到复原态</button>
       <button id="prAgain" class="shClose">换一个魔方</button>
     </div>
+  <div id="prStats"></div>
   <div id="prLog">
     <div id="prLogHd"><span>转动记录 · <b id="prLogN">0 步</b></span>
       <span style="flex:1"></span><button id="prCopy">复制</button></div>
@@ -2991,7 +3020,6 @@ function paintPatTplBtns(){
   // 选的是哪一面在 3D 上亮出来——转过视角之后屏幕上"正对着你"的不一定是逻辑上的
   // 那一面，光看色板文字容易选错，直接在魔方上标出来最不会认错（复用 PR 页拾取时
   // 亮层用的同一个 V.hl 机制）
-  PAT.hl = GEO_MV[patTplFace];
   patRender();
 }
 paintPatTplBtns();
@@ -3264,6 +3292,7 @@ PAT_LIB.forEach(([name, seq]) => {
     card.classList.add('on');
     $('patPairGallery').innerHTML = '';
     patSetPicked(true);                    // 挑好了，进第二步
+    patDrawMode(false);
     patMsg(`选的是「${name}」—— 按底下的「求解成这个花色」出解法`, 'ok');
     scrollTo(0,0);
   };
@@ -3280,19 +3309,41 @@ function patSetPicked(v){
   $('patMain').classList.toggle('on', v);
   if(v){ patResize(); patRender(); }
 }
-$('patAgain').onclick = () => patSetPicked(false);
+$('patAgain').onclick = () => { patDrawMode(false); patSetPicked(false); };
+$('patGoBtn').onclick = () => $('patShowPairings').click();   // 画画模式顶栏上的「出方案」
 const patSheet = sheetBind('patSheet');
 $('patMoreBtn').onclick = () => patSheet.classList.add('on');
 // 「自己画」：不动 patNet，就从当前这个（默认复原态）在 3D 上接着改
+/* 画画模式（#pPat.drawing）：原来点「自己画一面」进来跟选了现成花色一模一样 ——
+   标题写「摆成这个花色」、求解已经亮着、「出方案」埋在 1000px 往下，页上还有两排长得一样的六色块
+   （调色板 / 选模板面），直接点出方案还报「是不是选错模板面了」。现在：标题换「画一面」、
+   藏掉求解和「手上的魔方」那排，「出方案」就在调色板下面；模板面不用选，出方案时自动认 */
+function patDrawMode(on){
+  $('pPat').classList.toggle('drawing', on);
+  $('patTitle').textContent = on ? '画一面' : '摆成这个花色';
+  $('patSub').innerHTML = on ? '<b>① 选颜色</b> → <b>② 在魔方上点格子画出图案</b> → <b>③ 出方案</b>'
+                             : '画的是<b>目标</b>花色 · 手上的魔方默认按复原态算';
+  PAT.hl = null;                   // 模板面自动认了，不再常亮一层白框
+  patRender();
+}
 $('patDraw').onclick = () => {
   for(const el of $('patLib').children) el.classList.remove('on');
+  $('patPairGallery').innerHTML = '';
   patSetPicked(true);
-  patMsg('在魔方上点格子画一面，选中那一面，再点「出方案」', 'ok');
+  patDrawMode(true);
+  patMsg('随便挑一面画就行，画几格都可以，其余五面会照着这个形状自动配好', 'ok');
   scrollTo(0,0);
 };
 
 
 $('patShowPairings').onclick = () => {
+  // 模板面自动认：外圈 8 格里跟自己中心色不一样的格子最多的那面，就是他在画的那面
+  { let best = null, bn = 0;
+    for(const f of FACE_ORDER){ let n = 0;
+      for(let i=0;i<9;i++) if(i !== 4 && patNet[fidx(f,i)] && patNet[fidx(f,i)] !== f) n++;
+      if(n > bn){ bn = n; best = f; } }
+    if(!best){ patMsg('还没画出图案：先选一个颜色，在魔方上点几个格子改掉，再出方案', 'err'); return; }
+    patTplFace = best; paintPatTplBtns(); }
   const cells = [];
   for(let i=0;i<9;i++) cells.push(patNet[fidx(patTplFace, i)]);
   if(cells.some(c => !c)){ patMsg(`先把${FACE_CN[patTplFace]}这一面画满，再出方案`, 'err'); return; }
@@ -3312,6 +3363,8 @@ $('patShowPairings').onclick = () => {
     const { options, kept, groups, complete } = buildShapeOptions(cells, patTplFace);
     if(!options.length){ patMsg('这个形状没搜出任何方案 —— 换一面或者改改图案再试', 'err'); return; }
     renderPairGallery(options, {kept, groups, complete});
+    // 方案在页面下面，点的是顶栏那颗的话看不见结果 —— 滚过去
+    $('patPairGallery').scrollIntoView({behavior:'smooth', block:'start'});
   }, 30);
 };
 
@@ -3337,6 +3390,7 @@ function renderPairGallery(options, meta){
                       : opt.diffCount ? `改 ${opt.diffCount} 格` : '零改动，天生合法';
     card.appendChild(label);
     card.onclick = () => {
+      patDrawMode(false);                   // 选好方案了，回到「摆成这个花色」，求解出来
       patNet = opt.fc.slice();
       paintPatNet(); invalidatePlan();
       patMsg(shapeKept ? `已经把${FACE_CN[patTplFace]}的图案原样套到六面了，一格没走样`
@@ -3725,6 +3779,51 @@ function prStopClock(){
   clearInterval(prTick); prTick = 0;
   prUpdate();
 }
+/* ---- 成绩 ----
+   每局复原都记一笔（用时、步数、时间、有没有辅助）。看过「提示」或点过「复原它·跟着转」的算有辅助：
+   照样记，但不进最好成绩和平均 —— 不然跟着解法转一遍就是「新纪录」，数字没意义。
+   平均按魔方比赛的通行算法：近 N 次去掉最快、最慢各一次，剩下的取平均 */
+let prAssisted = false, prCountable = false;
+const PR_TIMES_KEY = 'cube_pr_times';
+function prTimesGet(){ try{ return JSON.parse(localStorage.getItem(PR_TIMES_KEY)) || []; }catch(e){ return []; } }
+function prTimesPut(a){ try{ localStorage.setItem(PR_TIMES_KEY, JSON.stringify(a.slice(-300))); }catch(e){} }
+const fmtTT = ms => { const t = Math.round(ms/100), s = Math.floor(t/10);
+  return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0') + '.' + (t%10); };
+function aoN(list, n){
+  const own = list.filter(r => !r.a).slice(-n);
+  if(own.length < n) return null;
+  const ts = own.map(r => r.t).sort((x,y) => x-y).slice(1, -1);
+  return ts.reduce((x,y) => x+y, 0) / ts.length;
+}
+function prStats(list){
+  const own = list.filter(r => !r.a);
+  return {n:list.length, best: own.length ? Math.min(...own.map(r=>r.t)) : null, ao5:aoN(list,5), ao12:aoN(list,12)};
+}
+function prRecord(){
+  if(!prCountable) return `复原了！${fmtTT(prElapsed)} · ${prCount} 步`;
+  prCountable = false;                        // 一局只记一次
+  const list = prTimesGet(), before = prStats(list);
+  list.push({t:prElapsed, n:prCount, d:Date.now(), a:prAssisted});
+  prTimesPut(list);
+  const st = prStats(list);
+  let msg = `复原了！${fmtTT(prElapsed)} · ${prCount} 步`;
+  if(prAssisted) return msg + ' · 有辅助，不计成绩';
+  if(before.best == null || prElapsed < before.best) msg += ' · 🏆 新纪录！';
+  else msg += ` · 最好 ${fmtTT(st.best)}`;
+  if(st.ao5 != null) msg += ` · 近5次平均 ${fmtTT(st.ao5)}`;
+  prStatsRender();
+  return msg;
+}
+function prStatsRender(){
+  const list = prTimesGet(), st = prStats(list), el = $('prStats');
+  if(!el) return;
+  if(!list.length){ el.innerHTML = '<div class="stHd">成绩</div><em>还没复原过。打乱之后自己转到复原，就会记在这儿。</em>'; return; }
+  const f = v => v == null ? '—' : fmtTT(v);
+  el.innerHTML = `<div class="stHd">成绩 · 共 ${st.n} 次<button id="prStatsClr">清空</button></div>
+    <div class="stRow"><div><b>${f(st.best)}</b>最好</div><div><b>${f(st.ao5)}</b>近5次平均</div><div><b>${f(st.ao12)}</b>近12次平均</div></div>
+    <div class="stList">${list.slice(-10).reverse().map(r => `<span class="${r.a?'as':''}">${fmtTT(r.t)}<i>${r.n}步${r.a?' · 辅助':''}</i></span>`).join('')}</div>`;
+  $('prStatsClr').onclick = () => { if(confirm('清空全部成绩？删了找不回来。')){ prTimesPut([]); prStatsRender(); } };
+}
 const prMsg = (t,win) => { $('prMsg').textContent = t; $('prMsg').className = win?'win':''; };
 /* ---- 练习页的偏好设置 ----
    每项存一个 localStorage 键，存的是选中的档位下标，`vals` 是这档对应的实际数值。
@@ -3908,7 +4007,7 @@ function prSpin(turn, quarter, record, tag, from, done){
         prGoal = null;
       }else if(!prGoal && isSolved(prState)){
         prStopClock();
-        prMsg(`复原了！用时 ${fmtT(prElapsed)}，共 ${prCount} 步`, true);
+        prMsg(prRecord(), true);
       }
     }
     if(done) done();
@@ -4395,6 +4494,7 @@ function prPlanMake(moves){
 function prPlanStart(){
   if(prBusy) return;
   if(isSolved(prState)){ prMsg('已经复原了，不用解'); return; }
+  if(!tuMode) prAssisted = true;             // 跟着解法转完的那局不算进最好成绩
   const run = () => {
     let moves;
     try{
@@ -4614,6 +4714,8 @@ function prLoad(st, scram){
   PR.cubies = buildGeo(cubieToFacelet(st));
   prHist = []; prCount = 0; prElapsed = 0; prT0 = 0;
   prScramSeq = scram || '';
+  prAssisted = false;
+  prCountable = !isSolved(st);   // 从复原态开局的不记：随手转一下 R 再转回来就成了「0:00.4 新纪录」
   PR.G = [[1,0,0],[0,1,0],[0,0,1]];
   PR.R = PR_CAM0; PR.yawSign = 1;       // 新的一局从标准持方视角开始
   cancelAnimationFrame(prHomeRAF);
@@ -4649,6 +4751,7 @@ $('prHome').onclick = () => { if(!prBusy) prRecenter(); };
 // 「把这个魔方填进①输入页」「拿去⑤画花色」两颗按钮删了 ——
 // 三页现在各自都能输入，不用互相中转
 $('prTip').onclick = () => {
+  if(!tuMode && !isSolved(prState)) prAssisted = true;   // 看过提示的那局也不算进最好成绩
   if(prBusy) return;
   if(isSolved(prState)){ prMsg('已经是复原状态了'); return; }
   try{
@@ -4663,7 +4766,7 @@ $('prCoachOk').onclick = () => { $('prCoach').classList.remove('on');
 
 // ---- ⋯ 抽屉 + 记号键盘开关 ----
 const prSheet = $('prSheet');
-$('prMoreBtn').onclick = () => prSheet.classList.add('on');
+$('prMoreBtn').onclick = () => { prStatsRender(); prSheet.classList.add('on'); };
 // 点遮罩收起；带 shClose 的按钮自己的 onclick 先跑（事件先到按钮再冒泡到这），跑完顺手收起
 prSheet.addEventListener('click', e => {
   if(e.target === prSheet || e.target.closest('.shClose')) prSheet.classList.remove('on');
@@ -5669,7 +5772,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 04:42';
+const BUILD = '2026-09-23 04:53';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
