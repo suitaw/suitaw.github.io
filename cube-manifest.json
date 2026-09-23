@@ -1,0 +1,17 @@
+{
+  "name": "魔方复原助手",
+  "short_name": "魔方",
+  "description": "拍照或填色输入魔方，一步步教你复原；八课教程、自己练、摆花色",
+  "start_url": "/cube-solver.html",
+  "scope": "/cube-solver.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#101216",
+  "theme_color": "#101216",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "/cube-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/cube-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/cube-icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

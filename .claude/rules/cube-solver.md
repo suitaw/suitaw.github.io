@@ -381,6 +381,11 @@ paths:
 - **教程步骤可以带 `hold`**（`tuLoadStep` 里 `PR.G = s.hold`）= 这一步整个魔方换了拿法。第 8 课「一个都没对上」
   拆成两步：先 `UPERM_A`（`demo:true`，做完前面冒出一颗对上的），再 `hold:TU_HOLD_Y2` 做 `UPERM_B_Y2` ——
   存的是固定面写法，解法条按 hold 显示回 `UPERM_B` 的字母，不用再在文字里解释「字母换成了 L」
+- **装到桌面 + 离线**（第三轮）：`cube-manifest.json`（standalone，从桌面打开没有地址栏）+ `cube-sw.js`
+  **网络优先、断网才用缓存**（Vocab 那个 SW 故意不缓存是怕旧版不放；网络优先没这问题），缓存按路径存
+  （「强制刷新」会加 `?_=` 参数，不按路径就取不回来）。scope 收窄到 `/cube-solver.html`。改了要缓存的文件清单就把
+  `CACHE` 版本号加一。图标 `cube-icon-*.png` 是 PIL 画的（maskable 那张留了安全区）。
+  测法 `/sdcard/webdev/pwa-test.js`：本地起 http 服务 → 联网开一次 → setOffline → 再开，页面和 THREE 都在
 - **真机测速**（`?bench=1`，结果画在屏幕上）：vivo V2546A 上 WebGL 转视角/转层都是 60 帧，画一帧 1.3~1.5ms，
   离 16.7ms 上限差十倍，低端机慢五六倍也不掉帧 —— 性能不用再优化
 - **页面切换只淡入不位移**：`.page` 里有 fixed 的 `.dock`，带 transform 的祖先会把它拽离屏幕底
