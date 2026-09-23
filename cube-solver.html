@@ -3690,7 +3690,16 @@ function prResize(){
   prCv.width = PR.W*dpr; prCv.height = PR.H*dpr;
   PR.ctx.setTransform(dpr,0,0,dpr,0,0);
 }
-const prRender = anim => render(anim, PR);
+// 拿法（PR.G）一变，记号键横杠的颜色和解法条上的字母都得跟着换（见「相对记号」）。只在 G 真变了时做
+let prGKey = '';
+function prRelSync(){
+  const k = PR.G.map(r => r.map(Math.round).join()).join('|');
+  if(k === prGKey) return;
+  prGKey = k;
+  for(const b of $('prKeys').children) b.dataset.f = physFace(b.textContent[0]);
+  if(prPlan) prPlanRender();
+}
+const prRender = anim => { prRelSync(); render(anim, PR); };
 
 const fmtT = ms => {
   const s = Math.floor(ms/1000);
@@ -3959,6 +3968,27 @@ function moveLabel(turn, quarter){
   if(q === 3) return turnLabel({axis:turn.axis, layer:turn.layer, rotSign:-turn.rotSign});
   return turnLabel(turn) + (q === 2 ? '2' : '');
 }
+/* ---- 相对记号：按「你现在怎么拿」叫面 ----
+   第 1 课教的是「公式里的 F 永远是正对你的那一面」，可解法条、记号键、转层提示原来用的是固定面
+   （R 永远是橙面）—— 快划整体翻过一格之后，屏幕上写 R、按 R 转的都还是橙面，跟教的正好相反。
+   现在一律按 PR.G（整体翻面、中间层累积的那个姿态，渲染是 cam = R·G）换算：
+   某个固定面的法向 n 在「拿法」里朝 G·n，朝哪就叫哪个字母；反过来按键时用 Gᵀ 换回固定面去转。
+   自由拖视角只改 R、不改 G —— 那是「看」，不是「换拿法」，所以不换字母。
+   状态模型、解法、求解器照旧全用固定面，只有显示和按键这一层做换算 */
+const FACE_N = {R:[1,0,0],L:[-1,0,0],U:[0,1,0],D:[0,-1,0],F:[0,0,1],B:[0,0,-1]};
+const AX_LET = [['R','L'],['U','D'],['F','B']];
+const POS_CN = {U:'上面',D:'底面',R:'右面',L:'左面',F:'前面',B:'后面'};
+function relFace(f, G){
+  if(!FACE_N[f]) return f;                       // M/E/S 这类原样
+  const d = vmul(G || PR.G, FACE_N[f]);
+  for(let k=0;k<3;k++) if(Math.abs(d[k]) > 0.5) return AX_LET[k][d[k] > 0 ? 0 : 1];
+  return f;
+}
+const physFace = (f, G) => relFace(f, mtrans(G || PR.G));
+const relMove  = (m, G) => relFace(m[0], G) + m.slice(1);
+const physMove = (m, G) => physFace(m[0], G) + m.slice(1);
+// 「右面（绿）」：位置按拿法叫，颜色是那一面真实的颜色
+const describeRel = mv => POS_CN[relFace(mv[0])] + '（' + COLOR_CN[mv[0]] + '），正对着它 ' + MOVE_DIR[mv.slice(1)];
 // 整体转的记号：x 跟 R 同向、y 跟 U 同向、z 跟 F 同向，三个的 sign 都是 -1
 const WHOLE_CH = ['x','y','z'], WHOLE_SIGN = [-1,-1,-1];
 function wholeLabel(axis, rotSign, quarter){
@@ -4021,7 +4051,7 @@ function prPickLayers(pick){
     const ax = cross(n, tan).map(Math.round);
     let axis = 0;
     for(let k=0;k<3;k++) if(Math.abs(ax[k]) > 0.5) axis = k;
-    out.push(turnLabel({axis, layer:cb.p[axis], rotSign:1}).replace("'",''));
+    out.push(relFace(turnLabel({axis, layer:cb.p[axis], rotSign:1}).replace("'",'')));
   }
   return out;
 }
@@ -4244,8 +4274,8 @@ prStage.addEventListener('pointermove', e => {
     const q = t ? prQuarters(ang) : 0;
     const turn = t && {axis:t.axis, layer:t.layer, rotSign: ang>0 ? 1 : -1};
     const msg = !t || !ang ? ''
-      : q ? '松手就转 ' + moveLabel(turn, q)
-          : '再多转一点：' + turnLabel(turn);
+      : q ? '松手就转 ' + relMove(moveLabel(turn, q))
+          : '再多转一点：' + relMove(turnLabel(turn));
     if(msg !== prDrag.msg){ prDrag.msg = msg; prMsg(msg); }
     // 每跨过一个整格的吸附点震一下，像转过一个卡位
     if(q !== prDrag.snap){ if(q > prDrag.snap) buzz(6); prDrag.snap = q; }
@@ -4431,8 +4461,8 @@ function prPlanRender(){
     // 半途才转完一格的（比如 R2 只转了一半），就只提示剩下那一格
     const mi = prPlan.atMove[i];
     const mv = (i===0 || prPlan.atMove[i-1] !== mi) ? prPlan.moves[mi] : prPlan.qm[i];
-    $('prPlanNow').textContent = mv;
-    $('prPlanDesc').textContent = describe(mv) + `　还剩 ${n-i} 格`;
+    $('prPlanNow').textContent = relMove(mv);
+    $('prPlanDesc').textContent = describeRel(mv) + `　还剩 ${n-i} 格`;
     if(prCfg('arrow')) PR.arrow = prMoveTurn(prPlan.qm[i]);
   }
   const playing = prPlayTo >= 0;
@@ -4446,7 +4476,7 @@ function prPlanRender(){
   const seq = $('prPlanSeq');
   seq.innerHTML = prPlan.moves.map((m,k) => {
     const at = done ? prPlan.moves.length : prPlan.atMove[i];
-    return `<span data-k="${k}" class="${k<at?'done':k===at?'cur':''}">${m}</span>`;
+    return `<span data-k="${k}" class="${k<at?'done':k===at?'cur':''}">${relMove(m)}</span>`;
   }).join('');
   const cur = seq.querySelector('span.cur');
   if(cur && cur.offsetLeft != null) seq.scrollLeft = cur.offsetLeft - 70;
@@ -4557,7 +4587,7 @@ $('prPlanAgain').onclick = prPlanStart;
   const b = document.createElement('button');
   b.textContent = k;
   b.dataset.f = k[0];                          // 按钮底下那道横杠靠它上色，一眼看出转的是哪一面
-  b.onclick = () => { prMsg(''); prTurn(k, true); };
+  b.onclick = () => { prMsg(''); prTurn(physMove(k), true); };   // 键上写的是相对面，换回固定面去转
   $('prKeys').appendChild(b);
 });
 
@@ -4619,7 +4649,7 @@ $('prTip').onclick = () => {
   try{
     const r = solve(prState);
     const st = r.steps.find(x => x.moves.length);
-    prMsg(st ? `现在该做「${st.label}」，下一步：${st.moves[0]}` : '就差一点了');
+    prMsg(st ? `现在该做「${st.label}」，下一步：${relMove(st.moves[0])}` : '就差一点了');
   }catch(e){ prMsg('这个状态算不出提示（应该是 bug）'); }
 };
 $('prSolveIt').onclick = prPlanStart;
@@ -4727,10 +4757,12 @@ const CR_SIDE = "R' F R".split(' ');          // 2课 白棱在顶层、白面�
 const F1_R    = "R U R'".split(' ');          // 3课 白角在右前上、白面朝右
 const F1_F    = "F' U' F".split(' ');         // 3课 白角在右前上、白面朝前
 const SEXY    = "R U R' U'".split(' ');       // 3课 白面朝上，连做三遍
-// 8课「一个都没对上」的演示：先 U-perm，前面冒出一颗对上的，本该整个魔方转半圈（y2）再做 UPERM_B。
-// 演示不能替人转魔方，只好把 y2 之后的 UPERM_B 按原拿法换了面字母写出来（R→L、F→B）。
+// 8课「一个都没对上」拆成两步：先 UPERM_A，前面冒出一颗对上的；再整个魔方转半圈（hold=TU_HOLD_Y2）做 UPERM_B。
+// 状态模型只认固定面，所以第二条存的是换过面字母的固定面写法，显示时按 hold 换回 UPERM_B 的字母。
 // 脚本验过：摆成 rev 再做一遍正好复原；起始状态角全到位、四个棱一个都没对上
 const UPERM_B_Y2 = "L U' L U L U L U' L' U' L2".split(' ');
+// 整个魔方绕竖轴转半圈之后的拿法（PR.G）。那一步用它当 hold，解法条就显示成原本的 UPERM_B 字母
+const TU_HOLD_Y2 = rotM(1, Math.PI).map(r => r.map(Math.round));
 
 /* ==========================================================
    课程内容
@@ -4861,9 +4893,11 @@ const TU_LESSONS = [
    scr:rev(UPERM_A), alg:UPERM_A, focus:focusPiece('U','B')},
   {t:'前面那颗该回右边：倒着的那条', d:"R U' R U R U R U' R' U' R2 —— 同样后面不动，三个棱往另一个方向轮换。前面那颗该回右边时用它。两条只有这一个区别。",
    scr:rev(UPERM_B), alg:UPERM_B, focus:focusPiece('U','B')},
-  {t:'四个棱一个都没对上？', d:'那是两两对调的情形。随便做一遍 U-perm，就一定会冒出一个对上的棱，再整个魔方转过来让它在后面，按上面来。演示里：先做一遍 U-perm，前面冒出一颗对上的；该整个魔方转半圈让它到后面，再做「倒着的那条」。演示没法替你转魔方，所以第二条是按原来的拿法写的，字母换成了 L —— 你自己转过魔方之后照抄原公式就行。',
-   scr:rev([...UPERM_A, ...UPERM_B_Y2]), alg:[...UPERM_A, ...UPERM_B_Y2],
+  {t:'四个棱一个都没对上？', d:'那是两两对调的情形。随便做一遍 U-perm，就**一定**会冒出一个对上的棱。演示做完，**前面**那颗就对上了。',
+   scr:rev([...UPERM_A, ...UPERM_B_Y2]), alg:UPERM_A, demo:true,
    focus:cb => cubieKind(cb)===2 && cb.p[1]===1},
+  {t:'然后整个魔方转半圈，照常做', d:'对上的那颗在前面，就**整个魔方转半圈**，让它到后面 —— 图上已经转好了，现在正对你的是蓝面。再看**前面**那颗该回哪儿：这里该回右边，做倒着的那条。公式照抄，字母都是按你现在的拿法算的。',
+   scr:rev(UPERM_B_Y2), hold:TU_HOLD_Y2, alg:UPERM_B_Y2, focus:focusPiece('U','F')},
   {t:'复原了', d:'八课到此结束。接下来就是多练 —— 「出一个卡在这步的魔方」每一课都能用，哪步不熟练哪步。'},
 ]},
 ];
@@ -5019,7 +5053,8 @@ function tuLoadStep(){
   // 视角也一并摆正：说明里说的「顶层」「前面」都是按标准持方讲的，
   // 上一步转着看过就留着歪的话，这一步的话就对不上画面了。
   // 讲底层的步骤自带一个仰视角，不然要讲的块全在背面看不见
-  PR.R = s.view || PR_CAM0; PR.G = [[1,0,0],[0,1,0],[0,0,1]]; PR.yawSign = 1;
+  // hold：这一步要「整个魔方换个拿法」时用（第 8 课转半圈那步），解法条字母会按它换成相对面
+  PR.R = s.view || PR_CAM0; PR.G = s.hold || [[1,0,0],[0,1,0],[0,0,1]]; PR.yawSign = 1;
   prGoal = null; prHist = []; prCount = 0; prElapsed = 0; prT0 = 0;
   clearInterval(prTick); prTick = 0;
   // prPlanMake 是从当前 prState 起算的，所以必须排在上面那几句后面
@@ -5629,7 +5664,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 04:26';
+const BUILD = '2026-09-23 04:39';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
