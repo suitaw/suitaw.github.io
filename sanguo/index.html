@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#2a1e18">
+<title>三国武将录</title>
+<style>
+:root{
+  --ink:#2a1e18; --paper:#fffaf0; --paper2:#f3ead6; --line:#3a2a22; --red:#b8302a; --gold:#d9a520;
+  --muted:#7a6a5a; --btn:#efe4cc;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:#1a1410;color:var(--ink);overflow:hidden;
+  font-family:-apple-system,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif}
+#app{position:relative;max-width:480px;height:100%;margin:0 auto;display:flex;flex-direction:column;background:#000;overflow:hidden}
+#stage{position:relative;flex:1;min-height:0;overflow:hidden}
+#world{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
+.hide{display:none!important}
+button{font:inherit;color:inherit;border:none;background:none;cursor:pointer}
+canvas.px{image-rendering:pixelated}
+
+/* 对话框 */
+.box{background:var(--paper);border:3px solid var(--line);border-radius:8px;box-shadow:0 0 0 2px var(--paper) inset,0 3px 0 rgba(0,0,0,.35)}
+#dlg{position:absolute;left:8px;right:8px;bottom:8px;min-height:84px;padding:10px 14px 14px;font-size:17px;line-height:1.55;z-index:5}
+#dlgName{position:absolute;top:-15px;left:10px;background:var(--red);color:#fff;font-size:13px;font-weight:700;padding:2px 10px;border-radius:4px;border:2px solid var(--line)}
+#dlgName:empty{display:none}
+.more{position:absolute;right:10px;bottom:4px;font-size:12px;color:var(--red);animation:blink .8s infinite}
+@keyframes blink{50%{opacity:0}}
+#choices{position:absolute;right:8px;bottom:100px;min-width:120px;padding:6px;z-index:6;display:flex;flex-direction:column}
+#choices button{text-align:left;padding:9px 12px;font-size:16px;border-radius:5px}
+#choices button:active,#choices button.sel{background:var(--paper2)}
+#toast{position:absolute;top:10px;left:10px;padding:6px 12px;font-size:14px;font-weight:700;z-index:4;transition:opacity .5s}
+#btnMenu{position:absolute;top:10px;right:10px;z-index:4;padding:6px 12px;font-size:14px;font-weight:700}
+
+/* 操作区 */
+#pad{height:188px;flex:none;background:linear-gradient(#3a2a22,#2a1e18);position:relative;border-top:3px solid #1a1410;touch-action:none}
+#dpad{position:absolute;left:18px;top:50%;transform:translateY(-50%);width:150px;height:150px}
+#dpad button{position:absolute;width:52px;height:52px;background:#5a463a;border-radius:8px;box-shadow:0 4px 0 #1a1410;color:#e8d8c0;font-size:20px}
+#dpad button:active,#dpad button.on{transform:translateY(3px);box-shadow:0 1px 0 #1a1410;background:#6e584a}
+#dpad .u{left:49px;top:0}#dpad .d{left:49px;bottom:0}#dpad .l{left:0;top:49px}#dpad .r{right:0;top:49px}
+#dpad .c{left:49px;top:49px;width:52px;height:52px;position:absolute;background:#4a3a30;border-radius:4px}
+.ab{position:absolute;width:66px;height:66px;border-radius:50%;font-size:22px;font-weight:800;color:#fff;box-shadow:0 5px 0 #1a1410}
+.ab:active{transform:translateY(4px);box-shadow:0 1px 0 #1a1410}
+#bA{right:22px;top:30px;background:var(--red)}
+#bB{right:100px;top:84px;background:#6a5a4a}
+
+/* 战斗 */
+#battle{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;background:#000}
+#bField{position:relative;flex:1;min-height:0;overflow:hidden;
+  background:linear-gradient(#bfe3f5 0%,#e4f2ea 46%,#b9d98a 46.2%,#9cc873 100%)}
+#bField.night{background:linear-gradient(#5a4a6a 0%,#a08aa0 46%,#8a9a6a 46.2%,#6a8a5a 100%)}
+.plat{position:absolute;border-radius:50%;background:radial-gradient(#8ab85e,#76a64d 60%,#5e8e3c);box-shadow:inset 0 -4px 0 rgba(0,0,0,.15)}
+#pFoe{right:4%;top:calc(12% + 118px);width:170px;height:40px}
+#pMe{left:0;bottom:6%;width:200px;height:46px}
+#spFoe{position:absolute;right:calc(4% + 10px);top:12%}
+#spMe{position:absolute;left:14px;bottom:calc(6% + 18px);transform:scaleX(-1)}
+.card{position:absolute;padding:6px 10px 8px;width:58%;font-size:14px}
+#cFoe{left:8px;top:10px}
+#cMe{right:8px;bottom:calc(6% + 4px);width:56%}
+.card .nm{display:flex;align-items:center;gap:6px;font-weight:800;font-size:15px}
+.card .nm b{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.el{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;color:#fff;font-size:12px;font-weight:800;font-style:normal;flex:none}
+.stb{font-size:11px;padding:0 4px;border-radius:3px;color:#fff;background:#8a3a8a;font-weight:700}
+.bar{height:8px;background:#5a4a3a;border-radius:4px;overflow:hidden;margin-top:5px;border:1px solid var(--line)}
+.bar>div{height:100%;background:#48c048;transition:width .45s,background .45s}
+.hpt{font-size:12px;text-align:right;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.xp{height:4px;background:#ddd;margin-top:3px;border-radius:2px;overflow:hidden}
+.xp>div{height:100%;background:#3a86c8;transition:width .5s}
+#bBottom{flex:none;height:150px;position:relative;background:var(--ink);padding:8px}
+#bMsg{position:absolute;inset:8px;padding:10px 14px;font-size:17px;line-height:1.55}
+#bAct,#bMoves{position:absolute;inset:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.bb{background:var(--paper);border:3px solid var(--line);border-radius:8px;font-size:17px;font-weight:800;box-shadow:0 3px 0 rgba(0,0,0,.4)}
+.bb:active{transform:translateY(2px);box-shadow:none}
+.bb.red{background:#f6d8c8}
+#bMoves .bb{font-size:15px;text-align:left;padding:4px 10px;border-left-width:10px;display:flex;flex-direction:column;justify-content:center}
+#bMoves .bb small{font-size:11px;color:var(--muted);font-weight:600}
+#bMoves .bb:disabled{opacity:.45}
+#bMoves .back{position:absolute;right:0;top:-40px;padding:4px 12px;font-size:14px}
+
+/* 菜单 / 面板 */
+#menu{position:absolute;inset:0;z-index:30;background:rgba(20,14,10,.55);display:flex;flex-direction:column;justify-content:flex-end}
+#panel{background:var(--paper);border-top:3px solid var(--line);max-height:92%;display:flex;flex-direction:column;border-radius:12px 12px 0 0}
+#panel .hd{display:flex;align-items:center;padding:12px 14px;border-bottom:2px solid var(--paper2);font-weight:800;font-size:17px;gap:8px}
+#panel .hd span{flex:1}
+#panel .hd button{padding:4px 10px;background:var(--btn);border-radius:6px;font-size:14px;border:2px solid var(--line)}
+#panel .bd{overflow-y:auto;padding:10px 12px 18px;-webkit-overflow-scrolling:touch}
+.row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;border:2px solid var(--paper2);margin-bottom:8px;background:#fff}
+.row:active{background:var(--paper2)}
+.row .info{flex:1;min-width:0}
+.row .t{font-weight:800;display:flex;align-items:center;gap:6px}
+.row .s{font-size:12px;color:var(--muted)}
+.row.dead{opacity:.55}
+.row.lead{border-color:var(--gold)}
+.mbtn{display:block;width:100%;padding:14px;font-size:17px;font-weight:800;text-align:left;border-bottom:2px solid var(--paper2)}
+.mbtn:active{background:var(--paper2)}
+.mbtn small{font-weight:500;color:var(--muted);font-size:13px;margin-left:8px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cell{background:#fff;border:2px solid var(--paper2);border-radius:8px;padding:4px 2px;text-align:center;font-size:12px}
+.cell canvas{display:block;margin:0 auto}
+.stat{display:grid;grid-template-columns:3em 1fr 4.6em;gap:4px 8px;align-items:center;font-size:14px;margin:8px 0}
+.stat i{height:7px;border-radius:4px;background:var(--paper2);display:block;overflow:hidden}
+.stat i b{display:block;height:100%;background:var(--red)}
+.mv{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;background:#fff;border:2px solid var(--paper2);margin-bottom:6px;font-size:14px}
+.mv b{flex:1}
+.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.acts button{flex:1;padding:11px;border-radius:8px;background:var(--btn);border:2px solid var(--line);font-weight:800;font-size:15px}
+
+/* 标题 / 选将 */
+#title{position:absolute;inset:0;z-index:40;background:radial-gradient(ellipse at 50% 30%,#5a2a1e,#1a0e0a 75%);color:#f4e6c8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center}
+#title h1{font-size:44px;margin:0;letter-spacing:6px;color:#ffd878;text-shadow:3px 3px 0 #7a1a10,0 0 18px rgba(255,180,80,.35)}
+#title p{margin:0;color:#c9b08a;font-size:14px}
+#title .trio{display:flex;gap:4px;margin:10px 0}
+#title .tb{width:220px;padding:14px;font-size:18px;font-weight:800;border-radius:10px;background:#f4e6c8;color:var(--ink);border:3px solid #ffd878;box-shadow:0 4px 0 #7a1a10}
+#title .tb:disabled{opacity:.4}
+#title .tb.sub{background:transparent;color:#f4e6c8;border-color:#7a5a3a;box-shadow:none;font-size:15px;padding:10px}
+.starter{display:flex;gap:8px;width:100%;max-width:440px}
+.starter button{flex:1;background:#f4e6c8;color:var(--ink);border-radius:10px;border:3px solid #7a5a3a;padding:8px 4px;font-weight:800}
+.starter button.sel{border-color:#ffd878;box-shadow:0 0 0 3px #ffd878}
+.starter small{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4}
+#fade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:50;transition:opacity .25s}
+#fade.on{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="world"></canvas>
+    <div id="toast" class="box" style="opacity:0"></div>
+    <button id="btnMenu" class="box">菜单</button>
+    <div id="dlg" class="box hide"><div id="dlgName"></div><div id="dlgText"></div><div class="more">▼</div></div>
+    <div id="choices" class="box hide"></div>
+  </div>
+  <div id="pad">
+    <div id="dpad">
+      <button class="u" data-d="up">▲</button><button class="l" data-d="left">◀</button>
+      <div class="c"></div>
+      <button class="r" data-d="right">▶</button><button class="d" data-d="down">▼</button>
+    </div>
+    <button class="ab" id="bB">B</button>
+    <button class="ab" id="bA">A</button>
+  </div>
+
+  <div id="battle" class="hide">
+    <div id="bField">
+      <div class="card box" id="cFoe"><div class="nm"><i class="el"></i><b></b><span class="stb hide"></span><span class="lv"></span></div><div class="bar"><div></div></div></div>
+      <div class="plat" id="pFoe"></div><canvas id="spFoe" class="px"></canvas>
+      <div class="plat" id="pMe"></div><canvas id="spMe" class="px"></canvas>
+      <div class="card box" id="cMe"><div class="nm"><i class="el"></i><b></b><span class="stb hide"></span><span class="lv"></span></div><div class="bar"><div></div></div><div class="hpt"></div><div class="xp"><div></div></div></div>
+    </div>
+    <div id="bBottom">
+      <div id="bMsg" class="box"><span id="bText"></span><div class="more hide">▼</div></div>
+      <div id="bAct" class="hide">
+        <button class="bb red" data-a="fight">出 招</button><button class="bb" data-a="bag">背 包</button>
+        <button class="bb" data-a="switch">换 将</button><button class="bb" data-a="run">撤 退</button>
+      </div>
+      <div id="bMoves" class="hide"></div>
+    </div>
+  </div>
+
+  <div id="menu" class="hide"><div id="panel"><div class="hd"><span id="pTitle"></span><button id="pClose">关闭</button></div><div class="bd" id="pBody"></div></div></div>
+
+  <div id="title">
+    <h1>三国武将录</h1>
+    <p>收服天下名将 · 五行相克 · 讨伐董卓</p>
+    <div class="trio" id="trio"></div>
+    <button class="tb" id="tNew">新的征程</button>
+    <button class="tb" id="tLoad">继续征程</button>
+    <p style="margin-top:8px;font-size:12px;color:#8a7050">方向键移动 · A 确认/交谈 · B 取消</p>
+  </div>
+  <div id="fade"></div>
+</div>
+
+<script src="data.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+const rnd = Math.random;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const TS = 16;
+const SAVE_KEY = 'sanguo-save-v1';
+const STAT_NAMES = ['兵力', '武力', '统率', '智力', '速度'];
+const ST_NAME = { burn: '灼', poison: '毒', stun: '定' };
+
+// ================= 像素画工具 =================
+function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function hexRGB(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function shade(h, a) {
+  const f = v => Math.max(0, Math.min(255, Math.round(a < 0 ? v * (1 + a) : v + (255 - v) * a)));
+  return '#' + hexRGB(h).map(v => f(v).toString(16).padStart(2, '0')).join('');
+}
+function hash(x, y, s = 0) {
+  let h = (x * 374761393 + y * 668265263 + s * 982451653) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function outline(c, col = '#1c1418') {
+  const g = c.getContext('2d'), w = c.width, h = c.height, d = g.getImageData(0, 0, w, h), p = d.data, o = new Uint8ClampedArray(p);
+  const [r, gg, b] = hexRGB(col);
+  const on = (x, y) => x >= 0 && y >= 0 && x < w && y < h && p[(y * w + x) * 4 + 3] > 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if (p[i + 3]) continue;
+    if (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1)) { o[i] = r; o[i + 1] = gg; o[i + 2] = b; o[i + 3] = 255; }
+  }
+  d.data.set(o); g.putImageData(d, 0, 0); return c;
+}
+// 画笔：R 矩形、E 椭圆（可带裁剪函数）、Ln 线段；off 是整体偏移（给描边留边）
+function pen(g, off = 0) {
+  const R = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(Math.round(x) + off, Math.round(y) + off, w, h); };
+  const E = (cx, cy, rx, ry, col, clip) => {
+    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+      const dx = (x - cx) / rx, dy = (y - cy) / ry;
+      if (dx * dx + dy * dy <= 1 && (!clip || clip(x, y))) {
+        if (col) { g.fillStyle = col; g.fillRect(x + off, y + off, 1, 1); } else g.clearRect(x + off, y + off, 1, 1);
+      }
+    }
+  };
+  const Ln = (x0, y0, x1, y1, col, w = 2) => {
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) || 1;
+    for (let i = 0; i <= n; i++) R(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, w, w, col);
+  };
+  return { R, E, Ln };
+}
+// 按设备像素整数倍放大，保证像素边缘锐利
+function crisp(src, cssW, into) {
+  const dpr = window.devicePixelRatio || 1;
+  const k = Math.max(1, Math.round(cssW * dpr / src.width));
+  const c = into || mk(1, 1);
+  c.width = src.width * k; c.height = src.height * k;
+  const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, c.width, c.height);
+  g.drawImage(src, 0, 0, c.width, c.height);
+  c.style.width = c.width / dpr + 'px'; c.style.height = c.height / dpr + 'px';
+  c.classList.add('px');
+  return c;
+}
+function lookOf(l) { return typeof l === 'string' ? GENS[l].look : l; }
+
+// ---------- 武将立绘 48×48 ----------
+const portraitCache = {};
+function portrait(L, key) {
+  if (key && portraitCache[key]) return portraitCache[key];
+  const c = mk(50, 50), g = c.getContext('2d'), { R, E, Ln } = pen(g, 1);
+  const skin = L.face || L.skin || '#f1c49a', sd = shade(skin, -.15), sdd = shade(skin, -.3);
+  const ar = L.armor, ad = shade(ar, -.28), al = shade(ar, .22), tr = L.trim || '#d8b24a', td = shade(tr, -.3);
+  const t = L.hat, hc = L.hatC || H;
+  const hair = (t === 'bun' || t === 'female') ? hc : H;
+  const W = L.weapon, wc = L.wc || '#dfe4ea', wd = shade(wc, -.35), red = '#c8302a', gold = '#e3b341';
+  const fat = L.fat ? 3 : 0, hy = 16, ey = hy + 1;
+
+  // —— 身后的长兵器 ——
+  const pole = ['glaive', 'spear', 'snake', 'halberd', 'axe', 'mace', 'staff'].includes(W);
+  if (pole) {
+    const sc = W === 'staff' ? '#9a6a36' : '#6b4526', top = W === 'glaive' ? 2 : 7;
+    R(39, top, 2, 48 - top, sc); R(39, top, 1, 48 - top, shade(sc, .25));
+    if (W === 'glaive') {
+      for (let y = 0; y <= 18; y++) { const w = Math.round(Math.sin(y / 18 * Math.PI) * 6); if (w > 0) { R(41, y, w, 1, wc); R(40 + w, y, 1, 1, '#ffffff'); } }
+      R(41, 1, 1, 17, wd); R(37, 16, 6, 3, '#2f7a3f'); R(38, 17, 4, 1, gold); R(37, 19, 2, 6, red); R(41, 19, 2, 5, red);
+    } else if (W === 'spear') {
+      R(39, 0, 2, 2, wc); R(38, 2, 4, 4, wc); R(39, 6, 2, 1, wd); R(38, 2, 1, 4, '#ffffff');
+      E(39.5, 8.5, 3, 2, red); R(37, 9, 6, 3, red); R(38, 12, 4, 1, shade(red, -.2));
+    } else if (W === 'snake') {
+      for (let y = 0; y < 12; y++) { const x = 39 + Math.round(Math.sin(y * .9) * 1.5); R(x, y, 2, 1, wc); if (y % 3 === 0) R(x, y, 1, 1, '#ffffff'); }
+      E(39.5, 13, 3, 2, red); R(37, 13, 6, 3, red);
+    } else if (W === 'halberd') {
+      R(39, 0, 2, 2, wc); R(38, 2, 4, 5, wc); R(38, 2, 1, 4, '#ffffff');
+      for (let y = 5; y <= 13; y++) { const w = Math.round(Math.sin((y - 5) / 8 * Math.PI) * 5); if (w > 0) { R(38 - w, y, w, 1, wc); R(42, y, w, 1, wc); R(38 - w, y, 1, 1, '#ffffff'); } }
+      R(37, 13, 6, 2, gold); R(37, 15, 2, 6, red); R(41, 15, 2, 5, red);
+    } else if (W === 'axe') {
+      R(39, 1, 2, 6, wc);
+      E(34, 10, 5, 7, wc, x => x <= 38); E(34, 10, 5, 7, '#ffffff', x => x <= 30); R(37, 8, 2, 5, wd);
+    } else if (W === 'mace') {
+      E(40, 5, 5, 5, '#7a7f88'); E(38.5, 3.5, 1.5, 1.5, '#c8ccd4');
+      for (const [x, y] of [[39, -1], [34, 4], [45, 4], [36, 0], [43, 0], [36, 9], [43, 9]]) R(x, y, 2, 2, '#5a5f68');
+    } else if (W === 'staff') {
+      E(40, 4, 4, 4, gold); E(40, 4, 2, 2, null); R(35, 6, 2, 2, gold); R(44, 6, 2, 2, gold); R(35, 8, 2, 2, '#fff3a0'); R(44, 8, 2, 2, '#fff3a0');
+    }
+  }
+  if (W === 'bow') {
+    for (let y = 2; y <= 44; y++) { const x = Math.round(43 - Math.sin((y - 2) / 42 * Math.PI) * 7); R(x, y, 2, 1, '#7a4a24'); }
+    R(44, 2, 1, 43, '#e8e0d0'); R(33, 21, 12, 1, '#b08a5a'); R(32, 20, 2, 3, '#ffffff');
+  }
+  if (W === 'dual') {
+    Ln(14, 30, 4, 4, wc); Ln(15, 30, 5, 4, wd, 1); R(12, 29, 6, 2, gold);
+    Ln(33, 30, 43, 4, wc); Ln(33, 30, 43, 4, '#ffffff', 1); R(30, 29, 6, 2, gold);
+  }
+  if (L.female) R(13, 10, 22, 26, hair);
+
+  // —— 身体 ——
+  for (let y = 28; y < 48; y++) {
+    const hw = Math.min(23, 12 + fat + Math.floor((y - 28) * .45));
+    R(24 - hw, y, hw * 2, 1, ar); R(24 - hw, y, 2, 1, al); R(24 + hw - 2, y, 2, 1, ad);
+  }
+  if (L.robe) {
+    E(8, 44, 7, 5, ar); E(40, 44, 7, 5, ar); E(8, 46, 7, 3, ad); E(40, 46, 7, 3, ad);
+    Ln(17, 27, 24, 39, tr); Ln(30, 27, 23, 39, tr);
+    R(12, 41, 24, 3, td); R(22, 44, 2, 4, td); R(25, 44, 2, 4, td);
+  } else {
+    for (let y = 34; y < 42; y += 3) for (let x = 13; x < 35; x += 4) R(x + ((y / 3) % 2 ? 2 : 0), y, 2, 1, ad);
+    E(11, 31, 6, 4, tr); E(11, 33.5, 6, 1.6, td); E(37, 31, 6, 4, tr); E(37, 33.5, 6, 1.6, td);
+    E(24, 36, 3.5, 3.5, tr); E(24, 36, 2, 2, shade(tr, .45)); R(23, 35, 1, 1, '#ffffff');
+    R(12, 43, 24, 2, td); R(22, 42, 4, 4, tr);
+    R(18, 27, 12, 2, tr);
+  }
+  R(20, 23, 8, 5, sd); R(20, 23, 8, 2, sdd);
+  if (pole || W === 'bow') { E(39.5, 34, 2.8, 2.5, skin); R(38, 35, 3, 1, sd); }
+
+  // —— 头 ——
+  E(24, hy, 8 + fat * .4, 9, skin);
+  E(15.5, hy + 1, 1.5, 2.5, skin); E(32.5, hy + 1, 1.5, 2.5, skin); R(15, hy + 1, 1, 2, sd); R(32, hy + 1, 1, 2, sd);
+  E(24, hy, 8 + fat * .4, 9, sd, x => x >= 30);
+  R(19, hy + 8, 10, 1, sd);
+  if (L.female) {
+    R(19, ey, 3, 2, '#ffffff'); R(20, ey, 2, 2, '#2a1a14'); R(26, ey, 3, 2, '#ffffff'); R(26, ey, 2, 2, '#2a1a14');
+    R(18, ey - 1, 4, 1, '#2a1a14'); R(26, ey - 1, 4, 1, '#2a1a14'); R(19, ey - 3, 3, 1, shade(hair, .2)); R(26, ey - 3, 3, 1, shade(hair, .2));
+    E(19, ey + 3, 1.5, 1, '#f0a0a8'); E(29, ey + 3, 1.5, 1, '#f0a0a8'); R(23, ey + 5, 3, 1, '#d8404a'); R(24, ey + 2, 1, 1, sd);
+  } else {
+    const bw = (L.bc && L.beard && shade(L.bc, 0) > '#c') ? L.bc : H;
+    R(17, ey - 3, 2, 1, bw); R(19, ey - 2, 3, 1, bw); R(29, ey - 3, 2, 1, bw); R(26, ey - 2, 3, 1, bw);
+    R(19, ey, 3, 2, '#ffffff'); R(20, ey, 2, 2, '#1c1410'); R(26, ey, 3, 2, '#ffffff'); R(26, ey, 2, 2, '#1c1410');
+    R(23, ey + 2, 2, 2, sd); R(24, ey + 3, 1, 1, sdd); R(22, ey + 5, 4, 1, '#7a2a1e');
+  }
+  const b = L.beard || 0, bc = L.bc || H, bl = shade(bc, .25);
+  if (b === 1) { R(20, ey + 4, 3, 1, bc); R(25, ey + 4, 3, 1, bc); R(22, ey + 6, 4, 3, bc); R(23, ey + 9, 2, 1, bc); }
+  if (b === 2) {
+    R(19, ey + 4, 4, 1, bc); R(25, ey + 4, 4, 1, bc); R(20, ey + 6, 8, 2, bc);
+    for (let y = ey + 6; y < ey + 22; y++) { const w = Math.max(2, Math.round(10 - (y - ey - 6) * .5)); R(24 - (w >> 1), y, w, 1, bc); }
+    R(23, ey + 8, 1, 10, bl); R(21, ey + 7, 1, 6, bl); R(22, ey + 5, 4, 1, '#7a2a1e');
+  }
+  if (b === 3) {
+    E(24, ey + 6, 9.5, 5, bc, (x, y) => y >= ey + 3); R(22, ey + 5, 4, 1, '#6a2014');
+    R(15, ey, 2, 5, bc); R(31, ey, 2, 5, bc);
+    for (const x of [16, 21, 26, 31]) R(x, ey + 10 + (x % 2), 2, 2, bc);
+    R(19, ey + 7, 1, 2, bl); R(27, ey + 7, 1, 2, bl);
+  }
+
+  // —— 头饰 ——
+  if (t === 'band') {
+    E(24, hy - 2, 8.5, 7, hair, (x, y) => y <= hy - 5); R(15, hy - 5, 2, 6, hair); R(31, hy - 5, 2, 6, hair);
+    R(15, hy - 6, 18, 3, hc); R(15, hy - 6, 18, 1, shade(hc, .3)); R(11, hy - 5, 4, 2, hc); R(10, hy - 3, 3, 6, hc); R(10, hy - 3, 1, 6, shade(hc, -.25));
+  } else if (t === 'helmet') {
+    E(24, hy - 3, 10, 9, hc, (x, y) => y <= hy - 4); R(14, hy - 5, 20, 2, tr); R(14, hy - 4, 3, 9, hc); R(31, hy - 4, 3, 9, hc);
+    R(14, hy - 4, 1, 9, shade(hc, .25)); E(19, hy - 8, 2, 2.5, shade(hc, .35)); R(22, hy - 10, 4, 4, tr); R(23, hy - 9, 2, 2, shade(tr, .4));
+    R(23, hy - 14, 2, 3, red); E(24, hy - 15, 2.5, 1.5, red);
+  } else if (t === 'turban') {
+    E(24, hy - 5, 10, 6, hc, (x, y) => y <= hy - 2); R(15, hy - 6, 18, 1, shade(hc, -.2)); R(16, hy - 3, 16, 1, shade(hc, -.2));
+    E(20, hy - 7, 2, 1.5, shade(hc, .35)); E(24, hy - 11, 3, 2.5, hc); E(24, hy - 11, 1.5, 1.2, shade(hc, -.2)); R(32, hy - 4, 3, 6, hc); R(34, hy - 4, 1, 6, shade(hc, -.25));
+  } else if (t === 'scholar') {
+    R(16, hy - 3, 16, 2, H); R(16, hy - 12, 16, 9, hc); R(17, hy - 14, 14, 2, hc); R(18, hy - 15, 12, 1, shade(hc, .2));
+    R(14, hy - 4, 3, 10, hc); R(31, hy - 4, 3, 10, hc); R(18, hy - 12, 2, 7, shade(hc, .2)); R(16, hy - 5, 16, 1, shade(hc, -.3));
+  } else if (t === 'bun') {
+    E(24, hy - 3, 8.5, 6, hair, (x, y) => y <= hy - 4); R(15, hy - 4, 2, 5, hair); R(31, hy - 4, 2, 5, hair);
+    E(24, hy - 10, 3.5, 3, hair); R(18, hy - 10, 12, 1, gold); E(22, hy - 11, 1, 1, shade(hair, .35)); E(20, hy - 6, 1.5, 1, shade(hair, .3));
+  } else if (t === 'feather') {
+    E(24, hy - 3, 8.5, 6, H, (x, y) => y <= hy - 4); R(15, hy - 4, 2, 5, H); R(31, hy - 4, 2, 5, H);
+    for (let i = 0; i <= 22; i++) {
+      const y = hy - 9 - Math.round(Math.sin(i / 22 * Math.PI) * 9) - Math.round(i * .15);
+      const col = i % 4 === 3 ? '#7a3b1f' : '#e8c070';
+      R(18 - i, y, 2, 2, col); R(28 + i, y, 2, 2, col);
+    }
+    R(16, hy - 9, 16, 5, gold); R(16, hy - 9, 16, 1, '#f6d77a'); R(16, hy - 5, 16, 1, shade(gold, -.3));
+    R(23, hy - 8, 2, 2, '#d02030'); R(18, hy - 8, 1, 2, '#3a86c8'); R(29, hy - 8, 1, 2, '#3a86c8'); R(20, hy - 12, 8, 3, gold); R(23, hy - 13, 2, 1, '#d02030');
+  } else if (t === 'crown') {
+    R(15, hy - 4, 2, 5, H); R(31, hy - 4, 2, 5, H); R(17, hy - 11, 14, 7, hc); R(18, hy - 11, 2, 6, shade(hc, .25));
+    R(16, hy - 5, 16, 2, gold); R(13, hy - 13, 22, 2, '#2a2a2a'); R(13, hy - 13, 22, 1, '#4a4a4a');
+    for (const x of [13, 16, 31, 34]) { R(x, hy - 11, 1, 3, gold); R(x, hy - 8, 1, 1, '#d02030'); }
+  } else if (t === 'female') {
+    E(24, hy - 3, 9, 7, hair, (x, y) => y <= hy - 3); R(15, hy - 4, 2, 13, hair); R(31, hy - 4, 2, 13, hair);
+    E(16, hy - 9, 3.5, 3.5, hair); E(32, hy - 9, 3.5, 3.5, hair); E(15, hy - 10, 1, 1, shade(hair, .3)); E(31, hy - 10, 1, 1, shade(hair, .3));
+    E(33, hy - 5, 2, 2, '#ff7aa8'); R(33, hy - 5, 1, 1, '#fff3a0'); R(13, hy - 8, 1, 5, gold); R(12, hy - 3, 3, 1, '#ffffff');
+    R(22, hy - 8, 1, 3, shade(hair, .25)); R(26, hy - 8, 1, 3, shade(hair, .25));
+  }
+  if (L.patch) { R(16, ey - 4, 16, 1, '#1a1a1a'); R(25, ey - 1, 5, 4, '#1a1a1a'); }
+
+  // —— 身前的兵器 ——
+  if (W === 'sword') {
+    Ln(31, 44, 45, 14, wc); Ln(32, 44, 46, 14, '#ffffff', 1); R(27, 41, 7, 2, gold); Ln(30, 44, 28, 47, '#6b3a1a');
+    E(30, 43, 2.5, 2, skin);
+  }
+  if (W === 'fan') {
+    E(36, 33, 7, 8, '#f4f1ea'); for (let i = -3; i <= 3; i++) Ln(36, 41, 36 + i * 2, 26, '#cfc8b6', 1);
+    E(36, 33, 7, 8, shade('#f4f1ea', -.08), (x, y) => y < 27); R(35, 40, 2, 7, '#6b4526'); E(36, 43, 2.5, 2, skin);
+  }
+  outline(c);
+  if (key) portraitCache[key] = c;
+  return c;
+}
+function genPortrait(g) { return portrait(GENS[g].look, g); }
+function silhouette(g) {
+  const src = genPortrait(g), c = mk(50, 50), x = c.getContext('2d');
+  x.drawImage(src, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#6a5a4a'; x.fillRect(0, 0, 50, 50);
+  return c;
+}
+
+// ---------- 地图小人 16×16（带描边 18×18） ----------
+const humanCache = {};
+function human(L, dir, frame, key) {
+  const k = key + dir + frame;
+  if (key && humanCache[k]) return humanCache[k];
+  const c = mk(18, 18), g = c.getContext('2d'), { R } = pen(g, 1);
+  const skin = L.face || L.skin || '#f1c49a', cl = L.armor, cd = shade(cl, -.28), tr = L.trim || '#d8b24a';
+  const t = L.hat, hc = L.hatC || H, hair = (t === 'bun' || t === 'female') ? hc : H, leg = '#3a2a22';
+  const side = dir === 'left' || dir === 'right';
+  // 腿
+  const l1 = frame === 1 ? 2 : 3, l2 = frame === 2 ? 2 : 3;
+  if (side) { R(6, 13, 2, frame ? 2 : 3, leg); R(8, 13, 2, frame ? 3 : 3, shade(leg, .2)); if (frame) R(frame === 1 ? 5 : 9, 14, 2, 2, leg); }
+  else { R(5, 13, 2, l1, leg); R(9, 13, 2, l2, leg); }
+  // 身体
+  if (L.female) R(4, 2, 8, 9, hair);
+  if (side) {
+    R(5, 8, 6, 5, cl); R(5, 11, 6, 1, tr); R(7, 8, 2, 4, cd); R(7, 12, 2, 1, skin);
+  } else {
+    R(4, 8, 8, 5, cl); R(4, 11, 8, 1, tr); R(6, 8, 4, 1, tr); R(3, 8, 1, 4, cd); R(12, 8, 1, 4, cd); R(3, 12, 1, 1, skin); R(12, 12, 1, 1, skin);
+    if (L.robe) { R(4, 12, 8, 1, cl); }
+  }
+  // 头
+  if (dir === 'up') {
+    R(4, 1, 8, 7, hair);
+  } else if (side) {
+    R(4, 2, 7, 6, skin); R(9, 1, 3, 7, hair); R(4, 1, 8, 2, hair); R(5, 4, 1, 2, '#1c1410');
+    if (L.beard >= 2) R(4, 7, 3, 2, L.bc || H); else if (L.beard === 1) R(4, 7, 2, 1, L.bc || H);
+  } else {
+    R(4, 2, 8, 6, skin); R(4, 1, 8, 2, hair); R(4, 3, 1, 2, hair); R(11, 3, 1, 2, hair);
+    R(6, 4, 1, 2, '#1c1410'); R(9, 4, 1, 2, '#1c1410');
+    if (L.beard === 3) R(4, 6, 8, 2, L.bc || H); else if (L.beard === 2) R(6, 7, 4, 2, L.bc || H); else if (L.beard === 1) R(7, 7, 2, 1, L.bc || H);
+    if (L.face) R(5, 6, 1, 1, shade(skin, -.2));
+  }
+  // 头饰
+  if (t === 'helmet') { R(3, 0, 10, 3, hc); R(3, 3, 10, 1, tr); R(7, -1, 2, 1, '#c8302a'); }
+  else if (t === 'turban') { R(3, 0, 10, 3, hc); R(7, -1, 2, 1, hc); }
+  else if (t === 'band') { R(4, 2, 8, 1, hc); if (dir !== 'right') R(12, 2, 2, 2, hc); }
+  else if (t === 'scholar') { R(4, -1, 8, 3, hc); R(5, -2, 6, 1, hc); }
+  else if (t === 'bun') { R(6, -1, 4, 2, hair); }
+  else if (t === 'crown') { R(4, -1, 8, 3, hc); R(2, -2, 12, 1, '#2a2a2a'); }
+  else if (t === 'feather') { R(4, 0, 8, 2, '#e3b341'); R(2, -2, 2, 3, '#e8c070'); R(12, -2, 2, 3, '#e8c070'); }
+  else if (t === 'female') { R(3, 0, 3, 3, hair); R(10, 0, 3, 3, hair); R(11, 1, 1, 1, '#ff7aa8'); }
+  if (dir === 'right') { const f = mk(18, 18), fg = f.getContext('2d'); fg.translate(18, 0); fg.scale(-1, 1); fg.drawImage(c, 0, 0); g.clearRect(0, 0, 18, 18); g.drawImage(f, 0, 0); }
+  outline(c);
+  if (key) humanCache[k] = c;
+  return c;
+}
+
+// ---------- 地块 ----------
+function drawTile(g, ch, ox, oy, tx, ty, frame, at, banner) {
+  const P = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(ox + x, oy + y, w, h); };
+  const { E } = pen({ set fillStyle(v) { g.fillStyle = v; }, fillRect: (x, y, w, h) => g.fillRect(ox + x, oy + y, w, h), clearRect() {} });
+  const grass = () => {
+    P(0, 0, 16, 16, '#8cd06a');
+    for (let i = 0; i < 5; i++) { const x = hash(tx, ty, i) * 14 | 0, y = hash(tx, ty, i + 9) * 14 | 0; P(x, y, 1, 2, '#72b654'); P(x + 1, y + 1, 1, 1, '#72b654'); }
+    if (hash(tx, ty, 33) < .35) P(hash(tx, ty, 34) * 13 | 0, hash(tx, ty, 35) * 13 | 0, 2, 1, '#aee48e');
+  };
+  const stone = () => {
+    P(0, 0, 16, 16, '#d3cabb'); P(0, 0, 16, 1, '#bdb3a2'); P(0, 0, 1, 16, '#bdb3a2'); P(8, 8, 8, 1, '#c6bcab'); P(8, 0, 1, 8, '#c6bcab');
+    if (hash(tx, ty, 2) < .4) P((hash(tx, ty, 3) * 13 | 0) + 1, (hash(tx, ty, 4) * 13 | 0) + 1, 2, 1, '#e2dacb');
+  };
+  const dirt = () => {
+    P(0, 0, 16, 16, '#e2c893');
+    for (let i = 0; i < 6; i++) P(hash(tx, ty, i + 40) * 15 | 0, hash(tx, ty, i + 50) * 15 | 0, 1, 1, i % 2 ? '#c9aa74' : '#efdcae');
+  };
+  const nb = (dx, dy) => at(tx + dx, ty + dy);
+  switch (ch) {
+    case '.': grass(); break;
+    case ',': {
+      grass();
+      for (const [bx, by] of [[0, 1], [8, 0], [4, 8], [11, 8]]) {
+        P(bx, by + 3, 1, 4, '#3f8f3a'); P(bx + 1, by + 1, 1, 6, '#57a947'); P(bx + 2, by, 1, 7, '#3f8f3a'); P(bx + 3, by + 2, 1, 5, '#57a947'); P(bx + 4, by + 4, 1, 3, '#3f8f3a');
+        P(bx + 1, by + 1, 1, 1, '#7cc85a'); P(bx + 3, by + 2, 1, 1, '#7cc85a');
+      }
+      break;
+    }
+    case '=': dirt(); break;
+    case 'f': grass(); for (const [x, y, c] of [[3, 3, '#e8483a'], [10, 5, '#f4d23a'], [6, 11, '#ffffff'], [12, 12, '#e8483a']]) { P(x, y - 1, 1, 1, c); P(x - 1, y, 3, 1, c); P(x, y + 1, 1, 1, c); P(x, y, 1, 1, '#f4d23a'); } break;
+    case 'T': {
+      grass(); P(7, 11, 2, 5, '#7a5230'); P(7, 11, 1, 5, '#936640');
+      E(7.5, 7, 7, 6.5, '#2c6a30'); E(7.5, 6.5, 6.5, 6, '#3d8a3c'); E(5.5, 4.5, 3, 2.5, '#5fb04c'); E(4.5, 3.5, 1, 1, '#86cf6a'); E(10, 9, 3, 2, '#357a36');
+      break;
+    }
+    case '~': case 'b': {
+      P(0, 0, 16, 16, '#4a9fdc');
+      for (const [yy, s] of [[3, 0], [9, 7], [14, 3]]) { const x = ((frame * 4 + s + tx * 5) % 16); P(x, yy, 5, 1, '#8fd0f5'); P((x + 1) % 16, yy - 1, 3, 1, '#c4ebfc'); }
+      if (nb(0, -1) !== '~' && nb(0, -1) !== 'b') { P(0, 0, 16, 2, '#dff4ff'); P(0, 2, 16, 1, '#7cc2ea'); }
+      if (ch === 'b') {
+        P(1, 0, 14, 16, '#b27c46'); for (let y = 0; y < 16; y += 4) { P(1, y, 14, 1, '#8a5a30'); P(3 + (y % 8 ? 5 : 0), y + 1, 3, 1, '#c9955e'); }
+        P(0, 0, 2, 16, '#7a4a24'); P(14, 0, 2, 16, '#7a4a24'); P(0, 0, 1, 16, '#9a6a3a');
+      }
+      break;
+    }
+    case 'r': {
+      P(0, 0, 16, 16, '#b8452f');
+      for (let y = 0; y < 16; y += 4) { P(0, y + 3, 16, 1, '#8e3322'); for (let x = (y % 8 ? 1 : 3); x < 16; x += 4) P(x, y, 2, 3, '#cf5a42'); }
+      if (nb(0, -1) !== 'r') { P(0, 0, 16, 3, '#6e2a1c'); P(0, 0, 16, 1, '#8e3a28'); }
+      if (nb(-1, 0) !== 'r') { P(0, 0, 2, 16, '#8e3322'); P(0, 12, 2, 2, '#6e2a1c'); }
+      if (nb(1, 0) !== 'r') { P(14, 0, 2, 16, '#8e3322'); P(14, 12, 2, 2, '#6e2a1c'); }
+      if (nb(0, 1) !== 'r') P(0, 14, 16, 2, '#5a2016');
+      break;
+    }
+    case 'w': case 'H': case 'P': case 'D': {
+      P(0, 0, 16, 16, '#efe3c8'); P(0, 0, 16, 2, '#8a5a34'); P(0, 14, 16, 2, '#b8a98a');
+      if (!'wHPD'.includes(nb(-1, 0))) P(0, 0, 2, 16, '#a33a2a');
+      if (!'wHPD'.includes(nb(1, 0))) P(14, 0, 2, 16, '#a33a2a');
+      if (ch === 'w') { if (hash(tx, ty, 7) < .6) { P(4, 4, 8, 7, '#6b4a2a'); P(5, 5, 6, 5, '#e8d5a8'); P(7, 5, 2, 5, '#6b4a2a'); P(5, 7, 6, 1, '#6b4a2a'); } }
+      else {
+        P(3, 4, 10, 12, '#4a2a14'); P(4, 5, 8, 11, '#7a4424'); P(7, 5, 2, 11, '#4a2a14'); P(5, 10, 1, 1, '#e3b341'); P(10, 10, 1, 1, '#e3b341');
+        if (ch === 'H') { P(3, 0, 10, 4, '#3f9a4a'); P(7, 1, 2, 2, '#ffffff'); P(6, 1, 4, 1, '#ffffff'); P(7, 0, 2, 3, '#ffffff'); }
+        if (ch === 'P') { P(3, 0, 10, 4, '#d9a520'); P(5, 1, 6, 2, '#8a5a14'); P(7, 1, 2, 2, '#ffe9a0'); }
+      }
+      break;
+    }
+    case '#': {
+      P(0, 0, 16, 16, '#9a958e');
+      for (let y = 0; y < 16; y += 4) { P(0, y + 3, 16, 1, '#77726b'); for (let x = (y % 8 ? 0 : 4); x < 16; x += 8) P(x, y, 1, 3, '#77726b'); P((y % 8 ? 2 : 6), y, 3, 1, '#aca79f'); }
+      if (nb(0, -1) !== '#' && nb(0, -1) !== 'G') { P(0, 0, 16, 3, '#b0aba3'); P(3, 0, 3, 2, '#6e6a63'); P(11, 0, 3, 2, '#6e6a63'); }
+      break;
+    }
+    case 'G': {
+      P(0, 0, 16, 16, '#9a958e'); P(2, 3, 12, 13, '#2e2520'); P(3, 2, 10, 1, '#2e2520'); P(5, 1, 6, 1, '#2e2520');
+      P(1, 3, 1, 13, '#77726b'); P(14, 3, 1, 13, '#77726b'); P(2, 4, 2, 12, '#6b4526'); P(12, 4, 2, 12, '#6b4526'); P(4, 13, 8, 3, '#4a3a30');
+      break;
+    }
+    case 'X': stone(); break;
+    case 'c': {
+      const base = nb(-1, 0) === 'X' || nb(1, 0) === 'X' || nb(0, 1) === 'X' || nb(0, -1) === 'X' ? stone : grass; base();
+      const right = nb(-1, 0) === 'c', low = nb(0, -1) === 'c';
+      for (let y = low ? 0 : 2; y < 16; y++) {
+        const hw = Math.min(16, Math.floor((y + (low ? 14 : -2)) * .55) + 1);
+        if (!right) { P(16 - hw, y, hw, 1, '#efe2b0'); P(16 - hw, y, 1, 1, '#c9a13a'); }
+        else { P(0, y, hw, 1, '#d6c690'); P(hw - 1, y, 1, 1, '#a88a3a'); }
+      }
+      if (!low && !right) { P(15, 0, 1, 3, '#6b4526'); P(12, 0, 3, 2, '#c0392b'); }
+      if (low) { P(right ? 0 : 13, 6, 3, 10, right ? '#4a2a14' : '#6b4a2a'); P(0, 15, 16, 1, shade('#d6c690', -.3)); }
+      break;
+    }
+    case 'K': {
+      (nb(-1, 0) === 'X' || nb(1, 0) === 'X') ? stone() : grass();
+      P(3, 1, 2, 15, '#6b4526'); P(3, 0, 2, 1, '#e3b341'); P(5, 2, 9, 7, banner); P(5, 2, 9, 1, shade(banner, .3)); P(12, 8, 2, 2, banner);
+      P(7, 4, 4, 3, shade(banner, -.3)); P(3, 15, 4, 1, '#4a2a14');
+      break;
+    }
+    case 'R': grass(); E(8, 9, 6, 5, '#6a6a6a'); E(7.5, 8.5, 5.5, 4.5, '#9a9a9a'); E(6, 7, 2, 1.5, '#c6c6c6'); P(3, 13, 10, 1, '#5a8a40'); break;
+    case 'S': grass(); P(7, 9, 2, 7, '#6b4526'); P(2, 3, 12, 7, '#7a4a24'); P(3, 4, 10, 5, '#c89458'); P(4, 5, 7, 1, '#7a4a24'); P(4, 7, 5, 1, '#7a4a24'); break;
+    default: P(0, 0, 16, 16, '#000');
+  }
+}
+
+// ================= 状态 =================
+let S = null;          // 存档
+let MAP = null, MAPID = '';
+let mapImg = [];       // 两帧地图预渲染
+let npcs = [];         // 当前地图 NPC 运行态
+let lock = false;      // 剧情/战斗期间锁住移动
+let held = null;       // 按住的方向
+let moving = null;     // {fx,fy,t0}
+let walkFrame = 1, emote = null;
+
+function newState() {
+  return { map: 'zhuo', x: 8, y: 13, dir: 'up', party: [], box: [], bag: { yao: 5, ling: 5 }, gold: 500, flags: {}, seen: {}, caught: {}, heal: { map: 'zhuo', x: 4, y: 4 } };
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); return true; } catch (e) { return false; } }
+function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+
+// ================= 武将数值 =================
+const expAt = l => Math.floor(.8 * l * l * l);
+function stat(m, i) { const b = GENS[m.g].b[i]; return i === 0 ? Math.floor(b * 2 * m.lv / 100) + m.lv + 10 : Math.floor(b * 2 * m.lv / 100) + 5; }
+const maxHp = m => stat(m, 0);
+function makeMon(g, lv) {
+  const m = { g, lv, exp: expAt(lv), moves: [], st: null };
+  const ids = [...new Set(GENS[g].learn.filter(([l]) => l <= lv).map(a => a[1]))].slice(-4);
+  m.moves = ids.map(id => ({ id, pp: MOVES[id].pp }));
+  m.hp = maxHp(m);
+  return m;
+}
+const gname = m => GENS[m.g].n;
+function elemMult(me, de) { if (me === '无') return 1; if (ELEM[me].beats === de) return 2; if (ELEM[de].beats === me) return .5; return 1; }
+function healAll() { for (const m of [...S.party]) { m.hp = maxHp(m); m.st = null; m.moves.forEach(v => v.pp = MOVES[v.id].pp); } }
+function addMon(m) { S.caught[m.g] = 1; S.seen[m.g] = 1; if (S.party.length < 6) { S.party.push(m); return 'party'; } S.box.push(m); return 'box'; }
+function elBadge(e) { return `<i class="el" style="background:${ELEM[e].color}">${e}</i>`; }
+
+// ================= 对话 =================
+let waiter = null, typing = null;
+function inBattle() { return !$('#battle').classList.contains('hide'); }
+function say(text, opt = {}) {
+  const bt = inBattle();
+  const box = bt ? $('#bText') : $('#dlgText');
+  const more = bt ? $('#bMsg .more') : $('#dlg .more');
+  if (!bt) { $('#dlg').classList.remove('hide'); $('#dlgName').textContent = opt.name || ''; }
+  else { $('#bAct').classList.add('hide'); $('#bMoves').classList.add('hide'); }
+  more.classList.add('hide');
+  return new Promise(res => {
+    let i = 0, timer = null, autoT = null;
+    const done = () => { clearInterval(timer); typing = null; box.textContent = text; more.classList.toggle('hide', !!opt.auto); if (opt.auto) autoT = setTimeout(finish, opt.auto); };
+    const finish = () => { clearTimeout(autoT); waiter = null; res(); };
+    box.textContent = '';
+    typing = done;
+    timer = setInterval(() => { i += 1; box.textContent = text.slice(0, i); if (i >= text.length) done(); }, 22);
+    waiter = () => { if (typing) { typing(); return; } finish(); };
+  });
+}
+const bsay = t => say(t, { auto: 1000 });
+async function talk(lines, name) { for (const l of lines) await say(l, { name }); closeDlg(); }
+function closeDlg() { $('#dlg').classList.add('hide'); }
+function advance() { if (waiter) { waiter(); return true; } return false; }
+function choose(opts, cancelable = true) {
+  const box = $('#choices'); box.innerHTML = ''; box.classList.remove('hide');
+  return new Promise(res => {
+    const end = i => { box.classList.add('hide'); choiceCancel = null; res(i); };
+    opts.forEach((o, i) => { const b = document.createElement('button'); b.textContent = o; b.onclick = e => { e.stopPropagation(); end(i); }; box.appendChild(b); });
+    choiceCancel = cancelable ? () => end(-1) : null;
+  });
+}
+let choiceCancel = null;
+function toast(t) { const el = $('#toast'); el.textContent = t; el.style.opacity = 1; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.opacity = 0, 1800); }
+async function fade(on) { $('#fade').classList.toggle('on', on); await sleep(260); }
+
+// ================= 地图 =================
+const cv = $('#world'), ctx = cv.getContext('2d');
+let SC = 3;
+function resize() {
+  const r = $('#stage').getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  SC = Math.max(2, Math.round(cv.width / (11 * TS)));
+}
+function tileAt(x, y) { const r = MAP.rows[y]; return r ? r[x] : undefined; }
+function npcAt(x, y) { return npcs.find(n => n.vis && n.x === x && n.y === y); }
+function walkable(x, y) { const t = tileAt(x, y); return t !== undefined && !SOLID.includes(t) && !npcAt(x, y) && !(x === S.x && y === S.y); }
+function buildMap() {
+  const w = MAP.rows[0].length, h = MAP.rows.length;
+  mapImg = [0, 1].map(f => {
+    const c = mk(w * TS, h * TS), g = c.getContext('2d');
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) drawTile(g, MAP.rows[y][x], x * TS, y * TS, x, y, f, tileAt, MAP.banner);
+    return c;
+  });
+}
+function npcVisible(n) { return !(n.boss && S.flags[n.id]); }
+function loadMap(id) {
+  MAPID = id; MAP = MAPS[id]; buildMap();
+  npcs = NPCS.filter(n => n.map === id).map(n => ({ ...n, def: n, vis: npcVisible(n) }));
+  toast(MAP.n);
+}
+async function warp(to, x, y) {
+  lock = true; await fade(true);
+  S.map = to; S.x = x; S.y = y; loadMap(to); save();
+  await fade(false); lock = false;
+}
+
+function draw(now) {
+  const w = cv.width, h = cv.height, u = TS * SC;
+  let px = S.x, py = S.y;
+  if (moving) { const k = Math.min(1, (now - moving.t0) / STEP); px = moving.fx + (S.x - moving.fx) * k; py = moving.fy + (S.y - moving.fy) * k; }
+  const mw = MAP.rows[0].length * u, mh = MAP.rows.length * u;
+  let cx = px * u + u / 2 - w / 2, cy = py * u + u / 2 - h / 2;
+  cx = mw <= w ? (mw - w) / 2 : Math.max(0, Math.min(mw - w, cx));
+  cy = mh <= h ? (mh - h) / 2 : Math.max(0, Math.min(mh - h, cy));
+  cx = Math.round(cx / SC) * SC; cy = Math.round(cy / SC) * SC;
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#1a1410'; ctx.fillRect(0, 0, w, h);
+  const img = mapImg[Math.floor(now / 600) % 2];
+  ctx.drawImage(img, -cx, -cy, img.width * SC, img.height * SC);
+  const list = npcs.filter(n => n.vis).map(n => ({ x: n.x, y: n.y, spr: human(lookOf(n.look), n.dir, 0, n.id) }));
+  const pf = moving ? walkFrame : 0;
+  list.push({ x: px, y: py, spr: human(PLAYER_LOOK, S.dir, pf, 'me'), me: 1 });
+  list.sort((a, b) => a.y - b.y);
+  for (const s of list) {
+    const sx = Math.round((s.x * TS - 1) * SC - cx), sy = Math.round((s.y * TS - 4) * SC - cy);
+    ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(sx + 4 * SC, sy + 16 * SC, 10 * SC, 2 * SC);
+    ctx.drawImage(s.spr, sx, sy, 18 * SC, 18 * SC);
+    const tx = Math.round(s.x), ty = Math.round(s.y);
+    if (tileAt(tx, ty) === ',' && Math.abs(s.x - tx) < .01 && Math.abs(s.y - ty) < .01)
+      ctx.drawImage(img, tx * TS, ty * TS + 10, TS, 6, tx * u - cx, (ty * TS + 10) * SC - cy, u, 6 * SC);
+  }
+  if (emote) {
+    const ex = Math.round((emote.x * TS + 4) * SC - cx), ey = Math.round((emote.y * TS - 16) * SC - cy);
+    ctx.fillStyle = '#1c1418'; ctx.fillRect(ex - SC, ey - SC, 10 * SC, 12 * SC);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(ex, ey, 8 * SC, 10 * SC);
+    ctx.fillStyle = '#d02030'; ctx.fillRect(ex + 3 * SC, ey + SC, 2 * SC, 5 * SC); ctx.fillRect(ex + 3 * SC, ey + 7 * SC, 2 * SC, 2 * SC);
+  }
+}
+
+const STEP = 170;
+function tryStep(dir) {
+  S.dir = dir;
+  const [dx, dy] = DIRS[dir], nx = S.x + dx, ny = S.y + dy;
+  if (!walkable(nx, ny)) return;
+  moving = { fx: S.x, fy: S.y, t0: performance.now() };
+  S.x = nx; S.y = ny; walkFrame = walkFrame === 1 ? 2 : 1;
+}
+function tapStep(d) { if (!moving && !lock && MAP && !inBattle() && $('#menu').classList.contains('hide') && $('#title').classList.contains('hide') && !waiter) tryStep(d); }
+function loop(now) {
+  if (moving && now - moving.t0 >= STEP) { moving = null; onArrive(); }
+  if (!moving && !lock && held && $('#title').classList.contains('hide')) tryStep(held);
+  if (MAP && !inBattle()) draw(now);
+  requestAnimationFrame(loop);
+}
+async function onArrive() {
+  const ex = MAP.exits.find(e => e[0] === S.x && e[1] === S.y);
+  if (ex) { await warp(ex[2], ex[3], ex[4]); return; }
+  if (await checkSight()) return;
+  if (tileAt(S.x, S.y) === ',' && rnd() < .13) await wildEncounter();
+}
+
+// ================= 交互 =================
+async function interact() {
+  if (lock || moving) return;
+  const [dx, dy] = DIRS[S.dir], fx = S.x + dx, fy = S.y + dy;
+  const n = npcAt(fx, fy);
+  if (n) { lock = true; await talkNpc(n); lock = false; return; }
+  const t = tileAt(fx, fy), key = fx + ',' + fy;
+  if (t === 'S' && MAP.signs && MAP.signs[key]) { lock = true; await talk([MAP.signs[key]]); lock = false; return; }
+  if ('HPD'.includes(t) && t) {
+    lock = true;
+    const d = (MAP.doors || {})[key];
+    if (d === 'heal') await healScene('医馆掌柜');
+    else if (d === 'shop') await shop();
+    else await talk([d || '门关着。']);
+    lock = false;
+  }
+}
+async function healScene(name) {
+  await say('将士们辛苦了，歇歇吧。', { name });
+  healAll(); S.heal = { map: MAPID, x: S.x, y: S.y }; save();
+  await say('……全军恢复了精神！', { name });
+  closeDlg();
+}
+async function talkNpc(n) {
+  const opp = { up: 'down', down: 'up', left: 'right', right: 'left' };
+  n.dir = opp[S.dir];
+  const d = n.def;
+  if (d.trainer && !S.flags[d.id]) { await trainerBattle(n); return; }
+  if (d.trainer) { await talk([d.trainer.win], d.name); return; }
+  if (d.heal) { await say(d.talk[0], { name: d.name }); await healScene(d.name); return; }
+  if (d.give && !S.flags[d.id]) {
+    for (const l of d.talk) await say(l, { name: d.name });
+    for (const [k, v] of Object.entries(d.give)) { S.bag[k] = (S.bag[k] || 0) + v; await say(`获得了 ${ITEMS[k].n} ×${v}！`); }
+    S.flags[d.id] = 1; save(); closeDlg(); return;
+  }
+  await talk(d.talk ? (d.give ? [d.talk[1]] : d.talk) : ['……'], d.name);
+}
+function inSight(n) {
+  const d = n.def;
+  if (!d.trainer || !d.sight || S.flags[d.id] || !n.vis) return false;
+  const [dx, dy] = DIRS[n.dir];
+  for (let i = 1; i <= d.sight; i++) {
+    const x = n.x + dx * i, y = n.y + dy * i;
+    if (x === S.x && y === S.y) return i;
+    const t = tileAt(x, y);
+    if (t === undefined || SOLID.includes(t) || npcAt(x, y)) return false;
+  }
+  return false;
+}
+async function checkSight() {
+  for (const n of npcs) {
+    const dist = inSight(n);
+    if (!dist) continue;
+    lock = true; held = null;
+    emote = n; await sleep(700); emote = null;
+    const [dx, dy] = DIRS[n.dir];
+    for (let i = 1; i < dist; i++) { n.x += dx; n.y += dy; await sleep(STEP + 30); }
+    const opp = { up: 'down', down: 'up', left: 'right', right: 'left' };
+    S.dir = opp[n.dir];
+    await trainerBattle(n);
+    lock = false;
+    return true;
+  }
+  return false;
+}
+async function trainerBattle(n) {
+  const d = n.def, tr = d.trainer;
+  await say(tr.pre, { name: d.name }); closeDlg();
+  const team = tr.team.map(([g, l]) => makeMon(g, l));
+  const r = await battle(team, { trainer: d });
+  if (r === 'win') {
+    S.flags[d.id] = 1; S.gold += tr.gold;
+    await say(tr.win, { name: d.name });
+    await say(`获得了 ${tr.gold} 金。`);
+    if (d.after) for (const l of d.after) await say(l);
+    if (d.boss) { n.vis = false; }
+    if (d.ending) await ending();
+    save(); closeDlg();
+  }
+}
+async function wildEncounter() {
+  let tab = MAP.wild || [];
+  if (S.flags.ending && MAP.wildEnd) tab = tab.concat(MAP.wildEnd);
+  if (!tab.length) return;
+  const tot = tab.reduce((a, b) => a + b[3], 0);
+  let r = rnd() * tot, pick = tab[0];
+  for (const w of tab) { r -= w[3]; if (r <= 0) { pick = w; break; } }
+  const lv = pick[1] + Math.floor(rnd() * (pick[2] - pick[1] + 1));
+  lock = true; held = null;
+  await battle([makeMon(pick[0], lv)], { wild: 1 });
+  lock = false;
+}
+async function lose() {
+  await say('我方武将全部溃败……');
+  await say('眼前一黑……');
+  const lost = Math.floor(S.gold / 2); S.gold -= lost;
+  await fade(true);
+  hideBattle();
+  healAll();
+  S.map = S.heal.map; S.x = S.heal.x; S.y = S.heal.y; loadMap(S.map);
+  await fade(false);
+  await say(`醒来时已回到了${MAP.n}。丢了 ${lost} 金。`);
+  closeDlg(); save();
+}
+async function ending() {
+  await say('王允：玄德公为天下除此大害！');
+  await say('王允：小女貂蝉，愿随公左右。');
+  const m = makeMon('diaochan', 25); const where = addMon(m);
+  await say(`貂蝉加入了${where === 'party' ? '队伍' : '营帐'}！`);
+  closeDlg();
+  S.flags.ending = 1; save();
+  const n = Object.keys(S.caught).length;
+  await showPanel('—— 讨董成功 ——', `<div style="text-align:center;line-height:1.9;padding:10px 0">
+    <p style="font-size:18px;font-weight:800">中平元年起兵，至此天下暂定。</p>
+    <p>收服武将 <b>${n}</b> / ${Object.keys(GENS).length}</p>
+    <p class="s" style="color:var(--muted)">洛阳城南的深草里，似乎出现了更多强敌……<br>继续收服天下名将吧！</p></div>`);
+}
+
+// ================= 战斗 =================
+let B = null;
+const stageMult = s => s >= 0 ? (2 + s) / 2 : 2 / (2 - s);
+function eff(side, s) {
+  const m = side === 'me' ? B.me() : B.foe(), i = { w: 1, t: 2, z: 3, s: 4 }[s];
+  let v = stat(m, i) * stageMult(B.stg[side][s] || 0);
+  if (s === 's' && m.st === 'stun') v *= .5;
+  return v;
+}
+function hideBattle() { $('#battle').classList.add('hide'); }
+function hpColor(r) { return r > .5 ? '#48c048' : r > .2 ? '#e8b020' : '#e04030'; }
+function renderCard(side) {
+  const m = side === 'me' ? B.me() : B.foe(), el = side === 'me' ? $('#cMe') : $('#cFoe'), mx = maxHp(m), r = m.hp / mx;
+  const e = GENS[m.g].e;
+  el.querySelector('.el').textContent = e; el.querySelector('.el').style.background = ELEM[e].color;
+  el.querySelector('b').textContent = gname(m) + (side === 'foe' && B.wild && S.caught[m.g] ? ' ✦' : '');
+  el.querySelector('.lv').textContent = 'Lv.' + m.lv;
+  const st = el.querySelector('.stb'); st.classList.toggle('hide', !m.st); st.textContent = ST_NAME[m.st] || '';
+  const bar = el.querySelector('.bar>div'); bar.style.width = (r * 100) + '%'; bar.style.background = hpColor(r);
+  if (side === 'me') {
+    el.querySelector('.hpt').textContent = `${m.hp} / ${mx}`;
+    const a = expAt(m.lv), b = expAt(m.lv + 1);
+    el.querySelector('.xp>div').style.width = Math.max(0, Math.min(100, (m.exp - a) / (b - a) * 100)) + '%';
+  }
+}
+function renderSprite(side) {
+  const m = side === 'me' ? B.me() : B.foe(), c = side === 'me' ? $('#spMe') : $('#spFoe');
+  crisp(genPortrait(m.g), side === 'me' ? 160 : 140, c);
+  c.style.opacity = 1;
+}
+function anim(el, frames, ms) { return new Promise(r => { const a = el.animate(frames, { duration: ms, easing: 'ease-out' }); a.onfinish = r; }); }
+const spr = side => side === 'me' ? $('#spMe') : $('#spFoe');
+const flipX = side => side === 'me' ? 'scaleX(-1) ' : '';
+async function animLunge(side) { const d = side === 'me' ? 24 : -24; await anim(spr(side), [{ transform: flipX(side) + 'translate(0,0)' }, { transform: flipX(side) + `translate(${side === 'me' ? -d : d}px,${side === 'me' ? -10 : 10}px)` }, { transform: flipX(side) + 'translate(0,0)' }], 260); }
+async function animHit(side) { await anim(spr(side), [{ opacity: 1, transform: flipX(side) }, { opacity: .1, transform: flipX(side) + 'translateX(-6px)' }, { opacity: 1, transform: flipX(side) + 'translateX(6px)' }, { opacity: .1, transform: flipX(side) }, { opacity: 1, transform: flipX(side) }], 420); }
+async function animFaint(side) { await anim(spr(side), [{ transform: flipX(side) + 'translateY(0)', opacity: 1 }, { transform: flipX(side) + 'translateY(60px)', opacity: 0 }], 450); spr(side).style.opacity = 0; }
+async function animEnter(side) { spr(side).style.opacity = 1; await anim(spr(side), [{ transform: flipX(side) + `translateX(${side === 'me' ? -200 : 200}px)`, opacity: 0 }, { transform: flipX(side) + 'translateX(0)', opacity: 1 }], 380); }
+
+async function battle(foes, opt) {
+  B = { foes, fi: 0, mi: S.party.findIndex(m => m.hp > 0), wild: !!opt.wild, tr: opt.trainer, stg: { me: {}, foe: {} }, used: new Set() };
+  B.me = () => S.party[B.mi]; B.foe = () => B.foes[B.fi];
+  foes.forEach(m => S.seen[m.g] = 1);
+  // 进场闪白
+  await anim($('#fade'), [{ opacity: 0 }, { opacity: 1 }, { opacity: 0 }, { opacity: 1 }, { opacity: 0 }, { opacity: 1 }], 700);
+  $('#bField').classList.toggle('night', MAPID === 'hulao' || MAPID === 'luoyang');
+  $('#battle').classList.remove('hide'); closeDlg();
+  anim($('#fade'), [{ opacity: 1 }, { opacity: 0 }], 300);
+  spr('me').style.opacity = 0; spr('foe').style.opacity = 0;
+  renderSprite('foe'); renderCard('foe'); $('#cMe').style.visibility = 'hidden';
+  await animEnter('foe');
+  if (B.wild) await say(`野生的 ${gname(B.foe())} 出现了！`);
+  else { await say(`${B.tr.name} 发起了挑战！`); await say(`${B.tr.name} 派出了 ${gname(B.foe())}！`); }
+  renderSprite('me'); renderCard('me'); $('#cMe').style.visibility = 'visible'; B.used.add(B.mi);
+  await animEnter('me');
+  await bsay(`去吧，${gname(B.me())}！`);
+  let result = null;
+  while (!result) {
+    const act = await chooseAction();
+    result = await runTurn(act);
+  }
+  B.me() && B.me().st === 'stun' && (B.me().st = null);
+  S.party.forEach(m => { if (m.st === 'stun') m.st = null; });
+  if (result === 'lose') { await lose(); B = null; return 'lose'; }
+  hideBattle(); B = null; save();
+  return result;
+}
+function chooseAction() {
+  return new Promise(res => {
+    const act = $('#bAct'), mv = $('#bMoves');
+    $('#bText').textContent = `${gname(B.me())} 该怎么做？`; $('#bMsg .more').classList.add('hide');
+    act.classList.remove('hide'); mv.classList.add('hide');
+    act.onclick = async e => {
+      const a = e.target.closest('button'); if (!a) return;
+      const k = a.dataset.a;
+      if (k === 'fight') {
+        const me = B.me(); act.classList.add('hide'); mv.classList.remove('hide');
+        const noPP = me.moves.every(v => v.pp <= 0);
+        mv.innerHTML = me.moves.map((v, i) => { const M = MOVES[v.id]; return `<button class="bb" data-i="${i}" style="border-left-color:${ELEM[M.e].color}" ${v.pp <= 0 && !noPP ? 'disabled' : ''}>${M.n}<small>${M.e} · ${M.c === 's' ? '辅助' : (M.c === 'w' ? '武' : '智') + M.p} · ${v.pp}/${M.pp}</small></button>`; }).join('') + '<button class="bb back">返回</button>';
+        mv.onclick = e2 => {
+          const b = e2.target.closest('button'); if (!b) return;
+          if (b.classList.contains('back')) { mv.classList.add('hide'); act.classList.remove('hide'); return; }
+          mv.classList.add('hide'); res({ t: 'move', i: noPP ? -1 : +b.dataset.i });
+        };
+      } else if (k === 'bag') {
+        const r = await bagPanel(true); if (r) { act.classList.add('hide'); res(r); }
+      } else if (k === 'switch') {
+        const i = await pickMon('换哪位武将上阵？', (m, idx) => m.hp > 0 && idx !== B.mi); if (i >= 0) { act.classList.add('hide'); res({ t: 'switch', i }); }
+      } else if (k === 'run') { act.classList.add('hide'); res({ t: 'run' }); }
+    };
+  });
+}
+function aiPick() {
+  const f = B.foe(), me = B.me();
+  const opts = f.moves.map((v, i) => ({ v, i })).filter(o => o.v.pp > 0);
+  if (!opts.length) return -1;
+  if (B.wild || rnd() < .25) return opts[Math.floor(rnd() * opts.length)].i;
+  let best = opts[0], bs = -1;
+  for (const o of opts) {
+    const M = MOVES[o.v.id];
+    let s = M.c === 's' ? (M.fx.t === 'heal' ? (f.hp < maxHp(f) * .4 ? 150 : 0) : M.fx.t === 'st' ? (me.st ? 0 : 55) : 40) : M.p * elemMult(M.e, GENS[me.g].e) * (M.e === GENS[f.g].e ? 1.25 : 1);
+    s *= .85 + rnd() * .3;
+    if (s > bs) { bs = s; best = o; }
+  }
+  return best.i;
+}
+async function runTurn(act) {
+  if (act.t === 'run') {
+    if (!B.wild) { await say('将对将的阵前，岂能临阵脱逃！'); return null; }
+    if (rnd() < .5 + eff('me', 's') / (eff('foe', 's') * 4)) { await say('成功撤退了！'); return 'run'; }
+    await bsay('没能撤走！');
+    return await foeOnly();
+  }
+  if (act.t === 'switch') {
+    await bsay(`${gname(B.me())}，回来！`); await animFaint('me');
+    B.mi = act.i; B.stg.me = {}; B.used.add(B.mi); renderSprite('me'); renderCard('me'); await animEnter('me');
+    await bsay(`去吧，${gname(B.me())}！`);
+    return await foeOnly();
+  }
+  if (act.t === 'item') {
+    const r = await useItemBattle(act); if (r) return r;
+    return await foeOnly();
+  }
+  const fm = aiPick();
+  let meFirst = eff('me', 's') > eff('foe', 's') || (eff('me', 's') === eff('foe', 's') && rnd() < .5);
+  const order = meFirst ? [['me', act.i], ['foe', fm]] : [['foe', fm], ['me', act.i]];
+  for (const [side, i] of order) {
+    await useMove(side, i);
+    const r = await afterHit(); if (r !== undefined) return r;
+  }
+  return await endOfTurn();
+}
+async function foeOnly() {
+  await useMove('foe', aiPick());
+  const r = await afterHit(); if (r !== undefined) return r;
+  return await endOfTurn();
+}
+// 有人倒下时的处理；返回 undefined 表示回合继续
+async function afterHit() {
+  if (B.foe().hp <= 0) return await foeFainted();
+  if (B.me().hp <= 0) return await meFainted();
+}
+async function endOfTurn() {
+  for (const side of ['me', 'foe']) {
+    const m = side === 'me' ? B.me() : B.foe();
+    if (m.hp > 0 && (m.st === 'burn' || m.st === 'poison')) {
+      const d = Math.max(1, Math.floor(maxHp(m) / (m.st === 'burn' ? 12 : 8)));
+      m.hp = Math.max(0, m.hp - d); renderCard(side);
+      await bsay(`${side === 'foe' ? '敌方' : ''}${gname(m)} 受到${m.st === 'burn' ? '灼烧' : '毒'}伤害！`);
+      const r = await afterHit(); if (r !== undefined) return r;
+    }
+  }
+  return null;
+}
+async function useMove(side, i) {
+  const u = side === 'me' ? B.me() : B.foe(), tSide = side === 'me' ? 'foe' : 'me', t = side === 'me' ? B.foe() : B.me();
+  const pre = side === 'foe' ? '敌方' : '';
+  if (u.hp <= 0) return;
+  if (u.st === 'stun') {
+    if (u.stc > 0) { u.stc--; await bsay(`${pre}${gname(u)} 被定身，动弹不得！`); return; }
+    u.st = null; renderCard(side); await bsay(`${pre}${gname(u)} 挣脱了定身！`);
+  }
+  let M;
+  if (i < 0) M = { n: '死战', e: '无', c: 'w', p: 50, a: 100 };
+  else { const v = u.moves[i]; v.pp = Math.max(0, v.pp - 1); M = MOVES[v.id]; }
+  await bsay(`${pre}${gname(u)} 使出了「${M.n}」！`);
+  await animLunge(side);
+  if (rnd() * 100 >= M.a) { await bsay('但是没有命中！'); return; }
+  if (M.c === 's') { await applyFx(M.fx, side, u, tSide, t, true); return; }
+  const L = u.lv, A = eff(side, M.c === 'w' ? 'w' : 'z') * (u.st === 'burn' && M.c === 'w' ? .75 : 1), Df = eff(tSide, M.c === 'w' ? 't' : 'z');
+  const typ = elemMult(M.e, GENS[t.g].e), stab = M.e === GENS[u.g].e ? 1.25 : 1;
+  const crit = rnd() < (M.crit ? .2 : 1 / 16) ? 1.5 : 1;
+  const dmg = Math.max(1, Math.floor(((2 * L / 5 + 2) * M.p * A / Df / 50 + 2) * stab * typ * crit * (.85 + rnd() * .15)));
+  t.hp = Math.max(0, t.hp - dmg);
+  await animHit(tSide); renderCard(tSide); await sleep(250);
+  if (crit > 1) await bsay('暴击！');
+  if (typ > 1) await bsay(`效果拔群！（${M.e}克${GENS[t.g].e}）`);
+  else if (typ < 1) await bsay(`收效甚微……（${GENS[t.g].e}克${M.e}）`);
+  if (M.fx && t.hp > 0 && rnd() < (M.fx.ch ?? 1)) await applyFx(M.fx, side, u, tSide, t, false);
+}
+async function applyFx(fx, side, u, tSide, t, loud) {
+  const tp = tSide === 'foe' ? '敌方' : '', up = side === 'foe' ? '敌方' : '';
+  if (fx.t === 'stat') {
+    const who = fx.who === 'self' ? side : tSide, m = fx.who === 'self' ? u : t, p = fx.who === 'self' ? up : tp;
+    const cur = B.stg[who][fx.s] || 0, nv = Math.max(-6, Math.min(6, cur + fx.v));
+    const nm = { w: '武力', t: '统率', z: '智力', s: '速度' }[fx.s];
+    if (nv === cur) { if (loud) await bsay(`${p}${gname(m)} 的${nm}已经无法再${fx.v > 0 ? '提升' : '降低'}了！`); return; }
+    B.stg[who][fx.s] = nv;
+    await bsay(`${p}${gname(m)} 的${nm}${fx.v > 0 ? '提升' : '下降'}了${Math.abs(fx.v) > 1 ? '很多' : ''}！`);
+  } else if (fx.t === 'st') {
+    if (t.st) { if (loud) await bsay(`${tp}${gname(t)} 已经处于异常状态了。`); return; }
+    t.st = fx.s; if (fx.s === 'stun') t.stc = 1 + Math.floor(rnd() * 2);
+    renderCard(tSide);
+    await bsay(`${tp}${gname(t)} ${{ burn: '陷入了灼烧！', poison: '中毒了！', stun: '被定身了！' }[fx.s]}`);
+  } else if (fx.t === 'heal') {
+    const mx = maxHp(u); if (u.hp >= mx) { await bsay('兵力已经是满的了。'); return; }
+    u.hp = Math.min(mx, u.hp + Math.floor(mx * fx.v)); renderCard(side);
+    await bsay(`${up}${gname(u)} 恢复了兵力！`);
+  }
+}
+async function foeFainted() {
+  const f = B.foe();
+  await animFaint('foe');
+  await bsay(`敌方 ${gname(f)} 溃败了！`);
+  const gain = Math.floor(GENS[f.g].exp * f.lv / 5 * (B.wild ? 1 : 1.5));
+  const me = B.me();
+  await giveExp(me, gain, true);
+  const rest = Math.floor(gain * .3);
+  if (rest > 0) for (const m of S.party) if (m !== me && m.hp > 0) await giveExp(m, rest, false);
+  if (rest > 0 && S.party.filter(m => m !== me && m.hp > 0).length) await bsay(`其余武将各获得了 ${rest} 点经验。`);
+  if (B.fi < B.foes.length - 1) {
+    B.fi++; B.stg.foe = {};
+    await say(`${B.tr.name} 派出了 ${gname(B.foe())}！`);
+    renderSprite('foe'); renderCard('foe'); await animEnter('foe');
+    return null;
+  }
+  return 'win';
+}
+async function giveExp(m, gain, loud) {
+  m.exp += gain;
+  if (loud) { await bsay(`${gname(m)} 获得了 ${gain} 点经验！`); renderCard('me'); }
+  while (m.lv < 60 && m.exp >= expAt(m.lv + 1)) {
+    const old = maxHp(m); m.lv++; m.hp += maxHp(m) - old;
+    if (m === B.me()) renderCard('me');
+    await say(`${gname(m)} 升到了 Lv.${m.lv}！`);
+    for (const [l, id] of GENS[m.g].learn) if (l === m.lv && !m.moves.some(v => v.id === id)) await learnMove(m, id);
+  }
+}
+async function learnMove(m, id) {
+  const M = MOVES[id];
+  if (m.moves.length < 4) { m.moves.push({ id, pp: M.pp }); await say(`${gname(m)} 学会了「${M.n}」！`); return; }
+  await say(`${gname(m)} 想学「${M.n}」（${M.e}${M.p ? '·' + M.p : ''}），但已经会四个招式了。`);
+  const i = await choose([...m.moves.map(v => '忘掉「' + MOVES[v.id].n + '」'), '不学了'], false);
+  if (i >= 0 && i < 4) { const old = MOVES[m.moves[i].id].n; m.moves[i] = { id, pp: M.pp }; await say(`忘掉了「${old}」，学会了「${M.n}」！`); }
+  else await say(`${gname(m)} 没有学「${M.n}」。`);
+}
+async function meFainted() {
+  const me = B.me(); me.st = null;
+  await animFaint('me');
+  await bsay(`${gname(me)} 溃败了！`);
+  if (!S.party.some(m => m.hp > 0)) return 'lose';
+  const i = await pickMon('派谁上阵？', m => m.hp > 0, false);
+  B.mi = i; B.stg.me = {}; B.used.add(i);
+  renderSprite('me'); renderCard('me'); await animEnter('me');
+  await bsay(`去吧，${gname(B.me())}！`);
+  return null;
+}
+async function useItemBattle(act) {
+  const it = ITEMS[act.id];
+  S.bag[act.id]--; if (!S.bag[act.id]) delete S.bag[act.id];
+  if (it.ball) {
+    const f = B.foe();
+    await bsay(`掷出了「${it.n}」！`);
+    const chance = Math.max(.03, Math.min(.95, GENS[f.g].rate * (it.ball === 2 ? 1.8 : 1) * (1.6 - 1.2 * f.hp / maxHp(f)) * (f.st ? 1.4 : 1) * 2.2));
+    const c = spr('foe');
+    for (let k = 0; k < 3; k++) {
+      await anim(c, [{ transform: 'rotate(0)' }, { transform: 'rotate(-12deg)' }, { transform: 'rotate(12deg)' }, { transform: 'rotate(0)' }], 380);
+      if (rnd() > Math.pow(chance, 1 / 3)) {
+        await bsay(['可恶！对方不肯归降！', '差一点点！', '对方挣脱了！'][k]);
+        return null;
+      }
+      await sleep(200);
+    }
+    await say(`收服了 ${gname(f)}！`);
+    const first = !S.caught[f.g];
+    f.st = f.st === 'stun' ? null : f.st;
+    const where = addMon(f);
+    if (first) await say(`${gname(f)} 已记入武将录。`);
+    if (where === 'box') await say('队伍满了，已送往营帐。');
+    return 'catch';
+  }
+  const m = S.party[act.target];
+  itemEffect(it, m);
+  if (m === B.me()) renderCard('me');
+  await bsay(`对 ${gname(m)} 使用了「${it.n}」。`);
+  return null;
+}
+function itemEffect(it, m) {
+  if (it.heal) m.hp = Math.min(maxHp(m), m.hp + it.heal);
+  if (it.cure) m.st = null;
+  if (it.revive) m.hp = Math.floor(maxHp(m) / 2);
+}
+function itemUsable(it, m) {
+  if (it.revive) return m.hp <= 0;
+  if (m.hp <= 0) return false;
+  if (it.heal) return m.hp < maxHp(m);
+  if (it.cure) return !!m.st;
+  return false;
+}
+
+// ================= 面板 =================
+let panelClose = null;
+function openPanel(title, html) {
+  $('#pTitle').textContent = title; $('#pBody').innerHTML = html; $('#menu').classList.remove('hide'); $('#pBody').scrollTop = 0;
+}
+function closePanel() { $('#menu').classList.add('hide'); const f = panelClose; panelClose = null; if (f) f(); }
+function showPanel(title, html) { return new Promise(r => { openPanel(title, html); panelClose = r; }); }
+$('#pClose').onclick = closePanel;
+$('#menu').addEventListener('click', e => { if (e.target.id === 'menu') closePanel(); });
+
+function icon(g, size = 44, sil = false) { const c = crisp(sil ? silhouette(g) : genPortrait(g), size); return c; }
+function monRow(m, i, extra = '') {
+  const G = GENS[m.g], mx = maxHp(m), r = m.hp / mx;
+  return `<div class="row ${m.hp <= 0 ? 'dead' : ''} ${i === 0 ? 'lead' : ''}" data-i="${i}"><span class="ic" data-g="${m.g}"></span>
+    <div class="info"><div class="t">${elBadge(G.e)}${G.n}<span style="font-weight:600;font-size:13px;color:var(--muted)">Lv.${m.lv}</span>${m.st ? `<span class="stb">${ST_NAME[m.st]}</span>` : ''}</div>
+    <div class="bar"><div style="width:${r * 100}%;background:${hpColor(r)}"></div></div><div class="s">兵力 ${m.hp}/${mx}${extra}</div></div></div>`;
+}
+function fillIcons(root = $('#pBody'), size = 44) { root.querySelectorAll('.ic').forEach(s => { s.innerHTML = ''; s.appendChild(icon(s.dataset.g, size, s.dataset.sil === '1')); }); }
+function pickMon(title, ok, cancelable = true) {
+  return new Promise(res => {
+    openPanel(title, S.party.map((m, i) => monRow(m, i)).join(''));
+    fillIcons();
+    $('#pClose').classList.toggle('hide', !cancelable);
+    panelClose = () => { $('#pClose').classList.remove('hide'); res(-1); };
+    $('#pBody').onclick = e => {
+      const r = e.target.closest('.row'); if (!r) return;
+      const i = +r.dataset.i; if (!ok(S.party[i], i)) { toast('不能选这位'); return; }
+      panelClose = null; $('#pClose').classList.remove('hide'); $('#menu').classList.add('hide'); res(i);
+    };
+  });
+}
+function bagPanel(inB) {
+  return new Promise(res => {
+    const render = () => {
+      const ks = Object.keys(S.bag).filter(k => S.bag[k] > 0);
+      openPanel(`背包　💰${S.gold} 金`, ks.length ? ks.map(k => `<div class="row" data-k="${k}"><div class="info"><div class="t">${ITEMS[k].n} <span style="margin-left:auto">×${S.bag[k]}</span></div><div class="s">${ITEMS[k].d}</div></div></div>`).join('') : '<p style="color:var(--muted)">空空如也。</p>');
+      $('#pBody').onclick = async e => {
+        const r = e.target.closest('.row'); if (!r) return;
+        const k = r.dataset.k, it = ITEMS[k];
+        if (it.ball) {
+          if (!inB) { toast('要在野外遭遇时使用'); return; }
+          if (!B.wild) { toast('不能招降对方的部将！'); return; }
+          panelClose = null; $('#menu').classList.add('hide'); res({ t: 'item', id: k }); return;
+        }
+        const i = await pickMon(`对谁使用「${it.n}」？`, m => itemUsable(it, m));
+        if (i < 0) { render(); panelClose = () => res(null); return; }
+        if (inB) { res({ t: 'item', id: k, target: i }); return; }
+        itemEffect(it, S.party[i]); S.bag[k]--; if (!S.bag[k]) delete S.bag[k];
+        toast(`${gname(S.party[i])} 使用了${it.n}`); render(); panelClose = () => res(null);
+      };
+    };
+    render(); panelClose = () => res(null);
+  });
+}
+function monDetail(m, from) {
+  const G = GENS[m.g], mx = maxHp(m);
+  const a = expAt(m.lv), b = expAt(m.lv + 1);
+  const html = `<div style="display:flex;gap:12px;align-items:center"><span class="ic" data-g="${m.g}"></span>
+    <div><div style="font-size:22px;font-weight:800">${G.n} ${elBadge(G.e)}</div><div class="s" style="color:var(--muted);font-size:13px">Lv.${m.lv} · 距下一级 ${b - m.exp} 经验</div>
+    <div class="s" style="color:var(--muted);font-size:13px">克制：${ELEM[G.e].beats}　被克：${Object.keys(ELEM).find(k => ELEM[k].beats === G.e)}</div></div></div>
+    <div class="stat">${STAT_NAMES.map((n, i) => { const v = i === 0 ? `${m.hp}/${mx}` : stat(m, i); const bv = G.b[i]; return `<span>${n}</span><i><b style="width:${Math.min(100, bv / 1.2)}%"></b></i><span style="text-align:right;font-variant-numeric:tabular-nums">${v}</span>`; }).join('')}</div>
+    ${m.moves.map(v => { const M = MOVES[v.id]; return `<div class="mv">${elBadge(M.e)}<b>${M.n}</b><span style="color:var(--muted)">${M.c === 's' ? '辅助' : (M.c === 'w' ? '武' : '智') + ' ' + M.p} · ${v.pp}/${M.pp}</span></div>`; }).join('')}
+    <div class="acts">${from === 'party' ? `<button data-x="lead">设为首发</button><button data-x="box">送回营帐</button>` : `<button data-x="take">调入队伍</button>`}<button data-x="back">返回</button></div>`;
+  openPanel(G.n, html); fillIcons($('#pBody'), 110);
+}
+async function partyPanel() {
+  const render = () => {
+    openPanel(`队伍（${S.party.length}/6）`, S.party.map((m, i) => monRow(m, i)).join('') + `<p class="s" style="color:var(--muted);font-size:12px">点武将看详情。金边的是首发。</p>`);
+    fillIcons();
+    $('#pBody').onclick = e => { const r = e.target.closest('.row'); if (r) detail(+r.dataset.i); };
+  };
+  const detail = i => {
+    const m = S.party[i]; monDetail(m, 'party');
+    $('#pBody').onclick = e => {
+      const x = e.target.dataset.x; if (!x) return;
+      if (x === 'lead') { S.party.splice(i, 1); S.party.unshift(m); toast(`${gname(m)} 担任首发`); render(); }
+      else if (x === 'box') { if (S.party.length <= 1) { toast('队伍里至少要留一人'); return; } S.party.splice(i, 1); S.box.push(m); toast('已送回营帐'); render(); }
+      else render();
+    };
+  };
+  render();
+}
+function boxPanel() {
+  const render = () => {
+    openPanel(`营帐（${S.box.length}）`, S.box.length ? S.box.map((m, i) => monRow(m, i).replace('lead', '')).join('') : '<p style="color:var(--muted)">营帐里还没有武将。队伍满 6 人后，新收服的会送到这里。</p>');
+    fillIcons();
+    $('#pBody').onclick = e => {
+      const r = e.target.closest('.row'); if (!r) return;
+      const i = +r.dataset.i, m = S.box[i]; monDetail(m, 'box');
+      $('#pBody').onclick = e2 => {
+        const x = e2.target.dataset.x; if (!x) return;
+        if (x === 'take') { if (S.party.length >= 6) { toast('队伍已满，先送回一位'); return; } S.box.splice(i, 1); S.party.push(m); toast(`${gname(m)} 归队`); }
+        render();
+      };
+    };
+  };
+  render();
+}
+function dexPanel() {
+  const ids = Object.keys(GENS), c = ids.filter(g => S.caught[g]).length, s = ids.filter(g => S.seen[g]).length;
+  openPanel(`武将录　收服 ${c} · 见过 ${s} / ${ids.length}`, `<div class="grid">${ids.map((g, i) => {
+    const st = S.caught[g] ? 2 : S.seen[g] ? 1 : 0;
+    return `<div class="cell">${st ? `<span class="ic" data-g="${g}" data-sil="${st === 1 ? 1 : 0}"></span>` : '<div style="height:52px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#c8b8a0">？</div>'}
+      <div style="font-weight:700">${st ? GENS[g].n : '？？？'}</div><div style="color:var(--muted)">No.${String(i + 1).padStart(2, '0')}${st === 2 ? ' ' + GENS[g].e : ''}</div></div>`;
+  }).join('')}</div>`);
+  fillIcons($('#pBody'), 52);
+}
+async function shop() {
+  const list = MAP.shop || ['yao', 'ling'];
+  await say('客官，要点什么？', { name: '商铺掌柜' }); closeDlg();
+  await new Promise(res => {
+    const render = () => {
+      openPanel(`商铺　💰${S.gold} 金`, list.map(k => `<div class="row" data-k="${k}"><div class="info"><div class="t">${ITEMS[k].n}<span style="margin-left:auto;color:var(--red)">${ITEMS[k].price} 金</span></div><div class="s">${ITEMS[k].d} · 已有 ${S.bag[k] || 0}</div></div></div>`).join('') + '<p class="s" style="color:var(--muted);font-size:12px">点一下买一个。</p>');
+      $('#pBody').onclick = e => {
+        const r = e.target.closest('.row'); if (!r) return;
+        const k = r.dataset.k, p = ITEMS[k].price;
+        if (S.gold < p) { toast('金子不够'); return; }
+        S.gold -= p; S.bag[k] = (S.bag[k] || 0) + 1; toast(`买了 ${ITEMS[k].n}`); render(); panelClose = res;
+      };
+    };
+    render(); panelClose = res;
+  });
+  save();
+}
+function helpPanel() {
+  openPanel('说明', `<div style="line-height:1.8;font-size:14px">
+  <p><b>移动</b>：方向键。<b>A</b>：交谈 / 查看 / 确认。<b>B</b>：跳过文字。</p>
+  <p><b>遇敌</b>：走进深草可能遇到野生武将。把对方打到残血再掷「招降令」，成功率更高；中了异常状态也更容易招降。</p>
+  <p><b>五行相克</b>（招式五行 → 对方五行）：<br>${['金', '木', '水', '火', '土'].map(e => `${elBadge(e)} 克 ${elBadge(ELEM[e].beats)}`).join('　')}<br>克制伤害 ×2，被克 ×0.5；招式和武将同五行再 ×1.25。</p>
+  <p><b>武 / 智</b>：武类招式看「武力对统率」，智类招式看「智力对智力」。</p>
+  <p><b>回复</b>：挂绿牌的医馆、随军郎中都能免费回满。全军溃败会丢一半金子，回到最后休息的地方。</p>
+  <p><b>主线</b>：涿郡 → 广宗（张角）→ 酸枣 → 汜水关（华雄）→ 虎牢关（吕布）→ 洛阳（董卓）。</p></div>`);
+}
+async function mainMenu() {
+  if (lock || moving) return;
+  lock = true;
+  await new Promise(res => {
+    const home = () => {
+      openPanel(`${MAP.n}　💰${S.gold} 金`, [['party', '队伍', S.party.length + ' 人'], ['bag', '背包', ''], ['dex', '武将录', Object.keys(S.caught).length + ' 位'], ['box', '营帐', S.box.length + ' 位'], ['save', '存档', ''], ['help', '说明', '']]
+        .map(([k, n, s]) => `<button class="mbtn" data-k="${k}">${n}<small>${s}</small></button>`).join(''));
+      panelClose = res;
+      $('#pBody').onclick = async e => {
+        const b = e.target.closest('.mbtn'); if (!b) return;
+        const k = b.dataset.k;
+        const back = () => { panelClose = () => { home(); $('#menu').classList.remove('hide'); }; };
+        if (k === 'party') { partyPanel(); back(); }
+        else if (k === 'bag') { await bagPanel(false); home(); }
+        else if (k === 'dex') { dexPanel(); back(); }
+        else if (k === 'box') { boxPanel(); back(); }
+        else if (k === 'save') { toast(save() ? '已存档' : '存档失败（浏览器禁止了存储）'); }
+        else if (k === 'help') { helpPanel(); back(); }
+      };
+    };
+    home();
+  });
+  lock = false;
+}
+
+// ================= 输入 =================
+function pressA() {
+  if (choiceCancel === null && !$('#choices').classList.contains('hide')) return;
+  if (advance()) return;
+  if (!$('#menu').classList.contains('hide') || inBattle() || !$('#title').classList.contains('hide')) return;
+  interact();
+}
+function pressB() {
+  if (!$('#choices').classList.contains('hide')) { if (choiceCancel) choiceCancel(); return; }
+  if (advance()) return;
+  if (!$('#menu').classList.contains('hide') && !$('#pClose').classList.contains('hide')) closePanel();
+}
+document.querySelectorAll('#dpad button').forEach(b => {
+  const d = b.dataset.d;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); held = d; b.classList.add('on'); tapStep(d); try { b.setPointerCapture(e.pointerId); } catch (_) {} });
+  const up = () => { if (held === d) held = null; b.classList.remove('on'); };
+  b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+});
+$('#bA').addEventListener('pointerdown', e => { e.preventDefault(); pressA(); });
+$('#bB').addEventListener('pointerdown', e => { e.preventDefault(); pressB(); });
+$('#dlg').addEventListener('click', () => advance());
+$('#bMsg').addEventListener('click', () => advance());
+$('#btnMenu').addEventListener('click', () => { if (!waiter) mainMenu(); });
+const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
+addEventListener('keydown', e => {
+  if (KEYS[e.key]) { held = KEYS[e.key]; e.preventDefault(); if (!e.repeat) tapStep(held); }
+  else if (e.key === 'z' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pressA(); }
+  else if (e.key === 'x' || e.key === 'Escape') pressB();
+  else if (e.key === 'm' && !inBattle() && !waiter) mainMenu();
+});
+addEventListener('keyup', e => { if (KEYS[e.key] === held) held = null; });
+addEventListener('resize', resize);
+
+// ================= 开场 =================
+function titleScreen() {
+  const trio = $('#trio'); trio.innerHTML = '';
+  for (const g of ['guanyu', 'lvbu', 'zhaoyun']) trio.appendChild(crisp(genPortrait(g), 96));
+  const has = !!loadSave();
+  $('#tLoad').disabled = !has;
+  $('#tNew').onclick = async () => {
+    if (has) { $('#tNew').textContent = '再点一次：覆盖旧存档'; if (!$('#tNew').dataset.ok) { $('#tNew').dataset.ok = 1; return; } }
+    await newGame();
+  };
+  $('#tLoad').onclick = () => { S = loadSave(); startWorld(); };
+}
+function startWorld() {
+  $('#title').classList.add('hide'); resize(); loadMap(S.map);
+}
+async function newGame() {
+  S = newState();
+  const t = $('#title');
+  t.innerHTML = `<h1 style="font-size:30px">择 将</h1><p>中平元年，黄巾蜂起。<br>你是涿郡刘备，字玄德。挑选第一位同伴吧。</p><div class="starter" id="st"></div><button class="tb" id="go" disabled>就是他了</button>`;
+  const info = { guanyu: '火 · 武力高，招式凶猛<br>克金，怕水', zhangfei: '木 · 兵力最厚，一身蛮力<br>克土，怕金', zhaoyun: '水 · 速度最快，攻守平衡<br>克火，怕土' };
+  let pick = null;
+  for (const g of Object.keys(info)) {
+    const b = document.createElement('button'); b.appendChild(crisp(genPortrait(g), 96));
+    b.insertAdjacentHTML('beforeend', `<div style="font-size:17px">${GENS[g].n}</div><small>${info[g]}</small>`);
+    b.onclick = () => { pick = g; t.querySelectorAll('.starter button').forEach(x => x.classList.remove('sel')); b.classList.add('sel'); $('#go').disabled = false; $('#go').textContent = `就是${GENS[g].n}了`; };
+    $('#st').appendChild(b);
+  }
+  await new Promise(r => $('#go').onclick = () => pick && r());
+  const m = makeMon(pick, 5); addMon(m);
+  startWorld(); save();
+  lock = true;
+  await talk([`${GENS[pick].n} 加入了队伍！`, '乡老就在北边路口，先去和他聊聊吧（面朝他按 A）。', '右上角「菜单」可以查看队伍、背包和存档。']);
+  lock = false;
+}
+
+titleScreen();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
