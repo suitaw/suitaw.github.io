@@ -599,8 +599,8 @@
      高度变了要重新量画布：prKbdSet 和 ResizeObserver 里 prResize() */
   /* overflow 用 auto 不用 hidden：小屏（360×640）上键盘 + 解法条 + 魔方最小高度装不下，得能滚到最后一排键 */
   #pPr.on.started{display:flex;flex-direction:column;overflow-y:auto;padding-bottom:0;
-    height:calc(100vh - 62px - env(safe-area-inset-bottom));
-    height:calc(100dvh - 62px - env(safe-area-inset-bottom))}
+    height:calc(100vh - var(--navH) - env(safe-area-inset-bottom));
+    height:calc(100dvh - var(--navH) - env(safe-area-inset-bottom))}
   #pPr.started>*{flex:none}
   #pPr.started #prStageHost{flex:1 1 0;min-height:160px;display:flex}
   #pPr.started #prStage{flex:1;aspect-ratio:auto;max-height:none;height:auto}
@@ -665,8 +665,8 @@
 
   /* ---- ②跟着复原：整页一屏，「下一步」必须和魔方同屏（原来要往下滚才按得到，一滚魔方就出屏）---- */
   #pGo.on{display:flex;flex-direction:column;overflow-y:auto;padding-bottom:0;
-    height:calc(100vh - 62px - env(safe-area-inset-bottom));
-    height:calc(100dvh - 62px - env(safe-area-inset-bottom))}
+    height:calc(100vh - var(--navH) - env(safe-area-inset-bottom));
+    height:calc(100dvh - var(--navH) - env(safe-area-inset-bottom))}
   #pGo>*{flex:none}
   #pGo #stage{flex:1 1 0;min-height:170px;aspect-ratio:auto;max-height:none}
   #pGo #goCard{margin:8px 0}
@@ -698,6 +698,46 @@
   #pGo #phases{margin-top:8px}
   #pGo #seq{white-space:nowrap;word-break:normal;overflow-x:auto;overflow-y:hidden;max-height:none;
     line-height:1.7;padding:5px 8px;margin-top:8px}
+  /* 课程页顶栏跟别的页统一成 appBar（原来是一颗「‹ 课程」文字按钮，长得不一样） */
+  #tuHd.appBar{margin:-8px 0 6px}
+  #tuHd.appBar h3{font-size:18px;font-weight:700}
+  #tuHd.appBar button.ic{padding:0;border-radius:50%;font-size:inherit}   /* 压过旧的 #tuHd button */
+
+  /* 课程页说明：按自然高度显示、最多三分之一屏，超了框内滚；魔方拿剩下的 */
+  #tuBody{flex:0 0 auto;max-height:22vh;overflow-y:auto}
+  #tuDots{margin-top:8px}
+  #tuStageSlot{min-height:150px}
+  /* 演示栏在课程页也按练习页那套压紧；消息行空着时不占高度 */
+  #tuPlanSlot #prPlan{margin-top:6px;padding:8px 10px}
+  #tuPlanSlot #prMsg{min-height:0;margin:4px 0 0;font-size:13px}
+  #tuPlanSlot #prMsg:empty{display:none}
+  #tuHd #tuStepN{margin-right:2px}
+  #tuHelp .legend{margin:0}
+  /* ---- 底部导航高度统一走变量：竖屏 62px，横屏只留图标 46px ---- */
+  :root{--navH:62px}
+  /* 课程页魔方下那行操作提示藏掉：说明文字在 670px 高的屏上只露一行半，这行最不要紧（练习页 ⋯ 里有全文） */
+  #tuStageSlot #prHint2{display:none}
+
+  /* ---- 设置：跟别处一样从底部抽上来（原来是居中弹窗，风格对不上）---- */
+  #setOv{align-items:flex-end;padding:0}
+  #setCard{max-width:620px;max-height:84vh;border-radius:18px 18px 0 0;border-bottom:none;
+    padding-bottom:calc(18px + env(safe-area-inset-bottom));animation:shUp .2s ease}
+
+  /* ---- 横屏手机：左边魔方钉住不动，右边按钮/键盘/说明自己滚 ----
+     原来竖排硬塞进 380px 高：魔方压成一条，键盘掉到导航栏后面（800×380 实测） */
+  @media (orientation:landscape) and (max-height:540px){
+    :root{--navH:46px}
+    #tabs{padding-top:3px;padding-bottom:calc(3px + env(safe-area-inset-bottom))}
+    #tabs button span{display:none}
+    #tabs button,#tabs button#tabSet{padding:8px 0}
+    .page{max-width:none}
+    #pPr.on.started,#pGo.on,#pTu.lesson #tuLesson{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      column-gap:14px;align-content:start;align-items:start}
+    #pPr.started>*,#pGo>*,#tuLesson>*{grid-column:2;min-width:0}
+    #pPr.started #prStageHost,#pGo #stage,#tuStageSlot{grid-column:1;grid-row:1/span 40;position:sticky;top:0;
+      height:calc(100vh - var(--navH) - 26px);height:calc(100dvh - var(--navH) - 26px);min-height:0}
+    #tuBody{max-height:none;overflow:visible}
+  }
 </style>
 
 <!-- 底部导航（App 式）。DOM 顺序和 id 都没动 —— goTab(i) 的下标全篇硬编码十来处；
@@ -1054,10 +1094,11 @@
   </div>
 
   <div id="tuLesson" style="display:none">
-    <div id="tuHd">
-      <button id="tuBack">‹ 课程</button>
+    <div id="tuHd" class="appBar">
+      <button id="tuBack" class="ic back" title="回课程列表"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg></button>
       <h3 id="tuName"></h3>
       <span id="tuStepN"></span>
+      <button id="tuHelpBtn" class="ic" title="这一页怎么用"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4M12 16.8v.2"/></svg></button>
     </div>
     <!-- ③自己练那块魔方会被搬到这儿来：教程里的魔方和你自己练的是同一块，
          能拖着转层、能一手一手看演示、转对了自动往下走 —— 那一整套不用抄第二遍 -->
@@ -1079,6 +1120,8 @@
     </div>
     <div class="legend" id="tuLegend"></div>
   </div>
+  <!-- 「这一页怎么用」原来常驻在课程页最底下，跟说明文字抢高度 —— 收进顶栏 ? 抽屉 -->
+  <div id="tuHelp" class="sheet"><div class="sheetCard"><button class="shClose" style="width:100%;margin-top:12px">知道了</button></div></div>
 </div>
 
 <!-- ============ 摄像头识别 ============ -->
@@ -1180,8 +1223,9 @@
 <!-- 版本行要排在所有 .page 后面。放在 pGo 前面的话，第②页的版本会跑到内容上方去 -->
 <div id="ver">版本 <b id="verTxt">—</b><span id="verReload">强制刷新</span></div>
 
-<!-- 真 3D 渲染用。加载不到（断网等）时 THREE 不存在，render 自动退回 canvas 2D -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<!-- 真 3D 渲染用。three r149，放在同目录（原来走 jsdelivr，断网就退回 2D；做离线 App 也得打包进来）。
+     万一没加载上 THREE 不存在，render 自动退回 canvas 2D -->
+<script src="three.min.js"></script>
 <script>
 /* ==========================================================
    1. 状态模型：角块/棱块的位置与朝向
@@ -5472,6 +5516,8 @@ prLoad(solvedState());
 prSetStarted(false);
 // 版本号挪进设置面板：App 里它属于「关于」，不该压在每一页底下
 $('setCard').appendChild($('ver'));
+{ const card = $('tuHelp').querySelector('.sheetCard'); card.insertBefore($('tuLegend'), card.firstChild);
+  const tuHelp = sheetBind('tuHelp'); $('tuHelpBtn').onclick = () => tuHelp.classList.add('on'); }
 // ②页底下那段「怎么看记号 · 两种解法的区别」挪进复原页的 ? 抽屉：②页要整页一屏给魔方和「下一步」，
 // 而「两种解法」本来就是在复原页选的
 { const lg = $('pGo').querySelector('details.legend'), card = $('inHelp').querySelector('.sheetCard');
@@ -5523,7 +5569,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 03:55';
+const BUILD = '2026-09-23 04:12';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
