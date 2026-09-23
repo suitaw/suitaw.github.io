@@ -4,6 +4,11 @@
      改了半天刷新出来还是老样子。no-cache 不是不缓存，内容没变时仍然走 304，不费流量 -->
 <meta http-equiv="Cache-Control" content="no-cache">
 <title>魔方复原助手</title>
+<!-- 装到桌面：全屏打开没有地址栏（手机 Chrome 地址栏吃掉一截高度），断网也能用（cube-sw.js 网络优先） -->
+<link rel="manifest" href="cube-manifest.json">
+<meta name="theme-color" content="#101216">
+<link rel="icon" href="cube-icon-192.png">
+<link rel="apple-touch-icon" href="cube-icon-192.png">
 <style>
   :root{
     /* 底色分三层：页面 / 卡片 / 可按的东西。原来只有两层，什么都糊在一起分不出主次。
@@ -5664,8 +5669,11 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 04:39';
+const BUILD = '2026-09-23 04:42';
 $('verTxt').textContent = BUILD;
+// 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
+  navigator.serviceWorker.register('cube-sw.js', {scope:'/cube-solver.html'}).catch(() => {});
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
   const u = new URL(location.href);
