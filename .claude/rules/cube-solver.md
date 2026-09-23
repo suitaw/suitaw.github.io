@@ -354,6 +354,10 @@ paths:
   浮层计时 `#prBar`（放在 `#prStageHost` 里、不在 `#prStage` 里 —— 教程借走舞台时它不该跟去）。
   底部只留「打乱」「复原它·跟着转」；18 个记号键默认收起（`#pPr.kbd`，存 `cube_pr_kbd`）；
   摆正视角 / 回复原 / 换魔方 / 转动记录 / 说明 / 设置进 `#prSheet` 底部抽屉，带 `.shClose` 的按钮点完自动收
+- **练习页开局后整页刚好一屏**（`#pPr.on.started` 是 flex 列，高 = 100dvh − 底部导航 62px）：魔方区 `#prStageHost` 拿剩余空间，
+  键盘开合、解法条出现都自动让位，**页面不滚**。原来魔方固定 58vh，开键盘后总高超一屏，一滚魔方上半截出屏（用户截图反馈）。
+  尺寸变了要重新量画布：`ResizeObserver` 盯 `#prStageHost`，**正转着（prBusy）就等转完再量，别跳过**，不然画布停在旧尺寸被拉伸。
+  `overflow-y:auto` 不用 hidden：360×640 上键盘 + 解法条 + 魔方最小 160px 装不下，得能滚到最后一排键
 - **页面切换只淡入不位移**：`.page` 里有 fixed 的 `.dock`，带 transform 的祖先会把它拽离屏幕底
 - 版本号 `#ver` 启动时搬进设置面板
 - **首页只在第一次打开时出现**（欢迎页，`cube_welcomed`），之后启动直接进上次那一页（`cube_last_tab`，在 `goTab` 里存；
