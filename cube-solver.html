@@ -1028,6 +1028,8 @@
 <!-- 版本行要排在所有 .page 后面。放在 pGo 前面的话，第②页的版本会跑到内容上方去 -->
 <div id="ver">版本 <b id="verTxt">—</b><span id="verReload">强制刷新</span></div>
 
+<!-- 真 3D 渲染用。加载不到（断网等）时 THREE 不存在，render 自动退回 canvas 2D -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script>
 /* ==========================================================
    1. 状态模型：角块/棱块的位置与朝向
@@ -1831,6 +1833,107 @@ function roundQuad(ctx,q,rf){
   ctx.closePath();
 }
 
+/* ---- 真 3D（three.js / WebGL）----
+   只接管「画」这一步。投影、背面剔除、拾取用的 polys 照旧由 render 算，
+   f、CAM_D 这些手感参数一点没动：three 的相机摆在 (0,0,CAM_D) 往 -z 看，
+   纵向视角按 f 反推（tan(fov/2) = (H/2)/f），于是 GL 画出来的每个角
+   和 proj() 算的屏幕坐标重合 —— 点哪张贴纸、拖哪一层都不会偏。
+   魔方已经先乘过 cam 变到相机空间，所以灯直接摆在场景里就是「相机空间的灯」，
+   和 2D 版 litOf 同一套 L_KEY / L_FILL / AMB，亮度口径一致（橙红照样分得清）。
+   没有 THREE、建不起 WebGL、上下文丢了、或网址带 ?r=2d，一律退回 2D 画法 */
+let GL = null;                        // null=还没试  false=用不了  对象=能用
+function glRoundedBox(T, r, seg){
+  // 先把格点往棱边上挤（一半格子管平面、一半管圆角），再把超出内盒的部分收成圆弧
+  const g = new T.BoxGeometry(1,1,1,seg,seg,seg), pos = g.attributes.position, nrm = g.attributes.normal;
+  const h = 0.5, a = 0.5, v = new T.Vector3(), q = new T.Vector3(), d = new T.Vector3();
+  const remap = c => { const u = Math.abs(c)/h, sg = Math.sign(c);
+    return sg*(u<=a ? u/a*(h-r) : (h-r) + (u-a)/(1-a)*r); };
+  for(let i=0;i<pos.count;i++){
+    v.set(remap(pos.getX(i)), remap(pos.getY(i)), remap(pos.getZ(i)));
+    q.set(Math.max(-h+r,Math.min(h-r,v.x)), Math.max(-h+r,Math.min(h-r,v.y)), Math.max(-h+r,Math.min(h-r,v.z)));
+    d.subVectors(v,q);
+    if(d.lengthSq()>1e-12){ d.normalize(); v.copy(q).addScaledVector(d,r); nrm.setXYZ(i,d.x,d.y,d.z); }
+    pos.setXYZ(i,v.x,v.y,v.z);
+  }
+  return g;
+}
+function glRoundedRect(T, s, r){
+  const h = s/2, sh = new T.Shape();
+  sh.moveTo(-h+r,-h); sh.lineTo(h-r,-h); sh.quadraticCurveTo(h,-h,h,-h+r);
+  sh.lineTo(h,h-r); sh.quadraticCurveTo(h,h,h-r,h); sh.lineTo(-h+r,h);
+  sh.quadraticCurveTo(-h,h,-h,h-r); sh.lineTo(-h,-h+r); sh.quadraticCurveTo(-h,-h,-h+r,-h);
+  return new T.ShapeGeometry(sh, 6);
+}
+function glInit(){
+  if(GL !== null) return GL;
+  if(/[?&]r=2d/.test(location.search) || !window.THREE) return (GL = false);
+  try{
+    const T = THREE, canvas = document.createElement('canvas');
+    const renderer = new T.WebGLRenderer({canvas, antialias:true, alpha:true});
+    renderer.setClearColor(0x000000, 0);
+    const scene = new T.Scene();
+    scene.add(new T.AmbientLight(0xffffff, AMB));
+    const key = new T.DirectionalLight(0xffffff, K_KEY);  key.position.set(...L_KEY);  scene.add(key);
+    const fill = new T.DirectionalLight(0xffffff, K_FILL); fill.position.set(...L_FILL); scene.add(fill);
+    const camera = new T.PerspectiveCamera(30, 1, 1, CAM_D*3);
+    camera.position.set(0, 0, CAM_D);
+    // 黑色塑料块体：圆角 0.11，半哑光。贴纸：圆角方片，略亮一点的清漆感。
+    // 用 Phong 不用 Standard：Phong 的漫反射就是 色×(AMB+Σ光·cos)，和 2D 的 litOf 同一个式子；
+    // Standard 讲能量守恒，同样的灯整体暗一截，橙和绿发闷（真机截图看出来的）
+    const bodyGeo = glRoundedBox(T, 0.11, 12), stGeo = glRoundedRect(T, 0.86, 0.12);
+    const bodyMat = new T.MeshPhongMaterial({color:0x1d2129, specular:0x3a3a3a, shininess:28});
+    const bodyDim = new T.MeshPhongMaterial({color:0x0d0f13, specular:0x111111, shininess:20});
+    const pool = [];
+    for(let k=0;k<26;k++){
+      const grp = new T.Group(); grp.matrixAutoUpdate = false;
+      const body = new T.Mesh(bodyGeo, bodyMat); grp.add(body);
+      const st = [];
+      for(let i=0;i<6;i++){
+        const n = new T.Vector3(...NRM[i]), u = new T.Vector3(...TANU[i]), w = new T.Vector3().crossVectors(n,u);
+        const m = new T.Mesh(stGeo, new T.MeshPhongMaterial({specular:0x404040, shininess:70}));
+        m.matrixAutoUpdate = false;
+        m.matrix.makeBasis(u, w, n).setPosition(n.clone().multiplyScalar(0.502));
+        grp.add(m); st.push(m);
+      }
+      grp.userData = {body, st}; scene.add(grp); pool.push(grp);
+    }
+    canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); GL = false; });
+    return (GL = {T, renderer, scene, camera, pool, bodyMat, bodyDim, canvas, w:0, h:0, col:new T.Color()});
+  }catch(e){ return (GL = false); }
+}
+// 画成功返回 true；返回 false 时 render 走原来的 2D 画法
+function glDraw(V, cam, anim, W, H){
+  const g = glInit(); if(!g) return false;
+  const dpr = Math.min(window.devicePixelRatio||1, 2), pw = Math.round(W*dpr), ph = Math.round(H*dpr);
+  if(g.w !== pw || g.h !== ph){ g.renderer.setSize(pw, ph, false); g.w = pw; g.h = ph; }
+  const f = Math.min(W,H)*1.5;
+  g.camera.fov = 2*Math.atan((H/2)/f)*180/Math.PI; g.camera.aspect = W/H; g.camera.updateProjectionMatrix();
+  const cubies = V.cubies;
+  g.pool.forEach((grp,k) => { grp.visible = k < cubies.length; });
+  cubies.forEach((cb,k) => {
+    const grp = g.pool[k], {body, st} = grp.userData;
+    const extra = (anim && cb.p[anim.axis]===anim.layer) ? anim.m : null;
+    const C = extra ? mmul(cam, extra) : cam, A = mmul(C, cb.r);
+    const t = vmul(C, [cb.p[0]*GAP, cb.p[1]*GAP, cb.p[2]*GAP]);
+    grp.matrix.set(A[0][0],A[0][1],A[0][2],t[0], A[1][0],A[1][1],A[1][2],t[1], A[2][0],A[2][1],A[2][2],t[2], 0,0,0,1);
+    grp.matrixWorldNeedsUpdate = true;
+    const hot = !!(V.hl && cb.p[V.hl.axis]===V.hl.layer);
+    let anyDim = false;
+    for(let i=0;i<6;i++){
+      const c = cb.cols[i], m = st[i];
+      m.visible = !!c; if(!c) continue;
+      const dim = !!(V.focus && !V.focus(cb, i)); if(dim) anyDim = true;
+      const marked = V.mark != null && V.mark >= 0 && geoFacelet(cb.p, vmul(cb.r, NRM[i]).map(Math.round)) === V.mark;
+      g.col.set(c).multiplyScalar(dim ? 0.26 : (hot||marked) ? 1.3 : 1);
+      m.material.color.copy(g.col);
+    }
+    body.material = anyDim ? g.bodyDim : g.bodyMat;
+  });
+  g.renderer.render(g.scene, g.camera);
+  V.ctx.drawImage(g.canvas, 0, 0, W, H);
+  return true;
+}
+
 // 主视图。用 getter 包住原有的全局变量，这样渲染器能同时驱动别的画布
 // （参考姿势小图、练习页），而已有代码不用改。
 const MAIN = {
@@ -1914,6 +2017,19 @@ function render(anim, V){
   // 看不出是块贴纸，却正好是各种描边/圆角退化的重灾区 —— 直接不画
   const areaOf = q => Math.abs((q[0][0]-q[2][0])*(q[1][1]-q[3][1]) -
                                (q[1][0]-q[3][0])*(q[0][1]-q[2][1])) / 2;
+  if(glDraw(V, cam, anim, W, H)){
+    // GL 画完了块体和贴纸，这里只补 2D 叠加层：待转那一层／该填那一格的白边
+    for(const p of polys){
+      if(!p.outer || areaOf(p.base) < 2) continue;
+      const marked = p.gi === V.mark;
+      if(!(p.hot && p.c) && !marked) continue;
+      roundQuad(ctx, p.c ? p.face : p.base, 0.10);
+      ctx.strokeStyle = marked ? (V.markCol||'rgba(255,255,255,.95)') : 'rgba(255,255,255,.95)';
+      ctx.lineWidth = 2.5; ctx.stroke();
+    }
+    if(V.arrow) drawArrow(ctx, polys, V.arrow, w => proj(vmul(cam, w)));
+    return;
+  }
   for(const p of polys){
     if(areaOf(p.base) < 2) continue;
     const marked = p.gi === V.mark;
@@ -3646,15 +3762,22 @@ function prPickLayers(pick){
 // 横一下竖一下会累积出绕屏幕法线的自转，来回几次画面就歪了。
 // 这两根轴组合起来不会自转，怎么拖都不歪；又没有欧拉角那种俯角死区，
 // 一路翻过去也不会卡住（翻过头会上下颠倒，那是转台式的正常表现）
+// 横拖绕的「竖轴」不死认黄轴，而是挑魔方三根轴里此刻在屏幕上最竖的那根。
+// 死认黄轴的话，快划翻面／双指拧之后黄轴可能正对屏幕（横拖变成原地打转）
+// 或者躺成屏幕横向（横拖和竖拖绕同一根轴）—— 表现就是「转着转着只剩一个方向能转」。
+// 三根正交轴的 y 分量平方和为 1，最竖的那根 |y| 至少 0.577，永远转得动。
+// 带回差：当前那根没被别的轴甩开 0.15 就不换，免得在两根轴之间来回跳
 function vOrbit(V, dx, dy){
   if(dx){
-    // 黄轴在 R 眼里的方向要先过一遍 G，不然转过中间层之后绕的就不是它了
-    const up = vmul(V.G, [0,1,0]);
-    // 魔方翻过头、黄轴朝下时，绕它转在屏幕上就是反的（地球仪转到南极朝上一个道理），
-    // 得跟着翻符号才跟手。黄轴快正对屏幕时 uy 在 0 附近抖，留个死区别让方向乱跳
-    const uy = vmul(V.R, up)[1];
-    if(Math.abs(uy) > 0.15) V.yawSign = uy >= 0 ? 1 : -1;
-    V.R = mmul(V.R, axisRotM(up, V.yawSign*dx*0.008));
+    const ys = [0,1,2].map(k => { const a=[0,0,0]; a[k]=1; return vmul(V.R, vmul(V.G, a))[1]; });
+    let k = V.upAx == null ? 1 : V.upAx;
+    for(let j=0;j<3;j++) if(Math.abs(ys[j]) > Math.abs(ys[k]) + 0.15) k = j;
+    V.upAx = k;
+    const a = [0,0,0]; a[k] = 1;
+    // 轴在 R 眼里的方向要先过一遍 G，不然转过中间层之后绕的就不是它了
+    const up = vmul(V.G, a);
+    // 这根轴朝下时绕它转在屏幕上是反的（地球仪转到南极朝上一个道理），按它的 y 分量翻符号
+    V.R = mmul(V.R, axisRotM(up, (ys[k] >= 0 ? 1 : -1)*dx*0.008));
   }
   if(dy) V.R = mmul(axisRotM([1,0,0], dy*0.008), V.R);
 }
@@ -5138,7 +5261,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-08-12 15:22';
+const BUILD = '2026-09-23 00:00';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
