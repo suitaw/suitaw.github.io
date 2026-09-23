@@ -594,7 +594,17 @@
 
   /* 练习页：魔方放大，用时/步数浮在魔方上 */
   #prStageHost{position:relative}
-  #pPr.started #prStage{aspect-ratio:1/1.08;max-height:58vh}
+  /* 开局后整页刚好一屏：顶栏、按钮、键盘、解法条各占所需，魔方拿剩下的（flex:1）。
+     原来魔方固定 58vh，打开记号键盘后总高超过一屏，页面一滚魔方上半截就出屏了（用户截图反馈）。
+     高度变了要重新量画布：prKbdSet 和 ResizeObserver 里 prResize() */
+  /* overflow 用 auto 不用 hidden：小屏（360×640）上键盘 + 解法条 + 魔方最小高度装不下，得能滚到最后一排键 */
+  #pPr.on.started{display:flex;flex-direction:column;overflow-y:auto;padding-bottom:0;
+    height:calc(100vh - 62px - env(safe-area-inset-bottom));
+    height:calc(100dvh - 62px - env(safe-area-inset-bottom))}
+  #pPr.started>*{flex:none}
+  #pPr.started #prStageHost{flex:1 1 0;min-height:160px;display:flex}
+  #pPr.started #prStage{flex:1;aspect-ratio:auto;max-height:none;height:auto}
+  #pPr.started #prMain{padding-bottom:10px}
   #prBar{position:absolute;left:12px;right:12px;top:9px;z-index:2;display:none;margin:0;padding:0;
     background:none;border:none;pointer-events:none}
   #pPr.started #prBar{display:flex}
@@ -4490,6 +4500,7 @@ prSheet.addEventListener('click', e => {
 $('prSetBtn').onclick = () => { prSheet.classList.remove('on'); $('tabSet').click(); };
 function prKbdSet(v){
   $('pPr').classList.toggle('kbd', v);
+  if($('pPr').classList.contains('started')){ prResize(); prRender(); }   // 魔方区域变高/变矮了
   try{ localStorage.setItem('cube_pr_kbd', v ? '1' : '0'); }catch(e){}
 }
 $('prKbdTog').onclick = () => prKbdSet(!$('pPr').classList.contains('kbd'));
@@ -5402,6 +5413,14 @@ prLoad(solvedState());
 prSetStarted(false);
 // 版本号挪进设置面板：App 里它属于「关于」，不该压在每一页底下
 $('setCard').appendChild($('ver'));
+// 练习页魔方区域是 flex 剩余空间，解法条出现/收起、键盘开合都会改它的尺寸 —— 跟着重量画布
+if(window.ResizeObserver){
+  let roT = 0;
+  const fit = () => { if(!$('pPr').classList.contains('on')) return;
+    if(prBusy){ roT = setTimeout(fit, 80); return; }     // 正转着就等转完再量，别跳过
+    prResize(); prRender(); };
+  new ResizeObserver(() => { clearTimeout(roT); roT = setTimeout(fit, 0); }).observe($('prStageHost'));
+}
 // 四块主画布同理：恢复上下文后变换矩阵被重置，得重新量尺寸（resize 里会 setTransform）再画
 for(const [id, fix] of [['cv', () => { resize(); render(); }], ['inCv', () => { inResize(); inRender(); }],
                         ['prCv', () => { prResize(); prRender(); }], ['patCv', () => { patResize(); patRender(); }]])
@@ -5431,7 +5450,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 02:37';
+const BUILD = '2026-09-23 03:34';
 $('verTxt').textContent = BUILD;
 $('verReload').onclick = () => {
   // 给地址加个用不重样的参数，绕开缓存重新取一份
