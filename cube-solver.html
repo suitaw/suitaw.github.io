@@ -793,6 +793,11 @@
   #pPat.drawing #patPal .sw.done{box-shadow:none}
   #pPat.drawing #patPal .sw i{visibility:hidden}
   #pPat.drawing #patTally{display:none}
+  /* 从教程出题过来：顶栏左边返回、标题写练哪课，那条返回条藏掉 */
+  #pPr .appBar #prBackTuIc{display:none}
+  #pPr.tutask .appBar #prBackTuIc{display:inline-flex}
+  #pPr.tutask #prBackTu{display:none}
+  #prTitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 </style>
 
 <!-- 底部导航（App 式）。DOM 顺序和 id 都没动 —— goTab(i) 的下标全篇硬编码十来处；
@@ -816,7 +821,7 @@
   <button id="homeSet" class="hlp" title="设置">⚙</button>
   <h1 id="homeTitle">魔方复原助手</h1>
   <p id="homeSub">拿着魔方，<b style="color:#f2f4f7">白色朝下</b>、<b style="color:var(--cF)">绿色朝前</b>
-    —— 这一页所有的说法都按这个持方来。<br>你想干什么？</p>
+    —— 开始时都这么拿。<br>你想做什么？</p>
 
   <button class="hCard" id="hSolve"><em>🎯</em><div>
     <b>解开我手上这个</b><i>填色或者拍张照告诉我它现在什么样，我给你一步步的转法</i></div></button>
@@ -1023,7 +1028,8 @@
   <!-- 顶栏：标题 + 高频的两个图标（撤销、提示）+ ⋯ 更多。
        原来这两个是大按钮压在记号键下面，一局按好几次却要往下找 -->
   <div class="appBar">
-    <b>自己练</b>
+    <button id="prBackTuIc" class="ic back" title="回到教程"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg></button>
+    <b id="prTitle">自己练</b>
     <button id="prUndo" class="ic" title="撤销"><svg viewBox="0 0 24 24"><path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H11"/></svg></button>
     <button id="prTip" class="ic" title="提示下一步"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg></button>
     <button id="prMoreBtn" class="ic" title="更多"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg></button>
@@ -3509,11 +3515,13 @@ function doSolve(state){
   if(algo === 'teach'){
     let res;
     try { res = solve(state); }
-    catch(e){ showMsg('没能解出来：'+e.message+'（这是个 bug，请把当前状态截图给我）','err'); return; }
+    catch(e){ showMsg('这个魔方状态算不出来 —— 对一下是不是有几格填错了','err'); return; }
     loadPlan(res.steps);
   }else{
     const r = kSolve(state, {timeMs:600});
-    if(!r){ showMsg('没能在限定步数内解出来（这是个 bug，请把当前状态截图给我）','err'); return; }
+    // 正常到不了这儿（找到第一个解之前不会因为超时停下），万一到了就退回分步解法，别把人卡住
+    if(!r){ algo = 'teach'; doSolve(state); algo = 'short';
+            showMsg('最短解法这次没算出来，先给你分步教学的解法（步数多一些）','ok'); return; }
     loadPlan([
       {label:'第一阶段', moves:r.moves.slice(0, r.split)},
       {label:'第二阶段', moves:r.moves.slice(r.split)}
@@ -4503,10 +4511,10 @@ function prPlanStart(){
         solve(prState).steps.forEach(st => st.moves.forEach(m => moves.push(m)));
       }else{
         const r = kSolve(prState, {timeMs:600});
-        if(!r){ prMsg('没能在限定步数内解出来（这是个 bug）'); return; }
-        moves = r.moves;
+        if(r) moves = r.moves;           // 正常总能解出来；万一没有就退回分步解法
+        else { moves = []; solve(prState).steps.forEach(st => st.moves.forEach(m => moves.push(m))); }
       }
-    }catch(e){ prMsg('这个状态算不出解法（应该是 bug）'); return; }
+    }catch(e){ prMsg('这个魔方状态算不出来 —— 如果是拍照或手填的，对一下有没有填错'); return; }
     prPlan = prPlanMake(moves);
     prMsg(`解出来了，共 ${moves.length} 步。照着下面转，转对了自动往下走。`);
     prPlanRender(); prRender();
@@ -4758,7 +4766,7 @@ $('prTip').onclick = () => {
     const r = solve(prState);
     const st = r.steps.find(x => x.moves.length);
     prMsg(st ? `现在该做「${st.label}」，下一步：${relMove(st.moves[0])}` : '就差一点了');
-  }catch(e){ prMsg('这个状态算不出提示（应该是 bug）'); }
+  }catch(e){ prMsg('这个魔方状态算不出提示 —— 如果是拍照或手填的，对一下有没有填错'); }
 };
 $('prSolveIt').onclick = prPlanStart;
 $('prCoachOk').onclick = () => { $('prCoach').classList.remove('on');
@@ -5224,7 +5232,11 @@ let tuReturn = null;
 function tuReturnRender(){
   $('prBackTu').classList.toggle('on', !!tuReturn);
   if(tuReturn) $('prBackTuName').textContent = TU_LESSONS[tuReturn.lesson].name;
+  // 顶栏直接变成「‹ 练：4. 中层棱」，下面那条返回条藏掉（原来像两层标题）
+  $('pPr').classList.toggle('tutask', !!tuReturn);
+  $('prTitle').textContent = tuReturn ? '练：' + TU_LESSONS[tuReturn.lesson].name : '自己练';
 }
+$('prBackTuIc').onclick = () => $('prBackTuBtn').click();
 $('prBackTuBtn').onclick = () => {
   if(!tuReturn) return;
   const r = tuReturn;
@@ -5772,7 +5784,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 04:53';
+const BUILD = '2026-09-23 04:56';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
