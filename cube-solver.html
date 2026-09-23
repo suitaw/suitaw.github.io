@@ -32,7 +32,7 @@
     --sheen:inset 0 1px 0 rgba(255,255,255,.07);
     /* 六个面的颜色也是这页的视觉主线：色块、按钮、图例都引它。
        值必须和 3D 渲染里的 COLORS 一模一样 —— 色条说「橙」，就得是魔方上那个橙 */
-    --cU:#f7d114; --cR:#f08019; --cF:#31a24c; --cD:#f2f4f7; --cL:#d93a35; --cB:#1560d0;
+    --cU:#ffd500; --cR:#ff7a00; --cF:#10c24a; --cD:#f5f7fa; --cL:#f0302c; --cB:#1a6dff;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html{background:var(--bg)}
@@ -530,6 +530,10 @@
   #camTitle{font-size:16px;font-weight:600;text-align:center}
   #camTip{font-size:13px;color:var(--dim);text-align:center;line-height:1.55}
   #camTip b{color:var(--txt)}
+  /* 自动对准的状态：绿 = 对准了，灰 = 在找 / 手动框 */
+  #camTrk{display:inline-block;margin-top:6px;font-size:12px;line-height:1.5;padding:3px 10px;
+    border-radius:99px;background:var(--panel2);color:var(--dim)}
+  #camTrk.on{background:rgba(61,220,132,.16);color:#3ddc84;font-weight:600}
   /* 参考图和取色格放在预览「下面」而不是右边：竖屏手机横向最紧，
      并排放会把右边那栏挤出屏幕，而且预览越小越难把取样框对准魔方 */
   #camBody{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;
@@ -614,6 +618,21 @@
     background:none;border:none;pointer-events:none}
   #pPr.started #prBar{display:flex}
   #prBar b{font-size:20px}
+  /* 翻面箭头：魔方一放大，四周留白只剩一小圈，单指拖视角经常按到魔方上变成转层（用户反馈）。
+     点一下整个魔方翻一格，跟留白快划同一个动作。只在开局后和教程里出（那时提示语藏了，舞台 = 画布） */
+  #prFlip{display:none}
+  #pPr.started #prFlip,#tuStageSlot #prFlip{display:block}
+  #prFlip button{position:absolute;z-index:2;width:40px;height:40px;padding:0;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.07);border:1px solid var(--line2);color:var(--dim)}
+  #prFlip button:active{background:rgba(255,255,255,.18);color:var(--txt)}
+  #prFlip svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  #prFlip [data-f=u]{top:6px;left:calc(50% - 20px)}
+  #prFlip [data-f=d]{bottom:6px;left:calc(50% - 20px)}
+  #prFlip [data-f=l]{left:6px;top:calc(50% - 20px)}
+  #prFlip [data-f=r]{right:6px;top:calc(50% - 20px)}
+  #prFlip.side [data-f=u]{left:auto;right:6px;top:calc(50% - 70px)}
+  #prFlip.side [data-f=d]{left:auto;right:6px;bottom:auto;top:calc(50% + 30px)}
   #prKbdTog{display:block;width:100%;margin-top:10px}
   #prKeys{display:none;margin-top:8px}
   #pPr.kbd #prKeys{display:grid}
@@ -1046,15 +1065,16 @@
   <!-- 这块魔方会被④教程整个借走（DOM 搬过去，事件绑定跟着元素走），
        所以给它一个固定的家：还回来时往这儿一放就是原位 -->
   <div id="prStageHost">
-    <div id="prStage"><canvas id="prCv"></canvas><div id="prHint2">拖魔方转层（能一口气拖 180°）· 留白拖=转视角、快划=整体翻一格 · 双指拧正</div></div>
+    <div id="prStage"><canvas id="prCv"></canvas><div id="prFlip"><button data-f="u" aria-label="整个魔方往上翻一格"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button><button data-f="d" aria-label="整个魔方往下翻一格"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><button data-f="l" aria-label="整个魔方往左转一格"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><button data-f="r" aria-label="整个魔方往右转一格"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div><div id="prHint2">拖魔方转层（能一口气拖 180°）· 留白拖=转视角、快划=整体翻一格 · 双指拧正</div></div>
     <!-- 用时/步数浮在魔方上面，不再单独占一整条卡片。
          放在 host 里而不是 #prStage 里：教程借走 #prStage 时它不该跟过去 -->
     <!-- 第一次开局的手势引导：开局后舞台提示语藏了，新人不知道魔方能直接拖（cube_pr_coach） -->
     <div id="prCoach"><div>
-      <b>三种手势</b>
+      <b>怎么转</b>
       <p><em>☝ 按住魔方拖</em>转一层，像真魔方一样</p>
       <p><em>☝ 在魔方外面拖</em>转视角看别的面</p>
       <p><em>⚡ 在外面快划一下</em>整个魔方翻一格</p>
+      <p><em>‹ › 点四边的箭头</em>也是翻一格，换个面转</p>
       <button id="prCoachOk" class="pri">知道了</button>
     </div></div>
     <div id="prBar">
@@ -1949,8 +1969,8 @@ function kSolve(state, opts){
    4. 3D 渲染
    坐标：+X 右 -X 左 / +Y 上 -Y 下 / +Z 前 -Z 后
    ========================================================== */
-const COLORS = {U:'#f7d114', R:'#f08019', F:'#31a24c',
-                D:'#f2f4f7', L:'#d93a35', B:'#1560d0'};
+const COLORS = {U:'#ffd500', R:'#ff7a00', F:'#10c24a',
+                D:'#f5f7fa', L:'#f0302c', B:'#1a6dff'};
 const NRM = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
 const TANU= [[0,1,0],[0,1,0],[1,0,0],[1,0,0],[1,0,0],[1,0,0]];
 const TANV= [[0,0,1],[0,0,1],[0,0,1],[0,0,1],[0,1,0],[0,1,0]];
@@ -2046,13 +2066,13 @@ function shadeLit(hex,k,sp){
    像摄影棚里布好的灯 —— 不会出现转着转着整个魔方陷进黑里。
    相机在 +z 往 -z 看（投影用的是 CAM_D - z），所以视线方向就是 (0,0,1)。
 
-   环境光给到 0.62 是刻意的：这是个识别工具，六个面色必须一眼分得清。
+   环境光给到 0.70 是刻意的（原来 0.62，2026-09-23 他嫌颜色发闷，连同六色一起提亮）：这是个识别工具，六个面色必须一眼分得清。
    把环境压到 0.3 那种电影级明暗当然更"厚"，可暗面上的橙和红、黄和白就糊了。
    质感改从倒角、圆角贴纸、高光、接触阴影上要 —— 那些不吃颜色的辨识度 */
 const L_KEY=[-0.3865,0.7537,0.5314];   // 主光：左上前
 const L_FILL=[0.7126,-0.4023,0.5747];  // 补光：右下前，弱，专门把暗面提起来
 const L_HALF=[-0.2209,0.4307,0.8751];  // 主光和视线的半角向量，算高光用
-const AMB=0.62, K_KEY=0.34, K_FILL=0.12;
+const AMB=0.70, K_KEY=0.34, K_FILL=0.12;
 function litOf(n){
   const d1 = n[0]*L_KEY[0]+n[1]*L_KEY[1]+n[2]*L_KEY[2];
   const d2 = n[0]*L_FILL[0]+n[1]*L_FILL[1]+n[2]*L_FILL[2];
@@ -3763,6 +3783,9 @@ function prResize(){
   PR.H = Math.max(1, Math.round(r.height));
   prCv.width = PR.W*dpr; prCv.height = PR.H*dpr;
   PR.ctx.setTransform(dpr,0,0,dpr,0,0);
+  // 魔方边长约 0.75·min(W,H)。画布扁的时候（教程页）上下只剩三十来像素，
+  // 上下箭头会压住贴纸，就挪到右边那一列去（左右留白那时候宽得很）
+  $('prFlip').classList.toggle('side', (PR.H - 0.75*Math.min(PR.W, PR.H))/2 < 48);
 }
 // 拿法（PR.G）一变，记号键横杠的颜色和解法条上的字母都得跟着换（见「相对记号」）。只在 G 真变了时做
 let prGKey = '';
@@ -4436,6 +4459,16 @@ const prEnd = e => {
   prSpin(t, q, q > 0, null, d.ang);
 };
 prStage.addEventListener('pointerup', prEnd);
+// 翻面箭头：箭头朝哪边，正对你的那面就往哪边走，跟往那边快划一下一样。
+// 按钮在 #prStage 里，pointerdown 不拦的话会冒泡上去被当成拖魔方，还把 click 抢走
+$('prFlip').addEventListener('pointerdown', e => e.stopPropagation());
+$('prFlip').onclick = e => {
+  const b = e.target.closest('button[data-f]');
+  if(!b || prBusy) return;
+  const f = b.dataset.f, horiz = f === 'l' || f === 'r';
+  const a = vScreenAxis(PR, horiz ? [0,1,0] : [1,0,0]);
+  prWholeSpin(a.axis, a.sign * (f === 'r' || f === 'd' ? 1 : -1), 1);
+};
 prStage.addEventListener('pointercancel', prEnd);
 
 /* ---- 转动记录：自己转过的每一步都留着，方便回头对照哪一步转错了 ---- */
@@ -5295,6 +5328,404 @@ const CAM_SIZE=480;                // 预览画布的内部分辨率
 for(let i=0;i<9;i++) $('camDots').appendChild(document.createElement('i'));
 $('camProg').innerHTML = CAM_STEPS.map(()=>'<i></i>').join('');
 
+/* ---- 自动对准：在画面里找魔方正对镜头的那一面，返回九个取色点（按屏幕上的行列排） ----
+   做法：缩到 160 见方 →「颜色变化剧烈」或「很暗」的像素当分界（块与块之间的缝）→
+   分界围出来的平整色区里挑大小合适、接近方块、实心的 → 找能排成 3×3 网格的一组。
+   命中的格子直接用色块的重心，没命中的（白色中心块上的 logo 常把它挖空）按网格推算。
+   2026-09-23 拿他的无贴纸魔方实拍 18 张 + 变暗/模糊/噪点/远/近 90 张 + 71 张没魔方的画面测：
+   对准 102，找不到 6，**找错 0**，没魔方时 0 误报。每帧 2~7ms。
+   至少 7 格命中才算：6 格时见过把魔方伸出框外那一排硬猜到背景上的 */
+function camDetect1(px, N){
+  const opt = {};
+  const K = Math.max(1, Math.round(N/160)), D = Math.floor(N/K);
+  const R = new Float32Array(D*D), G = new Float32Array(D*D), B = new Float32Array(D*D);
+  for(let y=0;y<D;y++) for(let x=0;x<D;x++){
+    let r=0,g=0,b=0;
+    for(let dy=0;dy<K;dy++) for(let dx=0;dx<K;dx++){
+      const o = ((y*K+dy)*N + x*K+dx)*4; r+=px[o]; g+=px[o+1]; b+=px[o+2];
+    }
+    const k = y*D+x, n = K*K; R[k]=r/n; G[k]=g/n; B[k]=b/n;
+  }
+  // 按整体亮度拉到标准范围：光线暗时红、蓝块本身的亮度就跟黑缝差不多，
+  // 下面「很暗 = 缝」「颜色变化大 = 分界」两个门槛都是按正常光线定的
+  const hist = new Uint32Array(256);
+  for(let k=0;k<D*D;k++) hist[Math.min(255, Math.max(R[k],G[k],B[k])|0)]++;
+  let acc = 0, p95 = 255;
+  for(let v=255; v>=0; v--){ acc += hist[v]; if(acc >= D*D*0.05){ p95 = v; break; } }
+  const gain = Math.min(4, 220/Math.max(1,p95));
+  if(gain > 1.05) for(let k=0;k<D*D;k++){ R[k]*=gain; G[k]*=gain; B[k]*=gain; }
+  // 分界：颜色梯度大，或者很暗（块与块之间的黑缝）
+  const TG = opt.tg || 70, TDARK = opt.tdark || 55;
+  const wall = new Uint8Array(D*D);
+  for(let y=0;y<D;y++) for(let x=0;x<D;x++){
+    const k = y*D+x;
+    if(x===0||y===0||x===D-1||y===D-1){ wall[k]=1; continue; }
+    let gs = 0;
+    for(const C of [R,G,B]){
+      const gx = C[k-D+1]+2*C[k+1]+C[k+D+1]-C[k-D-1]-2*C[k-1]-C[k+D-1];
+      const gy = C[k+D-1]+2*C[k+D]+C[k+D+1]-C[k-D-1]-2*C[k-D]-C[k-D+1];
+      gs += Math.abs(gx)+Math.abs(gy);
+    }
+    const v = Math.max(R[k],G[k],B[k]);
+    if(gs/4 > TG || v < TDARK) wall[k]=1;
+  }
+  // 连通的平整色区
+  const lab = new Int32Array(D*D).fill(-1), stack = new Int32Array(D*D);
+  const blobs = [];
+  for(let s=0;s<D*D;s++){
+    if(wall[s] || lab[s]>=0) continue;
+    let sp=0; stack[sp++]=s; lab[s]=blobs.length;
+    let n=0,sx=0,sy=0,sxx=0,syy=0,sxy=0,sr=0,sg=0,sb=0;
+    while(sp){
+      const k=stack[--sp], x=k%D, y=(k/D)|0;
+      n++; sx+=x; sy+=y; sxx+=x*x; syy+=y*y; sxy+=x*y; sr+=R[k]; sg+=G[k]; sb+=B[k];
+      if(x>0 && !wall[k-1] && lab[k-1]<0){ lab[k-1]=blobs.length; stack[sp++]=k-1; }
+      if(x<D-1 && !wall[k+1] && lab[k+1]<0){ lab[k+1]=blobs.length; stack[sp++]=k+1; }
+      if(y>0 && !wall[k-D] && lab[k-D]<0){ lab[k-D]=blobs.length; stack[sp++]=k-D; }
+      if(y<D-1 && !wall[k+D] && lab[k+D]<0){ lab[k+D]=blobs.length; stack[sp++]=k+D; }
+    }
+    const cx=sx/n, cy=sy/n, a=sxx/n-cx*cx, c=syy/n-cy*cy, b=sxy/n-cx*cy;
+    const t=(a+c)/2, d=Math.sqrt(Math.max(0,(a-c)*(a-c)/4+b*b)), l1=t+d, l2=Math.max(1e-6,t-d);
+    const r=sr/n, g=sg/n, bb=sb/n, mx=Math.max(r,g,bb), mn=Math.min(r,g,bb);
+    blobs.push({n, x:cx, y:cy, el:l1/l2, fill:n/(12*Math.sqrt(l1*l2)), sat:mx?(mx-mn)/mx:0, val:mx, col:[r,g,bb]});
+  }
+  // 候选：大小合适、不太扁、实心（方块/圆角方块的 fill≈1，镂空、条状、碎边都偏低）
+  const nMin = opt.nmin || 20, nMax = D*D*(opt.nmax || 0.09);
+  const cand = blobs.filter(o => o.n>=nMin && o.n<=nMax && o.el<3 && o.fill>0.8 && o.fill<1.15);
+  // 找 3×3 网格：拿一个色块当锚，两个邻居定出两个方向，枚举锚在九格里的位置
+  let best = null;
+  const near = (x,y,tol,sz) => {
+    let bi=-1, bd=tol*tol;
+    for(let i=0;i<cand.length;i++){
+      const o=cand[i], dx=o.x-x, dy=o.y-y, dd=dx*dx+dy*dy;
+      if(dd<bd && o.n>sz*0.35 && o.n<sz*2.8){ bd=dd; bi=i; }
+    }
+    return bi;
+  };
+  const tryGrid = (ox,oy,ux,uy,vx,vy,sz) => {
+    const tol = 0.3*Math.min(Math.hypot(ux,uy), Math.hypot(vx,vy));
+    const hit = [];
+    for(let j=0;j<3;j++) for(let i=0;i<3;i++){
+      const x=ox+i*ux+j*vx, y=oy+i*uy+j*vy;
+      if(x<0||y<0||x>=D||y>=D) return null;
+      hit.push(near(x,y,tol,sz));
+    }
+    return hit;
+  };
+  for(const a of cand){
+    const sa = Math.sqrt(a.n);
+    const nb = cand.filter(o => { const d=Math.hypot(o.x-a.x,o.y-a.y); return o!==a && d>0.9*sa && d<1.9*sa; });
+    for(let p=0;p<nb.length;p++) for(let q=p+1;q<nb.length;q++){
+      const ux=nb[p].x-a.x, uy=nb[p].y-a.y, vx=nb[q].x-a.x, vy=nb[q].y-a.y;
+      const lu=Math.hypot(ux,uy), lv=Math.hypot(vx,vy);
+      const cos=(ux*vx+uy*vy)/(lu*lv);
+      if(Math.abs(cos)>0.55 || lu/lv>1.7 || lv/lu>1.7) continue;
+      for(let j0=0;j0<3;j0++) for(let i0=0;i0<3;i0++){
+        const ox=a.x-i0*ux-j0*vx, oy=a.y-i0*uy-j0*vy;
+        const hit = tryGrid(ox,oy,ux,uy,vx,vy,a.n);
+        if(!hit) continue;
+        const m = hit.filter(h=>h>=0).length;
+        const area = Math.abs(ux*vy-uy*vx);
+        if(!best || m>best.m || (m===best.m && area>best.area)) best={m, area, hit, ox,oy,ux,uy,vx,vy, sz:a.n};
+      }
+    }
+  }
+  if(!best || best.m < 7) return null;
+  // 用命中的色块做最小二乘，把网格拟合得更贴；再重新认一遍
+  let g = best;
+  for(let it=0; it<2; it++){
+    const P=[]; g.hit.forEach((h,k)=>{ if(h>=0) P.push([k%3, (k/3)|0, cand[h].x, cand[h].y]); });
+    const fit = lsq(P); if(!fit) break;
+    const hit = tryGrid(fit[0],fit[3],fit[1],fit[4],fit[2],fit[5],g.sz) || g.hit;
+    g = {...g, ox:fit[0],oy:fit[3],ux:fit[1],uy:fit[4],vx:fit[2],vy:fit[5], hit, m:hit.filter(h=>h>=0).length};
+  }
+  // 九格按屏幕上的「行、列」排：更横的那个方向当列（朝右），另一个当行（朝下）
+  let {ox,oy,ux,uy,vx,vy} = g;
+  let cells = [];
+  for(let j=0;j<3;j++) for(let i=0;i<3;i++){
+    const h = g.hit[j*3+i];
+    cells.push({i,j, x: h>=0 ? cand[h].x : ox+i*ux+j*vx, y: h>=0 ? cand[h].y : oy+i*uy+j*vy});
+  }
+  let swap = Math.abs(vx)/Math.hypot(vx,vy) > Math.abs(ux)/Math.hypot(ux,uy);
+  const colOf = c => swap ? c.j : c.i, rowOf = c => swap ? c.i : c.j;
+  const cvx = swap ? vx : ux, rvy = swap ? uy : vy;
+  const pts = new Array(9);
+  for(const c of cells){
+    let q = colOf(c), r = rowOf(c);
+    if(cvx < 0) q = 2-q;
+    if(rvy < 0) r = 2-r;
+    pts[r*3+q] = [(c.x+0.5)*K, (c.y+0.5)*K];
+  }
+  const pitch = Math.sqrt(Math.abs(ux*vy-uy*vx))*K;
+  return {pts, pitch, hits:g.m};
+}
+// (i,j)→(x,y) 的仿射最小二乘：x = a0 + a1 i + a2 j，y 同理
+function lsq(P){
+  if(P.length<3) return null;
+  let S=[[0,0,0],[0,0,0],[0,0,0]], bx=[0,0,0], by=[0,0,0];
+  for(const [i,j,x,y] of P){ const f=[1,i,j];
+    for(let r=0;r<3;r++){ bx[r]+=f[r]*x; by[r]+=f[r]*y; for(let c=0;c<3;c++) S[r][c]+=f[r]*f[c]; } }
+  const det = m => m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) + m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+  const d = det(S); if(Math.abs(d)<1e-9) return null;
+  const solve = b => [0,1,2].map(c => det(S.map((row,r)=>row.map((v,k)=>k===c?b[r]:v)))/d);
+  return solve(bx).concat(solve(by));
+}
+
+/* 第二道：同色块挨着的时候。缝常常看不见（他实拍的蓝色块 (15,29,100)，蓝块之间的缝 (15,31,99)，
+   一模一样），三块蓝连成一整条，第一道就找不到了 —— 所以这里不要求每块单独分出来：
+   一片色区可以占 1×1、1×2、1×3、2×2……格。由色区猜出一批「3×3 网格」假设，逐个验：
+   每格中心和周围四点落在同一片色区里、每片色区面积正好等于它占的格数、色区不伸出网格、
+   单块的形状跟格子对得上、网格外紧挨着的那条带子里不能还有两块以上像魔方块的（有就是错开了一格）。
+   面积大得多的假设优先（一块色块里画的小网格永远比整面小）。分辨率比第一道高（240 见方），细缝才留得住 */
+function camDetect2(px, N){
+  const opt = {};
+  const K = Math.max(1, Math.round(N/(opt.res || 240))), D = Math.floor(N/K);
+  const R = new Float32Array(D*D), G = new Float32Array(D*D), B = new Float32Array(D*D), V = new Float32Array(D*D);
+  for(let y=0;y<D;y++) for(let x=0;x<D;x++){
+    let r=0,g=0,b=0;
+    for(let dy=0;dy<K;dy++) for(let dx=0;dx<K;dx++){
+      const o = ((y*K+dy)*N + x*K+dx)*4; r+=px[o]; g+=px[o+1]; b+=px[o+2];
+    }
+    const k = y*D+x, n = K*K; R[k]=r/n; G[k]=g/n; B[k]=b/n;
+  }
+  // 按整体亮度拉到标准范围：光线暗时红、蓝块本身就跟黑缝差不多亮
+  const hist = new Uint32Array(256);
+  for(let k=0;k<D*D;k++) hist[Math.min(255, Math.max(R[k],G[k],B[k])|0)]++;
+  let acc = 0, p95 = 255;
+  for(let v=255; v>=0; v--){ acc += hist[v]; if(acc >= D*D*0.05){ p95 = v; break; } }
+  const gain = Math.min(4, 220/Math.max(1,p95));
+  for(let k=0;k<D*D;k++){ R[k]*=gain; G[k]*=gain; B[k]*=gain; V[k]=Math.max(R[k],G[k],B[k]); }
+  // 分界：颜色梯度大，或者很暗（块与块之间的黑缝）
+  const TG = opt.tg || 70, TDARK = opt.tdark || 55;
+  const wall = new Uint8Array(D*D), GX = new Float32Array(D*D), GY = new Float32Array(D*D);
+  for(let y=0;y<D;y++) for(let x=0;x<D;x++){
+    const k = y*D+x;
+    if(x===0||y===0||x===D-1||y===D-1){ wall[k]=1; continue; }
+    let gs = 0, ax = 0, ay = 0;
+    for(const C of [R,G,B]){
+      const gx = C[k-D+1]+2*C[k+1]+C[k+D+1]-C[k-D-1]-2*C[k-1]-C[k+D-1];
+      const gy = C[k+D-1]+2*C[k+D]+C[k+D+1]-C[k-D-1]-2*C[k-D]-C[k-D+1];
+      gs += Math.abs(gx)+Math.abs(gy);
+      // 方向场：取变化最大的那个通道的梯度，后面估网格的朝向用
+      if(Math.abs(gx)+Math.abs(gy) > Math.abs(ax)+Math.abs(ay)){ ax = gx; ay = gy; }
+    }
+    GX[k] = ax; GY[k] = ay;
+    if(gs/4 > TG || V[k] < TDARK) wall[k]=1;
+  }
+  // 连通的平整色区
+  const lab = new Int32Array(D*D).fill(-1), stack = new Int32Array(D*D);
+  const blobs = [];
+  for(let s=0;s<D*D;s++){
+    if(wall[s] || lab[s]>=0) continue;
+    let sp=0; stack[sp++]=s; lab[s]=blobs.length;
+    let n=0,sx=0,sy=0,sxx=0,syy=0,sxy=0,sr=0,sg=0,sb=0,x0=D,x1=0,y0=D,y1=0;
+    while(sp){
+      const k=stack[--sp], x=k%D, y=(k/D)|0;
+      n++; sx+=x; sy+=y; sxx+=x*x; syy+=y*y; sxy+=x*y; sr+=R[k]; sg+=G[k]; sb+=B[k];
+      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+      if(x>0 && !wall[k-1] && lab[k-1]<0){ lab[k-1]=blobs.length; stack[sp++]=k-1; }
+      if(x<D-1 && !wall[k+1] && lab[k+1]<0){ lab[k+1]=blobs.length; stack[sp++]=k+1; }
+      if(y>0 && !wall[k-D] && lab[k-D]<0){ lab[k-D]=blobs.length; stack[sp++]=k-D; }
+      if(y<D-1 && !wall[k+D] && lab[k+D]<0){ lab[k+D]=blobs.length; stack[sp++]=k+D; }
+    }
+    const cx=sx/n, cy=sy/n, a=sxx/n-cx*cx, c=syy/n-cy*cy, b=sxy/n-cx*cy;
+    const t=(a+c)/2, d=Math.sqrt(Math.max(0,(a-c)*(a-c)/4+b*b)), l1=t+d, l2=Math.max(1e-6,t-d);
+    const r=sr/n, g=sg/n, bb=sb/n, mx=Math.max(r,g,bb), mn=Math.min(r,g,bb);
+    blobs.push({id:blobs.length, n, x:cx, y:cy, l1, l2, ang:0.5*Math.atan2(2*b, a-c), el:l1/l2,
+      fill:n/(12*Math.sqrt(l1*l2)), sat:mx?(mx-mn)/mx:0, val:mx, x0,x1,y0,y1});
+  }
+  const nMin = opt.nmin || Math.max(12, D*D*0.0006);
+  // 网格朝向（模 90°）：色区外扩一圈里的梯度方向，4θ 平均。正方形色区的二阶矩没有方向，只能靠这个
+  const edgeAngle = o => {
+    const w = (o.x1-o.x0)*0.4+2, h = (o.y1-o.y0)*0.4+2;
+    const xa=Math.max(1,(o.x0-w)|0), xb=Math.min(D-2,(o.x1+w)|0), ya=Math.max(1,(o.y0-h)|0), yb=Math.min(D-2,(o.y1+h)|0);
+    let C=0, S=0;
+    for(let y=ya;y<=yb;y++) for(let x=xa;x<=xb;x++){
+      const k=y*D+x, gx=GX[k], gy=GY[k], m2=gx*gx+gy*gy;
+      if(m2 < 400) continue;
+      const th = Math.atan2(gy,gx), m = Math.sqrt(m2);
+      C += m*Math.cos(4*th); S += m*Math.sin(4*th);
+    }
+    return Math.atan2(S,C)/4;
+  };
+  const cand = blobs.filter(o => o.n >= nMin && o.n < D*D*0.4 && o.fill > 0.7 && o.fill < 1.2);
+  // 验一个假设：o 是 (0,0) 格中心，u、v 是一格的两个方向
+  const labAt = (x,y) => { const xi=Math.round(x), yi=Math.round(y);
+    return (xi<1||yi<1||xi>=D-1||yi>=D-1) ? -2 : lab[yi*D+xi]; };
+  const score = (ox,oy,ux,uy,vx,vy) => {
+    const A = Math.abs(ux*vy-uy*vx);
+    if(A < nMin*1.2) return null;
+    // 整个面（外扩半格）都得在画面里
+    for(const [a,b] of [[-0.3,-0.3],[2.3,-0.3],[-0.3,2.3],[2.3,2.3]]){
+      const x=ox+a*ux+b*vx, y=oy+a*uy+b*vy;
+      if(x<1||y<1||x>=D-1||y>=D-1) return null;
+    }
+    const cells = new Array(9), cnt = new Map();
+    let good = 0;
+    for(let j=0;j<3;j++) for(let i=0;i<3;i++){
+      const cx=ox+i*ux+j*vx, cy=oy+i*uy+j*vy;
+      const probes = [labAt(cx,cy)];
+      for(const [a,b] of [[-.25,-.25],[.25,-.25],[-.25,.25],[.25,.25]]) probes.push(labAt(cx+a*ux+b*vx, cy+a*uy+b*vy));
+      // 这一格归哪片色区：五个点里的多数（中心那点可能落在白中心块的 logo 上）
+      let best=-1, bc=0;
+      for(const l of probes){ if(l<0) continue; let c=0; for(const m of probes) if(m===l) c++; if(c>bc){ bc=c; best=l; } }
+      if(bc >= 3){ cells[j*3+i] = best; cnt.set(best, (cnt.get(best)||0)+1); good++; }
+      else cells[j*3+i] = -1;
+    }
+    if(good < 7) return null;
+    // 每片色区的面积要跟它占的格数对得上：占 c 格就该是 c 格那么大（缝和圆角吃掉一些）。
+    // 背景那种大片漫出去的，或者一格里只占一小角的，都对不上
+    // 只有一片色区时分不清「整面同色」和「在一块色块里面画了个小网格」，不认（退回手动框）
+    if(cnt.size < 2) return null;
+    const det = ux*vy-uy*vx;
+    const toGrid = (x,y) => { const dx=x-ox, dy=y-oy; return [(dx*vy-dy*vx)/det, (ux*dy-uy*dx)/det]; };
+    const qa=(ux*ux+vx*vx), qc=(uy*uy+vy*vy), qb=(ux*uy+vx*vy), qt=(qa+qc)/2, qd=Math.sqrt((qa-qc)*(qa-qc)/4+qb*qb);
+    const cellEl = (qt+qd)/Math.max(1e-6, qt-qd);
+    let dev = 0, sat = 0;
+    const cellsOf = new Map();
+    cells.forEach((l,k) => { if(l>=0){ if(!cellsOf.has(l)) cellsOf.set(l,[]); cellsOf.get(l).push(k); } });
+    for(const [l,c] of cnt){
+      const o = blobs[l], ratio = o.n/(c*A);
+      if(ratio < 0.4 || ratio > 1.2){ good -= c; cnt.set(l,0); continue; }
+      // 色区得整个装在网格里，不能伸出去：沿主轴两头各取 1.6σ（长方形的边在 1.73σ）
+      const ca = Math.cos(o.ang), sa = Math.sin(o.ang), s1 = 1.6*Math.sqrt(o.l1), s2 = 1.6*Math.sqrt(o.l2);
+      let out = false;
+      for(const [a1,a2] of [[s1,0],[-s1,0],[0,s2],[0,-s2]]){
+        const [gi,gj] = toGrid(o.x+a1*ca-a2*sa, o.y+a1*sa+a2*ca);
+        if(gi < -0.65 || gi > 2.65 || gj < -0.65 || gj > 2.65){ out = true; break; }
+      }
+      // 伸出网格的色区（比如跨过魔方的棱、跟侧面同色块连成一片）：它占的格子作废，不连累整个网格
+      if(out){ good -= c; cnt.set(l,0); continue; }
+      dev += Math.abs(ratio-0.8)*c;
+      // 色区重心应该正好在它那几格的正中：网格错开一列时这一项会很大
+      const ks = cellsOf.get(l), [gi,gj] = toGrid(o.x, o.y);
+      const mi = ks.reduce((s,k)=>s+k%3,0)/ks.length, mj = ks.reduce((s,k)=>s+((k/3)|0),0)/ks.length;
+      dev += 2*Math.hypot(gi-mi, gj-mj)*c;
+      // 单块的形状要跟格子的形状对得上：网格错开一列落到侧面上时，侧面的块在画面里是压扁的窄条，
+      // 跟正面推出来的方格子对不上（格子 u、v 张成的平行四边形，二阶矩是 (uuᵀ+vvᵀ)/12）
+      if(c === 1) dev += 1.5*Math.abs(Math.log(o.el/cellEl));
+      if(o.sat > 0.4) sat += c;
+    }
+    // 一个面正好 3×3：网格外面紧挨着的那条带子里，某一边要是还有两块以上「像魔方块」的色块
+    // （大小跟格子差不多、实心、不太扁、颜色鲜艳），说明网格错开了（真正的一列被挤到了外面）。
+    // 对准时外面是背景、手，或者侧面压扁的块。按带子找、不要求正好落在格位上 —— 网格大小估偏了时对不齐
+    const inGrid = new Set(cnt.keys());
+    const ext = [0,0,0,0];
+    for(const o of cand){
+      if(inGrid.has(o.id)) continue;
+      if(o.n < 0.35*A || o.n > 1.3*A || o.el > 2.2 || o.sat < 0.35) continue;
+      const [gi,gj] = toGrid(o.x, o.y);
+      const inI = gi > -0.3 && gi < 2.3, inJ = gj > -0.3 && gj < 2.3;
+      if(inJ && gi > -1.6 && gi < -0.5) ext[0]++;
+      if(inJ && gi > 2.5 && gi < 3.6) ext[1]++;
+      if(inI && gj > -1.6 && gj < -0.5) ext[2]++;
+      if(inI && gj > 2.5 && gj < 3.6) ext[3]++;
+    }
+    for(const e of ext) if(e >= 2) dev += 3*e;
+    if(good < 7) return null;
+    let live = 0; for(const c of cnt.values()) if(c) live++;
+    if(live < 2) return null;
+    // 至少三格是鲜艳的颜色：床单、墙这种淡色格子纹别当成魔方
+    if(sat < 3) return null;
+    return {good, dev, A, cells, cnt, ox,oy,ux,uy,vx,vy};
+  };
+  let best = null;
+  const consider = h => {
+    const r = score(...h);
+    if(!r) return;
+    // 面积大得多的优先：整面一定比任何局部（一块色块里画的小网格）大。差不多大时看综合扣分
+    const better = !best ? true
+      : r.A > best.A*1.5 ? true : best.A > r.A*1.5 ? false
+      : r.dev + (9-r.good) < best.dev + (9-best.good);   // 少数上一格（比如中心 logo）扣 1 分
+    if(better) best = r;
+  };
+  for(const o of cand){
+    // 当它是 k×m 格的一块长方形：长边 w、短边 h（长方形 w×h 的二阶矩是 w²/12）
+    const w = Math.sqrt(12*o.l1), h = Math.sqrt(12*o.l2);
+    const th = o.el < 1.6 ? edgeAngle(o) : o.ang;
+    const ex = Math.cos(th), ey = Math.sin(th);          // 长边方向
+    for(let k=1;k<=3;k++) for(let m=1;m<=k;m++){
+      // 色区比它占的格子小一圈（缝），按一格 12% 补回去
+      const pu = w/(k-0.12), pv = h/(m-0.12);
+      // 真魔方的格子是方的：一大片色区拆出扁长格子（比如把一整块当成 2×3 格）的假设不要
+      if(pu/pv > 1.3 || pv/pu > 1.3) continue;
+      const ux=ex*pu, uy=ey*pu, vx=-ey*pv, vy=ex*pv;
+      for(let i0=0;i0<=3-k;i0++) for(let j0=0;j0<=3-m;j0++){
+        const ci=i0+(k-1)/2, cj=j0+(m-1)/2;
+        consider([o.x-ci*ux-cj*vx, o.y-ci*uy-cj*vy, ux,uy,vx,vy]);
+      }
+    }
+  }
+  // 单块的色区之间两两配对：能跟上透视（格子不一定是正方形、两个方向不一定垂直）
+  const single = cand.filter(o => o.el < 2.2);
+  for(const a of single){
+    const sa = Math.sqrt(a.n);
+    const nb = single.filter(o => { const d=Math.hypot(o.x-a.x,o.y-a.y); return o!==a && d>0.9*sa && d<2.2*sa && o.n>a.n*0.4 && o.n<a.n*2.5; })
+      .sort((p,q)=>Math.hypot(p.x-a.x,p.y-a.y)-Math.hypot(q.x-a.x,q.y-a.y)).slice(0,6);
+    for(let p=0;p<nb.length;p++) for(let q=p+1;q<nb.length;q++){
+      const ux=nb[p].x-a.x, uy=nb[p].y-a.y, vx=nb[q].x-a.x, vy=nb[q].y-a.y;
+      const lu=Math.hypot(ux,uy), lv=Math.hypot(vx,vy), cos=(ux*vx+uy*vy)/(lu*lv);
+      if(Math.abs(cos)>0.55 || lu/lv>1.7 || lv/lu>1.7) continue;
+      for(let j0=0;j0<3;j0++) for(let i0=0;i0<3;i0++) consider([a.x-i0*ux-j0*vx, a.y-i0*uy-j0*vy, ux,uy,vx,vy]);
+    }
+  }
+  if(!best) return null;
+  // 精修：每片色区的重心 = 它占的那几格中心的平均。加一点往原假设拉的正则，
+  // 三条横带那种（重心排成一条线）方程不满秩也解得出来
+  const refine = g => {
+    const P = [];
+    const cellsOf = new Map();
+    g.cells.forEach((l,k) => { if(l>=0 && g.cnt.get(l)){ if(!cellsOf.has(l)) cellsOf.set(l,[]); cellsOf.get(l).push(k); } });
+    for(const [l,ks] of cellsOf){
+      const mi = ks.reduce((s,k)=>s+k%3,0)/ks.length, mj = ks.reduce((s,k)=>s+((k/3)|0),0)/ks.length;
+      P.push([mi, mj, blobs[l].x, blobs[l].y, ks.length]);
+    }
+    const lam = 0.5;
+    const solve1 = (vals, x0) => {
+      const S=[[lam,0,0],[0,lam,0],[0,0,lam]], b=[lam*x0[0], lam*x0[1], lam*x0[2]];
+      for(const [i,j,val,w] of vals){ const f=[1,i,j];
+        for(let r=0;r<3;r++){ b[r]+=w*f[r]*val; for(let c=0;c<3;c++) S[r][c]+=w*f[r]*f[c]; } }
+      return camSolve3(S,b);
+    };
+    const X = solve1(P.map(p=>[p[0],p[1],p[2],p[4]]), [g.ox,g.ux,g.vx]);
+    const Y = solve1(P.map(p=>[p[0],p[1],p[3],p[4]]), [g.oy,g.uy,g.vy]);
+    if(!X || !Y) return null;
+    return score(X[0],Y[0],X[1],Y[1],X[2],Y[2]);
+  };
+  let g = best;
+  for(let it=0; it<2; it++){ const r = refine(g); if(r && r.dev + (9-r.good) <= g.dev + (9-g.good) + 0.5) g = r; else break; }
+  // 九格按屏幕上的「行、列」排：更横的那个方向当列（朝右），另一个当行（朝下）
+  const {ox,oy,ux,uy,vx,vy} = g;
+  const swap = Math.abs(vx)/Math.hypot(vx,vy) > Math.abs(ux)/Math.hypot(ux,uy);
+  const pts = new Array(9);
+  for(let j=0;j<3;j++) for(let i=0;i<3;i++){
+    const l = g.cells[j*3+i];
+    // 只占这一格的色区用它的重心（最准）；连成片的用网格推出来的格子中心
+    const own = l>=0 && g.cnt.get(l)===1;
+    const x = own ? blobs[l].x : ox+i*ux+j*vx, y = own ? blobs[l].y : oy+i*uy+j*vy;
+    let q = swap ? j : i, r = swap ? i : j;
+    if((swap ? vx : ux) < 0) q = 2-q;
+    if((swap ? uy : vy) < 0) r = 2-r;
+    pts[r*3+q] = [(x+0.5)*K, (y+0.5)*K];
+  }
+  return {pts, pitch: Math.sqrt(g.A)*K, hits: g.good};
+}
+function camSolve3(S,b){
+  const det = m => m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) + m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+  const d = det(S); if(Math.abs(d)<1e-9) return null;
+  return [0,1,2].map(c => det(S.map((row,r)=>row.map((v,k)=>k===c?b[r]:v)))/d);
+}
+
+/* 两道合用：第一道（每块单独切出来再排网格）切得出来时很准、从没找错过；
+   切不出来（同色块连成片）再走第二道。实测合用：有魔方的 108 个画面对 105、找错 1（很小又斜着的一张），
+   71 个没魔方的画面 0 误报；他截图里那面红蓝条纹（三块蓝连成一条）第一道找不到、第二道对了 */
+function camDetect(px, N){ return camDetect1(px, N) || camDetect2(px, N); }
+
+let camAuto = true;     // 自动对准开着。他一拖框就关掉，点「框复位」再打开
+let camTrack = null;    // 最近一次找到的 {pts, pitch, t}
+let camFrame = null;    // 画叠加层之前那一刻的干净画面：取色只从它取，别把白色格线、白点也取进去
+let camDetT = 0, camCand = null;   // camCand：上一帧找到的（还没确认）
+
 /* ---- 取样框 ----
    原来写死在画面正中 68%。用摄像头还能挪手机去凑它，可**用照片时照片已经拍好了**，
    魔方在画面里的位置和大小都改不了 —— 框对不上就彻底没辙，取到的全是黑边和邻格。
@@ -5311,21 +5742,62 @@ function camBoxClamp(){
 }
 camBoxReset();
 
-// 框内 3×3，每格取中心一小块的平均色
-function sampleGrid(ctx){
-  const c = camBox.s/3;
-  const out=[];
-  for(let r=0;r<3;r++)for(let q=0;q<3;q++){
-    const cx=camBox.x+c*(q+0.5), cy=camBox.y+c*(r+0.5), rad=Math.max(1, Math.round(c*0.18));
-    const d=ctx.getImageData(Math.round(cx-rad), Math.round(cy-rad), rad*2, rad*2).data;
-    let R=0,G=0,B=0;
-    for(let i=0;i<d.length;i+=4){ R+=d[i]; G+=d[i+1]; B+=d[i+2]; }
-    const n=d.length/4;
-    out.push([R/n|0, G/n|0, B/n|0]);
+/* 取 (x,y) 周围一小块，按亮度排序后只平均 lo~hi 那一段：
+   丢掉暗的（块间黑缝、阴影、白色中心块上印的 logo），也丢掉最亮的（反光）。
+   原来是整块求平均：他那个魔域魔方的白中心被 logo 盖住一大半，平均出来是深灰 (71,77,84)，
+   而识别正是拿六个中心块当参照色的 —— 白色参照一歪，别的白块就可能认错。
+   中心格单独放大范围、只要更亮的一截：logo 永远在正中间，外圈那一圈白才是它的颜色。
+   实拍测过：白中心取到 (165,179,189)，同一面的白角块是 (180,193,202)；彩色中心不受影响 */
+function sampleAt(img, x, y, rad, lo, hi){
+  const W = img.width, H = img.height, d = img.data, px = [];
+  const x0 = Math.max(0, Math.round(x-rad)), x1 = Math.min(W-1, Math.round(x+rad));
+  const y0 = Math.max(0, Math.round(y-rad)), y1 = Math.min(H-1, Math.round(y+rad));
+  for(let yy=y0; yy<=y1; yy++) for(let xx=x0; xx<=x1; xx++){
+    const o = (yy*W+xx)*4;
+    px.push([d[o], d[o+1], d[o+2], d[o]*0.3+d[o+1]*0.59+d[o+2]*0.11]);
   }
-  return out;
+  if(!px.length) return [0,0,0];
+  px.sort((a,b) => a[3]-b[3]);
+  const a = Math.floor(px.length*lo), b = Math.max(a+1, Math.floor(px.length*hi));
+  let R=0, G=0, B=0;
+  for(let i=a; i<b; i++){ R+=px[i][0]; G+=px[i][1]; B+=px[i][2]; }
+  const n = b-a;
+  return [R/n|0, G/n|0, B/n|0];
+}
+// 九个取色点：对准了就用找到的，否则用手动框的格子中心。c 是一格的边长
+function camPoints(){
+  if(camTrack) return {pts: camTrack.pts, c: camTrack.pitch};
+  const c = camBox.s/3, pts = [];
+  for(let r=0;r<3;r++) for(let q=0;q<3;q++) pts.push([camBox.x+c*(q+0.5), camBox.y+c*(r+0.5)]);
+  return {pts, c};
+}
+function sampleGrid(){
+  if(!camFrame) return new Array(9).fill([0,0,0]);
+  // 手动框可能没对齐，取样范围收小一点；自动对准的点就在色块重心上，可以取大
+  const {pts, c} = camPoints(), k = camTrack ? 1 : 0.7;
+  return pts.map(([x,y], i) => i === 4
+    ? sampleAt(camFrame, x, y, Math.max(1, c*0.36*k), 0.7, 0.95)
+    : sampleAt(camFrame, x, y, Math.max(1, c*0.28*k), 0.5, 0.9));
 }
 function drawBox(ctx){
+  if(camTrack){
+    // 九个点是色块重心，网格线按「中心 ± 半格」推出来，斜着、透视都跟得上
+    const P = camTrack.pts, c = P[4];
+    const u = [(P[5][0]-P[3][0])/2, (P[5][1]-P[3][1])/2], v = [(P[7][0]-P[1][0])/2, (P[7][1]-P[1][1])/2];
+    const at = (a,b) => [c[0]+a*u[0]+b*v[0], c[1]+a*u[1]+b*v[1]];
+    const line = (p,q) => { ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke(); };
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#3ddc84'; ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    [[-1.5,-1.5],[1.5,-1.5],[1.5,1.5],[-1.5,1.5]].forEach(([a,b],i) => {
+      const p = at(a,b); i ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1]); });
+    ctx.closePath(); ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(61,220,132,.7)';
+    for(const t of [-0.5, 0.5]){ line(at(t,-1.5), at(t,1.5)); line(at(-1.5,t), at(1.5,t)); }
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    for(const p of P){ ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(2, camTrack.pitch*0.06), 0, Math.PI*2); ctx.fill(); }
+    return;
+  }
   const x0=camBox.x, y0=camBox.y, box=camBox.s, c=box/3;
   ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=3;
   ctx.strokeRect(x0,y0,box,box);
@@ -5353,6 +5825,16 @@ const camXY = e => {
           (e.clientY-r.top)  * CAM_SIZE/(r.height||1)];
 };
 camPrev.addEventListener('pointerdown', e => {
+  if(camAuto){
+    camAuto = false;
+    if(camTrack){                              // 手动框从刚才对准的地方开始，不跳
+      const xs = camTrack.pts.map(p=>p[0]), ys = camTrack.pts.map(p=>p[1]);
+      const s = Math.max(Math.max(...xs)-Math.min(...xs), Math.max(...ys)-Math.min(...ys)) * 1.5;
+      camBox.s = s; camBox.x = (Math.min(...xs)+Math.max(...xs)-s)/2; camBox.y = (Math.min(...ys)+Math.max(...ys)-s)/2;
+      camBoxClamp();
+    }
+    camTrack = null; camTrkShow();
+  }
   const [x,y] = camXY(e);
   camPts.set(e.pointerId, [x,y]);
   camPrev.setPointerCapture(e.pointerId);
@@ -5499,23 +5981,59 @@ function camRender(){
   const tip = camDest === 'pat'
     ? `第 ${camStep+1} 张图，对应 <b>${FACE_CN[st.f]}</b> 那一面 —— 传一张你想让这一面呈现的图`
     : st.tip;
-  $('camTip').innerHTML = tip +
-    '<br><span style="font-size:11.5px;color:#5b6577">框对不上就拖它，两指捏合缩放；' +
-    '白点就是取色的位置，让每个白点落在对应色块中间</span>';
+  $('camTip').innerHTML = tip + '<br><span id="camTrk"></span>';
+  camTrkLast = ''; camTrkShow();
   [...$('camProg').children].forEach((el,i)=>{
     el.className = i<camStep ? 'done' : i===camStep ? 'cur' : ''; });
   $('camBack').disabled = camStep===0;
   $('camShot').textContent = camStep===5 ? '采集并完成' : '采集这一面';
   drawRef();
 }
+// 取景框上方那一行：现在是自动对准着、在找、还是手动
+let camTrkLast = '';
+function camTrkShow(){
+  const el = $('camTrk'); if(!el) return;
+  const st = !camAuto ? 'man' : camTrack ? 'on' : 'find';
+  if(st === camTrkLast) return;
+  camTrkLast = st;
+  el.className = st;
+  el.textContent = st === 'on' ? '✓ 对准了，直接点「采集这一面」'
+    : st === 'find' ? '找魔方中… 让一整面正对镜头、占画面一半左右'
+    : '手动框：拖它、两指缩放；点「框复位」回到自动对准';
+}
 function camLoop(){
   if(!camOv.classList.contains('on')) return;
   if(camStill) drawCover(camStill, camStill.width, camStill.height);
   else if(camVideo && camVideo.videoWidth) drawCover(camVideo, camVideo.videoWidth, camVideo.videoHeight);
   else { camCtx.fillStyle='#000'; camCtx.fillRect(0,0,CAM_SIZE,CAM_SIZE); }
+  // 每 80 毫秒存一份干净画面（还没画格线）、找一次魔方
+  const now = performance.now();
+  if(now - camDetT > 80){
+    camDetT = now;
+    try{ camFrame = camCtx.getImageData(0, 0, CAM_SIZE, CAM_SIZE); }catch(e){ camFrame = null; }
+    if(camAuto && camFrame){
+      let r = null;
+      try{ r = camDetect(camFrame.data, CAM_SIZE); }catch(e){}
+      if(r){
+        // 连续两次落在同一个地方才算对准：偶尔一帧认错（很小、很斜的时候见过）不会马上当真
+        const same = camCand && Math.hypot(r.pts[4][0]-camCand.pts[4][0], r.pts[4][1]-camCand.pts[4][1]) < r.pitch*0.4;
+        camCand = r;
+        if(same || (camTrack && Math.hypot(r.pts[4][0]-camTrack.pts[4][0], r.pts[4][1]-camTrack.pts[4][1]) < r.pitch*0.4)){
+          // 跟上一次差得不多就往一块儿拉一拉，减轻抖动
+          if(camTrack && now - camTrack.t < 300 && Math.hypot(r.pts[4][0]-camTrack.pts[4][0], r.pts[4][1]-camTrack.pts[4][1]) < r.pitch*0.5)
+            r.pts = r.pts.map((p,i) => [p[0]*0.7+camTrack.pts[i][0]*0.3, p[1]*0.7+camTrack.pts[i][1]*0.3]);
+          camTrack = {pts:r.pts, pitch:r.pitch, t:now};
+        }
+      }else{
+        camCand = null;
+        if(camTrack && now - camTrack.t > 300) camTrack = null;   // 找丢了只留 0.3 秒，框跟手
+      }
+      camTrkShow();
+    }
+  }
   drawBox(camCtx);
   try{
-    const g=sampleGrid(camCtx);
+    const g=sampleGrid();
     [...$('camDots').children].forEach((el,i)=>{
       el.style.background = `rgb(${g[i][0]},${g[i][1]},${g[i][2]})`; });
   }catch(e){}
@@ -5534,11 +6052,12 @@ async function camOpen(dest){
   camDest = ['pr','pat','patCur'].includes(dest) ? dest : 'in';
   camStep=0; camPicked=[]; camStill=null; $('camErr').textContent='';
   camPrev.width=camPrev.height=CAM_SIZE;
-  camBoxReset();
+  camBoxReset(); camAuto = true; camTrack = null; camCand = null; camFrame = null;
   camOv.classList.add('on');
   camRender();
   try{
-    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    // 要 1280×720：浏览器默认常给 640×480，块与块之间的细缝一糊就找不到了
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment', width:{ideal:1280}, height:{ideal:720}}});
     camVideo=document.createElement('video');
     camVideo.playsInline=true; camVideo.muted=true;
     camVideo.srcObject=camStream;
@@ -5575,7 +6094,7 @@ $('prFill').onclick     = () => inpOpen('pr');
 $('patCurFill').onclick = () => inpOpen('pat');
 $('camClose').onclick = camStop;
 $('camBack').onclick = () => {
-  if(camStep>0){ camStep--; camPicked.pop(); camStill=null; $('camErr').textContent=''; camRender(); }
+  if(camStep>0){ camStep--; camPicked.pop(); camStill=null; camAuto = true; camTrack = null; $('camErr').textContent=''; camRender(); }
 };
 /* 两个面的九格颜色几乎一样，多半是同一张图采了两遍（或者换面时忘了换图）。
    随机打乱的魔方上两面雷同的概率极低，宁可误报也要提醒一句 */
@@ -5590,10 +6109,10 @@ function camDupFaces(picked){
   }
   return null;
 }
-$('camBoxR').onclick = () => camBoxReset();
+$('camBoxR').onclick = () => { camBoxReset(); camAuto = true; camTrack = null; camTrkShow(); };
 $('camShot').onclick = () => {
-  camPicked[camStep] = sampleGrid(camCtx);
-  camStill=null;
+  camPicked[camStep] = sampleGrid();
+  camStill=null; camAuto = true; camTrack = null;
   if(camStep < 5){ camStep++; $('camErr').textContent=''; camRender(); return; }
   // 六面齐了，归类
   let guess = classifyAll();
@@ -5690,7 +6209,7 @@ $('camInput').onchange = async e => {
       im.src=u;
     }));
     if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; camVideo=null; }
-    $('camErr').textContent='用的是这张照片，对准框后点采集';
+    $('camErr').textContent='用的是这张照片';
   }catch(err){
     const n=(err&&err.name)||'';
     $('camErr').textContent = (n==='NotReadableError'||n==='NotFoundError')
@@ -5795,7 +6314,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 04:59';
+const BUILD = '2026-09-23 11:05';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
