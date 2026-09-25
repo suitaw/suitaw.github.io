@@ -4615,7 +4615,7 @@ function prPlanRender(){
     const mi = prPlan.atMove[i];
     const mv = (i===0 || prPlan.atMove[i-1] !== mi) ? prPlan.moves[mi] : prPlan.qm[i];
     $('prPlanNow').textContent = relMove(mv);
-    $('prPlanDesc').textContent = describeRel(mv) + `　还剩 ${n-i} 格`;
+    $('prPlanDesc').textContent = describeRel(mv) + `　还剩 ${n-i} 下`;
     if(prCfg('arrow')) PR.arrow = prMoveTurn(prPlan.qm[i]);
   }
   const playing = prPlayTo >= 0;
@@ -4892,7 +4892,8 @@ const DONE_XEDGE = ["R","U","R'","U","R","U2","R'","U"];                     // 
 const DONE_TOP   = ["R'","F","R'","B2","R","F'","R'","B2","R2"];             // 顶面全黄
 const DONE_CORN  = ["R2","U","R","U","R'","U'","R'","U'","R'","U","R'"];     // 顶层角归位
 // 只亮底面那四个棱（白十字）
-const focusCross = () => cb => cubieKind(cb) === 2 && cb.p[1] === -1;
+// 十字 = 底层 4 个棱 + 底面中心（只亮棱的话十字正中是块暗灰，像缺了一块）
+const focusCross = () => cb => cubieKind(cb) <= 2 && cb.p[1] === -1;
 const focusD = () => cb => cb.p[1] === -1;
 const focusMid = () => cb => cubieKind(cb) === 2 && cb.p[1] === 0;
 const focusU = () => cb => cb.p[1] === 1;
@@ -4951,7 +4952,8 @@ const TU_LESSONS = [
    scr:DONE_CROSS, focus:focusCross(), view:TU_CAM_UP},
   {t:'光白面朝下还不算', d:'亮着的四个中心块是参照：每个白棱露在侧面的那个颜色，必须和它上面的中心块同色。四面都对上了才算做好。',
    scr:DONE_CROSS, focus:focusAny(focusCross(), focusSideCenters()), view:TU_CAM_UP},
-  {t:'一颗一颗来，先问两件事', d:'白棱一共四颗，每次只管一颗。拿到一颗先问：它在顶层、中层还是底层？它的白面朝哪个方向？下面三步就是按这两件事分的 —— 看清楚了直接对号入座，不用碰运气。'},
+  {t:'一颗一颗来，先问两件事', d:'白棱一共四颗，每次只管一颗。拿到一颗先问：它在顶层、中层还是底层？它的白面朝哪个方向？下面三步就是按这两件事分的 —— 看清楚了直接对号入座，不用碰运气。',
+   scr:rev(['F2']), focus:focusPiece('D','F')},   // 亮着的这颗：在顶层、白面朝上（原来是复原态白面朝下，一颗白棱都看不见）
   {t:'情形一：在顶层，白面朝上', d:'亮着的是白+绿棱，白面朝上、绿面朝右；旁边亮着的是绿色中心。先转 U 让它的绿面对准绿色中心（这里转一下 U 就对上了），再把前面整个转 180°（F2），它就翻下去了 —— 已经摆好的那几个白棱不会被碰到。',
    scr:rev(['U','F2']), alg:['U','F2'],
    focus:focusAny(focusPiece('D','F'), focusPiece('F'))},
@@ -6314,7 +6316,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-23 11:05';
+const BUILD = '2026-09-25 04:20';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
