@@ -1475,6 +1475,32 @@ function faceletToCubie(fc){
   return {state:{cp,co,ep,eo}};
 }
 
+/* 只差「一个角拧转了」时，教他把实物扭回来。
+   这种状态每个块单看都对，只是八个角的朝向加起来差 1/3 圈 —— 不是认错了颜色，
+   多半是魔方本身有个角被别歪了（转的时候卡一下、摔一下都会，不用拆过）。
+   八个角任挑一个、往对的方向扭 1/3 圈就合法，所以固定挑「白下绿前」拿法下
+   正面右下角那块（下·前·右）：最好找，底层转 45° 就能露出来扭。
+   09-26 他真机遇到过，照这个方向扭完就能解了 */
+function twistHint(fc){
+  const r = faceletToCubie(fc);
+  if(!r.error || !/角块被拧转/.test(r.error)) return '';
+  const idx = CORNER_FACELET[4];                   // [底, 前, 右]
+  for(const t of [1,2]){
+    const g = fc.slice();
+    for(let k=0;k<3;k++) g[idx[(k+t)%3]] = fc[idx[k]];
+    if(faceletToCubie(g).error) continue;
+    const say = a => `正面${COLOR_CN[a[idx[1]]]}、右面${COLOR_CN[a[idx[2]]]}、底面${COLOR_CN[a[idx[0]]]}`;
+    const how = t === 1 ? `把底面的${COLOR_CN[fc[idx[0]]]}扭到正面来`
+                        : `把正面的${COLOR_CN[fc[idx[1]]]}扭到底下去`;
+    return '如果屏幕上的颜色跟手上的魔方一模一样，那就是魔方本身有个角被别歪了'
+      + '（转的时候卡一下、摔一下都会这样，不用拆过）。这样扭回来：'
+      + `白色朝下、绿色朝前拿好，看正面右下角那块 —— 现在是${say(fc)}，`
+      + `原地扭 1/3 圈成${say(g)}（${how}）。`
+      + '扭法：底层转 45° 左右让这个角露出来，捏住它扭，再转回去对齐。扭完别打乱，直接重新识别';
+  }
+  return '';
+}
+
 /* ==========================================================
    自动修成合法：把任意（哪怕不合法的）54 格目标，改成最接近它、但保证合法的花色。
    角块/棱块各自当成「槽位配块+朝向」的指派问题，用带约束的 DP 精确求解——
@@ -3563,7 +3589,7 @@ function doSolve(state){
 
 $('btnSolve').onclick = () => {
   const r = faceletToCubie(net);
-  if(r.error){ showMsg(r.error, 'err'); return; }
+  if(r.error){ const h = twistHint(net); showMsg(r.error + (h ? '　—— ' + h : ''), 'err'); return; }
   // 最短解法要先建搜索表，头一次得等几秒；先把提示画出来再算，别把界面卡住
   if(algo === 'short' && !kTables){
     showMsg('第一次求最短解法要先建搜索表，等几秒（之后就不用再等了）…', 'ok');
@@ -3947,7 +3973,7 @@ $('inpCancel').onclick = inpClose;
 $('inpDone').onclick = () => {
   const r = faceletToCubie(net);
   // 填错了别放行：③页装不下不合法的魔方，⑤页也会在求解时才炸，不如当场说
-  if(r.error){ showMsg(r.error, 'err'); return; }
+  if(r.error){ const h = twistHint(net); showMsg(r.error + (h ? '　—— ' + h : ''), 'err'); return; }
   const dest = inpDest;
   inpClose();
   if(dest === 'pr'){
@@ -6199,7 +6225,8 @@ $('camShot').onclick = () => {
   showMsg(chk.error
     ? '识别完了，但有对不上的地方' + backMsg + '：' + chk.error + '　—— '
       + (bad ? '标红的格子就是问题所在：先在色板选对的颜色，再点那一格改掉'
-             : '这类问题看不出是哪一格错，多半是某个块的朝向认反了，转着魔方整体核对一遍')
+             : twistHint(guess)
+               || '这类问题看不出是哪一格错，多半是某个块的朝向认反了，转着魔方整体核对一遍')
       + dupMsg
     : '识别完了，六个面都填好了。转着核对一遍，没问题就点求解。' + fixMsg + dupMsg,
     (chk.error || dup) ? 'err' : 'ok');
@@ -6341,7 +6368,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-26 00:23';
+const BUILD = '2026-09-26 07:52';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
