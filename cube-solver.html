@@ -900,6 +900,7 @@
   <div id="palwrap"><div id="pal"></div></div>
   <div id="tally"></div>
   <div id="msg"></div>
+  <button id="twistGo" class="pri" style="display:none;width:100%;margin-top:10px">扭好了，继续求解</button>
   <details id="netBox">
     <summary>展开图总览（可以在这儿点，也可以检查填得对不对）</summary>
     <div id="net"></div>
@@ -1483,30 +1484,36 @@ function faceletToCubie(fc){
    正面右下角那块（下·前·右）：最好找，底层转 45° 就能露出来扭。
    09-26 他真机遇到过，照这个方向扭完就能解了。整段替换原报错、分行分步写（他嫌挤成一段乱），
    3D 同时转到仰视角、只亮那一块（inShowTwist）。App 版 Input.kt twistHint 文案逐字一致 */
-function twistHint(fc){
+// 那一块扭好之后的展开图（合法）；不是「只差一个角拧转」就 null。「扭好了，继续求解」直接用它
+function twistFix(fc){
   const r = faceletToCubie(fc);
-  if(!r.error || !/角块被拧转/.test(r.error)) return '';
-  const idx = CORNER_FACELET[4];                   // [底, 前, 右]
-  const chip = c => ({U:'🟨黄',R:'🟧橙',F:'🟩绿',D:'⬜白',L:'🟥红',B:'🟦蓝'})[c];   // 颜色名前带同色方块
+  if(!r.error || !/角块被拧转/.test(r.error)) return null;
+  const idx = CORNER_FACELET[4];
   for(const t of [1,2]){
     const g = fc.slice();
     for(let k=0;k<3;k++) g[idx[(k+t)%3]] = fc[idx[k]];
-    if(faceletToCubie(g).error) continue;
-    const say = a => `前${chip(a[idx[1]])}　右${chip(a[idx[2]])}　底${chip(a[idx[0]])}`;
-    const how = t === 1 ? `把底面的${COLOR_CN[fc[idx[0]]]}色扭到正面来`
-                        : `把正面的${COLOR_CN[fc[idx[1]]]}色扭到底下去`;
-    return '拼不出来：魔方上有一个角被别歪了\n'
-      + '（颜色没认错。转的时候卡一下、摔一下都会这样，不用拆过）\n\n'
-      + '照这样扭回来：\n'
-      + '① 白色朝下、绿色朝前拿好\n'
-      + '② 找正面右下角那块（图上亮着的）\n'
-      + `　　现在　${say(fc)}\n`
-      + `　　扭成　${say(g)}\n`
-      + `　　也就是${how}\n`
-      + '③ 底层转 45°，捏住这个角扭 1/3 圈，再转回去对齐\n'
-      + '④ 别打乱，直接重新识别';
+    if(!faceletToCubie(g).error) return g;
   }
-  return '';
+  return null;
+}
+function twistHint(fc){
+  const g = twistFix(fc);
+  if(!g) return '';
+  const idx = CORNER_FACELET[4];                   // [底, 前, 右]
+  const chip = c => ({U:'🟨黄',R:'🟧橙',F:'🟩绿',D:'⬜白',L:'🟥红',B:'🟦蓝'})[c];   // 颜色名前带同色方块
+  const say = a => `前${chip(a[idx[1]])}　右${chip(a[idx[2]])}　底${chip(a[idx[0]])}`;
+  const how = g[idx[1]] === fc[idx[0]] ? `把底面的${COLOR_CN[fc[idx[0]]]}色扭到正面来`
+                                       : `把正面的${COLOR_CN[fc[idx[1]]]}色扭到底下去`;
+  return '拼不出来：魔方上有一个角被别歪了\n'
+    + '（颜色没认错。转的时候卡一下、摔一下都会这样，不用拆过）\n\n'
+    + '照这样扭回来：\n'
+    + '① 白色朝下、绿色朝前拿好\n'
+    + '② 找正面右下角那块（图上亮着的）\n'
+    + `　　现在　${say(fc)}\n`
+    + `　　扭成　${say(g)}\n`
+    + `　　也就是${how}\n`
+    + '③ 底层转 45°，捏住这个角扭 1/3 圈，再转回去对齐\n'
+    + '④ 别打乱，点下面「扭好了，继续求解」';
 }
 
 /* ==========================================================
@@ -2570,6 +2577,7 @@ let stepsFolded = false;
 let inferMsg = '';
 function paintNet(){
   IN.focus = null;                                  // 改了格子就不再只亮那个歪角
+  $('twistGo').style.display = 'none';
   for(const gi in cellEls){
     const v = net[gi];
     cellEls[gi].style.background = v ? COLORS[v] : 'var(--panel2)';
@@ -3543,7 +3551,15 @@ function inShowTwist(){
   IN.R = TU_CAM_UP; IN.G = [[1,0,0],[0,1,0],[0,0,1]]; IN.yawSign = 1;
   IN.focus = cb => cb.p[0]===1 && cb.p[1]===-1 && cb.p[2]===1;
   inRender();
+  $('twistGo').style.display = '';
 }
+// 他说扭好了：把那一块换成扭好的颜色（paintNet 会顺手收掉高亮和这颗按钮），照常求解
+$('twistGo').onclick = () => {
+  const g = twistFix(net);
+  if(!g) return;
+  net = g; paintNet(); invalidatePlan();
+  $('btnSolve').click();
+};
 function showMsg(text, kind){
   const m = $('msg'); m.textContent = text; m.className = kind;
 }
@@ -6386,7 +6402,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-26 08:07';
+const BUILD = '2026-09-26 08:19';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
