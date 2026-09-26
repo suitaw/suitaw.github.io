@@ -281,6 +281,7 @@
   #tally,#patTally{text-align:center;font-size:12px;color:var(--dim);margin:8px 0 0;
     font-family:ui-monospace,Menlo,monospace}
   #msg,#patMsgEl{margin:12px 0 0;padding:11px 13px;border-radius:var(--r2);font-size:13.5px;display:none}
+  #msg{white-space:pre-line}                         /* 扭角说明分行分步 */
   #msg.err,#patMsgEl.err{display:block;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.4);color:#ffb3b3}
   #msg.ok,#patMsgEl.ok{display:block;background:rgba(53,194,106,.12);border:1px solid rgba(53,194,106,.4);color:#8fe6ab}
 
@@ -1480,23 +1481,30 @@ function faceletToCubie(fc){
    多半是魔方本身有个角被别歪了（转的时候卡一下、摔一下都会，不用拆过）。
    八个角任挑一个、往对的方向扭 1/3 圈就合法，所以固定挑「白下绿前」拿法下
    正面右下角那块（下·前·右）：最好找，底层转 45° 就能露出来扭。
-   09-26 他真机遇到过，照这个方向扭完就能解了 */
+   09-26 他真机遇到过，照这个方向扭完就能解了。整段替换原报错、分行分步写（他嫌挤成一段乱），
+   3D 同时转到仰视角、只亮那一块（inShowTwist）。App 版 Input.kt twistHint 文案逐字一致 */
 function twistHint(fc){
   const r = faceletToCubie(fc);
   if(!r.error || !/角块被拧转/.test(r.error)) return '';
   const idx = CORNER_FACELET[4];                   // [底, 前, 右]
+  const chip = c => ({U:'🟨黄',R:'🟧橙',F:'🟩绿',D:'⬜白',L:'🟥红',B:'🟦蓝'})[c];   // 颜色名前带同色方块
   for(const t of [1,2]){
     const g = fc.slice();
     for(let k=0;k<3;k++) g[idx[(k+t)%3]] = fc[idx[k]];
     if(faceletToCubie(g).error) continue;
-    const say = a => `正面${COLOR_CN[a[idx[1]]]}、右面${COLOR_CN[a[idx[2]]]}、底面${COLOR_CN[a[idx[0]]]}`;
-    const how = t === 1 ? `把底面的${COLOR_CN[fc[idx[0]]]}扭到正面来`
-                        : `把正面的${COLOR_CN[fc[idx[1]]]}扭到底下去`;
-    return '如果屏幕上的颜色跟手上的魔方一模一样，那就是魔方本身有个角被别歪了'
-      + '（转的时候卡一下、摔一下都会这样，不用拆过）。这样扭回来：'
-      + `白色朝下、绿色朝前拿好，看正面右下角那块 —— 现在是${say(fc)}，`
-      + `原地扭 1/3 圈成${say(g)}（${how}）。`
-      + '扭法：底层转 45° 左右让这个角露出来，捏住它扭，再转回去对齐。扭完别打乱，直接重新识别';
+    const say = a => `前${chip(a[idx[1]])}　右${chip(a[idx[2]])}　底${chip(a[idx[0]])}`;
+    const how = t === 1 ? `把底面的${COLOR_CN[fc[idx[0]]]}色扭到正面来`
+                        : `把正面的${COLOR_CN[fc[idx[1]]]}色扭到底下去`;
+    return '拼不出来：魔方上有一个角被别歪了\n'
+      + '（颜色没认错。转的时候卡一下、摔一下都会这样，不用拆过）\n\n'
+      + '照这样扭回来：\n'
+      + '① 白色朝下、绿色朝前拿好\n'
+      + '② 找正面右下角那块（图上亮着的）\n'
+      + `　　现在　${say(fc)}\n`
+      + `　　扭成　${say(g)}\n`
+      + `　　也就是${how}\n`
+      + '③ 底层转 45°，捏住这个角扭 1/3 圈，再转回去对齐\n'
+      + '④ 别打乱，直接重新识别';
   }
   return '';
 }
@@ -2561,6 +2569,7 @@ let stepsFolded = false;
 // 统一决定 msg 显示什么，得让它插得进去
 let inferMsg = '';
 function paintNet(){
+  IN.focus = null;                                  // 改了格子就不再只亮那个歪角
   for(const gi in cellEls){
     const v = net[gi];
     cellEls[gi].style.background = v ? COLORS[v] : 'var(--panel2)';
@@ -3528,6 +3537,13 @@ let cur = 0;          // 已完成的步数
 let playing = false, auto = false;
 let hasPlan = false;  // 是否求过解。不能用 plan.length 代替：解法可能就是 0 步
 
+// 只差一个角拧转：3D 转到仰视角（正面、右面、底面都露出来），只亮「下·前·右」那一块
+function inShowTwist(){
+  if(!twistHint(net)) return;
+  IN.R = TU_CAM_UP; IN.G = [[1,0,0],[0,1,0],[0,0,1]]; IN.yawSign = 1;
+  IN.focus = cb => cb.p[0]===1 && cb.p[1]===-1 && cb.p[2]===1;
+  inRender();
+}
 function showMsg(text, kind){
   const m = $('msg'); m.textContent = text; m.className = kind;
 }
@@ -3589,7 +3605,7 @@ function doSolve(state){
 
 $('btnSolve').onclick = () => {
   const r = faceletToCubie(net);
-  if(r.error){ const h = twistHint(net); showMsg(r.error + (h ? '　—— ' + h : ''), 'err'); return; }
+  if(r.error){ showMsg(twistHint(net) || r.error, 'err'); inShowTwist(); return; }
   // 最短解法要先建搜索表，头一次得等几秒；先把提示画出来再算，别把界面卡住
   if(algo === 'short' && !kTables){
     showMsg('第一次求最短解法要先建搜索表，等几秒（之后就不用再等了）…', 'ok');
@@ -3973,7 +3989,7 @@ $('inpCancel').onclick = inpClose;
 $('inpDone').onclick = () => {
   const r = faceletToCubie(net);
   // 填错了别放行：③页装不下不合法的魔方，⑤页也会在求解时才炸，不如当场说
-  if(r.error){ const h = twistHint(net); showMsg(r.error + (h ? '　—— ' + h : ''), 'err'); return; }
+  if(r.error){ showMsg(twistHint(net) || r.error, 'err'); inShowTwist(); return; }
   const dest = inpDest;
   inpClose();
   if(dest === 'pr'){
@@ -6222,11 +6238,12 @@ $('camShot').onclick = () => {
   const bad = netTrouble(guess);
   const backMsg = camDest === 'pr'     ? '（识别的结果还不能直接拿去练，先在这一页改对）'
                 : camDest === 'patCur' ? '（还不能拿去算花色，先在这一页改对）' : '';
-  showMsg(chk.error
+  const twist = twistHint(guess);
+  showMsg(twist ? twist + (backMsg ? '\n' + backMsg : '') + (dupMsg ? '\n\n' + dupMsg.trim() : '')
+    : chk.error
     ? '识别完了，但有对不上的地方' + backMsg + '：' + chk.error + '　—— '
       + (bad ? '标红的格子就是问题所在：先在色板选对的颜色，再点那一格改掉'
-             : twistHint(guess)
-               || '这类问题看不出是哪一格错，多半是某个块的朝向认反了，转着魔方整体核对一遍')
+             : '这类问题看不出是哪一格错，多半是某个块的朝向认反了，转着魔方整体核对一遍')
       + dupMsg
     : '识别完了，六个面都填好了。转着核对一遍，没问题就点求解。' + fixMsg + dupMsg,
     (chk.error || dup) ? 'err' : 'ok');
@@ -6234,6 +6251,7 @@ $('camShot').onclick = () => {
   // 他还得回覆盖层点「填好了」才算数
   if(!inpDest){ goTab(0); window.scrollTo(0,0); }
   else { inResize(); inRender(); scrollTo(0,0); }
+  inShowTwist();
 };
 
 /* ---- 照片模式：字节只读一次，相册给的引用可能立刻失效 ---- */
@@ -6368,7 +6386,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-26 07:52';
+const BUILD = '2026-09-26 08:07';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
