@@ -395,6 +395,10 @@
     white-space:nowrap;cursor:pointer;user-select:none}
   #prPlanSeq span.done{color:#454c58}
   #prPlanSeq span.cur{background:var(--acc);color:var(--accTxt);font-weight:700}
+  /* 分步解法的段名：「1 白十字」插在每段第一手前面，点它跳到段首 */
+  #prPlanSeq span.stg{flex:none;background:none;border:1px solid var(--line);color:var(--dim);font-family:inherit}
+  #prPlanSeq span.stg.now{color:var(--accL)}
+  #prPlanStage{font-size:12.5px;font-weight:600;color:var(--accL);margin-bottom:4px}
   /* 「下一手」只在教程里出现：③页是自己转，一手一手替他转完就没得练了；
      教程里正相反，「一步一步看清楚」才是主路。四颗按钮的位置是换的，不是加的 ——
      一行挤五颗在手机上就全是省略号了 */
@@ -1103,6 +1107,7 @@
     <div id="prMsg"></div>
 
     <div id="prPlan">
+      <div id="prPlanStage"></div>
       <div id="prPlanHd">
         <b id="prPlanNow">R</b>
         <span id="prPlanDesc"></span>
@@ -4526,7 +4531,8 @@ const prMoveTurn = mv => {
 };
 // 按「一格 90°」把解法摊开：R2 摊成两格，于是你分两次转 R 它也认得出来。
 // 每一格之后的状态都存着，转完拿当前状态回来比对，就知道走到哪儿了
-function prPlanMake(moves){
+// stages：分步解法每段从第几手开始、叫什么（跟学习页第 2~8 课同名）；最短解法/教程为空
+function prPlanMake(moves, stages = []){
   const qm = [], atMove = [], states = [];
   let s = prState;
   states.push(s);
@@ -4537,26 +4543,28 @@ function prPlanMake(moves){
       qm.push(one); atMove.push(mi); states.push(s);
     }
   });
-  return {moves, qm, atMove, states, i:0, off:false};
+  return {moves, qm, atMove, states, stages, i:0, off:false};
 }
 function prPlanStart(){
   if(prBusy) return;
   if(isSolved(prState)){ prMsg('已经复原了，不用解'); return; }
   if(!tuMode) prAssisted = true;             // 跟着解法转完的那局不算进最好成绩
   const run = () => {
-    let moves;
+    let moves, stages = [];
+    const teach = () => {
+      moves = [];
+      solve(prState).steps.forEach(st => { stages.push({from:moves.length, label:st.label}); st.moves.forEach(m => moves.push(m)); });
+    };
     try{
-      if(algo === 'teach'){
-        moves = [];
-        solve(prState).steps.forEach(st => st.moves.forEach(m => moves.push(m)));
-      }else{
+      if(algo === 'teach') teach();
+      else{
         const r = kSolve(prState, {timeMs:600});
         if(r) moves = r.moves;           // 正常总能解出来；万一没有就退回分步解法
-        else { moves = []; solve(prState).steps.forEach(st => st.moves.forEach(m => moves.push(m))); }
+        else teach();
       }
     }catch(e){ prMsg('这个魔方状态算不出来 —— 如果是拍照或手填的，对一下有没有填错'); return; }
-    prPlan = prPlanMake(moves);
-    prMsg(`解出来了，共 ${moves.length} 步。照着下面转，转对了自动往下走。`);
+    prPlan = prPlanMake(moves, stages);
+    prMsg(`解出来了，共 ${moves.length} 步` + (stages.length ? `，分 ${stages.length} 段` : '') + '。照着下面转，转对了自动往下走。');
     prPlanRender(); prRender();
   };
   // 最短解法第一次要建搜索表，先把提示画出来再算，别让界面像卡死
@@ -4600,6 +4608,17 @@ function prPlanRender(){
   $('pPr').classList.toggle('following', !!prPlan);
   if(!prPlan) return;
   const n = prPlan.qm.length, i = prPlan.i, done = i >= n;
+  // 分步解法：现在在哪一段、对应学习页哪一课、这段还剩几步
+  const G = prPlan.stages, mi0 = done ? prPlan.moves.length : prPlan.atMove[i];
+  let si = -1;
+  G.forEach((g,k) => { if(g.from <= mi0) si = k; });
+  const stEl = $('prPlanStage');
+  stEl.style.display = (si >= 0 && !done && !prPlan.off) ? '' : 'none';
+  if(si >= 0 && !done){
+    const end = G[si+1] ? G[si+1].from : prPlan.moves.length;
+    const li = TU_LESSONS.findIndex(L => L.name.endsWith(G[si].label));
+    stEl.textContent = `第 ${si+1}/${G.length} 段「${G[si].label}」` + (li >= 0 ? `（学习第 ${li+1} 课）` : '') + `　这段还剩 ${end-mi0} 步`;
+  }
   $('prPlanOff').classList.toggle('on', prPlan.off && !done);
   if(prPlan.off && !done){
     $('prPlanNow').textContent = '?';
@@ -4615,7 +4634,8 @@ function prPlanRender(){
     const mi = prPlan.atMove[i];
     const mv = (i===0 || prPlan.atMove[i-1] !== mi) ? prPlan.moves[mi] : prPlan.qm[i];
     $('prPlanNow').textContent = relMove(mv);
-    $('prPlanDesc').textContent = describeRel(mv) + `　还剩 ${n-i} 下`;
+    // 按「步」数，跟「共 N 步」一致（原来按 90° 数，R2 算两下）
+    $('prPlanDesc').textContent = describeRel(mv) + `　还剩 ${prPlan.moves.length-mi} 步`;
     if(prCfg('arrow')) PR.arrow = prMoveTurn(prPlan.qm[i]);
   }
   const playing = prPlayTo >= 0;
@@ -4628,11 +4648,16 @@ function prPlanRender(){
 
   const seq = $('prPlanSeq');
   seq.innerHTML = prPlan.moves.map((m,k) => {
-    const at = done ? prPlan.moves.length : prPlan.atMove[i];
-    return `<span data-k="${k}" class="${k<at?'done':k===at?'cur':''}">${relMove(m)}</span>`;
+    const at = mi0, gk = G.findIndex(g => g.from === k);
+    return (gk >= 0 ? `<span data-k="${k}" class="stg${gk===si?' now':''}">${gk+1} ${G[gk].label}</span>` : '')
+      + `<span data-k="${k}" class="${k<at?'done':k===at?'cur':''}">${relMove(m)}</span>`;
   }).join('');
-  const cur = seq.querySelector('span.cur');
-  if(cur && cur.offsetLeft != null) seq.scrollLeft = cur.offsetLeft - 70;
+  // 当前这手是段首就连段名一起露出来
+  const cur = seq.querySelector('span.cur'), tag = cur && cur.previousElementSibling;
+  if(cur && cur.offsetLeft != null)
+    // offsetLeft 是相对外层定位容器的，段名要贴左边就按屏幕位置算
+    if(tag && tag.classList.contains('stg')) seq.scrollLeft += tag.getBoundingClientRect().left - seq.getBoundingClientRect().left - 4;
+    else seq.scrollLeft = cur.offsetLeft - 70;
 }
 /* ---- 播放解法 ----
    一格一格地转过去，前进就转 qm[i]、后退就反着转 qm[i-1]。
@@ -6316,7 +6341,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-25 04:20';
+const BUILD = '2026-09-26 00:23';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
