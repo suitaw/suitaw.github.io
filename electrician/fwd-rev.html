@@ -124,6 +124,7 @@ svg text{font-family:inherit}
 .bar .r.down{background:var(--red);color:#fff}
 .bar button.down span{color:rgba(255,255,255,.85)}
 .w.pick{stroke:var(--acc) !important;stroke-width:3.2 !important}
+.mini.unpick{margin:6px 0 0;color:var(--acc);border-color:var(--acc)}
 .mini{margin-left:auto;border:1px solid var(--line);background:var(--card);border-radius:7px;padding:3px 9px;font-size:.72rem;color:var(--tx2);white-space:nowrap}
 .rwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .rwrap.zoom svg{width:220%;max-width:none}
@@ -663,7 +664,7 @@ function screw(g, x, y, fill, r){
 }
 function rinfo(g, html){
   g.style.cursor = 'pointer';
-  g.addEventListener('click', function(){ document.getElementById('infoR').innerHTML = html; });
+  g.addEventListener('click', function(){ clearPick(true); document.getElementById('infoR').innerHTML = html; });
 }
 function lab(g, x, y, s, fill, size, anchor){
   const t = txt(g, x, y, s, 'lb2', anchor || 'middle');
@@ -868,7 +869,7 @@ function buildReal(){
   R.cw = {};
   for(let n = 1; n <= 14; n++){
     const d = CPATH[n];
-    const halo = mk('path', {d:d, fill:'none', stroke:'#1a6fd4', 'stroke-width':6, 'stroke-linecap':'round', 'stroke-linejoin':'round', opacity:.45}, ctlW);
+    const halo = mk('path', {d:d, fill:'none', stroke:'#1a6fd4', 'stroke-width':5, 'stroke-linecap':'round', 'stroke-linejoin':'round', opacity:.45}, ctlW);
     halo.style.display = 'none';
     rwire(ctlW, d, 'C', s => E('w' + n), (n === 7 || n === 8) ? noHold : null);
     const f = RFLOW[RFLOW.length - 1];
@@ -945,17 +946,39 @@ function tname(id){
 
 /* ================= 点一根控制线：实物描蓝 + 原理图对应段描蓝 ================= */
 let PICKED = 0;
+/* 选中时其余 13 根淡下去 —— 右边那束竖线只隔 3~4 像素，光靠描边分不清是哪一根。
+   取消：说明栏的按钮 / 点实物台空白处 / 再点同一根 / 点别的元件看说明。
+   按按钮、合闸、万用表都不取消：选中一根再按 SB2，正好看它什么时候亮 */
 function pickWire(n){
-  if(PICKED) R.cw[PICKED].halo.style.display = 'none';
-  document.querySelectorAll('#ctl .pick').forEach(e => e.classList.remove('pick'));
-  if(PICKED === n){ PICKED = 0; document.getElementById('infoR').innerHTML = ''; return; }
+  if(PICKED === n){ clearPick(); return; }
+  clearPick(true);
   PICKED = n;
   R.cw[n].halo.style.display = '';
   (CTLSEG['w' + n] || []).forEach(e => e.classList.add('pick'));
   document.getElementById('infoR').innerHTML =
     `<b>第 ${n} 根：${WINFO[n][0]}</b><br>${WINFO[n][1]}。<br>` +
-    '<span style="color:var(--acc)">下面控制回路图里描蓝的那一段就是它。</span>再点一下取消。';
+    '<span style="color:var(--acc)">下面控制回路图里描蓝的那一段就是它。</span>' +
+    '<br><button class="mini unpick" id="unpick">✕ 取消选中</button>' +
+    '<span style="color:var(--tx3);font-size:.7rem"> 或点实物台空白处</span>';
+  wireOpacity();
   done('wire');
+}
+function clearPick(keepInfo){
+  if(!PICKED) return;
+  R.cw[PICKED].halo.style.display = 'none';
+  document.querySelectorAll('#ctl .pick').forEach(e => e.classList.remove('pick'));
+  PICKED = 0;
+  if(!keepInfo) document.getElementById('infoR').innerHTML = '';
+  wireOpacity();
+}
+function wireOpacity(){
+  const fx = S.fault && S.fault.revealed ? S.fault : null;
+  for(let n = 1; n <= 14; n++){
+    let o = (n === 7 || n === 8) && !S.selfhold ? 0.12 : 1;
+    if(fx && fx.w === n) o = 0.6;
+    if(PICKED && n !== PICKED) o = Math.min(o, 0.15);
+    R.cw[n].w.style.opacity = o; R.cw[n].an.style.opacity = o;
+  }
 }
 
 /* ================= 排故练习 + 万用表 =================
@@ -1333,8 +1356,8 @@ function render(){
   for(let n = 1; n <= 14; n++){
     const br = !!(fx && fx.w === n);
     R.cw[n].w.style.strokeDasharray = br ? '4 3' : '';
-    if(br) R.cw[n].w.style.opacity = 0.6;
   }
+  wireOpacity();
   const mk2 = fx && fx.part ? {fr:[150, 392, '← 触点坏'], c1:[102, 291, '线圈断'], c2:[216, 291, '线圈断']}[fx.part] : null;
   R.fxMark.textContent = mk2 ? mk2[2] : '';
   if(mk2){ R.fxMark.setAttribute('x', mk2[0]); R.fxMark.setAttribute('y', mk2[1]); }
@@ -1541,6 +1564,8 @@ document.getElementById('fxFix').onclick = fixFault;
 document.getElementById('fxAns').innerHTML = '<option value="">我认为坏的是……</option>' +
   Object.keys(WINFO).map(n => `<option value="w${n}">第 ${n} 根线：${WINFO[n][0]}</option>`).join('') +
   '<option value="fr">FR 的 96-95 触点</option><option value="c1">KM1 线圈</option><option value="c2">KM2 线圈</option>';
+document.getElementById('real').addEventListener('click', function(e){ if(e.target === this) clearPick(); });
+document.getElementById('infoR').addEventListener('click', function(e){ if(e.target.id === 'unpick') clearPick(); });
 document.getElementById('zoomBtn').onclick = function(){
   const w = document.getElementById('rwrap'), on = w.classList.toggle('zoom');
   this.textContent = on ? '缩回去' : '放大看';
