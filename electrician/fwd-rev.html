@@ -70,7 +70,7 @@ svg text{font-family:inherit}
 .sym .hit{fill:transparent}
 .sym.sel .hit{fill:rgba(26,111,212,.10);stroke:var(--acc);stroke-width:.8;stroke-dasharray:2 2}
 .faded{opacity:.22}
-.jump{fill:none;stroke:#e67e22;stroke-width:1.3;stroke-dasharray:3 2}
+.jump{fill:none;stroke:#7048e8;stroke-width:1.3;stroke-dasharray:3 2}
 .jump.on{stroke:var(--live);stroke-dasharray:none;stroke-width:1.9}
 .sc-on{stroke:#ff1f1f !important;stroke-width:3 !important;animation:scf .12s linear 6 alternate}
 @keyframes scf{from{opacity:1}to{opacity:.2}}
@@ -116,10 +116,10 @@ svg text{font-family:inherit}
 .bar button span{display:block;font-size:.62rem;font-weight:400;color:var(--tx3);margin-top:2px}
 .bar button.qf.on{background:var(--bluebg);border-color:var(--blue);color:var(--blue)}
 .bar .g{border-color:#9bd3a8}
-.bar .b{border-color:#9fb3d6}
+.bar .y{border-color:#e8cf7a}
 .bar .r{border-color:#e7a39b}
 .bar .g.down{background:var(--green);color:#fff}
-.bar .b.down{background:#2b4c8c;color:#fff}
+.bar .y.down{background:#d4a017;color:#fff}
 .bar .r.down{background:var(--red);color:#fff}
 .bar button.down span{color:rgba(255,255,255,.85)}
 .snd{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 8px;font-size:.78rem;color:var(--tx3)}
@@ -131,7 +131,7 @@ svg text{font-family:inherit}
     <h1>正反转原理 · 动手试</h1>
     <button class="snd" id="snd">声音 开</button>
     <a href="wiring-trainer.html">接线训练 ›</a>
-    <div class="sub">照考题 K31-05「三相异步电动机正反转运行电路」。按住按钮，看接触器吸合、电流怎么走、电机往哪转。<b>亮红 + 流动的线 = 这一刻有电流。</b></div>
+    <div class="sub">照考板 K32 的接法（跟接线训练器是同一套线），原理同考题 K31-05。按住按钮，看接触器吸合、电流怎么走、电机往哪转。<b>亮红 + 流动的线 = 这一刻有电流。</b></div>
   </div>
 
   <div class="say info" id="say">
@@ -140,21 +140,21 @@ svg text{font-family:inherit}
   </div>
 
   <div class="card">
-    <h2>实物台 <small>点 QF 手柄合闸 · 按住按钮盒上的按钮 · 点元件看说明</small></h2>
-    <svg id="real" viewBox="0 0 360 445"></svg>
+    <h2>实物台 <small>点 QF 手柄合闸 · 按住按钮 · 点元件看说明 · 黑线是控制线，14 根</small></h2>
+    <svg id="real" viewBox="0 0 380 532"></svg>
     <div class="info" id="infoR"></div>
   </div>
 
   <div class="card">
-    <h2>控制回路 <small>管接触器线圈 · 点符号看说明</small></h2>
-    <svg id="ctl" viewBox="0 0 240 262"></svg>
+    <h2>控制回路 <small>按考板的串联顺序画 · 点符号看说明</small></h2>
+    <svg id="ctl" viewBox="0 0 240 258"></svg>
     <div class="info" id="infoC">正反转的「逻辑」全在这张图里：<b>自锁</b>让它松手不停，<b>互锁</b>让两个接触器不会同时吸合。</div>
   </div>
 
   <div class="card">
     <h2>主电路 <small>管电动机 · 点符号看说明</small></h2>
     <svg id="main" viewBox="0 0 220 282"></svg>
-    <div class="info" id="infoM">盯住 KM2 下面交叉的那几根线：<b>L1 和 L3 对调了</b>。正反转的全部秘密就这一处。</div>
+    <div class="info" id="infoM">盯住 KM2 上面交叉的那几根进线：<b>L1 和 L3 对调了</b>。正反转的全部秘密就这一处。</div>
   </div>
 
   <div class="card">
@@ -177,20 +177,20 @@ svg text{font-family:inherit}
   <div class="card">
     <h2>一句话记住</h2>
     <div class="note">
-      <b>换向</b>：KM2 把 L1、L3 对调 → 相序反了 → 旋转磁场反转 → 电机反转。<br>
-      <b>自锁</b>：KM 自己的动合触点 13-14 并在启动按钮上 → 松手也不停。<br>
-      <b>互锁</b>：KM 自己的动断触点 21-22 串在对方线圈前 → 两个不会同时吸合（同时吸合 = L1、L3 相间短路）。<br>
-      <b>操作顺序</b>：正转 → 按停止 → 等电机停稳 → 再反转。这个电路只有接触器互锁，转着的时候直接按反转没反应。<br>
-      <span style="color:var(--tx3)">按钮编号照这张考题图（SB1 正转 / SB2 反转 / SB3 停止）；考场那块板的编号可能不一样，以板子为准。</span>
+      <b>换向</b>：KM2 的进线把 L1、L3 对调 → 相序反了 → 旋转磁场反转 → 电机反转。<br>
+      <b>自锁</b>：KM 自己的动合 13-14 并在启动按钮上（13 接公共点、14 接启动按钮出线端）→ 松手也不停。<br>
+      <b>互锁</b>：KM 的 A2 出来先过对方的动断 21-22 → 两个不会同时吸合（同时吸合 = L1、L3 相间短路）。<br>
+      <b>操作顺序</b>：正转 → 按停止 → 等电机停稳 → 再反转。只有接触器互锁，转着的时候直接按反转没反应。<br>
+      <span style="color:var(--tx3)">按钮编号照考板 K32：SB2 正转（绿，端子排 1-4）、SB3 反转（黄，5-8）、SB1 停止（红，9-12）。考题图 K31-05 上 SB1 是正转，编号不同、原理一样。串联顺序也跟那张图相反（考板是电先进线圈，最后过停止和 FR），功能一样。</span>
     </div>
   </div>
 </div>
 
 <div class="bar"><div class="in">
   <button class="qf" id="bQf">QF<span>合闸</span></button>
-  <button class="g" data-sb="1">SB1<span>按住 正转</span></button>
-  <button class="b" data-sb="2">SB2<span>按住 反转</span></button>
-  <button class="r" data-sb="3">SB3<span>按住 停止</span></button>
+  <button class="g" data-sb="1">SB2<span>按住 正转</span></button>
+  <button class="y" data-sb="2">SB3<span>按住 反转</span></button>
+  <button class="r" data-sb="3">SB1<span>按住 停止</span></button>
 </div></div>
 
 <script>
@@ -217,7 +217,8 @@ function fresh(){
 }
 let S = fresh();
 
-/* 控制回路：L1 → FU2 → FR(95-96) → SB3 → [SB1 ∥ KM1 13-14] → KM2 21-22 → KM1 线圈 → FU2 → L2
+/* 控制回路（考板 K32）：L1 → 4号 → KM1 线圈 → KM2 21-22 → [SB2 ∥ KM1 13-14] → 公共点 → SB1 → FR 96-95 → 5号 → L2
+   串联电路顺序不影响求解，这里只管「通不通」；sb[1] 正转 SB2、sb[2] 反转 SB3、sb[3] 停止 SB1
    按先 KM1 后 KM2 的顺序求（两个同时按时 KM1 抢先，互锁挡住 KM2） */
 function solveCtrl(){
   const live = S.qf && !S.frTrip && !S.sb[3];
@@ -321,86 +322,97 @@ function coil(g, x, y0, y1, k){
   UPD.push(function(s){ r.classList.toggle('on', s[k]); });
 }
 
-/* ================= 控制回路 ================= */
+/* ================= 控制回路（照考板 K32 的串联顺序） =================
+   L1 → 4号熔断器 → KM 线圈 A1→A2 → 对方的 21-22 → 端子排 2/6 → [启动按钮 ∥ 自己的 13-14]
+      → 公共点（端子排 1·5·11）→ SB1 停止 11-12 → FR 96-95 → 5号熔断器 → L2
+   跟考题图 K31-05 的顺序正好反过来（那张是先过 FR、停止再到线圈），串联电路里顺序不影响功能 */
 function buildCtl(){
   const g = document.getElementById('ctl'), I = document.getElementById('infoC');
   const A = 72, A2 = 104, B = 170, B2 = 205;
-  txt(g, 2, 21, 'L1', 'lb'); txt(g, 2, 37, 'L2', 'lb');
-  txt(g, 24, 9, 'FU2', 'lb', 'middle');
-  const any = ctl;
-  wire(g, 'M13 18H16', any); fuseH(g, 16, 32, 18, any); wire(g, `M32 18H${A}V48`, any);
-  wire(g, 'M13 34H16', any); fuseH(g, 16, 32, 34, any); wire(g, 'M32 34H40V250H' + A, any);
-  symGroup(g, [14, 10, 20, 30], '<b>FU2 控制回路熔断器</b>：保护控制回路（线圈、按钮这些细线）。它从 QF 下口、FU1 前面取电，所以主电路 FU1 烧了，控制回路照样有电。', I);
+  const any = ctl, k1 = s => s.km1, k2 = s => s.km2;
+  txt(g, 2, 21, 'L1', 'lb'); txt(g, 24, 10, '4号', 'lb', 'middle');
+  wire(g, 'M13 18H16', any); fuseH(g, 16, 32, 18, any); wire(g, `M32 18H${A}`, any);
+  symGroup(g, [14, 3, 22, 22], '<b>4 号熔断器</b>（FU2 的一只，接 L1）：控制回路的保险。它从 QF 下口、FU1 前面取电，所以主电路 FU1 烧了，控制回路照样有电。', I);
+  dot(g, A, 18);
+  wire(g, `M${A} 18V44`, k1);
+  wire(g, `M${A} 18H${B}V44`, k2);
 
-  /* FR 动断 95-96 */
-  contact(g, {x:A, y0:48, y1:66, type:'nc', act:'fr', closed:s => !s.frTrip, flow:any});
-  txt(g, A+12, 58, 'FR', 'lb'); txt(g, A+12, 66, '95-96 过载保护', 'lb2');
-  symGroup(g, [A-26, 44, 70, 26], '<b>FR 动断触点 95-96</b>：平时闭合。电机过载时 FR 的双金属片受热弯曲，把它顶开 → 整个控制回路断电 → 接触器释放 → 电机停。<b>FR 切的是控制回路，不是直接断主电路。</b>', I);
-  wire(g, `M${A} 66V78`, any);
-  contact(g, {x:A, y0:78, y1:96, type:'nc', act:'btn', closed:s => !s.sb[3], flow:any, pressed:s => s.sb[3]});
-  txt(g, A+12, 88, 'SB3', 'lb'); txt(g, A+12, 96, '停止（动断）', 'lb2');
-  symGroup(g, [A-26, 74, 70, 26], '<b>SB3 停止按钮（动断）</b>：平时闭合，按下断开。它串在最前面，一按所有线圈都断电。松开后它恢复闭合，但自锁已经断了，所以不会自己再启动。', I);
-  wire(g, `M${A} 96V110`, any);
-  dot(g, A, 110);
-  wire(g, `M${A} 110H${A2}`, s => s.km2 || (s.km1 && a1(s)));
-  wire(g, `M${A2} 110H${B}`, s => s.km2);
-  dot(g, A2, 110); dot(g, B, 110);
+  /* 线圈 */
+  coil(g, A, 44, 58, 'km1');
+  txt(g, A+14, 52, 'KM1', 'lb'); txt(g, A+14, 60, '线圈 A1-A2', 'lb2');
+  symGroup(g, [A-13, 40, 70, 24], '<b>KM1 线圈</b>（A1 进、A2 出）：得电产生磁力把衔铁吸下来，带着 KM1 所有触点<b>一起</b>动作：主触点闭合、13-14 闭合（自锁）、21-22 断开（互锁）。<br>考板上 4 号熔断器先进 KM1-A1，再用一根线并到 KM2-A1。', I);
+  coil(g, B, 44, 58, 'km2');
+  txt(g, B+14, 52, 'KM2', 'lb'); txt(g, B+14, 60, '线圈', 'lb2');
+  symGroup(g, [B-13, 40, 60, 24], '<b>KM2 线圈</b>：得电后 KM2 的主触点、13-14、21-22 一起动作。', I);
 
-  /* 正转支路 */
-  const f1b = s => s.km1 && s.sb[1];
-  wire(g, `M${A} 110V122`, f1b);
-  contact(g, {x:A, y0:122, y1:140, type:'no', act:'btn', closed:s => s.sb[1], flow:f1b, pressed:s => s.sb[1]});
-  txt(g, A+7, 132, 'SB1', 'lb'); txt(g, A+7, 140, '正转', 'lb2');
-  symGroup(g, [A-26, 118, 50, 26], '<b>SB1 正转启动按钮（动合）</b>：平时断开，按下接通，松手弹开。', I);
-  wire(g, `M${A} 140V152`, f1b);
-  const hold1 = mk('g', {}, g);
-  wire(hold1, `M${A2} 110V122`, s => s.km1 && a1(s));
-  contact(hold1, {x:A2, y0:122, y1:140, type:'no', closed:s => s.km1, flow:s => s.km1 && a1(s)});
-  wire(hold1, `M${A2} 140V152H${A}`, s => s.km1 && a1(s));
-  txt(hold1, A2+7, 132, 'KM1', 'lb'); txt(hold1, A2+7, 140, '13-14 自锁', 'lb2');
-  symGroup(g, [A2-10, 118, 50, 26], '<b>KM1 辅助动合 13-14（自锁）</b>：并在 SB1 两端。KM1 一吸合它就闭合，松开 SB1 后电流改从这里走，线圈继续得电 —— 自己把自己「锁」住。', I);
-  dot(g, A, 152);
-  const k1 = s => s.km1;
-  wire(g, `M${A} 152V168`, k1);
+  /* 互锁：我的 A2 出来先过对方的 21-22 */
+  wire(g, `M${A} 58V74`, k1);
   const il1 = mk('g', {}, g);
-  contact(il1, {x:A, y0:168, y1:186, type:'nc', closed:s => !s.km2, flow:s => s.km1 && s.interlock});
-  txt(il1, A+12, 178, 'KM2', 'lb'); txt(il1, A+12, 186, '21-22 互锁', 'lb2');
-  const j1 = mk('path', {d:`M${A} 162C${A-14} 162 ${A-14} 192 ${A} 192`, class:'jump'}, g);
-  symGroup(g, [A-18, 162, 64, 28], '<b>KM2 辅助动断 21-22（互锁）</b>：串在 KM1 线圈前面。KM2 吸合时它<b>断开</b>，KM1 线圈就得不到电。所以两个接触器永远不会同时吸合。', I);
-  wire(g, `M${A} 186V210`, k1);
-  coil(g, A, 210, 224, 'km1');
-  txt(g, A+14, 221, 'KM1', 'lb'); txt(g, A+14, 229, '线圈', 'lb2');
-  symGroup(g, [A-13, 206, 50, 26], '<b>KM1 线圈</b>：得电产生磁力把衔铁吸下来，带着 KM1 所有触点<b>一起</b>动作：主触点闭合、13-14 闭合（自锁）、21-22 断开（互锁）。', I);
-  wire(g, `M${A} 224V250`, k1);
-  dot(g, A, 250);
-  wire(g, `M${A} 250H${B}`, s => s.km2);
-
-  /* 反转支路 */
-  const f2b = s => s.km2 && s.sb[2];
-  wire(g, `M${B} 110V122`, f2b);
-  contact(g, {x:B, y0:122, y1:140, type:'no', act:'btn', closed:s => s.sb[2], flow:f2b, pressed:s => s.sb[2]});
-  txt(g, B+7, 132, 'SB2', 'lb'); txt(g, B+7, 140, '反转', 'lb2');
-  symGroup(g, [B-26, 118, 50, 26], '<b>SB2 反转启动按钮（动合）</b>：平时断开，按下接通，松手弹开。', I);
-  wire(g, `M${B} 140V152`, f2b);
-  const hold2 = mk('g', {}, g);
-  wire(hold2, `M${B} 110H${B2}V122`, s => s.km2 && a2(s));
-  contact(hold2, {x:B2, y0:122, y1:140, type:'no', closed:s => s.km2, flow:s => s.km2 && a2(s)});
-  wire(hold2, `M${B2} 140V152H${B}`, s => s.km2 && a2(s));
-  txt(hold2, B2+6, 132, 'KM2', 'lb'); txt(hold2, B2-4, 150, '13-14', 'lb2', 'end');
-  symGroup(g, [B2-10, 118, 34, 26], '<b>KM2 辅助动合 13-14（自锁）</b>：并在 SB2 两端，作用跟 KM1 的一样。', I);
-  dot(g, B, 152);
-  const k2 = s => s.km2;
-  wire(g, `M${B} 152V168`, k2);
+  contact(il1, {x:A, y0:74, y1:92, type:'nc', closed:s => !s.km2, flow:s => s.km1 && s.interlock});
+  txt(il1, A+12, 84, 'KM2', 'lb'); txt(il1, A+12, 92, '21-22 互锁', 'lb2');
+  const j1 = mk('path', {d:`M${A} 68C${A-14} 68 ${A-14} 98 ${A} 98`, class:'jump'}, g);
+  symGroup(g, [A-18, 70, 64, 26], '<b>KM2 的动断 21-22（互锁）</b>：KM1 线圈 A2 出来先过它。KM2 吸合时它<b>断开</b>，KM1 线圈就得不到电。<br>考板接法：KM1-A2 → KM2-21，KM2-22 → 端子排 2。', I);
+  wire(g, `M${A} 92V104`, k1);
   const il2 = mk('g', {}, g);
-  contact(il2, {x:B, y0:168, y1:186, type:'nc', closed:s => !s.km1, flow:s => s.km2 && s.interlock});
-  txt(il2, B+12, 178, 'KM1', 'lb'); txt(il2, B+12, 186, '21-22 互锁', 'lb2');
-  const j2 = mk('path', {d:`M${B} 162C${B-14} 162 ${B-14} 192 ${B} 192`, class:'jump'}, g);
-  symGroup(g, [B-18, 162, 64, 28], '<b>KM1 辅助动断 21-22（互锁）</b>：串在 KM2 线圈前面。KM1 吸合（正转）时它断开，这时按 SB2 也没用。', I);
-  wire(g, `M${B} 186V210`, k2);
-  coil(g, B, 210, 224, 'km2');
-  txt(g, B+14, 221, 'KM2', 'lb'); txt(g, B+14, 229, '线圈', 'lb2');
-  symGroup(g, [B-13, 206, 50, 26], '<b>KM2 线圈</b>：得电后 KM2 的主触点、13-14、21-22 一起动作。', I);
-  wire(g, `M${B} 224V250`, k2);
+  wire(g, `M${B} 58V74`, k2);
+  contact(il2, {x:B, y0:74, y1:92, type:'nc', closed:s => !s.km1, flow:s => s.km2 && s.interlock});
+  txt(il2, B+12, 84, 'KM1', 'lb'); txt(il2, B+12, 92, '21-22 互锁', 'lb2');
+  const j2 = mk('path', {d:`M${B} 68C${B-14} 68 ${B-14} 98 ${B} 98`, class:'jump'}, g);
+  symGroup(g, [B-18, 70, 64, 26], '<b>KM1 的动断 21-22（互锁）</b>：KM2 线圈 A2 出来先过它。KM1 吸合（正转）时它断开，这时按 SB3 也没用。<br>考板接法：KM2-A2 → KM1-21，KM1-22 → 端子排 6。', I);
+  wire(g, `M${B} 92V104`, k2);
+  dot(g, A, 104); dot(g, B, 104);
+  txt(g, A-5, 101, '端子排2', 'lb2', 'end');
+  txt(g, B-5, 101, '端子排6', 'lb2', 'end');
+
+  /* 正转：SB2（端子排 1-2）∥ KM1 13-14 */
+  const f1b = s => s.km1 && s.sb[1];
+  wire(g, `M${A} 104V116`, f1b);
+  contact(g, {x:A, y0:116, y1:134, type:'no', act:'btn', closed:s => s.sb[1], flow:f1b, pressed:s => s.sb[1]});
+  txt(g, A+7, 126, 'SB2', 'lb'); txt(g, A+7, 134, '正转', 'lb2');
+  symGroup(g, [A-26, 112, 58, 26], '<b>SB2 正转启动（动合）</b>：按钮盒最上面那个，用端子排 1-2。平时断开，按下接通，松手弹开。', I);
+  wire(g, `M${A} 134V146`, f1b);
+  const hold1 = mk('g', {}, g);
+  wire(hold1, `M${A} 104H${A2}V116`, s => s.km1 && a1(s));
+  contact(hold1, {x:A2, y0:116, y1:134, type:'no', closed:s => s.km1, flow:s => s.km1 && a1(s)});
+  wire(hold1, `M${A2} 134V146H${A}`, s => s.km1 && a1(s));
+  txt(hold1, A2+7, 126, 'KM1', 'lb'); txt(hold1, A2+7, 134, '13-14 自锁', 'lb2');
+  symGroup(g, [A2-10, 112, 52, 26], '<b>KM1 的动合 13-14（自锁）</b>：14 接端子排 2、13 接公共点 —— 正好并在 SB2 两端。KM1 一吸合它就闭合，松开 SB2 后电流改从这里走，线圈继续得电。', I);
+  dot(g, A, 146);
+
+  /* 反转：SB3（端子排 5-6）∥ KM2 13-14 */
+  const f2b = s => s.km2 && s.sb[2];
+  wire(g, `M${B} 104V116`, f2b);
+  contact(g, {x:B, y0:116, y1:134, type:'no', act:'btn', closed:s => s.sb[2], flow:f2b, pressed:s => s.sb[2]});
+  txt(g, B+7, 126, 'SB3', 'lb'); txt(g, B+7, 134, '反转', 'lb2');
+  symGroup(g, [B-26, 112, 58, 26], '<b>SB3 反转启动（动合）</b>：按钮盒中间那个，用端子排 5-6。', I);
+  wire(g, `M${B} 134V146`, f2b);
+  const hold2 = mk('g', {}, g);
+  wire(hold2, `M${B} 104H${B2}V116`, s => s.km2 && a2(s));
+  contact(hold2, {x:B2, y0:116, y1:134, type:'no', closed:s => s.km2, flow:s => s.km2 && a2(s)});
+  wire(hold2, `M${B2} 134V146H${B}`, s => s.km2 && a2(s));
+  txt(hold2, B2+6, 126, 'KM2', 'lb'); txt(hold2, B2+6, 134, '13-14', 'lb2');
+  symGroup(g, [B2-10, 112, 34, 26], '<b>KM2 的动合 13-14（自锁）</b>：14 接端子排 6、13 接公共点，并在 SB3 两端。', I);
+  dot(g, B, 146);
+
+  /* 公共点 → 停止 → FR → 5号 */
+  wire(g, `M${A} 146V158`, k1);
+  wire(g, `M${B} 146V158H${A}`, k2);
+  dot(g, A, 158);
+  txt(g, 121, 168, '公共点：端子排 1·5·11', 'lb2', 'middle');
+  symGroup(g, [80, 150, 84, 22], '<b>公共点</b>：端子排 1、5、11 用两根跳线（11→1、1→5）并在一起，KM1-13、KM2-13 也接在这里。两条启动支路在这儿汇合，再一起去停止按钮。', I);
+  wire(g, `M${A} 158V172`, any);
+  contact(g, {x:A, y0:172, y1:190, type:'nc', act:'btn', closed:s => !s.sb[3], flow:any, pressed:s => s.sb[3]});
+  txt(g, A+12, 182, 'SB1', 'lb'); txt(g, A+12, 190, '停止（动断）11-12', 'lb2');
+  symGroup(g, [A-26, 168, 90, 26], '<b>SB1 停止按钮（动断）</b>：按钮盒最下面的红钮，用端子排 11-12。平时闭合，按下断开。两个线圈的电都要经过它，一按全部断电。', I);
+  wire(g, `M${A} 190V202`, any);
+  contact(g, {x:A, y0:202, y1:220, type:'nc', act:'fr', closed:s => !s.frTrip, flow:any});
+  txt(g, A+12, 212, 'FR', 'lb'); txt(g, A+12, 220, '96-95 过载保护', 'lb2');
+  symGroup(g, [A-26, 198, 90, 26], '<b>FR 的动断 96-95</b>：端子排 12 → FR-96，FR-95 → 5 号熔断器。平时闭合；电机过载时 FR 的双金属片受热弯曲把它顶开 → 整个控制回路断电 → 接触器释放 → 电机停。<b>FR 切的是控制回路，不是直接断主电路。</b>', I);
+  wire(g, `M${A} 220V238H32`, any);
+  fuseH(g, 16, 32, 238, any);
+  wire(g, 'M13 238H16', any);
+  txt(g, 2, 241, 'L2', 'lb'); txt(g, 24, 253, '5号', 'lb', 'middle');
+  symGroup(g, [14, 230, 22, 26], '<b>5 号熔断器</b>（FU2 的另一只，接 L2）：控制回路的另一头。', I);
 
   UPD.push(function(s){
     hold1.classList.toggle('faded', !s.selfhold);
@@ -413,7 +425,7 @@ function buildCtl(){
   });
 }
 
-/* ================= 主电路 ================= */
+/* ================= 主电路（照考板 K32：KM2 在进线处对调 L1、L3，出线跟 KM1 并联） ================= */
 function buildMain(){
   const g = document.getElementById('main'), I = document.getElementById('infoM');
   const a = 60, b = 80, c = 100, d = 130, e = 150, f = 170;
@@ -429,20 +441,20 @@ function buildMain(){
   wire(g, `M${a} 44V56`, pc); wire(g, `M${b} 44V62`, pc); wire(g, `M${c} 44V72`, pw);
   dot(g, a, 56); dot(g, b, 62);
   wire(g, `M${a} 56H214`, ctl); wire(g, `M${b} 62H214`, ctl);
-  txt(g, 214, 52, '去控制回路 FU2', 'lb2', 'end');
+  txt(g, 214, 52, '去 4号 · 5号熔断器（控制回路）', 'lb2', 'end');
   wire(g, `M${a} 56V72`, pw); wire(g, `M${b} 62V72`, pw);
   /* FU1 */
   fuseV(g, a, 72, 90, 0, pw, true); fuseV(g, b, 72, 90, 1, pw); fuseV(g, c, 72, 90, 2, pw, true);
   txt(g, 30, 85, 'FU1', 'lb', 'end');
   symGroup(g, [14, 68, 94, 26], '<b>FU1 主电路熔断器</b>：主电路短路时熔断。去「故障实验」拆掉互锁，正转时按反转，就能看到它烧。', I);
-  /* 分到 KM2 的三根 */
-  wire(g, `M${a} 90V112`, pw, true); wire(g, `M${b} 90V106`, pw); wire(g, `M${c} 90V100`, pw, true);
-  dot(g, c, 100); dot(g, b, 106); dot(g, a, 112);
-  wire(g, `M${c} 100H${f}V124`, m2, true);
+  /* 分到 KM2 进线：L1→KM2 右（5/L3）、L3→KM2 左（1/L1），换相就在这 */
+  wire(g, `M${a} 90V100`, pw, true); wire(g, `M${b} 90V106`, pw); wire(g, `M${c} 90V112`, pw, true);
+  dot(g, a, 100); dot(g, b, 106); dot(g, c, 112);
+  wire(g, `M${a} 100H${f}V124`, m2, true);
   wire(g, `M${b} 106H${e}V124`, m2);
-  wire(g, `M${a} 112H${d}V124`, m2, true);
+  wire(g, `M${c} 112H${d}V124`, m2, true);
   /* KM1 主触点 */
-  wire(g, `M${a} 112V124`, m1, true); wire(g, `M${b} 106V124`, m1); wire(g, `M${c} 100V124`, m1, true);
+  wire(g, `M${a} 100V124`, m1, true); wire(g, `M${b} 106V124`, m1); wire(g, `M${c} 112V124`, m1, true);
   [a, b, c].forEach(x => contact(g, {x:x, y0:124, y1:142, type:'no', closed:s => s.km1, flow:m1}));
   gang(g, [a, b, c], 124, 142, s => s.km1, 38);
   txt(g, 30, 137, 'KM1', 'lb', 'end');
@@ -451,14 +463,15 @@ function buildMain(){
   [d, e, f].forEach(x => contact(g, {x:x, y0:124, y1:142, type:'no', closed:s => s.km2, flow:m2}));
   gang(g, [d, e, f], 124, 142, s => s.km2, 118);
   txt(g, 178, 137, 'KM2', 'lb');
-  symGroup(g, [114, 118, 90, 28], '<b>KM2 主触点</b>：看它出线往回接的那三根 —— 最左边那根（来自 L1）接到了 W，最右边那根（来自 L3）接到了 U。<b>L1、L3 对调，相序反了，电机反转。</b>', I);
-  wire(g, `M${a} 142V162`, m1, true); wire(g, `M${b} 142V156`, m1); wire(g, `M${c} 142V150`, m1, true);
-  wire(g, `M${d} 142V150H${c}`, m2, true);
+  symGroup(g, [114, 118, 90, 28], '<b>KM2 主触点</b>：看它<b>上面进线</b> —— L1 接到了最右边（5/L3），L3 接到了最左边（1/L1）。出线跟 KM1 并在一起去 FR。<br>所以 KM2 一合，U 接的是 L3、W 接的是 L1：<b>两相对调，相序反了，电机反转。</b>', I);
+  /* 出线并联 */
+  wire(g, `M${a} 142V150`, m1, true); wire(g, `M${b} 142V156`, m1); wire(g, `M${c} 142V162`, m1, true);
+  wire(g, `M${d} 142V150H${a}`, m2, true);
   wire(g, `M${e} 142V156H${b}`, m2);
-  wire(g, `M${f} 142V162H${a}`, m2, true);
-  dot(g, c, 150); dot(g, b, 156); dot(g, a, 162);
+  wire(g, `M${f} 142V162H${c}`, m2, true);
+  dot(g, a, 150); dot(g, b, 156); dot(g, c, 162);
   /* FR 发热元件 */
-  wire(g, `M${a} 162V176`, pw); wire(g, `M${b} 156V176`, pw); wire(g, `M${c} 150V176`, pw);
+  wire(g, `M${a} 150V176`, pw); wire(g, `M${b} 156V176`, pw); wire(g, `M${c} 162V176`, pw);
   const heats = [];
   [a, b, c].forEach(function(x){
     heats.push(mk('rect', {x:x-5, y:176, width:10, height:18, fill:'#fff', stroke:'#2b3036', 'stroke-width':1.1}, g));
@@ -466,7 +479,7 @@ function buildMain(){
   });
   HEAT_EL.push(function(h){ heats.forEach(r => r.setAttribute('fill', h > 0.02 ? `rgba(240,140,0,${0.15 + h*0.75})` : '#fff')); });
   txt(g, 30, 189, 'FR', 'lb', 'end');
-  symGroup(g, [14, 172, 94, 26], '<b>FR 热继电器的发热元件</b>：串在主电路里，「量」电机电流。电流长时间过大，它发热让双金属片弯曲，去顶开控制回路里的 95-96。去「故障实验」点「模拟过载」看它慢慢变色。', I);
+  symGroup(g, [14, 172, 94, 26], '<b>FR 热继电器的发热元件</b>：串在主电路里，「量」电机电流。电流长时间过大，它发热让双金属片弯曲，去顶开控制回路里的 96-95。去「故障实验」点「模拟过载」看它慢慢变色。', I);
   /* 电动机 */
   wire(g, `M${a} 194V204L72 220`, pw); wire(g, `M${b} 194V218`, pw); wire(g, `M${c} 194V204L88 220`, pw);
   txt(g, a+3, 202, 'U', 'lb2'); txt(g, b+3, 202, 'V', 'lb2'); txt(g, c+3, 202, 'W', 'lb2');
@@ -479,7 +492,7 @@ function buildMain(){
   wire(g, 'M62 240H42V250');
   mk('path', {d:'M36 250H48M38.5 253H45.5M41 256H43', stroke:'#2b3036', 'stroke-width':1.1}, g);
   txt(g, 30, 250, 'PE', 'lb2', 'end');
-  symGroup(g, [58, 214, 44, 44], '<b>三相异步电动机</b>：三相电按顺序接进去，在定子里产生<b>旋转磁场</b>，转子被磁场「拖着」转。任意两相对调，磁场反着转，电机就反转。', I);
+  symGroup(g, [58, 214, 44, 44], '<b>三相异步电动机</b>：三相电按顺序接进去，在定子里产生<b>旋转磁场</b>，转子被磁场「拖着」转。任意两相对调，磁场反着转，电机就反转。外壳必须接 PE（保护接地）。', I);
   const ph = txt(g, 110, 276, '', 'lb2', 'middle');
   ph.style.fontSize = '7.5px';
   UPD.push(function(s){
@@ -495,177 +508,244 @@ function buildMain(){
 const HEAT_EL = [];
 let MAIN_ARROW = null;
 
-/* ================= 实物台 ================= */
+/* ================= 实物台（照考板 K32 的端子和 14 根控制线） ================= */
 const PH = ['#e8b800', '#2f9e44', '#d62828'];   /* 国标相色 L1 黄 L2 绿 L3 红 */
+const CW = '#2b3036', CLIVE = '#d62828', GREY = '#8a929b';
 const RFLOW = [];
 let R = {};
-function rwire(g, d, color, fn){
-  const w = mk('path', {d:d, class:'rw', stroke:typeof color === 'function' ? '#8a929b' : color}, g);
+/* color：固定颜色 / 函数（随状态变）/ 'C' 控制线（平时黑，有电流变红） */
+function rwire(g, d, color, fn, fade){
+  const ctlw = color === 'C';
+  const w = mk('path', {d:d, class:'rw', stroke:ctlw ? CW : (typeof color === 'function' ? GREY : color)}, g);
+  if(ctlw) w.style.strokeWidth = '1.7';
   const an = mk('path', {d:d, class:'rant' + (color === PH[0] ? ' dk' : '')}, g);
-  RFLOW.push({w:w, an:an, color:color, fn:fn});
+  RFLOW.push({w:w, an:an, color:color, fn:fn, fade:fade});
 }
-function screw(g, x, y, fill){
-  mk('circle', {cx:x, cy:y, r:4.6, fill:fill || '#c9ced4', stroke:'#6b7280', 'stroke-width':.8}, g);
-  mk('line', {x1:x-2.6, y1:y, x2:x+2.6, y2:y, stroke:'#555', 'stroke-width':1}, g);
+function screw(g, x, y, fill, r){
+  r = r || 4.6;
+  mk('circle', {cx:x, cy:y, r:r, fill:fill || '#c9ced4', stroke:'#6b7280', 'stroke-width':.8}, g);
+  mk('line', {x1:x-r*0.56, y1:y, x2:x+r*0.56, y2:y, stroke:'#555', 'stroke-width':1}, g);
 }
 function rinfo(g, html){
   g.style.cursor = 'pointer';
   g.addEventListener('click', function(){ document.getElementById('infoR').innerHTML = html; });
 }
+function lab(g, x, y, s, fill, size, anchor){
+  const t = txt(g, x, y, s, 'lb2', anchor || 'middle');
+  t.style.fill = fill; t.style.fontSize = (size || 5.5) + 'px';
+  return t;
+}
+const TBY = n => 28 + (n - 1) * 13;         /* 端子排第 n 位的 y */
 function buildReal(){
   const g = document.getElementById('real');
   const defs = mk('defs', {}, g);
   defs.innerHTML =
     '<radialGradient id="gG" cx=".4" cy=".35"><stop offset="0" stop-color="#7ee08f"/><stop offset="1" stop-color="#1f7a33"/></radialGradient>' +
-    '<radialGradient id="gB" cx=".4" cy=".35"><stop offset="0" stop-color="#6f8fd0"/><stop offset="1" stop-color="#1c3264"/></radialGradient>' +
+    '<radialGradient id="gY" cx=".4" cy=".35"><stop offset="0" stop-color="#ffe08a"/><stop offset="1" stop-color="#b8860b"/></radialGradient>' +
     '<radialGradient id="gR" cx=".4" cy=".35"><stop offset="0" stop-color="#ff8a80"/><stop offset="1" stop-color="#a31b1b"/></radialGradient>' +
     '<linearGradient id="gM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5d8fd6"/><stop offset=".5" stop-color="#3b6fb6"/><stop offset="1" stop-color="#28518c"/></linearGradient>' +
     '<linearGradient id="gK" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a5057"/><stop offset="1" stop-color="#30353a"/></linearGradient>';
-  const X = [40, 64, 88], X2 = [144, 168, 192];
-  const wires = mk('g', {}, g);
+  const X = [36, 56, 76], X2 = [150, 170, 190];
+  const mainW = mk('g', {}, g);
   const parts = mk('g', {}, g);
+  const ctlW = mk('g', {}, g);         /* 控制线画在元件上面，跟考板上一样从面板前面走 */
+  const tops = mk('g', {}, g);         /* 控制端子螺钉压在线头上 */
 
-  /* 进线 */
+  /* ── 进线 + QF ── */
   ['L1','L2','L3'].forEach((n, i) => { txt(parts, X[i], 9, n, 'lb', 'middle').style.fill = i === 0 ? '#b38f00' : PH[i]; });
   const pc = s => pw(s) || ctl(s);
-  rwire(wires, 'M40 18V36', PH[0], pc); rwire(wires, 'M64 18V36', PH[1], pc); rwire(wires, 'M88 18V36', PH[2], pw);
-  X.forEach((x, i) => mk('circle', {cx:x, cy:17, r:3.2, fill:PH[i], stroke:'#555', 'stroke-width':.6}, parts));
-
-  /* QF */
+  rwire(mainW, 'M36 17V35', PH[0], pc); rwire(mainW, 'M56 17V35', PH[1], pc); rwire(mainW, 'M76 17V35', PH[2], pw);
+  X.forEach((x, i) => mk('circle', {cx:x, cy:17, r:3, fill:PH[i], stroke:'#555', 'stroke-width':.6}, parts));
   const qf = mk('g', {}, parts);
-  mk('rect', {x:26, y:27, width:76, height:72, rx:4, fill:'#f4f4f1', stroke:'#b8bcc2'}, qf);
-  X.forEach(x => { screw(qf, x, 36); screw(qf, x, 90); });
-  mk('rect', {x:31, y:50, width:66, height:30, rx:3, fill:'#dfe1e3', stroke:'#c3c7cc'}, qf);
+  mk('rect', {x:22, y:27, width:68, height:72, rx:4, fill:'#f4f4f1', stroke:'#b8bcc2'}, qf);
+  X.forEach(x => { screw(qf, x, 35); screw(qf, x, 91); });
+  mk('rect', {x:26, y:50, width:60, height:30, rx:3, fill:'#dfe1e3', stroke:'#c3c7cc'}, qf);
   R.qfH = mk('g', {}, qf);
-  mk('rect', {x:34, y:0, width:60, height:12, rx:2.5, fill:'#2b6cb0', stroke:'#1d4f86'}, R.qfH);
-  mk('rect', {x:34, y:0, width:60, height:4, rx:2, fill:'rgba(255,255,255,.35)'}, R.qfH);
-  txt(qf, 64, 47, 'DZ47  C16', 'lb2', 'middle');
-  txt(parts, 12, 60, 'QF', 'lb', 'middle');
-  R.qfT = txt(parts, 12, 72, '分', 'lb2', 'middle');
+  mk('rect', {x:28, y:0, width:56, height:12, rx:2.5, fill:'#2b6cb0', stroke:'#1d4f86'}, R.qfH);
+  mk('rect', {x:28, y:0, width:56, height:4, rx:2, fill:'rgba(255,255,255,.35)'}, R.qfH);
+  lab(qf, 56, 47, 'DZ47  C16', '#666', 5.5);
+  txt(parts, 10, 60, 'QF', 'lb', 'middle');
+  R.qfT = txt(parts, 10, 72, '分', 'lb2', 'middle');
   qf.classList.add('press');
   qf.addEventListener('click', function(){ toggleQF(); });
 
-  /* 断路器下口 → FU1 */
-  rwire(wires, 'M40 90V122', PH[0], pw); rwire(wires, 'M64 90V122', PH[1], pw); rwire(wires, 'M88 90V122', PH[2], pw);
-  /* 断路器下口 → FU2（控制回路取电） */
-  rwire(wires, 'M40 90Q44 102 52 104H140V122', PH[0], ctl);
-  rwire(wires, 'M64 90Q68 98 76 100H164V122', PH[1], ctl);
+  /* QF 下口 → FU1；QF 下口 L1、L2 → 4 号、5 号 */
+  rwire(mainW, 'M36 91V120', PH[0], pw); rwire(mainW, 'M56 91V120', PH[1], pw); rwire(mainW, 'M76 91V120', PH[2], pw);
+  rwire(mainW, 'M36 91Q40 101 48 103H112V120', PH[0], ctl);
+  rwire(mainW, 'M56 91Q60 97 66 99H134V120', PH[1], ctl);
 
-  /* 熔断器 */
-  function holder(x, blownIdx){
+  /* ── 熔断器 ── */
+  function holder(x){
     const h = mk('g', {}, parts);
-    mk('rect', {x:x-10, y:114, width:20, height:70, rx:3, fill:'#f1f1ee', stroke:'#b8bcc2'}, h);
-    screw(h, x, 122); screw(h, x, 176);
-    mk('rect', {x:x-7, y:134, width:14, height:32, rx:2, fill:'#e3e4e0', stroke:'#a7abb0'}, h);
-    const ind = mk('circle', {cx:x, cy:150, r:3.6, fill:'#aab2bb'}, h);
+    mk('rect', {x:x-9, y:112, width:18, height:72, rx:3, fill:'#f1f1ee', stroke:'#b8bcc2'}, h);
+    screw(h, x, 120); screw(h, x, 176);
+    mk('rect', {x:x-6, y:132, width:12, height:32, rx:2, fill:'#e3e4e0', stroke:'#a7abb0'}, h);
+    const ind = mk('circle', {cx:x, cy:148, r:3.3, fill:'#aab2bb'}, h);
     return ind;
   }
   R.fu = X.map(x => holder(x));
-  X2.slice(0, 2).forEach((_, i) => holder([140, 164][i]));
-  txt(parts, 12, 152, 'FU1', 'lb', 'middle');
-  txt(parts, 180, 146, 'FU2', 'lb');
-  txt(parts, 180, 156, '控制回路', 'lb2');
-  rinfo(R.fu[0].parentNode, '<b>FU1 主电路熔断器</b>（RT18 型）：熔体烧断时指示点会变红。换熔断器前必须先断开 QF。');
+  const f4 = holder(112), f5 = holder(134);
+  txt(parts, 12, 150, 'FU1', 'lb', 'middle');
+  txt(parts, 150, 136, 'FU2', 'lb');
+  lab(parts, 150, 147, '4号接 L1', '#8b96a1', 6, 'start');
+  lab(parts, 150, 156, '5号接 L2', '#8b96a1', 6, 'start');
+  rinfo(R.fu[0].parentNode, '<b>FU1 主电路熔断器</b>（RT18）：熔体烧断时指示点变红。换熔断器前必须先断开 QF。');
+  rinfo(f4.parentNode, '<b>4 号熔断器</b>（接 L1）：控制回路从这里出发，直接进 KM1-A1。');
+  rinfo(f5.parentNode, '<b>5 号熔断器</b>（接 L2）：控制回路的终点，从 FR-95 回到这里。');
 
-  /* FU1 → KM1 上口，KM1 上口 → KM2 上口（并联跳线） */
-  rwire(wires, 'M40 176V228', PH[0], pw); rwire(wires, 'M64 176V228', PH[1], pw); rwire(wires, 'M88 176V228', PH[2], pw);
-  rwire(wires, 'M88 228V200H192V228', PH[2], m2);
-  rwire(wires, 'M64 228V206H168V228', PH[1], m2);
-  rwire(wires, 'M40 228V212H144V228', PH[0], m2);
+  /* ── 主电路：FU1 → KM1；KM1 上口 → KM2 上口（L1、L3 对调） ── */
+  rwire(mainW, 'M36 176V196', PH[0], pw); rwire(mainW, 'M56 176V201', PH[1], pw); rwire(mainW, 'M76 176V206', PH[2], pw);
+  rwire(mainW, 'M36 196V232', PH[0], m1); rwire(mainW, 'M56 201V232', PH[1], m1); rwire(mainW, 'M76 206V232', PH[2], m1);
+  rwire(mainW, 'M36 196H190V232', PH[0], m2);
+  rwire(mainW, 'M56 201H170V232', PH[1], m2);
+  rwire(mainW, 'M76 206H150V232', PH[2], m2);
 
-  /* 接触器 */
-  function contactor(x0, xs, name, k){
+  /* ── 接触器：主触点 3 对 + 右侧 13·21·A1（上）/ 14·22·A2（下） ── */
+  function contactor(x0, name, k){
     const c = mk('g', {}, parts);
-    mk('rect', {x:x0, y:220, width:88, height:90, rx:5, fill:'url(#gK)', stroke:'#202428'}, c);
-    mk('rect', {x:x0+3, y:222, width:82, height:14, rx:3, fill:'#262a2e'}, c);
-    mk('rect', {x:x0+3, y:294, width:82, height:14, rx:3, fill:'#262a2e'}, c);
-    xs.forEach(x => { screw(c, x, 228, '#e0893a'); screw(c, x, 302, '#e0893a'); });
-    mk('rect', {x:x0+14, y:242, width:60, height:14, rx:2, fill:'#eceef0'}, c);
-    txt(c, x0+44, 252.5, name, 'lb', 'middle').style.fontSize = '9px';
-    mk('rect', {x:x0+30, y:262, width:28, height:18, rx:2, fill:'#15181b', stroke:'#555'}, c);
-    const sl = mk('rect', {x:x0+33, y:264, width:22, height:7, rx:1.5, fill:'#e9ecef'}, c);
-    const st = txt(c, x0+44, 290, '释放', 'lb2', 'middle');
-    st.style.fill = '#c9ced4';
-    rinfo(c, '<b>' + name + ' 交流接触器</b>（CJX2）：中间小窗里那块白色的是衔铁带动的指示块，<b>线圈得电会被吸下去</b>，同时带动上面三对主触点和辅助触点一起动作。上排是进线（1/L1 3/L2 5/L3），下排是出线（2/T1 4/T2 6/T3）。');
-    return {sl:sl, st:st, k:k};
+    mk('rect', {x:x0, y:224, width:104, height:110, rx:5, fill:'url(#gK)', stroke:'#202428'}, c);
+    mk('rect', {x:x0+3, y:226, width:98, height:13, rx:3, fill:'#262a2e'}, c);
+    mk('rect', {x:x0+3, y:319, width:98, height:13, rx:3, fill:'#262a2e'}, c);
+    [20, 40, 60].forEach(dx => { screw(c, x0+dx, 232, '#e0893a'); screw(c, x0+dx, 326, '#e0893a'); });
+    lab(c, x0+40, 247, '1/L1  3/L2  5/L3', '#aeb4bb', 5);
+    lab(c, x0+40, 316, '2/T1  4/T2  6/T3', '#aeb4bb', 5);
+    [['13', 74], ['21', 86], ['A1', 98]].forEach(p => lab(c, x0+p[1], 247, p[0], '#e9ecef', 5.5));
+    [['14', 74], ['22', 86], ['A2', 98]].forEach(p => lab(c, x0+p[1], 316, p[0], '#e9ecef', 5.5));
+    mk('rect', {x:x0+8, y:254, width:56, height:14, rx:2, fill:'#eceef0'}, c);
+    txt(c, x0+36, 264.5, name, 'lb', 'middle').style.fontSize = '9px';
+    mk('rect', {x:x0+22, y:274, width:28, height:18, rx:2, fill:'#15181b', stroke:'#555'}, c);
+    const sl = mk('rect', {x:x0+25, y:276, width:22, height:7, rx:1.5, fill:'#e9ecef'}, c);
+    const st = lab(c, x0+36, 302, '释放', '#c9ced4', 6.5);
+    rinfo(c, '<b>' + name + ' 交流接触器</b>（CJX2）：小窗里白色的是衔铁带动的指示块，<b>线圈得电会被吸下去</b>，同时带动三对主触点和辅助触点一起动作。<br>' +
+      '左边三对是主触点（上进下出）；右边上排 <b>13 · 21 · A1</b>、下排 <b>14 · 22 · A2</b>：13-14 动合（自锁用）、21-22 动断（互锁用）、A1-A2 线圈。<b>接之前认准号，别凭位置猜。</b>');
+    const t = mk('g', {}, tops);
+    [74, 86, 98].forEach(dx => { screw(t, x0+dx, 232, '#c9ced4', 3.6); screw(t, x0+dx, 326, '#c9ced4', 3.6); });
+    const jp = mk('path', {d:`M${x0+86} 236V322`, fill:'none', stroke:'#7048e8', 'stroke-width':2, 'stroke-dasharray':'3 2'}, t);
+    return {sl:sl, st:st, k:k, jp:jp};
   }
-  R.km = [contactor(20, X, 'KM1', 'km1'), contactor(124, X2, 'KM2', 'km2')];
+  R.km = [contactor(16, 'KM1', 'km1'), contactor(130, 'KM2', 'km2')];
 
-  /* KM1 出线直下 FR；KM2 出线交叉：T1(L1) → FR 右（W），T3(L3) → FR 左（U） */
-  rwire(wires, 'M40 302V354', PH[0], m1); rwire(wires, 'M64 302V354', PH[1], m1); rwire(wires, 'M88 302V354', PH[2], m1);
-  rwire(wires, 'M144 302V318H94V350', PH[0], m2);
-  rwire(wires, 'M168 302V326H70V350', PH[1], m2);
-  rwire(wires, 'M192 302V334H46V350', PH[2], m2);
+  /* ── 主电路：KM2 出线并到 KM1 出线 → FR；出线颜色随「接的是哪一相」变 ── */
+  const uCol = s => s.km1 && !s.km2 ? PH[0] : (s.km2 && !s.km1 ? PH[2] : GREY);
+  const vCol = s => (s.km1 || s.km2) ? PH[1] : GREY;
+  const wCol = s => s.km1 && !s.km2 ? PH[2] : (s.km2 && !s.km1 ? PH[0] : GREY);
+  rwire(mainW, 'M36 326V344', PH[0], m1); rwire(mainW, 'M56 326V348', PH[1], m1); rwire(mainW, 'M76 326V352', PH[2], m1);
+  rwire(mainW, 'M150 326V344H36', PH[2], m2);      /* KM2 的 1/L1 进的是 L3，所以 2/T1 出来也是 L3 */
+  rwire(mainW, 'M170 326V348H56', PH[1], m2);
+  rwire(mainW, 'M190 326V352H76', PH[0], m2);
+  rwire(mainW, 'M36 344V372', uCol, pw); rwire(mainW, 'M56 348V372', vCol, pw); rwire(mainW, 'M76 352V372', wCol, pw);
 
-  /* FR */
+  /* ── FR ── */
   const fr = mk('g', {}, parts);
-  mk('rect', {x:20, y:346, width:88, height:52, rx:4, fill:'url(#gK)', stroke:'#202428'}, fr);
-  X.forEach(x => { screw(fr, x, 354, '#e0893a'); screw(fr, x, 390, '#e0893a'); });
-  mk('rect', {x:28, y:366, width:50, height:7, rx:2, fill:'#555b62'}, fr);
-  R.heat = mk('rect', {x:28, y:366, width:0, height:7, rx:2, fill:'#f08c00'}, fr);
-  R.trip = mk('rect', {x:82, y:364, width:8, height:9, rx:1.5, fill:'#555b62'}, fr);
-  txt(parts, 10, 374, 'FR', 'lb', 'middle');
-  rinfo(fr, '<b>FR 热继电器</b>：三个发热元件串在主电路里。中间那条是发热程度（示意）。过载跳闸时右边的橙色标志会弹出来，冷却后按蓝色按钮复位。');
+  mk('rect', {x:16, y:364, width:104, height:52, rx:4, fill:'url(#gK)', stroke:'#202428'}, fr);
+  X.forEach(x => { screw(fr, x, 372, '#e0893a'); screw(fr, x, 408, '#e0893a'); });
+  mk('rect', {x:24, y:386, width:44, height:6, rx:2, fill:'#555b62'}, fr);
+  R.heat = mk('rect', {x:24, y:386, width:0, height:6, rx:2, fill:'#f08c00'}, fr);
+  R.trip = mk('rect', {x:74, y:384, width:8, height:9, rx:1.5, fill:'#555b62'}, fr);
+  lab(fr, 110, 369, '96', '#e9ecef', 5.5);
+  lab(fr, 110, 412, '95', '#e9ecef', 5.5);
+  txt(parts, 8, 392, 'FR', 'lb', 'middle');
+  rinfo(fr, '<b>FR 热继电器</b>：三个发热元件串在主电路里；右边 <b>96-95</b> 是它的动断触点，串在控制回路里（端子排 12 → 96，95 → 5 号熔断器）。中间那条是发热程度（示意），过载跳闸时橙色标志弹出，冷却后按蓝色按钮复位。');
   const rst = mk('g', {class:'press'}, parts);
-  mk('circle', {cx:99, cy:369, r:6.5, fill:'#1971c2', stroke:'#0b4a8a'}, rst);
-  mk('circle', {cx:97.5, cy:367.5, r:2.2, fill:'rgba(255,255,255,.45)'}, rst);
+  mk('circle', {cx:92, cy:399, r:5.5, fill:'#1971c2', stroke:'#0b4a8a'}, rst);
+  mk('circle', {cx:90.8, cy:397.8, r:1.8, fill:'rgba(255,255,255,.45)'}, rst);
   rst.addEventListener('click', function(ev){ ev.stopPropagation(); frReset(); });
+  const ft = mk('g', {}, tops);
+  screw(ft, 110, 376, '#c9ced4', 3.6); screw(ft, 110, 400, '#c9ced4', 3.6);
 
-  /* FR → 电动机。出线颜色跟着「现在接的是哪一相」变 */
-  const uCol = s => s.km1 && !s.km2 ? PH[0] : (s.km2 && !s.km1 ? PH[2] : '#8a929b');
-  const vCol = s => (s.km1 || s.km2) ? PH[1] : '#8a929b';
-  const wCol = s => s.km1 && !s.km2 ? PH[2] : (s.km2 && !s.km1 ? PH[0] : '#8a929b');
-  rwire(wires, 'M88 390V410H160V368H193', wCol, pw);
-  rwire(wires, 'M64 390V418H168V386H193', vCol, pw);
-  rwire(wires, 'M40 390V426H176V404H193', uCol, pw);
+  /* ── FR → 电动机 ── */
+  rwire(mainW, 'M76 408V424H140V456H173', wCol, pw);
+  rwire(mainW, 'M56 408V430H148V473H173', vCol, pw);
+  rwire(mainW, 'M36 408V436H156V490H173', uCol, pw);
 
-  /* 电动机 */
+  /* ── 电动机 + PE ── */
   const mo = mk('g', {}, parts);
-  mk('rect', {x:212, y:414, width:66, height:10, rx:2, fill:'#1f3f6e'}, mo);
-  mk('rect', {x:200, y:356, width:92, height:60, rx:9, fill:'url(#gM)', stroke:'#1f3f6e'}, mo);
-  for(let x = 214; x < 290; x += 8) mk('line', {x1:x, y1:360, x2:x, y2:412, stroke:'rgba(255,255,255,.18)', 'stroke-width':2}, mo);
-  mk('rect', {x:226, y:372, width:40, height:24, rx:2, fill:'#e9ecef'}, mo);
-  txt(mo, 246, 382, '三相异步', 'lb2', 'middle').style.fill = '#333';
-  txt(mo, 246, 391, '电动机', 'lb2', 'middle').style.fill = '#333';
-  mk('rect', {x:184, y:358, width:18, height:56, rx:2, fill:'#9aa3ad', stroke:'#6b7280'}, mo);
-  [[368,'W'],[386,'V'],[404,'U']].forEach(p => {
-    mk('circle', {cx:193, cy:p[0], r:3.6, fill:'#c9a227', stroke:'#7a6212'}, mo);
-    txt(mo, 207, p[0]+2.5, p[1], 'lb').style.fill = '#fff';
+  mk('rect', {x:192, y:500, width:70, height:9, rx:2, fill:'#1f3f6e'}, mo);
+  mk('rect', {x:182, y:444, width:92, height:56, rx:9, fill:'url(#gM)', stroke:'#1f3f6e'}, mo);
+  for(let x = 196; x < 272; x += 8) mk('line', {x1:x, y1:448, x2:x, y2:496, stroke:'rgba(255,255,255,.18)', 'stroke-width':2}, mo);
+  mk('rect', {x:208, y:458, width:40, height:24, rx:2, fill:'#e9ecef'}, mo);
+  lab(mo, 228, 468, '三相异步', '#333', 6);
+  lab(mo, 228, 477, '电动机', '#333', 6);
+  mk('rect', {x:164, y:446, width:18, height:54, rx:2, fill:'#9aa3ad', stroke:'#6b7280'}, mo);
+  [[456,'W'],[473,'V'],[490,'U']].forEach(p => {
+    mk('circle', {cx:173, cy:p[0], r:3.6, fill:'#c9a227', stroke:'#7a6212'}, mo);
+    txt(mo, 188, p[0]+2.5, p[1], 'lb').style.fill = '#fff';
   });
-  mk('circle', {cx:318, cy:387, r:29, fill:'#c3c9d0', stroke:'#7b848e'}, mo);
-  mk('circle', {cx:318, cy:387, r:25, fill:'#eef1f4'}, mo);
-  R.blur = mk('circle', {cx:318, cy:387, r:23, fill:'#f5b041', opacity:0}, mo);
+  mk('circle', {cx:312, cy:472, r:29, fill:'#c3c9d0', stroke:'#7b848e'}, mo);
+  mk('circle', {cx:312, cy:472, r:25, fill:'#eef1f4'}, mo);
+  R.blur = mk('circle', {cx:312, cy:472, r:23, fill:'#f5b041', opacity:0}, mo);
   R.fan = mk('g', {}, mo);
   for(let i = 0; i < 3; i++){
-    mk('path', {d:'M318 387C312 378 312 366 318 364C326 366 327 378 318 387Z', fill:'#f39c12', stroke:'#b9770e', 'stroke-width':.6,
-      transform:`rotate(${i*120} 318 387)`}, R.fan);
+    mk('path', {d:'M312 472C306 463 306 451 312 449C320 451 321 463 312 472Z', fill:'#f39c12', stroke:'#b9770e', 'stroke-width':.6,
+      transform:`rotate(${i*120} 312 472)`}, R.fan);
   }
-  mk('circle', {cx:318, cy:387, r:4, fill:'#555'}, mo);
+  mk('circle', {cx:312, cy:472, r:4, fill:'#555'}, mo);
   R.arr = mk('g', {opacity:0}, mo);
-  mk('path', {d:'M292 366A34 34 0 0 1 344 366', fill:'none', stroke:'#d62828', 'stroke-width':2.2}, R.arr);
-  mk('path', {d:'M344 366l-1.1-6.9M344 366l-6.5-2.5', fill:'none', stroke:'#d62828', 'stroke-width':2.2, 'stroke-linecap':'round'}, R.arr);
-  R.mTxt = txt(parts, 318, 432, '停', 'lb', 'middle');
-  R.mSub = txt(parts, 318, 442, '', 'lb2', 'middle');
-  rinfo(mo, '<b>三相异步电动机</b>（示意）：右边是从风扇端看过去的样子。正转时风扇顺时针，反转时逆时针。左边接线盒里 U V W 三根线的颜色，表示它这一刻接的是哪一相。');
+  mk('path', {d:'M286 451A34 34 0 0 1 338 451', fill:'none', stroke:'#d62828', 'stroke-width':2.2}, R.arr);
+  mk('path', {d:'M338 451l-1.2-6.9M338 451l-6.6-2.4', fill:'none', stroke:'#d62828', 'stroke-width':2.2, 'stroke-linecap':'round'}, R.arr);
+  R.mTxt = txt(parts, 312, 516, '停', 'lb', 'middle');
+  R.mSub = txt(parts, 312, 526, '', 'lb2', 'middle');
+  rinfo(mo, '<b>三相异步电动机</b>（示意）：右边是从风扇端看过去的样子，正转顺时针、反转逆时针。左边接线盒里 U V W 三根线的颜色，表示它这一刻接的是哪一相。外壳用黄绿线接 PE。');
+  const pe = mk('g', {}, parts);
+  mk('path', {d:'M262 504V516H38V494', fill:'none', stroke:'#2f9e44', 'stroke-width':2.8, 'stroke-linejoin':'round'}, pe);
+  mk('path', {d:'M262 504V516H38V494', fill:'none', stroke:'#e8b800', 'stroke-width':2.8, 'stroke-dasharray':'5 5', 'stroke-linejoin':'round'}, pe);
+  mk('rect', {x:18, y:476, width:40, height:18, rx:2, fill:'#c9a227', stroke:'#7a6212'}, pe);
+  [28, 38, 48].forEach(x => screw(pe, x, 485, '#e3c35a', 3.6));
+  lab(pe, 38, 472, '接地排 PE', '#5b6570', 6);
+  screw(pe, 262, 504, '#c9ced4', 3);
+  rinfo(pe, '<b>PE 保护接地</b>：电机外壳用黄绿双色线接到接地排。万一绕组漏电碰壳，电流经 PE 走掉、让保护动作，人摸外壳不会触电。<b>实操考试漏接 PE 是大忌。</b>');
 
-  /* 按钮盒：上 SB3 红（停止）、中 SB2 蓝（反转）、下 SB1 绿（正转） */
+  /* ── 端子排 1-12（蓝管＝动合对、红管＝动断对）+ 按钮盒 ── */
+  const tb = mk('g', {}, parts);
+  mk('rect', {x:272, y:18, width:30, height:162, rx:3, fill:'#3a3f45', stroke:'#202428'}, tb);
+  for(let n = 1; n <= 12; n++){
+    const y = TBY(n), no = (n - 1) % 4 < 2;
+    mk('rect', {x:290, y:y-4.5, width:11, height:9, rx:1.5, fill:no ? '#2b6cb0' : '#c0392b'}, tb);
+    lab(tb, 295.5, y + 2.2, String(n), '#fff', 6);
+  }
+  rinfo(tb, '<b>端子排 1-12</b>：按钮盒里的线出厂就接到这里。4 位一组：<b>1-4 正转 SB2、5-8 反转 SB3、9-12 停止 SB1</b>；每组前两位（蓝管）是动合、后两位（红管）是动断。<br>这题用到 1、2、5、6、11、12；3、4、7、8、9、10 空着。左边两根短线是跳线：11→1、1→5，把三位并成公共点。');
+  const tbT = mk('g', {}, tops);
+  for(let n = 1; n <= 12; n++) screw(tbT, 284, TBY(n), '#c9ced4', 3.6);
+
   const bx = mk('g', {}, parts);
-  mk('rect', {x:254, y:118, width:94, height:186, rx:9, fill:'#2c2f33', stroke:'#15171a'}, bx);
-  txt(parts, 301, 112, '按钮盒', 'lb2', 'middle');
+  mk('rect', {x:304, y:16, width:72, height:168, rx:9, fill:'#2c2f33', stroke:'#15171a'}, bx);
+  txt(parts, 340, 12, '按钮盒', 'lb2', 'middle');
   R.btn = {};
-  [[3, 162, 'url(#gR)', '停止'], [2, 214, 'url(#gB)', '反转'], [1, 266, 'url(#gG)', '正转']].forEach(function(p){
-    const n = p[0], y = p[1];
-    txt(bx, 262, y - 2, 'SB' + n, 'lb').style.fill = '#fff';
-    txt(bx, 262, y + 9, p[3], 'lb2').style.fill = '#c9ced4';
+  /* 内部键 1=正转 2=反转 3=停止；考板上分别是 SB2（绿）、SB3（黄）、SB1（红） */
+  [[1, 'url(#gG)', 'SB2 正转'], [2, 'url(#gY)', 'SB3 反转'], [3, 'url(#gR)', 'SB1 停止']].forEach(function(p){
+    const n = p[0], y = (TBY(n*4 - 3) + TBY(n*4)) / 2 - 3;
+    lab(bx, 340, y + 25, p[2], '#e9ecef', 6.5);
     const bg = mk('g', {class:'press', 'data-sb':n}, bx);
-    mk('circle', {cx:318, cy:y, r:22, fill:'#aeb4bb', stroke:'#6b7280'}, bg);
-    mk('circle', {cx:318, cy:y, r:19, fill:'#50565d'}, bg);
+    mk('circle', {cx:340, cy:y, r:19, fill:'#aeb4bb', stroke:'#6b7280'}, bg);
+    mk('circle', {cx:340, cy:y, r:16.5, fill:'#50565d'}, bg);
     const cap = mk('g', {}, bg);
-    mk('circle', {cx:318, cy:y, r:16.5, fill:p[2]}, cap);
-    mk('ellipse', {cx:313, cy:y-6, rx:7, ry:4, fill:'rgba(255,255,255,.35)'}, cap);
+    mk('circle', {cx:340, cy:y, r:14, fill:p[1]}, cap);
+    mk('ellipse', {cx:336, cy:y-5, rx:6, ry:3.4, fill:'rgba(255,255,255,.35)'}, cap);
     R.btn[n] = {cap:cap, y:y};
     holdable(bg, n);
   });
+
+  /* ── 14 根控制线（跟接线训练器 K32 一一对应，编号就是那边的顺序） ──
+     KM1：13@90 21@102 A1@114（y232） / 14@90 22@102 A2@114（y326）
+     KM2：13@204 21@216 A1@228          / 14@204 22@216 A2@228
+     端子排第 n 位在 (284, TBY(n))；4号出线 (112,176)、5号出线 (134,176)；FR-96 (110,376)、FR-95 (110,400) */
+  const any = ctl, k1 = s => s.km1, k2 = s => s.km2;
+  const h1 = s => s.km1 && a1(s), h2 = s => s.km2 && a2(s);
+  const noHold = s => !s.selfhold;
+  rwire(ctlW, 'M112 176V230', 'C', any);                        /* 1  4号 → KM1-A1 */
+  rwire(ctlW, 'M116 232V214H228V232', 'C', k2);                         /* 2  KM1-A1 → KM2-A1 */
+  rwire(ctlW, 'M284 171H244V376H110', 'C', any);                        /* 3  端子排12 → FR-96 */
+  rwire(ctlW, 'M110 400H240V192H134V176', 'C', any);                    /* 4  FR-95 → 5号 */
+  rwire(ctlW, 'M284 80H236V188H88V232', 'C', s => h1(s) || h2(s));      /* 5  端子排5 → KM1-13 */
+  rwire(ctlW, 'M92 232V210H204V232', 'C', h2);                          /* 6  KM1-13 → KM2-13 */
+  rwire(ctlW, 'M90 326V356H248V41H284', 'C', h1, noHold);               /* 7  KM1-14 → 端子排2 */
+  rwire(ctlW, 'M204 326V362H256V93H284', 'C', h2, noHold);              /* 8  KM2-14 → 端子排6 */
+  rwire(ctlW, 'M114 326V342H123V218H216V232', 'C', k1);                 /* 9  KM1-A2 → KM2-21 */
+  rwire(ctlW, 'M216 326V365H260V44H284', 'C', k1);                      /* 10 KM2-22 → 端子排2 */
+  rwire(ctlW, 'M228 326V338H127V221H102V232', 'C', k2);                 /* 11 KM2-A2 → KM1-21 */
+  rwire(ctlW, 'M102 326V359H252V95H284', 'C', k2);                      /* 12 KM1-22 → 端子排6 */
+  rwire(ctlW, `M284 ${TBY(11)}H276V${TBY(1)}H284`, 'C', any);           /* 13 端子排11 → 1 */
+  rwire(ctlW, `M284 ${TBY(1)}H280V${TBY(5)}H284`, 'C', s => h1(s) || s.km2);  /* 14 端子排1 → 5 */
   R.shake = g;
 }
 
@@ -719,15 +799,20 @@ function step(cause){
   render();
 }
 
+/* 内部键 1=正转 2=反转 3=停止；考板 K32 上的编号 */
+const NM = {1:'SB2', 2:'SB3', 3:'SB1'};
+const TBN = {1:'端子排 2 → SB2 → 端子排 1', 2:'端子排 6 → SB3 → 端子排 5'};
+
 function kmOnText(n, spd){
   const o = n === 1 ? 2 : 1;
-  let b = `按下 SB${n} → 电流走 FR → SB3 → SB${n} → KM${o} 的动断 21-22 → KM${n} 线圈。线圈得电、衔铁吸下，<b>三组触点同时动作</b>：<br>`;
+  let b = `按下 ${NM[n]} → 电流从 4 号熔断器（L1）→ KM${n} 线圈 A1→A2 → KM${o} 的动断 21-22 → ${TBN[n]} → 公共点 → SB1（11-12）→ FR 96-95 → 5 号熔断器（L2）。` +
+    `线圈得电、衔铁吸下，<b>三组触点同时动作</b>：<br>`;
   b += n === 1
     ? '① 主触点闭合：U←L1、V←L2、W←L3，原相序接进电机 → <b>正转</b><br>'
-    : '① 主触点闭合：KM2 进出线之间 L1、L3 对调了，U←L3、V←L2、W←L1 → 相序反了，旋转磁场反着转 → <b>反转</b><br>';
-  b += S.selfhold ? `② 辅助动合 13-14 闭合：并在 SB${n} 上 → 松手也不停（自锁）<br>`
-                  : '② 自锁触点拆了 —— 松手试试会怎样<br>';
-  b += S.interlock ? `③ 辅助动断 21-22 断开：切断 KM${o} 线圈的路（互锁）`
+    : '① 主触点闭合：KM2 的进线把 L1、L3 对调了，U←L3、V←L2、W←L1 → 相序反了，旋转磁场反着转 → <b>反转</b><br>';
+  b += S.selfhold ? `② 动合 13-14 闭合：它并在 ${NM[n]} 两端 → 松手也不停（自锁）<br>`
+                  : '② 自锁的线拆了 —— 松手试试会怎样<br>';
+  b += S.interlock ? `③ 动断 21-22 断开：KM${o} 线圈的路被切断（互锁）`
                    : `③ 互锁拆了，KM${o} 那边没人挡着 ⚠`;
   if(!(S.fu1[0] && S.fu1[1] && S.fu1[2])) b += '<br><b>⚠ 但 FU1 已经烧了，主电路没电，电机不转。</b>';
   const nd = n === 1 ? 1 : -1;
@@ -744,7 +829,7 @@ function explain(cause, p1, p2, shorted, spd){
   if(shorted){
     done('short');
     say('warn', '💥 相间短路！FU1 烧了',
-      'KM1、KM2 同时吸合了。看主电路：L1 经 KM1 主触点、再经 KM2 主触点，直接连到了 L3 —— 中间没有任何负载，两根相线直接碰在一起。FU1 的 L1、L3 两只立刻熔断。<br>' +
+      'KM1、KM2 同时吸合了。看主电路：KM2 的进线是 L1、L3 对调的，出线又跟 KM1 并在一起 —— 两组主触点一合，L1 经 KM1 → 出线并联点 → KM2 → 直接连到了 L3，中间没有任何负载。FU1 的 L1、L3 两只立刻熔断。<br>' +
       '控制回路是在 FU1 前面取的电，所以两个接触器现在<b>还吸着</b>。<b>先断开 QF，再换熔断器。</b><br>' +
       '真实现场会拉弧、触点熔焊，严重的炸接触器 —— 所以正反转<b>必须</b>互锁。');
     return;
@@ -757,13 +842,13 @@ function explain(cause, p1, p2, shorted, spd){
       if(down){
         if(p1 || p2){
           done('stop');
-          say('info', '按下 SB3：停止',
-            'SB3 是动断按钮，串在控制回路最前面。按下 → 回路断开 → 接触器线圈失电 → 衔铁弹回：主触点断开（电机断电，靠惯性慢慢停），<b>自锁触点也断开</b>。');
+          say('info', '按下 SB1：停止',
+            'SB1 是动断按钮（端子排 11-12），两个线圈的电都要经过它。按下 → 回路断开 → 接触器线圈失电 → 衔铁弹回：主触点断开（电机断电，靠惯性慢慢停），<b>自锁触点也断开</b>。');
         } else if(!S.qf) say('info', '本来就没电', 'QF 没合。');
         else say('info', '本来就没在转', '按停止没有变化。');
       } else if(S.qf && !S.frTrip && !S.km1 && !S.km2){
-        say('info', '松开 SB3',
-          'SB3 恢复闭合了，但刚才自锁触点已经跟着断开，线圈回路还是不通 —— 所以电机<b>不会自己再启动</b>。要转得重新按 SB1 或 SB2。');
+        say('info', '松开 SB1',
+          'SB1 恢复闭合了，但刚才自锁触点已经跟着断开，线圈回路还是不通 —— 所以电机<b>不会自己再启动</b>。要转得重新按 SB2 或 SB3。');
       }
       return;
     }
@@ -772,15 +857,15 @@ function explain(cause, p1, p2, shorted, spd){
     const pN = n === 1 ? p1 : p2;
     if(down){
       if(!S.qf){ say('warn', '没反应：QF 没合', '控制回路没电，按什么都没用。先合闸。'); return; }
-      if(S.frTrip){ say('warn', '没反应：FR 跳闸了', 'FR 的动断触点 95-96 断开，整个控制回路不通。等它冷却，再按 FR 上的蓝色复位钮。'); return; }
-      if(S.sb[3]){ say('info', '停止按钮还按着', 'SB3 按下时控制回路是断的，先松开它。'); return; }
+      if(S.frTrip){ say('warn', '没反应：FR 跳闸了', 'FR 的动断触点 96-95 断开，整个控制回路不通。等它冷却，再按 FR 上的蓝色复位钮。'); return; }
+      if(S.sb[3]){ say('info', '停止按钮还按着', 'SB1 按下时控制回路是断的，先松开它。'); return; }
       if(onN){ kmOnText(n, spd); if(n === 2) done('rev'); return; }
       if(pN){ say('info', `KM${n} 本来就吸着`, '再按一次不会有变化。'); return; }
       if(kO && S.interlock){
         done('lock');
         say('info', '按了没反应 —— 这就是互锁',
-          `KM${o} 正吸着，它串在 KM${n} 线圈前面的动断触点 21-22 是<b>断开</b>的（看控制回路）。SB${n} 虽然接通了，电流到那儿就过不去，KM${n} 线圈得不到电。<br>` +
-          `这样两个接触器永远不会同时吸合。要换方向：<b>先按 SB3 停，等电机停稳，再按 SB${n}</b>。`);
+          `KM${o} 正吸着。KM${n} 线圈 A2 出来要先过 KM${o} 的动断 21-22，现在它是<b>断开</b>的（看控制回路）。${NM[n]} 虽然接通了，电流到那儿就过不去，KM${n} 线圈得不到电。<br>` +
+          `这样两个接触器永远不会同时吸合。要换方向：<b>先按 SB1 停，等电机停稳，再按 ${NM[n]}</b>。`);
       }
       return;
     }
@@ -788,11 +873,11 @@ function explain(cause, p1, p2, shorted, spd){
     if(kN && S.selfhold && S.sb[n] === false && !S.sb[o]){
       done(n === 1 ? 'fwd' : 'rev');
       say('ok', '松手了，它还在转 —— 自锁',
-        `SB${n} 弹开了，但 KM${n} 自己的辅助动合 13-14 已经闭合，就并在 SB${n} 两端（看控制回路里亮红的那条旁路）。电流改从它走，线圈继续得电，自己把自己「锁」住。`);
+        `${NM[n]} 弹开了，但 KM${n} 自己的动合 13-14 已经闭合：14 接${n === 1 ? '端子排 2' : '端子排 6'}、13 接公共点，正好并在 ${NM[n]} 两端（看实物台和控制回路里亮红的那条旁路）。电流改从它走，线圈继续得电，自己把自己「锁」住。`);
     } else if(pN && !kN && !S.selfhold){
       done('jog');
       say('info', '一松手就停 —— 变成点动了',
-        '自锁触点拆了，按钮一弹开线圈就断电。<b>这就是点动控制</b>：按住转、松手停（K31 那块板的点动就是这么来的）。去「故障实验」把自锁装回去。');
+        '自锁的线拆了，按钮一弹开线圈就断电。<b>这就是点动控制</b>：按住转、松手停（K31 那块板的点动就是这么来的）。去「故障实验」把自锁装回去。');
     }
     return;
   }
@@ -800,7 +885,7 @@ function explain(cause, p1, p2, shorted, spd){
   case 'qfOn':
     done('qf');
     say('ok', 'QF 合上了：送电',
-      '主电路的 L1 L2 L3 已经送到 KM1、KM2 主触点的上口，但主触点是断开的，电机还没电。<br>控制回路经 FU2 得电，一路走到 FR → SB3，停在 SB1、SB2 这两个<b>断开</b>的按钮前面。<br>下一步：<b>按住 SB1（正转）</b>，然后松手。');
+      '主电路的 L1 L2 L3 已经送到 KM1、KM2 主触点的上口，但主触点是断开的，电机还没电。<br>控制回路也有电了：4 号熔断器（L1）一路通到两个线圈、互锁触点，停在 SB2、SB3 这两个<b>断开</b>的启动按钮前面。<br>下一步：<b>按住 SB2（正转，绿）</b>，然后松手。');
     break;
   case 'qfOff':
     say('info', 'QF 断开：全部断电',
@@ -810,12 +895,12 @@ function explain(cause, p1, p2, shorted, spd){
   case 'trip':
     done('trip');
     say('warn', 'FR 动作：过载跳闸',
-      '电流大了一段时间，FR 里的双金属片受热弯曲，推开它在控制回路里的动断触点 <b>95-96</b> → 整个控制回路断开 → 接触器释放 → 电机停。<br>' +
+      '电流大了一段时间，FR 里的双金属片受热弯曲，推开它在控制回路里的动断触点 <b>96-95</b> → 整个控制回路断开 → 接触器释放 → 电机停。<br>' +
       '注意：FR 的发热元件串在<b>主电路</b>里「量」电流，但它断开的是<b>控制回路</b>。<br>等它冷却，按 FR 上的<b>蓝色复位钮</b>。');
     break;
   case 'frReset':
     S.afterReset = true;
-    say('ok', 'FR 复位了', '95-96 重新闭合。电机<b>不会自己启动</b>（自锁早就断了），要重新按启动按钮。');
+    say('ok', 'FR 复位了', '96-95 重新闭合。电机<b>不会自己启动</b>（自锁早就断了），要重新按启动按钮。');
     break;
   case 'fuse':
     done('fuse');
@@ -825,12 +910,12 @@ function explain(cause, p1, p2, shorted, spd){
   case 'lock':
     say(S.interlock ? 'ok' : 'warn', S.interlock ? '互锁装回去了' : '互锁拆掉了',
       S.interlock ? '两个 21-22 动断触点重新串进线圈回路。'
-        : '控制回路里两个 21-22 动断触点被短接了（看控制回路里橙色的跳线）。<br>现在试试：<b>先按 SB1 正转，再按 SB2</b> —— 看主电路会发生什么。');
+        : '两个接触器的 21-22 被短接了（实物台上接触器面板的紫色虚线、控制回路里的紫色跳线）。<br>现在试试：<b>先按 SB2 正转，再按 SB3</b> —— 看主电路会发生什么。');
     break;
   case 'hold':
     say('info', S.selfhold ? '自锁装回去了' : '自锁拆掉了',
-      S.selfhold ? '两个 13-14 自锁触点的线接回去了。'
-        : '两个 13-14 自锁触点的线拆了（控制回路里变淡的那两条）。<br>现在试试：<b>按住 SB1，再松手</b>。');
+      S.selfhold ? '两根自锁线接回去了。'
+        : '拆掉了两根自锁线：KM1-14 → 端子排 2、KM2-14 → 端子排 6（实物台和控制回路里变淡的那几条）。<br>现在试试：<b>按住 SB2，再松手</b>。');
     break;
   case 'all':
     say('info', '全部复位', '回到初始状态：断电、熔断器完好、互锁自锁都装着。任务进度保留。');
@@ -852,27 +937,30 @@ function render(){
   UPD.forEach(u => u(S));
   RFLOW.forEach(f => {
     const v = !!f.fn(S);
-    if(typeof f.color === 'function'){
+    if(f.color === 'C') f.w.setAttribute('stroke', v ? CLIVE : CW);
+    else if(typeof f.color === 'function'){
       const c = f.color(S);
       f.w.setAttribute('stroke', c);
       f.an.classList.toggle('dk', c === PH[0]);
     }
     f.an.classList.toggle('on', v);
+    if(f.fade){ const o = f.fade(S) ? 0.12 : 1; f.w.style.opacity = o; f.an.style.opacity = o; }
   });
   R.qfH.setAttribute('transform', `translate(0 ${S.qf ? 53 : 66})`);
   R.qfT.textContent = S.qf ? '合' : '分';
   R.fu.forEach((c, i) => c.setAttribute('fill', S.fu1[i] ? '#aab2bb' : '#e03131'));
   R.km.forEach(k => {
     const on = S[k.k];
-    k.sl.setAttribute('y', on ? 271 : 264);
+    k.sl.setAttribute('y', on ? 282 : 276);
+    k.jp.style.display = S.interlock ? 'none' : '';
     k.st.textContent = on ? '吸合' : '释放';
     k.st.style.fill = on ? '#ffd8a8' : '#c9ced4';
   });
-  R.trip.setAttribute('y', S.frTrip ? 357 : 364);
+  R.trip.setAttribute('y', S.frTrip ? 377 : 384);
   R.trip.setAttribute('fill', S.frTrip ? '#f59f00' : '#555b62');
   [1, 2, 3].forEach(n => {
     const b = R.btn[n];
-    b.cap.setAttribute('transform', S.sb[n] ? `translate(318 ${b.y}) scale(.88) translate(-318 ${-b.y})` : '');
+    b.cap.setAttribute('transform', S.sb[n] ? `translate(340 ${b.y}) scale(.86) translate(-340 ${-b.y})` : '');
     document.querySelector(`.bar button[data-sb="${n}"]`).classList.toggle('down', S.sb[n]);
   });
   const q = document.getElementById('bQf');
@@ -904,12 +992,12 @@ function frame(t){
   if(S.dir !== 0) S.speed += (S.dir - S.speed) * Math.min(1, dt * 1.6);
   else { S.speed *= Math.exp(-dt * 0.9); if(Math.abs(S.speed) < 0.004) S.speed = 0; }
   S.angle = (S.angle + S.speed * dt * 900) % 360;
-  R.fan.setAttribute('transform', `rotate(${S.angle.toFixed(1)} 318 387)`);
+  R.fan.setAttribute('transform', `rotate(${S.angle.toFixed(1)} 312 472)`);
   const as = Math.abs(S.speed);
   R.blur.setAttribute('opacity', (as * 0.45).toFixed(2));
   R.fan.setAttribute('opacity', (1 - as * 0.45).toFixed(2));
   R.arr.setAttribute('opacity', as > 0.05 ? Math.min(1, as * 1.5).toFixed(2) : 0);
-  R.arr.setAttribute('transform', S.speed < 0 ? 'translate(636 0) scale(-1 1)' : '');
+  R.arr.setAttribute('transform', S.speed < 0 ? 'translate(624 0) scale(-1 1)' : '');
   if(MAIN_ARROW){
     MAIN_ARROW.setAttribute('opacity', as > 0.05 ? 1 : 0);
     MAIN_ARROW.setAttribute('transform', S.speed < 0 ? 'translate(160 0) scale(-1 1)' : '');
@@ -918,7 +1006,7 @@ function frame(t){
   /* 过载发热 */
   if(S.load && S.dir !== 0) S.heat = Math.min(1, S.heat + dt / 2.5);
   else S.heat = Math.max(0, S.heat - dt / 7);
-  R.heat.setAttribute('width', (50 * S.heat).toFixed(1));
+  R.heat.setAttribute('width', (44 * S.heat).toFixed(1));
   R.heat.setAttribute('fill', S.heat > 0.8 ? '#e03131' : '#f08c00');
   HEAT_EL.forEach(f => f(S.heat));
   if(S.heat >= 1 && !S.frTrip){ S.frTrip = true; S.load = false; sndKM(false); step('trip'); }
@@ -986,9 +1074,9 @@ function buzz(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(_){} }
 /* ================= 任务 ================= */
 const TASKS = [
   ['qf',    '合上 QF 送电'],
-  ['fwd',   '按住 SB1 正转，再松手 —— 为什么还在转？（自锁）'],
-  ['stop',  '按 SB3 停下来'],
-  ['rev',   '按 SB2 反转，看实物台上电机那三根线的颜色换了哪两根'],
+  ['fwd',   '按住 SB2 正转，再松手 —— 为什么还在转？（自锁）'],
+  ['stop',  '按 SB1 停下来'],
+  ['rev',   '按 SB3 反转，看实物台上电机那三根线的颜色换了哪两根'],
   ['lock',  '正在转的时候按另一个方向 —— 为什么没反应？（互锁）'],
   ['plug',  '按停止后不等停稳马上反转（反接制动）'],
   ['trip',  '转着的时候「模拟过载」，看 FR 怎么让它停'],
