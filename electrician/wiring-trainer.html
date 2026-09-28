@@ -41,7 +41,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
    按钮一律 touch-action:manipulation —— 长按会弹出系统的选中/放大镜，
    而这里的核心交互恰恰就是长按（手机上实测踩到的） */
 .sbar{margin-bottom:10px}
-.sbtns{display:flex;gap:6px}
+.sbtns{display:flex;gap:6px;flex-wrap:wrap}
+.sbtns button.tg{flex:1 1 30%}
+.sbtns button.tg.on{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
 .sbtns button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--tx);
   border-radius:10px;padding:10px 4px;font-size:.8rem;font-weight:600;line-height:1.25;
   touch-action:manipulation;-webkit-user-select:none;user-select:none}
@@ -82,6 +84,10 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .wire.simw.live{stroke:#ff3b30;stroke-width:4.6;filter:drop-shadow(0 0 2.5px rgba(255,59,48,.75))}
 /* 带电按相色：黄＝接 4 号熔断器（L1）那头，绿＝接 5 号（L2）那头；有电流的再加粗发光 */
 .wire.simw.ph1{stroke:#e0a92e} .wire.simw.ph2{stroke:#3fa845}
+/* K33 是单相：相线红、零线蓝（跟板上线色一致） */
+svg[data-circ="k33"] .wire.simw.ph1{stroke:#e03131} svg[data-circ="k33"] .wire.simw.ph2{stroke:#1c7ed6}
+svg[data-circ="k33"] .wire.simw.live.ph1{stroke:#e03131;filter:drop-shadow(0 0 3px rgba(224,49,49,.8))}
+svg[data-circ="k33"] .wire.simw.live.ph2{stroke:#1c7ed6;filter:drop-shadow(0 0 3px rgba(28,126,214,.8))}
 .wire.simw.live.ph1{stroke:#e0a92e;filter:drop-shadow(0 0 3px rgba(224,169,46,.9))}
 .wire.simw.live.ph2{stroke:#3fa845;filter:drop-shadow(0 0 3px rgba(63,168,69,.9))}
 .sim-pull{display:none;pointer-events:none}
@@ -112,6 +118,18 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .sim-pill-g.ok text,.sim-pill-g.mid text,.sim-pill-g.warn text{fill:#fff}
 .sim-mst{font-size:12px;font-weight:700;fill:var(--tx2)}
 .sim-mst.on{font-size:18px;fill:#e03131}
+/* K33 的负载和开关（试车时由 simRender 加 .on） */
+.lamp-bulb{fill:#f1f3f5;stroke:#adb5bd;stroke-width:1.4;transition:fill .15s}
+.lamp-bulb.on{fill:#ffe066;stroke:#fab005;filter:drop-shadow(0 0 9px #ffd43b)}
+.tube{fill:#e9ecef;stroke:#adb5bd;stroke-width:1.2}
+.tube.on{fill:#fff;stroke:#74c0fc;filter:drop-shadow(0 0 7px #74c0fc)}
+.xs-led{fill:#868e96}
+.xs-led.on{fill:#fa5252;filter:drop-shadow(0 0 3px #fa5252)}
+.tog-lever{fill:#1c7ed6;transition:transform .2s;transform:translateY(7px)}
+.tog-lever.on{transform:translateY(-7px)}
+.sw-p1{display:none} [data-tog].on .sw-p0{display:none} [data-tog].on .sw-p1{display:inline}
+.meter-disk{transform-box:fill-box;transform-origin:center}
+.meter-disk.on{animation:simspin 1.2s linear infinite}
 .amp-needle{transform-box:fill-box;transform-origin:50% 100%;transform:rotate(-42deg);transition:transform .8s ease-out}
 .amp-needle.volt.live,.amp-needle.run{transform:rotate(6deg)}
 .amp-needle.run:nth-of-type(odd){transform:rotate(9deg)}
@@ -977,6 +995,180 @@ return { id:'k31', k:'K31',
          '⚠ 有 4 个端子要压两根线：<b>13NO、端子排 1、6、8</b> —— 两个冷压端子一起套上再拧'] };
 }
 
+/* ══ K33 单相电能表带照明设备的接线（整块板自己接 · 20 根）══════════════════
+   2026-09-28 他说「带电能表的都要自己接」。Notion 没有逐根记录，这 20 根是**我照原理图排的**：
+   原理图用考试模拟软件 K31-02 那张（他截图发的），元件照他 09-05 拍的板（相册「实物接线图」照片 0、3）：
+   左边一列 插座 + 三只开关（每只旁边一个小端子排），中间三只两极空开（QF2 带漏保），右上电能表，中间灯座，右边电子镇流器 + 日光灯管。
+     L → 电能表 1 →(表内)→ 2 → QF1 上口 L；N → 3 →(表内)→ 4 → QF1 上口 N
+     QF1 下口分两路：QF2（插座回路）、QF3（照明回路）
+     QF2 → 插座 L、N；电源 PE → 接地排 → 插座 PE
+     QF3 L → S1 公共端 L；S1 L1—S2 L1、S1 L2—S2 L2（联络线）；S2 L → 灯座 L；QF3 N → 灯座 N
+     QF3 L → S3 L；S3 L1 → 镇流器 L（原理图标「锡焊连接」）；QF3 N → 镇流器 N
+   线色照板上的规矩：相线红、零线蓝、PE 黄绿 */
+function defK33(){
+const DEVICES = [
+  {id:'pe', name:'接地排', sub:'', kind:'pebar', x:30, y:40, w:110, h:26,
+   terminals:[ {id:'pe-1', label:'PE', x:20, y:13}, {id:'pe-2', label:'PE', x:55, y:13}, {id:'pe-3', label:'PE', x:90, y:13} ]},
+  {id:'src', name:'电源进线', sub:'', kind:'src3', x:180, y:40, w:120, h:28,
+   terminals:[ {id:'src-l', label:'L', x:22, y:14}, {id:'src-n', label:'N', x:60, y:14}, {id:'src-pe', label:'PE', x:98, y:14} ]},
+  {id:'mt', name:'单相电能表', sub:'kWh', kind:'meter', x:380, y:20, w:150, h:124,
+   terminals:[ {id:'mt-1', label:'1', x:25, y:113}, {id:'mt-2', label:'2', x:60, y:113},
+               {id:'mt-3', label:'3', x:95, y:113}, {id:'mt-4', label:'4', x:130, y:113} ]},
+  {id:'qf1', name:'总开关 QF1', sub:'2P', kind:'mcb2', x:200, y:190, w:70, h:110,
+   terminals:[ {id:'qf1-li', label:'L', x:20, y:12}, {id:'qf1-ni', label:'N', x:50, y:12},
+               {id:'qf1-lo', label:'L', x:20, y:98}, {id:'qf1-no', label:'N', x:50, y:98} ]},
+  {id:'qf2', name:'插座 QF2（漏保）', sub:'2P', kind:'mcb2', rcd:true, x:290, y:190, w:104, h:110,
+   terminals:[ {id:'qf2-li', label:'L', x:20, y:12}, {id:'qf2-ni', label:'N', x:50, y:12},
+               {id:'qf2-lo', label:'L', x:20, y:98}, {id:'qf2-no', label:'N', x:50, y:98} ]},
+  {id:'qf3', name:'照明 QF3', sub:'2P', kind:'mcb2', x:414, y:190, w:70, h:110,
+   terminals:[ {id:'qf3-li', label:'L', x:20, y:12}, {id:'qf3-ni', label:'N', x:50, y:12},
+               {id:'qf3-lo', label:'L', x:20, y:98}, {id:'qf3-no', label:'N', x:50, y:98} ]},
+  {id:'xs', name:'五孔插座 XS', sub:'', kind:'xs', x:30, y:110, w:120, h:110,
+   terminals:[ {id:'xs-n', label:'N', x:25, y:13}, {id:'xs-pe', label:'PE', x:60, y:13}, {id:'xs-l', label:'L', x:95, y:13} ]},
+  {id:'s1', name:'双控开关 S1', sub:'', kind:'sw', two:true, x:30, y:260, w:120, h:100,
+   terminals:[ {id:'s1-l1', label:'L1', x:25, y:13}, {id:'s1-l', label:'L', x:60, y:13}, {id:'s1-l2', label:'L2', x:95, y:13} ]},
+  {id:'s2', name:'双控开关 S2', sub:'', kind:'sw', two:true, x:30, y:390, w:120, h:100,
+   terminals:[ {id:'s2-l1', label:'L1', x:25, y:13}, {id:'s2-l', label:'L', x:60, y:13}, {id:'s2-l2', label:'L2', x:95, y:13} ]},
+  {id:'s3', name:'单控开关 S3', sub:'', kind:'sw', x:30, y:520, w:120, h:100,
+   terminals:[ {id:'s3-l', label:'L', x:40, y:13}, {id:'s3-l1', label:'L1', x:80, y:13} ]},
+  {id:'el', name:'白炽灯 EL', sub:'', kind:'lamp', x:230, y:400, w:100, h:110,
+   terminals:[ {id:'el-l', label:'L', x:30, y:13}, {id:'el-n', label:'N', x:70, y:13} ]},
+  {id:'bal', name:'日光灯', sub:'', kind:'ballast', x:380, y:400, w:150, h:50,
+   terminals:[ {id:'bal-l', label:'L', x:22, y:13}, {id:'bal-n', label:'N', x:56, y:13} ]}
+];
+const TPOS = buildTPOS(DEVICES);
+const TLABEL = {
+  'src-l':'电源进线 L（相线）', 'src-n':'电源进线 N（零线）', 'src-pe':'电源进线 PE',
+  'pe-1':'接地排', 'pe-2':'接地排', 'pe-3':'接地排',
+  'mt-1':'电能表 1（进火）', 'mt-2':'电能表 2（出火）', 'mt-3':'电能表 3（进零）', 'mt-4':'电能表 4（出零）',
+  'qf1-li':'QF1 上口 L', 'qf1-ni':'QF1 上口 N', 'qf1-lo':'QF1 下口 L', 'qf1-no':'QF1 下口 N',
+  'qf2-li':'QF2 上口 L', 'qf2-ni':'QF2 上口 N', 'qf2-lo':'QF2 下口 L', 'qf2-no':'QF2 下口 N',
+  'qf3-li':'QF3 上口 L', 'qf3-ni':'QF3 上口 N', 'qf3-lo':'QF3 下口 L', 'qf3-no':'QF3 下口 N',
+  'xs-l':'插座 L（右孔·相线）', 'xs-n':'插座 N（左孔·零线）', 'xs-pe':'插座 PE（上孔·接地）',
+  's1-l':'S1 公共端 L', 's1-l1':'S1 L1', 's1-l2':'S1 L2',
+  's2-l':'S2 公共端 L', 's2-l1':'S2 L1', 's2-l2':'S2 L2',
+  's3-l':'S3 L（进）', 's3-l1':'S3 L1（出）',
+  'el-l':'灯座 L', 'el-n':'灯座 N', 'bal-l':'镇流器 L', 'bal-n':'镇流器 N'
+};
+const GROUPS = [
+  {id:1, name:'电能表进线', hint:'<b>1 进火 2 出火 3 进零 4 出零</b>：电源 L → 1，2 → QF1 上口 L；电源 N → 3，4 → QF1 上口 N'},
+  {id:2, name:'分路',       hint:'QF1 下口的 L、N 各引两根：一路去 QF2（插座），一路去 QF3（照明）。QF1 下口两个端子都要压两根线'},
+  {id:3, name:'插座回路',   hint:'QF2 下口 → 插座 L、N（<b>左零右火上接地</b>）；电源 PE → 接地排 → 插座 PE'},
+  {id:4, name:'双控白炽灯', hint:'QF3 L → S1 的 <b>L（公共端）</b>；S1 L1—S2 L1、S1 L2—S2 L2 两根联络线；S2 L → 灯座 L；QF3 N → 灯座 N。<b>开关一定接相线</b>'},
+  {id:5, name:'日光灯',     hint:'QF3 L → S3 的 L；S3 L1 → 镇流器 L（原理图上标「锡焊连接」）；QF3 N → 镇流器 N'}
+];
+const GCOLOR_HEX = {1:'#1f2328', 2:'#1f2328', 3:'#1f2328', 4:'#1f2328', 5:'#1f2328'};
+const WIRES = [
+  {id:1,  from:'src-l',  to:'mt-1',   group:1, waypoints:[[202,78],[372,78],[372,156],[405,156]]},
+  {id:2,  from:'mt-2',   to:'qf1-li', group:1, waypoints:[[440,170],[220,170]]},
+  {id:3,  from:'src-n',  to:'mt-3',   group:1, waypoints:[[240,84],[366,84],[366,162],[475,162]]},
+  {id:4,  from:'mt-4',   to:'qf1-ni', group:1, waypoints:[[510,176],[250,176]]},
+  {id:5,  from:'qf1-lo', to:'qf2-li', group:2, waypoints:[[220,312],[280,312],[280,186],[310,186]]},
+  {id:6,  from:'qf1-no', to:'qf2-ni', group:2, waypoints:[[250,306],[285,306],[285,182],[340,182]]},
+  {id:7,  from:'qf1-lo', to:'qf3-li', group:2, waypoints:[[220,322],[404,322],[404,190],[434,190]]},
+  {id:8,  from:'qf1-no', to:'qf3-ni', group:2, waypoints:[[250,328],[409,328],[409,194],[464,194]]},
+  {id:9,  from:'qf2-lo', to:'xs-l',   group:3, waypoints:[[310,340],[175,340],[175,100],[125,100]]},
+  {id:10, from:'qf2-no', to:'xs-n',   group:3, waypoints:[[340,346],[169,346],[169,94],[55,94]]},
+  {id:11, from:'src-pe', to:'pe-1',   group:3, waypoints:[[278,30],[50,30]]},
+  {id:12, from:'pe-2',   to:'xs-pe',  group:3, waypoints:[[85,82],[90,82]]},
+  {id:13, from:'qf3-lo', to:'s1-l',   group:4, waypoints:[[434,352],[163,352],[163,244],[90,244]]},
+  {id:14, from:'s1-l1',  to:'s2-l1',  group:4, waypoints:[[55,250],[22,250],[22,380],[55,380]]},
+  {id:15, from:'s1-l2',  to:'s2-l2',  group:4, waypoints:[[125,256],[156,256],[156,384],[125,384]]},
+  {id:16, from:'s2-l',   to:'el-l',   group:4, waypoints:[[90,374],[260,374]]},
+  {id:17, from:'qf3-no', to:'el-n',   group:4, waypoints:[[464,358],[300,358]]},
+  {id:18, from:'qf3-lo', to:'s3-l',   group:5, waypoints:[[434,364],[190,364],[190,500],[70,500]]},
+  {id:19, from:'s3-l1',  to:'bal-l',  group:5, waypoints:[[110,506],[196,506],[196,386],[402,386]]},
+  {id:20, from:'qf3-no', to:'bal-n',  group:5, waypoints:[[464,395],[436,395]]}
+];
+/* 线色照板上的规矩：相线红、零线蓝、PE 黄绿（判断看「从哪儿来」：N 路 / PE 路之外都算相线） */
+const NWIRES = {3:1, 4:1, 6:1, 8:1, 10:1, 17:1, 20:1}, PEWIRES = {11:1, 12:1};
+WIRES.forEach(function(w){ w.color = PEWIRES[w.id] ? '#8fbf2f' : NWIRES[w.id] ? '#1c7ed6' : '#e03131'; });
+const SIMSPEC = {
+  src:['src-l','src-n'], pathEnds:['电源 L','电源 N'],
+  coils:[
+    {id:'el', a:'el-l',  b:'el-n',  name:'白炽灯 EL', load:true, onTxt:' 亮', offTxt:' 灭'},
+    {id:'fl', a:'bal-l', b:'bal-n', name:'日光灯',    load:true, onTxt:' 亮', offTxt:' 灭'},
+    {id:'xs', a:'xs-l',  b:'xs-n',  name:'插座 XS',   load:true, onTxt:' 有电', offTxt:' 没电'}
+  ],
+  contacts:[
+    {a:'mt-1', b:'mt-2', by:'fix', n:'电能表 1-2'}, {a:'mt-3', b:'mt-4', by:'fix', n:'电能表 3-4'},
+    {a:'pe-1', b:'pe-2', by:'fix', n:'接地排'}, {a:'pe-2', b:'pe-3', by:'fix', n:'接地排'},   /* 接地排是一整根铜排 */
+    {a:'qf1-li', b:'qf1-lo', by:'qf1', when:1, n:'QF1'}, {a:'qf1-ni', b:'qf1-no', by:'qf1', when:1, n:'QF1'},
+    {a:'qf2-li', b:'qf2-lo', by:'qf2', when:1, n:'QF2'}, {a:'qf2-ni', b:'qf2-no', by:'qf2', when:1, n:'QF2'},
+    {a:'qf3-li', b:'qf3-lo', by:'qf3', when:1, n:'QF3'}, {a:'qf3-ni', b:'qf3-no', by:'qf3', when:1, n:'QF3'},
+    {a:'s1-l', b:'s1-l1', by:'s1', when:0, n:'S1（L→L1）'}, {a:'s1-l', b:'s1-l2', by:'s1', when:1, n:'S1（L→L2）'},
+    {a:'s2-l', b:'s2-l1', by:'s2', when:0, n:'S2（L→L1）'}, {a:'s2-l', b:'s2-l2', by:'s2', when:1, n:'S2（L→L2）'},
+    {a:'s3-l', b:'s3-l1', by:'s3', when:1, n:'S3'}
+  ],
+  buttons:[],
+  toggles:[
+    {id:'qf1', name:'QF1 总开关', dev:'qf1', states:['分闸','合闸']},
+    {id:'qf2', name:'QF2 插座',   dev:'qf2', states:['分闸','合闸']},
+    {id:'qf3', name:'QF3 照明',   dev:'qf3', states:['分闸','合闸']},
+    {id:'s1',  name:'S1 双控',    dev:'s1',  states:['L1','L2']},
+    {id:'s2',  name:'S2 双控',    dev:'s2',  states:['L1','L2']},
+    {id:'s3',  name:'S3 日光灯',  dev:'s3',  states:['断开','接通']}
+  ],
+  motor:{}, dirName:{}, noFr:true, qfLabel:['电源合闸','电源分闸'],
+  offHint:'先点「电源合闸」（试车台送电），再按考场顺序<b>从左到右</b>合 QF1、QF2、QF3 —— 图上的空开、开关直接点也能扳',
+  mains:{ always:[], qf:[], out:[], run:{}, rev:{} },
+  simTip:'先点「电源合闸」，再<b>从左到右</b>合 QF1、QF2、QF3（图上的空开、开关也能直接点）。' +
+    '<b>带电的线变色</b>：红＝连着相线 L、蓝＝连着零线 N，加粗发光的＝这一刻有电流。插座有电右下角亮红点，电能表有电器在用就转',
+  statusText:function(S){
+    const on = [['xs','插座有电'],['el','白炽灯亮'],['fl','日光灯亮']].filter(function(x){ return S.km[x[0]].on; }).map(function(x){ return x[1]; });
+    if(on.length) return ['on', on.join(' · '), '电能表转盘在转（有电器在用电）。试试扳 S1 或 S2：两个开关<b>任意一个</b>都能开关白炽灯'];
+    const q = [1,2,3].filter(function(i){ return !S.tog['qf'+i]; }).map(function(i){ return 'QF'+i; });
+    return ['off', '电源已送 · 没有电器在用电', q.length ? '还没合：'+q.join('、')+'（从左到右合）' : '空开都合上了：扳一下 S3，或者扳 S1 / S2'];
+  },
+  checks:[
+    {n:'送电、空开全分：灯不亮、插座没电',
+     f:function(T){ return !T.on('el') && !T.on('fl') && !T.on('xs'); },
+     h:'空开都没合就有电器通电：多半是有线绕过了空开，直接从电能表接到了负载'},
+    {n:'合 QF1、QF2：插座有电',
+     f:function(T){ T.set('qf1',1); T.set('qf2',1); return T.on('xs'); },
+     h:'顺着走：电源 L → 表 1 → 2 → QF1 → QF2 → 插座 L；电源 N → 表 3 → 4 → QF1 → QF2 → 插座 N'},
+    {n:'插座左零右火上接地：L 孔带相线、N 孔不带、PE 接到接地排',
+     f:function(T){ T.set('qf1',1); T.set('qf2',1); return T.live('xs-l') && !T.live('xs-n') && T.conn('xs-pe','src-pe'); },
+     h:'QF2 下口 L 接插座 L（右孔），N 接插座 N（左孔）；电源 PE → 接地排 → 插座 PE（上孔）'},
+    {n:'合 QF1、QF3，接通 S3：日光灯亮',
+     f:function(T){ T.set('qf1',1); T.set('qf3',1); T.set('s3',1); return T.on('fl'); },
+     h:'QF3 L → S3 L，S3 L1 → 镇流器 L；QF3 N → 镇流器 N'},
+    {n:'断开 S3：日光灯灭，而且镇流器 L 端不带电（开关断的是相线）',
+     f:function(T){ T.set('qf1',1); T.set('qf3',1); T.set('s3',1); if(!T.on('fl')) return null; T.set('s3',0); return !T.on('fl') && !T.live('bal-l'); },
+     h:'S3 要串在相线上：QF3 L → S3 → 镇流器 L，零线直接从 QF3 N 去镇流器 N'},
+    /* 两个位置都要试：联络线接错成「串联」时，从某个位置开始扳也能开关一次，换个起点就不灵了 */
+    {n:'扳 S1：白炽灯能开也能关（S2 在哪个位置都一样）',
+     f:function(T){ T.set('qf1',1); T.set('qf3',1);
+       return [0,1].every(function(v){ T.set('s2',v); T.set('s1',0); const a=T.on('el'); T.set('s1',1); return a!==T.on('el'); }); },
+     h:'双控：QF3 L → S1 公共端 L；S1 的 L1、L2 分别跟 S2 的 L1、L2 对接；S2 公共端 L → 灯座 L'},
+    {n:'扳 S2：白炽灯也能开也能关（两地控制，S1 在哪个位置都一样）',
+     f:function(T){ T.set('qf1',1); T.set('qf3',1);
+       return [0,1].every(function(v){ T.set('s1',v); T.set('s2',0); const a=T.on('el'); T.set('s2',1); return a!==T.on('el'); }); },
+     h:'两根联络线接对了才行：S1 L1—S2 L1、S1 L2—S2 L2；公共端 L 不能接到联络线上'},
+    {n:'白炽灯灭的时候，灯座两头都不带电（相线进开关）',
+     f:function(T){ T.set('qf1',1); T.set('qf3',1); if(T.on('el')) T.set('s1',1); if(T.on('el')) return null; return !T.live('el-l') && !T.live('el-n'); },
+     h:'开关要接在相线上：灯座 L 接 S2 公共端，灯座 N 接 QF3 N。反过来的话关了灯灯座还带电，换灯泡会触电'},
+    {n:'分 QF1：全部断电',
+     f:function(T){ ['qf1','qf2','qf3','s3'].forEach(function(k){ T.set(k,1); }); if(!T.on('xs') && !T.on('fl')) return null; T.set('qf1',0); return !T.on('xs') && !T.on('fl') && !T.on('el'); },
+     h:'QF2、QF3 都要从 QF1 下口取电，不能直接接电能表'}
+  ],
+  explain:function(S){ return ''; }
+};
+return { id:'k33', k:'K33',
+  name:'单相电能表带照明设备的接线',
+  sub:'整块板自己接 · 20 根（电能表 → 三只空开 → 插座、双控白炽灯、日光灯）',
+  title:'单相电能表带照明 · 实物接线图',
+  devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
+  mains:[], bus:[], sim:SIMSPEC,
+  legend:[['相线 L（要你接的）','#e03131'], ['零线 N','#1c7ed6'], ['保护线 PE','#8fbf2f']],
+  viewBox:'0 0 560 660', hasSchema:false,
+  warns:['⚠ <b>这 20 根没有你的实做记录，是照原理图（考试软件 K31-02）排的</b>，元件照你 09-05 拍的板。考场板子的端子位置可能不一样，以考题图和板上标记为准',
+         '⚠ 电能表 <b>1 进火 2 出火 3 进零 4 出零</b>；接反了表会倒转或不走',
+         '⚠ 插座 <b>左零右火上接地</b>；开关（S1 S2 S3）<b>一定接相线</b>，零线直接去灯',
+         '⚠ 双控：S1、S2 的 <b>L 是公共端</b>，L1、L2 是两根联络线对接；公共端一头接相线、另一头接灯',
+         '⚠ 线色：<b>相线红、零线蓝、PE 黄绿</b>。有 4 个端子要压两根线：<b>QF1 下口 L、N，QF3 下口 L、N</b>'] };
+}
+
 /* ══ K34 带熔断器（断路器）、仪表、电流互感器的电动机运行控制（单接触器 · 控制回路 7 根）══════
    2026-09-28 照他 09-05 拍的板（相册「实物接线图」照片 4~9）和 Notion「实训接线记录」K34 那 7 根做。
    主电路（QF → FU1 → KM → FR → 三只电流互感器 → 出线端子排）和仪表板（3 只电流表 + 1 只电压表）画成背景，
@@ -1123,8 +1315,8 @@ return { id:'k34', k:'K34',
 /* 电路登记表：key 是电路 id（对应实操材料的 K 编号）。
    加 K33/K34 只要再写一个 defK33() 挂进来 —— 渲染层全部读「当前电路」，
    没有任何一处认死某一块板 */
-const CIRCUITS = { k31: defK31(), k32: defK32(), k34: defK34() };
-const CIRCUIT_ORDER = ['k31','k32','k34'];
+const CIRCUITS = { k31: defK31(), k32: defK32(), k33: defK33(), k34: defK34() };
+const CIRCUIT_ORDER = ['k31','k32','k33','k34'];
 
 /* 「当前电路」的活动引用：loadCircuit() 换的就是这几个，
    下面所有渲染 / 模式代码照旧读 DEVICES / WIRES / TPOS…，一个字都不用改 */
@@ -1545,6 +1737,108 @@ function drawDevice(d){
     devName(d, -8);
     return;
   }
+  /* ════ K33 的元件 ════ */
+  /* 电源进线端子（接试车台电源箱）：L N PE 三位 */
+  if(d.kind==='src3'){
+    add(el('rect',{class:'p-blk', x:d.x, y:d.y, width:d.w, height:d.h, rx:3}));
+    txt('p-tiny', d.x+d.w/2, d.y+d.h+10, '接试车台电源箱');
+    devName(d, -10);
+    return;
+  }
+  /* 单相电能表：表窗 + 转盘（有负载在用就转）+ 底下 1 2 3 4 接线端 */
+  if(d.kind==='meter'){
+    add(el('rect',{x:d.x, y:d.y, width:d.w, height:d.h, rx:6, fill:'#2b2f33', stroke:'#15171a'}));
+    add(el('rect',{x:d.x+14, y:d.y+12, width:d.w-28, height:30, rx:3, fill:'#c6d9c0', stroke:'#6f8a66'}));
+    txt('p-model-d', d.x+d.w/2, d.y+32, '00000.0 kWh');
+    const g = add(el('g',{class:'meter-disk'}));
+    g.appendChild(el('ellipse',{cx:d.x+d.w/2, cy:d.y+62, rx:22, ry:7, fill:'#adb5bd', stroke:'#495057'}));
+    g.appendChild(el('rect',{x:d.x+d.w/2-2, y:d.y+56, width:4, height:12, fill:'#e03131'}));
+    add(el('rect',{x:d.x+6, y:d.y+d.h-26, width:d.w-12, height:22, rx:2, fill:'#495057'}));
+    txt('p-tiny', d.x+d.w/2, d.y+d.h+10, '1 进火 · 2 出火 · 3 进零 · 4 出零');
+    devName(d, -10);
+    return;
+  }
+  /* 两极空开（QF2 带漏电保护：右边多一块灰色漏保模块 + 黄色试验钮） */
+  if(d.kind==='mcb2'){
+    add(el('rect',{class:'p-case', x:d.x, y:d.y, width:d.w, height:d.h, rx:3}));
+    add(el('line',{x1:d.x+35, y1:d.y+20, x2:d.x+35, y2:d.y+d.h-20, stroke:'#b9c1c9','stroke-width':1}));
+    const lv = add(el('rect',{class:'tog-lever', 'data-tog':d.id, x:d.x+10, y:d.y+d.h/2-7, width:50, height:14, rx:4}));
+    if(d.rcd){
+      add(el('rect',{x:d.x+70, y:d.y+18, width:d.w-76, height:d.h-36, rx:2, fill:'#dee2e6', stroke:'#adb5bd'}));
+      add(el('rect',{x:d.x+78, y:d.y+30, width:12, height:10, rx:2, fill:'#fab005'}));
+      txt('p-tiny', d.x+84, d.y+56, '漏保');
+    }
+    txt('p-tiny', d.x+35, d.y+d.h-24, '上合下分');
+    devName(d);
+    return;
+  }
+  /* 五孔插座：面板 + 上面一排接线端（N PE L），有电时右下角红点亮 */
+  if(d.kind==='xs'){
+    add(el('rect',{x:d.x, y:d.y, width:d.w, height:d.h, rx:8, fill:'#f8f9fa', stroke:'#adb5bd'}));
+    add(el('rect',{x:d.x+4, y:d.y+2, width:d.w-8, height:22, rx:2, fill:'#33383e'}));
+    const cx=d.x+d.w/2, cy=d.y+64;
+    [[-14,-12,6,12],[14,-12,6,12]].forEach(function(r){ add(el('rect',{x:cx+r[0]-3, y:cy+r[1], width:r[2], height:r[3], rx:1, fill:'#495057'})); });
+    add(el('rect',{x:cx-3, y:cy-26, width:6, height:10, rx:1, fill:'#495057'}));
+    [[-10,10],[10,10]].forEach(function(o){ add(el('rect',{x:cx+o[0]-7, y:cy+o[1], width:14, height:4, rx:1, fill:'#495057',
+      transform:'rotate('+(o[0]<0?-30:30)+' '+(cx+o[0])+' '+(cy+o[1]+2)+')'})); });
+    add(el('circle',{class:'xs-led', 'data-load':'xs', cx:d.x+d.w-12, cy:d.y+d.h-12, r:4}));
+    txt('p-tiny', d.x+d.w/2, d.y+d.h+10, '左零右火上接地');
+    devName(d);
+    return;
+  }
+  /* 开关（双控 S1 S2 / 单控 S3）：上面一排接线端，面板上画触点现在接的是哪边 */
+  if(d.kind==='sw'){
+    add(el('rect',{x:d.x, y:d.y, width:d.w, height:d.h, rx:8, fill:'#f8f9fa', stroke:'#adb5bd'}));
+    add(el('rect',{x:d.x+4, y:d.y+2, width:d.w-8, height:22, rx:2, fill:'#33383e'}));
+    const g = add(el('g',{'data-tog':d.id}));
+    const T = function(id){ const t=d.terminals.filter(function(x){ return x.id===id; })[0]; return [d.x+t.x, d.y+56]; };
+    const col = '#495057';
+    if(d.two){
+      const L=T(d.id+'-l'), A=T(d.id+'-l1'), B=T(d.id+'-l2'), piv=[L[0], L[1]+22];
+      [A,B].forEach(function(q){ g.appendChild(el('circle',{cx:q[0], cy:q[1], r:3, fill:col})); });
+      g.appendChild(el('circle',{cx:piv[0], cy:piv[1], r:3, fill:col}));
+      g.appendChild(el('line',{class:'sw-p0', x1:piv[0], y1:piv[1], x2:A[0], y2:A[1], stroke:'#1c7ed6', 'stroke-width':3, 'stroke-linecap':'round'}));
+      g.appendChild(el('line',{class:'sw-p1', x1:piv[0], y1:piv[1], x2:B[0], y2:B[1], stroke:'#1c7ed6', 'stroke-width':3, 'stroke-linecap':'round'}));
+      txt('p-tiny', d.x+d.w/2, d.y+d.h-6, '双控 · L 是公共端');
+    } else {
+      const L=T(d.id+'-l'), A=T(d.id+'-l1');
+      [L,A].forEach(function(q){ g.appendChild(el('circle',{cx:q[0], cy:q[1]+10, r:3, fill:col})); });
+      g.appendChild(el('line',{class:'sw-p0', x1:L[0], y1:L[1]+10, x2:A[0]-8, y2:A[1]-4, stroke:'#1c7ed6', 'stroke-width':3, 'stroke-linecap':'round'}));
+      g.appendChild(el('line',{class:'sw-p1', x1:L[0], y1:L[1]+10, x2:A[0], y2:A[1]+10, stroke:'#1c7ed6', 'stroke-width':3, 'stroke-linecap':'round'}));
+      txt('p-tiny', d.x+d.w/2, d.y+d.h-6, '单控');
+    }
+    devName(d);
+    return;
+  }
+  /* 灯座 EL：接线端 L N + 灯泡（通电变亮） */
+  if(d.kind==='lamp'){
+    add(el('rect',{x:d.x, y:d.y, width:d.w, height:24, rx:2, fill:'#33383e'}));
+    add(el('circle',{class:'lamp-bulb', 'data-load':'el', cx:d.x+d.w/2, cy:d.y+62, r:26}));
+    add(el('rect',{x:d.x+d.w/2-10, y:d.y+86, width:20, height:12, rx:2, fill:'#adb5bd'}));
+    txt('p-tiny', d.x+d.w/2, d.y+d.h+10, 'L 接开关出来的相线');
+    devName(d);
+    return;
+  }
+  /* 电子镇流器 + 日光灯管（镇流器到灯管那几根出厂接好，画成背景） */
+  if(d.kind==='ballast'){
+    add(el('rect',{x:d.x, y:d.y, width:d.w, height:d.h, rx:4, fill:'#f1f3f5', stroke:'#868e96'}));
+    add(el('rect',{x:d.x+4, y:d.y+2, width:74, height:22, rx:2, fill:'#33383e'}));
+    txt('p-tiny', d.x+d.w-40, d.y+34, '电子镇流器');
+    const ty = d.y+d.h+34;
+    [[d.x+30,d.x+14],[d.x+60,d.x+22],[d.x+100,d.x+d.w-22],[d.x+120,d.x+d.w-14]].forEach(function(p){
+      add(el('path',{d:'M'+p[0]+','+(d.y+d.h)+' V'+(ty-16)+' H'+p[1]+' V'+(ty-8), fill:'none', stroke:'#adb5bd', 'stroke-width':1.4}));
+    });
+    add(el('rect',{class:'tube', 'data-load':'fl', x:d.x+8, y:ty-8, width:d.w-16, height:16, rx:8}));
+    txt('p-tiny', d.x+d.w/2, ty+22, '日光灯管（镇流器到灯管出厂接好）');
+    devName(d);
+    return;
+  }
+  /* 接地排 */
+  if(d.kind==='pebar'){
+    add(el('rect',{class:'p-brass', x:d.x, y:d.y, width:d.w, height:d.h, rx:2}));
+    devName(d, -10);
+    return;
+  }
   /* ── 电流互感器 ×3（K34）：主电路的相线从圆孔中间穿过去，二次侧两根细线去电流表 ── */
   if(d.kind==='ct'){
     (d.pins||[]).forEach(function(p, i){
@@ -1659,13 +1953,15 @@ function drawLegend(){
   });
   /* 所有组同一个颜色（K32 全黑）时，去重后只剩第一组的名字，得改叫「控制线」 */
   if(items.length===1 && GROUPS.length>1) items[0][0] = '控制线（要你接的）';
+  /* K33 的线按用途上色（相线红、零线蓝、PE 黄绿），图例照这个写 */
+  if(CUR.legend) items.splice(0, items.length, ...CUR.legend);
   /* 主电路虽然不参与练习，图例里还是得有一条 —— 不说清楚的话，
      图上那些淡色的线看着像「没接完的」 */
   if(CUR.mains && CUR.mains.length) items.push(['主电路（板上已接好，不用练）', '#b0a06a']);
   document.getElementById('legendH').innerHTML = items.map(function(it){
     return '<span><i style="background:'+it[1]+'"></i>'+it[0]+'</span>';
-  }).join('') + '<div class="legend-role">端子圈：<span><b style="border-color:#2f9e44"></b>绿＝常开 NO</span>' +
-    '<span><b style="border-color:#d4a017"></b>黄＝常闭 NC</span><span><b style="border-color:#d6336c"></b>红＝线圈 A1·A2</span></div>';
+  }).join('') + (!Object.keys(TPOS).some(function(t){ return termRole(t); }) ? '' : '<div class="legend-role">端子圈：<span><b style="border-color:#2f9e44"></b>绿＝常开 NO</span>' +
+    '<span><b style="border-color:#d4a017"></b>黄＝常闭 NC</span><span><b style="border-color:#d6336c"></b>红＝线圈 A1·A2</span></div>');
 }
 
 /* 整幅图重画一次：换电路时四个图层全部清空重建。
@@ -2050,8 +2346,12 @@ function simReset(){
   SIM.tLast=0; SIM.last=null;
   SIM.btn={}; sp.buttons.forEach(function(b){ SIM.btn[b.id]={pressed:false, no:false, nc:true, t:0, relAt:0}; });
   SIM.km={};  sp.coils.forEach(function(c){ SIM.km[c.id]={coil:false, on:false, t:0}; });
+  /* K33 的空开 / 开关是扳一下就停在那儿的（不是按钮那种一松就弹回），状态单独记 */
+  SIM.tog={}; (sp.toggles||[]).forEach(function(t){ SIM.tog[t.id]=t.init||0; });
 }
 function contactClosed(c){
+  if(c.by==='fix') return true;                                   /* 电能表内部 1-2、3-4 这种固定通路 */
+  if(c.when!==undefined) return (SIM.tog[c.by]||0)===c.when;      /* 扳到某个位置才通（空开合闸、双控扳到 L1/L2） */
   const k = SIM.km[c.by];
   if(k) return c.no ? k.on : !k.on;
   if(c.by==='fr') return c.no ? SIM.frTrip : !SIM.frTrip;
@@ -2212,10 +2512,11 @@ function simStep(now){
   let moved=false;
   sp.coils.forEach(function(c){
     const k=SIM.km[c.id], e=r.coil[c.id];
-    if(e!==k.coil){ k.coil=e; k.t=now; simLog(c.name+(e?' 线圈得电':' 线圈失电'), now); }
-    if(k.on!==k.coil && now-k.t>=(k.coil?PICK:DROP)){
+    if(e!==k.coil){ k.coil=e; k.t=now; if(!c.load) simLog(c.name+(e?' 线圈得电':' 线圈失电'), now); }
+    /* 灯、插座这种负载一通电就亮，没有吸合延时 */
+    if(k.on!==k.coil && now-k.t>=(c.load ? 0 : (k.coil?PICK:DROP))){
       k.on=k.coil; moved=true;
-      simLog(c.name+(k.on ? ' 吸合'+(c.pick||'') : ' 释放'), now);
+      simLog(c.name+(c.load ? (k.on ? (c.onTxt||' 通电') : (c.offTxt||' 断电')) : (k.on ? ' 吸合'+(c.pick||'') : ' 释放')), now);
       /* 一只先动了，它的触点马上变，后面那只要按新状态算 ——
          机械上没有真正的「同时」，不这么做的话两个启动一起按会两只同时吸 */
       r = simSolve();
@@ -2246,12 +2547,13 @@ function simPathText(r){
       if(used[e.id]) return;
       used[e.id]=1;
       if(e.k==='c') out.push(e.c.n);
-      if(e.k==='k') out.push('<b>'+e.coil.name+' 线圈</b>');
+      if(e.k==='k') out.push('<b>'+e.coil.name+(e.coil.load ? '' : ' 线圈')+'</b>');
       const v = e.a===u ? e.b : e.a;
       if(!seen[v]){ seen[v]=1; q.push(v); }
     });
   }
-  return '4号熔断器 → '+out.join(' → ')+' → 5号熔断器';
+  const ends = CUR.sim.pathEnds || ['4号熔断器','5号熔断器'];
+  return ends[0]+' → '+out.join(' → ')+' → '+ends[1];
 }
 function setPill(id, st){
   const g = gSim.querySelector('[data-pill="'+id+'"]');
@@ -2267,7 +2569,8 @@ function simRender(r){
   const btS = sp.buttons.map(function(b){ return SIM.btn[b.id].pressed?1:0; }).join('');
   const lgS = SIM.log.map(function(g){ return g.t0+':'+g.items.length; }).join(',');
   const potS = Object.keys(r.pot||{}).sort().map(function(k){ return k+r.pot[k]; }).join(',');
-  const sig = [Object.keys(r.cur).sort().join(','), potS, SIM.qf, SIM.frTrip, SIM.blown, SIM.motor, kmS, btS, lgS].join('|');
+  const tgS = Object.keys(SIM.tog||{}).map(function(k){ return k+SIM.tog[k]; }).join(',');
+  const sig = [Object.keys(r.cur).sort().join(','), potS, tgS, SIM.qf, SIM.frTrip, SIM.blown, SIM.motor, kmS, btS, lgS].join('|');
   if(sig===SIM.sig) return;
   SIM.sig = sig;
 
@@ -2284,9 +2587,19 @@ function simRender(r){
     const k=SIM.km[c.id];
     gDev.querySelectorAll('.km-arm[data-km="'+c.id+'"]').forEach(function(a){ a.classList.toggle('in', k.on); });
     const pull = gSim.querySelector('.sim-pull[data-pull="'+c.id+'"]'); if(pull) pull.classList.toggle('on', k.on);
+    gDev.querySelectorAll('[data-load="'+c.id+'"]').forEach(function(e){ e.classList.toggle('on', k.on); });
     setPill(c.id, k.on ? (k.coil ? ['吸合','ok'] : ['释放中','mid']) : (k.coil ? ['吸合中','mid'] : ['释放','off']));
   });
   gDev.querySelectorAll('.qf-lever').forEach(function(l){ l.classList.toggle('off', !SIM.qf); });
+  /* K33：空开手柄、开关位置跟着 SIM.tog 画；电能表只要有负载在用就转 */
+  gDev.querySelectorAll('[data-tog]').forEach(function(e){ e.classList.toggle('on', (SIM.tog||{})[e.dataset.tog]===1); });
+  const anyLoad = sp.coils.some(function(c){ return c.load && SIM.km[c.id].on; });
+  gDev.querySelectorAll('.meter-disk').forEach(function(e){ e.classList.toggle('on', anyLoad); });
+  document.querySelectorAll('#simBtns button[data-tg]').forEach(function(bt){
+    const t = (sp.toggles||[]).filter(function(x){ return x.id===bt.dataset.tg; })[0], v = SIM.tog[t.id];
+    bt.classList.toggle('on', v===1);
+    bt.innerHTML = t.name+'<span>'+t.states[v]+' · 点一下扳到「'+t.states[1-v]+'」</span>';
+  });
   setPill('qf', SIM.qf ? ['合闸','ok'] : ['分闸','off']);
   setPill('fr', SIM.frTrip ? ['脱扣','warn'] : null);
   sp.buttons.forEach(function(b,i){
@@ -2331,7 +2644,9 @@ function simRender(r){
   });
 
   const q=document.getElementById('simQf'), f=document.getElementById('simFr');
-  q.textContent = SIM.qf ? '分闸 QF' : '合闸 QF';     q.classList.toggle('on', SIM.qf);
+  const ql = sp.qfLabel || ['合闸 QF','分闸 QF'];
+  q.textContent = SIM.qf ? ql[1] : ql[0];     q.classList.toggle('on', SIM.qf);
+  f.style.display = sp.noFr ? 'none' : '';
   f.textContent = SIM.frTrip ? '热继复位' : '模拟过载'; f.classList.toggle('warn', SIM.frTrip);
   simPanel(r);
 }
@@ -2339,7 +2654,8 @@ function simPanel(r){
   const sp=CUR.sim;
   let cls='off', st, why='';
   if(SIM.blown){ cls='warn'; st='熔断器烧了'; why=SIM.blown+'。点「全部复位」换上新的再来'; }
-  else if(!SIM.qf){ st='没通电'; why='先点「合闸 QF」（也可以直接点图上的断路器）—— QF 不合，4、5 号熔断器后面都是空的，按什么都没反应'; }
+  else if(!SIM.qf){ st='没通电'; why=sp.offHint || '先点「合闸 QF」（也可以直接点图上的断路器）—— QF 不合，4、5 号熔断器后面都是空的，按什么都没反应'; }
+  else if(sp.statusText){ const t = sp.statusText(SIM); cls=t[0]; st=t[1]; why=t[2]||''; }
   else if(SIM.motor){ cls='on'; st='电动机'+sp.dirName[SIM.motor]+'中'; }
   else if(SIM.frTrip){ cls='warn'; st='热继电器脱扣了'; why='95-96 断开，整个控制回路断电。现场要先查清过载原因，再按复位'; }
   else {
@@ -2375,6 +2691,7 @@ function buildSim(){
     gSim.appendChild(g);
   }
   sp.coils.forEach(function(c){
+    if(c.load) return;            /* 灯、插座没有状态牌和「吸合」章，亮不亮画在元件本身上 */
     const d = DEVICES.filter(function(x){ return x.id===c.id; })[0];
     if(d) pill(c.id, d.x+98, d.y+106, 46);
     /* 吸合时盖一个红章（照考试模拟软件），一眼看出哪只吸着 */
@@ -2400,6 +2717,13 @@ function buildSim(){
   }
   const fr = dev('fr');
   if(fr) pill('fr', fr.x+60, fr.y+51, 40);
+  /* K33：图上的空开、开关直接点就能扳（热区只盖元件本体，不盖端子，接线模式不受影响——这层只在试车时显示） */
+  (sp.toggles||[]).forEach(function(t){
+    const d = DEVICES.filter(function(x){ return x.id===t.dev; })[0]; if(!d) return;
+    const h = el('rect',{x:d.x+4, y:d.y+22, width:d.w-8, height:d.h-44, class:'sim-hit'});
+    h.addEventListener('pointerdown', function(e){ e.stopPropagation(); e.preventDefault(); simToggle(t.id); });
+    gSim.appendChild(h);
+  });
   const sb = dev('sb');
   if(sb) sp.buttons.forEach(function(b,i){
     const h = el('circle',{cx:sb.x+40, cy:sb.y+42+i*48, r:22, class:'sim-hit'});
@@ -2441,11 +2765,27 @@ function buildSim(){
     t2.textContent = '停'; gSim.appendChild(t2);
   }
 }
+function simToggle(id){
+  if(!SIM.on) return;
+  const t = (CUR.sim.toggles||[]).filter(function(x){ return x.id===id; })[0]; if(!t) return;
+  simAdvance(performance.now());
+  SIM.tog[id] = 1 - (SIM.tog[id]||0);
+  simAct(t.name+' 扳到「'+t.states[SIM.tog[id]]+'」');
+  simTick();
+}
 function buildSimBtns(){
   const box = document.getElementById('simBtns');
   box.innerHTML = CUR.sim.buttons.map(function(b){
     return '<button data-sim="'+b.id+'" class="'+b.cls+'">按住 '+b.name+'<span>'+b.sub+' · 端子排 '+b.tb+'</span></button>';
+  }).join('') + (CUR.sim.toggles||[]).map(function(t){
+    return '<button data-tg="'+t.id+'" class="tg">'+t.name+'<span>'+t.states[0]+'</span></button>';
   }).join('');
+  box.querySelectorAll('button[data-tg]').forEach(function(bt){
+    bt.addEventListener('click', function(){ simToggle(bt.dataset.tg); });
+  });
+  /* 试车说明按板子换：K33 没有接触器、4/5 号熔断器那套说法 */
+  const tip = document.querySelector('#simBar .stip');
+  if(tip){ if(!tip.dataset.def) tip.dataset.def = tip.innerHTML; tip.innerHTML = CUR.sim.simTip || tip.dataset.def; }
   box.querySelectorAll('button').forEach(function(bt){
     const id = bt.dataset.sim;
     /* 按住 / 松手靠 _held 记，不看 .down —— .down 是渲染层按仿真状态画的，
@@ -2481,6 +2821,7 @@ function simExit(){
   FREE.simUser = false;
   gWire.querySelectorAll('path.wire').forEach(function(p){ p.classList.remove('simw','live','ph1','ph2'); p.style.opacity=1; });
   gDev.querySelectorAll('.amp-needle').forEach(function(n){ n.classList.remove('run','live'); });
+  gDev.querySelectorAll('[data-load],[data-tog],.meter-disk').forEach(function(e){ e.classList.remove('on'); });
   gMain.querySelectorAll('path.mainw').forEach(function(p){ p.classList.remove('dead','run'); });
   gFlow.querySelectorAll('path.flowov').forEach(function(p){ p.classList.remove('on','rev'); });
   gDev.querySelectorAll('.km-arm,.qf-lever,.sbcap').forEach(function(e){ e.classList.remove('in','off','down'); });
@@ -2714,8 +3055,10 @@ function netCompare(){
 /* 不带时间的测试台：每一下都等电路稳定下来再看。
    按下＝动断先断、稳定，动合再合、稳定；松开倒过来 —— 跟试车里的先后一致 */
 function makeTester(ws){
-  const sp=CUR.sim, st={btn:{}, km:{}, fr:false, stuck:{}, bad:''};
+  const sp=CUR.sim, st={btn:{}, km:{}, fr:false, stuck:{}, bad:'', tog:{}};
   function closed(c){
+    if(c.by==='fix') return true;
+    if(c.when!==undefined) return (st.tog[c.by]||0)===c.when;
     if(st.km[c.by]!==undefined){ const on = st.stuck[c.by] || st.km[c.by]; return c.no ? on : !on; }
     if(c.by==='fr') return c.no ? st.fr : !st.fr;
     const b=st.btn[c.by]; return c.no ? b.no : b.nc;
@@ -2749,11 +3092,23 @@ function makeTester(ws){
   function reset(){
     sp.buttons.forEach(function(b){ st.btn[b.id]={no:false, nc:true}; });
     sp.coils.forEach(function(c){ st.km[c.id]=false; });
-    st.fr=false; st.stuck={};
+    st.fr=false; st.stuck={}; st.tog={};
+    (sp.toggles||[]).forEach(function(t){ st.tog[t.id]=t.init||0; });
     settle();
+  }
+  /* 导线 + 此刻合着的触点连成的等电位网（不经过负载）：查「这个端子带不带相线」「PE 通没通」 */
+  function netRoot(){
+    const P={};
+    function fd(x){ if(P[x]===undefined) P[x]=x; while(P[x]!==x){ P[x]=P[P[x]]; x=P[x]; } return x; }
+    ws.forEach(function(w){ P[fd(w.from)]=fd(w.to); });
+    sp.contacts.forEach(function(c){ if(closed(c)) P[fd(c.a)]=fd(c.b); });
+    return fd;
   }
   reset();
   return { press:press, release:release, reset:reset,
+    set:function(id, v){ st.tog[id]=v; settle(); },
+    live:function(t){ const fd=netRoot(); return fd(t)===fd(sp.src[0]); },
+    conn:function(a, b){ const fd=netRoot(); return fd(a)===fd(b); },
     tap:function(id){ press(id); release(id); },
     fr:function(t){ st.fr=t; settle(); },
     stick:function(id){ st.stuck[id]=true; settle(); },
@@ -3227,6 +3582,7 @@ function loadCircuit(id){
   stepStopAuto();
   CUR = CIRCUITS[id];
   CURRENT_CIRCUIT = id;
+  svg.dataset.circ = id;      /* 按板子换的样式（K33 单相的相色）挂在这上面 */
   DEVICES = CUR.devices; WIRES = CUR.wires; GROUPS = CUR.groups;
   TPOS = CUR.tpos; TLABEL = CUR.labels; GCOLOR_HEX = CUR.colors;
   TCOUNT = getTerminalWireCount(id);      /* 每次重算，别沿用上一块板的 */

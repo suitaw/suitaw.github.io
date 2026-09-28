@@ -1177,6 +1177,18 @@ Y → tb11 →[SB1 停止·动断]→ tb12 → FR 96 →[FR 常闭]→ 95 → FU
   接触器吸合盖红章 .sim-pull；电机「正转/反转」红字放大 .sim-mst.on
   ④**逐根播放接线动画**：gStep 层两头端子洋红闪圈 → 停 500ms → stroke-dashoffset 画线 600ms；倍速 1/2/0.5×（#pSpd）；setMode 里 stepClearFx 清残留
   测试：t_ui.js 14 项（注意 ok() 参数顺序，第一版写反了全「过」）；t_sim 32、t_free 28、t_touch3 过
+- 同日第四批：看线时不再自动放大（fitTo 调用全删，保持整图）；接触器端子标签照主触点印字居中写在里侧
+- **新增 K34、K33 两块板**（他：「剩下的：点动已有、带电流互感器的按 Anki 背诵版接线步骤、没有步骤的照明照电路图和板自己做；
+  带电能表的都要自己接，其他的控制线即可」）：
+  · **K34**（defK34）控制线 7 根照 Notion；主电路 + 互感器（kind 'ct'）+ 仪表板（kind 'amp'，3A+1V，试车时 .amp-needle 摆）画背景；
+    端子排 8 位，**按钮位置是推测**（Notion 标待核查）：1-2 启动常开、7-8 停止常闭，倒数第 1 位＝8。mkBus 改成按端子排位数画
+  · **K33**（defK33）整板 20 根，**我照考试软件 K31-02 原理图排的**（没有他的实做记录），元件照相册「实物接线图」照片 0、3；
+    新元件 kind：src3/meter/mcb2(rcd)/xs/sw(two)/lamp/ballast/pebar；线色相线红零线蓝 PE 黄绿；手排 waypoints
+  · 仿真扩展（通用）：SIMSPEC.toggles（扳了就停的开关，SIM.tog）、触点 by:'fix'（表内/接地排）与 when:（开关在某位置才通）、
+    coils 里 load:true 的负载（灯/插座，无吸合延时、不画状态牌和吸合章、data-load 元素加 .on）、测试台 T.set/T.live/T.conn；
+    simTip/qfLabel/offHint/statusText/noFr/pathEnds/legend 按板子覆盖；svg[data-circ] 挂板子 id 给 K33 换相色
+  · K33 判分 10 项含：插座左零右火上接地、开关断相线（灭灯时灯座两头都不带电）、双控在对方两个位置下都能开关（防联络线接成串联）
+  · 测试 t_k34.js 11、t_k33.js 14（含 4 种故意接错：开关接零线、插座 L/N 反、联络线接公共端、漏接 PE）
 
 ### electrician/quiz/ —— 低压电工作业证 · 考证题库（2026-08-26 完成整理）
 
