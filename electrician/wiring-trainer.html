@@ -164,12 +164,14 @@ svg.freemode .badge-c,svg.freemode .badge-t,svg.freemode .term-ring{display:none
 .chk{display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--tx2);white-space:nowrap;
   border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--card);flex:none}
 
-/* 舞台：自己带缩放/平移。touch-action:none 是双指捏合能工作的前提
-   （不写的话浏览器把双指手势当页面缩放吃掉了），所以竖向滚动要靠
-   「单指没落在图上就不拦」——见 zoom 那一节的 onDown */
+/* 舞台：自己带缩放/平移。
+   **2026-09-28 他说「按到图里不能往上往下划网页，很不方便」**：原来一直是 touch-action:none，
+   手指落在图上整页就滚不动。改成：没放大时 pan-y（单指上下滑＝滚网页，双指捏合不归浏览器、照样交给这里缩放图），
+   放大以后（.panning）才 none，单指拖动＝挪图；想滚网页就先复位/双击缩回去 */
 .stage{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;
   padding:6px;overflow:hidden}
-.stage svg{display:block;width:100%;height:auto;touch-action:none;-webkit-user-select:none;user-select:none}
+.stage svg{display:block;width:100%;height:auto;touch-action:pan-y;-webkit-user-select:none;user-select:none}
+.stage svg.panning{touch-action:none}
 /* 全屏：#fsBox 是盖满视口的浮层，上中下三段 ——
    上：电路 / 模式 / 分组 / 自测题；中：舞台（吃掉剩下的高度）；下：逐根播放 / 说明 / 记法。
    这些工具条是**原样搬进来的节点**（不是复制），事件和状态都跟着走，退出时搬回原位。
@@ -1035,6 +1037,7 @@ function applyVB(){
   svg.setAttribute('viewBox', VB.x+' '+VB.y+' '+VB.w+' '+VB.h);
   const k = VB0 ? VB0.w/VB.w : 1;
   svg.classList.toggle('zoomed', k >= 1.5);      /* 细节文字到这一档才露出来 */
+  svg.classList.toggle('panning', k > 1.02);     /* 放大了才让单指拖图；全览时单指上下滑留给网页滚动 */
   const lv = document.getElementById('zoomLv');
   if(lv){ lv.textContent = k.toFixed(1)+'×'; lv.classList.toggle('on', k > 1.02); }
 }
