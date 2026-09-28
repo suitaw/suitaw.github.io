@@ -1168,6 +1168,15 @@ Y → tb11 →[SB1 停止·动断]→ tb12 → FR 96 →[FR 常闭]→ 95 → FU
   验证：t_touch3.js 用 CDP `Input.dispatchTouchEvent` 逐帧发触摸（`synthesizeScrollGesture` 在容器 chromium 里连图外都滚不动，别用），
   旧版图内上滑 0→0、新版 0→206；t_touch.js 里捏合放大、放大后单指挪图、复位三项过。
   ③补跑 t_free.js（上一轮漏跑），K32 五项写死旧线号的用例按 Notion 版改，28/28
+- 同日第三批（他看了考试模拟软件的交互后提的）：
+  ①**全屏重做**：原来「上中下三段」把画布挤小、地址栏还在，他说「点全屏反而缩小」。现在 #fsBox 走 requestFullscreen，
+  画布铺满整屏、整图按宽度完整显示（删了 fitHeight 裁两边）；左上「☰ 工具」「说明」开合浮层（同时只开一个），
+  模式操作条（播放/接线/试车/原理图）浮底部，.stip 长提示全屏里藏；缩放钮横排右上（右侧中间会挡端子排）；fullscreenchange 退出跟着收浮层
+  ②**端子按用途上色**：termRole()：13/14 绿 NO、21/22 黄 NC、A1/A2 红线圈、FR95/96 NC；标签后缀小号 NO/NC；图例加一行；悬停说明加 roleNote
+  ③**试车带电线按相色**：solveNet 多算 res.pot（每根线连 4 号 L1＝1 / 5 号 L2＝2 / 悬空 0），.ph1 黄 .ph2 绿，有电流的再发光；
+  接触器吸合盖红章 .sim-pull；电机「正转/反转」红字放大 .sim-mst.on
+  ④**逐根播放接线动画**：gStep 层两头端子洋红闪圈 → 停 500ms → stroke-dashoffset 画线 600ms；倍速 1/2/0.5×（#pSpd）；setMode 里 stepClearFx 清残留
+  测试：t_ui.js 14 项（注意 ok() 参数顺序，第一版写反了全「过」）；t_sim 32、t_free 28、t_touch3 过
 
 ### electrician/quiz/ —— 低压电工作业证 · 考证题库（2026-08-26 完成整理）
 

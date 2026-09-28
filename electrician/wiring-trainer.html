@@ -80,6 +80,14 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
    分组色里本来就有红（第 1 组），不退掉的话分不清哪根是「有电流」 */
 .wire.simw{stroke:#9aa5b1}
 .wire.simw.live{stroke:#ff3b30;stroke-width:4.6;filter:drop-shadow(0 0 2.5px rgba(255,59,48,.75))}
+/* 带电按相色：黄＝接 4 号熔断器（L1）那头，绿＝接 5 号（L2）那头；有电流的再加粗发光 */
+.wire.simw.ph1{stroke:#e0a92e} .wire.simw.ph2{stroke:#3fa845}
+.wire.simw.live.ph1{stroke:#e0a92e;filter:drop-shadow(0 0 3px rgba(224,169,46,.9))}
+.wire.simw.live.ph2{stroke:#3fa845;filter:drop-shadow(0 0 3px rgba(63,168,69,.9))}
+.sim-pull{display:none;pointer-events:none}
+.sim-pull.on{display:inline}
+.sim-pull circle{fill:#f03e3e;stroke:#fff;stroke-width:2;opacity:.93}
+.sim-pull text{fill:#fff;font-size:11px;font-weight:800;text-anchor:middle;dominant-baseline:central}
 .mainw.dead{opacity:.15}
 .mainw.run{opacity:1;stroke-width:5.2}
 .flowov{fill:none;stroke:rgba(255,255,255,.95);stroke-width:2;stroke-dasharray:1 8;stroke-linecap:round;
@@ -103,6 +111,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .sim-pill-g.warn rect{fill:#c0392b;stroke:#8d2f24}
 .sim-pill-g.ok text,.sim-pill-g.mid text,.sim-pill-g.warn text{fill:#fff}
 .sim-mst{font-size:12px;font-weight:700;fill:var(--tx2)}
+.sim-mst.on{font-size:18px;fill:#e03131}
+.step-ring{fill:rgba(230,73,128,.18);stroke:#e64980;stroke-width:3;pointer-events:none;animation:stepblink .45s ease-in-out infinite alternate}
+@keyframes stepblink{from{opacity:1}to{opacity:.25}}
 .rotor{transform-box:fill-box;transform-origin:center}
 .rotor.cw{animation:simspin .7s linear infinite}
 .rotor.ccw{animation:simspin .7s linear infinite reverse}
@@ -172,20 +183,28 @@ svg.freemode .badge-c,svg.freemode .badge-t,svg.freemode .term-ring{display:none
   padding:6px;overflow:hidden}
 .stage svg{display:block;width:100%;height:auto;touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .stage svg.panning{touch-action:none}
-/* 全屏：#fsBox 是盖满视口的浮层，上中下三段 ——
-   上：电路 / 模式 / 分组 / 自测题；中：舞台（吃掉剩下的高度）；下：逐根播放 / 说明 / 记法。
-   这些工具条是**原样搬进来的节点**（不是复制），事件和状态都跟着走，退出时搬回原位。
-   上下两段各封顶 32%，内容多了自己滚，保证图至少占四成屏。
-   高度优先 100dvh（跟手机地址栏收放走），不认的浏览器整条丢弃、落回 100vh */
-#fsBox:not([hidden]){position:fixed;inset:0;z-index:50;background:var(--bg);
-  display:flex;flex-direction:column;gap:6px;padding:6px 6px 0;height:100vh;height:100dvh}
-.fs-top,.fs-bot{flex:none;max-height:32vh;max-height:32dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.fs-bot{padding-bottom:env(safe-area-inset-bottom)}
-.stage.fs{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
-.stage.fs svg{width:100%;height:100%;flex:1 1 auto;min-height:0}
+/* 全屏（2026-09-28 重做，他说「点全屏反而缩小了，也没全屏，像仿真电路那样就挺好」）：
+   原来是上中下三段，工具条挤掉画布一大半、浏览器地址栏也还在。现在照考试模拟软件：
+   #fsBox 走浏览器真全屏（requestFullscreen），**画布铺满整屏**，工具都是浮在上面的半透明层 ——
+   左上角「☰ 工具」「说明」两个小钮开合；当前模式要用的操作条（播放 / 接线 / 试车）浮在底部；缩放钮挪到右侧中间。
+   工具条仍是**原样搬进来的节点**（不是复制），事件和状态跟着走，退出时搬回原位。
+   高度优先 100dvh，不认的浏览器落回 100vh */
+#fsBox:not([hidden]){position:fixed;inset:0;z-index:50;background:var(--bg);height:100vh;height:100dvh;overflow:hidden}
+.stage.fs{position:absolute;inset:0;border:0;border-radius:0;padding:0;background:var(--card)}
+.stage.fs svg{width:100%;height:100%}
+/* 缩放钮横排在右上角：右侧中间正好是端子排，竖排会把端子挡住（截图看出来的）；顶上右边是空的 */
+.stage.fs .zoombar{top:8px;right:8px;bottom:auto;flex-direction:row}
+.fs-pane{position:absolute;left:0;right:0;z-index:6;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:rgba(247,248,250,.95);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);padding:6px}
+.fs-top{top:0;max-height:55%;padding-top:44px;box-shadow:0 3px 10px rgba(0,0,0,.14)}
+.fs-info{bottom:0;max-height:45%;box-shadow:0 -3px 10px rgba(0,0,0,.14);padding-bottom:calc(6px + env(safe-area-inset-bottom))}
+.fs-bot{bottom:0;max-height:40%;box-shadow:0 -3px 10px rgba(0,0,0,.1);padding-bottom:calc(6px + env(safe-area-inset-bottom))}
+.fs-bot:empty{display:none}
+.fs-tog{position:absolute;top:8px;left:8px;z-index:7;display:flex;gap:6px}
+.fs-tog button{border:1px solid var(--line);background:rgba(255,255,255,.95);color:var(--tx);border-radius:9px;
+  padding:6px 11px;font-size:.8rem;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.12);touch-action:manipulation}
+.fs-tog button.on{background:var(--accbg);color:var(--acc);border-color:var(--acc)}
 body.stage-fs-lock{overflow:hidden}
-/* 全屏里一律压紧：电路卡只留「K31 10 根」那一行（名字是裸文本节点，
-   只能靠 font-size:0 藏，.k 自己再把字号要回来） */
 #fsBox .circuits,#fsBox .modes,#fsBox .toolbar{margin-bottom:6px}
 #fsBox .circuits button{font-size:0;padding:5px 8px}
 #fsBox .circuits button .k{font-size:.78rem;margin:0}
@@ -193,6 +212,7 @@ body.stage-fs-lock{overflow:hidden}
 #fsBox .side{margin-top:6px;padding:7px 10px;font-size:.78rem}
 #fsBox .playbar{margin-top:0}
 #fsBox .hintbar{position:static;margin-top:6px;padding:7px 10px}
+#fsBox .stip{display:none}          /* 长段提示在全屏里藏掉，要看点「说明」 */
 .zoombar{position:absolute;right:9px;bottom:9px;display:flex;flex-direction:column;gap:4px;z-index:3}
 .zoombar button{width:34px;height:34px;border:1px solid var(--line);background:rgba(255,255,255,.9);
   color:var(--tx2);border-radius:9px;font-size:1rem;font-weight:700;line-height:1;
@@ -250,6 +270,14 @@ body.stage-fs-lock{overflow:hidden}
 .term-dot.wrong{fill:var(--red);stroke:var(--red)}
 .term-dot.right{fill:var(--green);stroke:var(--green)}
 .tlabel{font-size:9.5px;fill:var(--tx2);font-family:ui-monospace,Menlo,Consolas,monospace}
+/* 端子按用途上色（09-28 他说「13、21 这种很难理解是什么」，照考试模拟软件：绿 NO、黄 NC、红线圈） */
+.term-dot.r-no{stroke:#2f9e44;stroke-width:2.4}
+.term-dot.r-nc{stroke:#d4a017;stroke-width:2.4}
+.term-dot.r-coil{stroke:#d6336c;stroke-width:2.4}
+.tlabel .ts{font-size:7px;font-weight:700}
+.tlabel .ts.r-no{fill:#2f9e44} .tlabel .ts.r-nc{fill:#b8860b} .tlabel .ts.r-coil{fill:#d6336c}
+.legend-role{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.72rem;color:var(--tx2);margin:2px 0 6px}
+.legend-role b{display:inline-block;width:9px;height:9px;border-radius:50%;border:2.4px solid;background:#fff;vertical-align:-1px;margin-right:3px}
 /* 端子排是黑机身，深灰的号码画上去看不见（截图才发现：12 个端子一个号都没有） */
 .tlabel.onstrip{fill:#2a2e33;text-anchor:middle;font-size:8.5px;font-weight:700}
 .badge-c{fill:#fff;stroke:var(--tx2);stroke-width:1}
@@ -380,7 +408,7 @@ body.stage-fs-lock{overflow:hidden}
       <button id="simRst">全部复位</button>
     </div>
     <div class="stip">先合闸，再按启动。按钮都是按下就弹回的 —— <b>按住</b>和<b>点一下</b>结果不一样的地方（点动）正是要看的。
-      图上按钮盒的按钮、断路器也能直接按。<b>亮红的线＝这一刻有电流流过</b>。</div>
+      图上按钮盒的按钮、断路器也能直接按。<b>带电的线变相色</b>（黄＝接 4 号熔断器 L1 那头、绿＝接 5 号 L2 那头），<b>加粗发光的＝这一刻有电流流过</b>；接触器吸合会盖红章。</div>
   </div>
 
   <div class="toolbar" id="browseBar">
@@ -412,6 +440,7 @@ body.stage-fs-lock{overflow:hidden}
     <button id="pNext">下一根 ›</button>
     <button id="pAuto">▶ 自动播放</button>
     <button id="pReset">重置</button>
+    <button id="pSpd">倍速 1×</button>
     <div class="cur" id="pCur">点击「下一根」开始</div>
   </div>
 
@@ -426,8 +455,10 @@ body.stage-fs-lock{overflow:hidden}
 </div>
 
 <div id="fsBox" hidden>
-  <div class="fs-top" id="fsTop"></div>
-  <div class="fs-bot" id="fsBot"></div>
+  <div class="fs-tog"><button id="fsTopBtn">☰ 工具</button><button id="fsInfoBtn">说明</button></div>
+  <div class="fs-pane fs-top" id="fsTop" hidden></div>
+  <div class="fs-pane fs-bot" id="fsBot"></div>
+  <div class="fs-pane fs-info" id="fsInfo" hidden></div>
 </div>
 
 <script>
@@ -1014,9 +1045,10 @@ const gTerm = el('g',{id:'gTerms'});
 const gSim = el('g',{id:'gSim'});       /* 试车：电动机、状态牌、按钮热区 —— 最上层，要点得到 */
 const gUser = el('g',{id:'gUser'});     /* 自己接线：他接的线（压在端子下面，跟标准线同一层次） */
 const gFree = el('g',{id:'gFree'});     /* 自己接线：选中的端子、交卷后错的端子（压在端子上面） */
+const gStep = el('g',{id:'gStep'});     /* 逐根播放：这一根两头端子的洋红闪圈（照考试模拟软件的接线动画） */
 const gLegend = el('g',{id:'gLegend'});
-[gBus,gDev,gMain,gFlow,gWire,gUser,gTerm,gFree,gSim,gLegend].forEach(function(g){ svg.appendChild(g); });
-const LAYERS = [gBus,gDev,gMain,gFlow,gWire,gUser,gTerm,gFree,gSim,gLegend];
+[gBus,gDev,gMain,gFlow,gWire,gUser,gTerm,gFree,gStep,gSim,gLegend].forEach(function(g){ svg.appendChild(g); });
+const LAYERS = [gBus,gDev,gMain,gFlow,gWire,gUser,gTerm,gFree,gStep,gSim,gLegend];
 gUser.style.display = 'none'; gFree.style.display = 'none';
 
 /* ==================================================================
@@ -1158,11 +1190,8 @@ function toUser(cx, cy){
   setTimeout(function(){ const t=document.getElementById('zoomTip'); if(t) t.style.opacity=0; }, 5000);
 })();
 
-/* 全屏：把 .stage 变成盖满视口的定位。viewBox 本身不用变，
-   容器一变大图跟着变大——但图（860×720，接近正方形）配手机竖屏（又窄又高），
-   默认 xMidYMid meet 会按宽度撑满、上下留一大片空白（实测量出来的，不是猜的）。
-   进全屏那一刻主动放大到「按高度撑满」，代价是左右会被裁掉一部分，
-   反正全屏之后有的是空间拖动，裁掉的部分挪过去就看到了，比空着强 */
+/* 全屏：见 CSS 那段说明。进全屏时整张图按「宽度撑满」完整显示（不再为撑满高度去裁两边 ——
+   他就是嫌那样「反而缩小了」），要看细节自己捏合放大 */
 (function bindFullscreen(){
   const stage = document.querySelector('.stage');
   const btn = document.getElementById('zFs');
@@ -1172,11 +1201,13 @@ function toUser(cx, cy){
     '<path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>';
   btn.innerHTML = ICON_FS;
   const box = document.getElementById('fsBox');
-  const top = document.getElementById('fsTop'), bot = document.getElementById('fsBot');
+  const top = document.getElementById('fsTop'), bot = document.getElementById('fsBot'), info = document.getElementById('fsInfo');
+  const tBtn = document.getElementById('fsTopBtn'), iBtn = document.getElementById('fsInfoBtn');
   /* 原样搬节点，不复制：按钮上挂的监听、setMode 写的内联 display 全都跟着走。
      每个节点原位留一个注释占位，退出时插回占位前面 */
-  const TOP_IDS = ['circuitBtns','.modes','schemaBar','freeBar','simBar','browseBar','testHead'];
-  const BOT_IDS = ['playBar','screwHead','side','hintbar'];
+  const TOP_IDS  = ['circuitBtns','.modes','browseBar','testHead','screwHead','.legendrow'];
+  const BOT_IDS  = ['schemaBar','freeBar','simBar','playBar'];
+  const INFO_IDS = ['side','hintbar'];
   const held = [];
   function el(k){ return k.charAt(0)==='.' ? document.querySelector(k) : document.getElementById(k); }
   function move(k, dest, before){
@@ -1186,37 +1217,55 @@ function toUser(cx, cy){
     held.push([n, ph]);
     dest.insertBefore(n, before || null);
   }
+  function pane(which){          /* 同一时间只开一个浮层，免得上下两块把图全盖住 */
+    top.hidden = which!=='top'; info.hidden = which!=='info';
+    tBtn.classList.toggle('on', which==='top'); iBtn.classList.toggle('on', which==='info');
+    bot.style.display = which==='info' ? 'none' : '';
+  }
+  tBtn.addEventListener('click', function(){ pane(top.hidden ? 'top' : null); });
+  iBtn.addEventListener('click', function(){ pane(info.hidden ? 'info' : null); });
+  /* 在工具层里点了模式 / 电路，收起工具层，好看图 */
+  top.addEventListener('click', function(e){
+    if(e.target.closest('.modes button, #circuitBtns button')) setTimeout(function(){ pane(null); }, 60);
+  });
   function enter(){
     TOP_IDS.forEach(function(k){ move(k, top); });
-    move('.stage', box, bot);
+    move('.stage', box, top);
     BOT_IDS.forEach(function(k){ move(k, bot); });
+    INFO_IDS.forEach(function(k){ move(k, info); });
     box.hidden = false;
+    pane(null);
   }
   function leave(){
     box.hidden = true;
     held.forEach(function(p){ p[1].parentNode.insertBefore(p[0], p[1]); p[1].remove(); });
     held.length = 0;
   }
-  function fitHeight(){
-    const r = stage.getBoundingClientRect();
-    if(!r.width || !r.height || !VB0) return;
-    const vbAspect = VB0.w/VB0.h, ctAspect = r.width/r.height;
-    if(ctAspect >= vbAspect) return;         /* 容器比图还宽，meet 已经是按高度撑满了 */
-    const mid = {x:VB0.x+VB0.w/2, y:VB0.y+VB0.h/2};
-    zoomAt(vbAspect/ctAspect, mid.x, mid.y);
-  }
+  function isOn(){ return stage.classList.contains('fs'); }
   function set(on){
+    if(on === isOn()) return;
     if(on) enter(); else leave();
     stage.classList.toggle('fs', on);
     document.body.classList.toggle('stage-fs-lock', on);
     btn.innerHTML = on ? '✕' : ICON_FS;
     btn.title = on ? '退出全屏' : '全屏';
-    if(on){ requestAnimationFrame(function(){ requestAnimationFrame(fitHeight); }); }
-    else { zoomReset(); }
+    zoomReset();
+    /* 真全屏（藏掉浏览器地址栏）。iOS Safari 之类不支持元素全屏的，就停在铺满视口的浮层，照样能用 */
+    if(on && box.requestFullscreen && !document.fullscreenElement){
+      const pr = box.requestFullscreen({navigationUI:'hide'});
+      if(pr && pr.catch) pr.catch(function(){});
+    }
+    if(!on && document.fullscreenElement && document.exitFullscreen){
+      const pr = document.exitFullscreen(); if(pr && pr.catch) pr.catch(function(){});
+    }
   }
-  btn.addEventListener('click', function(){ set(!stage.classList.contains('fs')); });
+  btn.addEventListener('click', function(){ set(!isOn()); });
+  /* 系统返回键 / 下拉退出了浏览器全屏：跟着把浮层也收掉，不留半截状态 */
+  document.addEventListener('fullscreenchange', function(){
+    if(!document.fullscreenElement && isOn()) set(false);
+  });
   document.addEventListener('keydown', function(e){
-    if(e.key === 'Escape' && stage.classList.contains('fs')) set(false);
+    if(e.key === 'Escape' && isOn()) set(false);
   });
 })();
 
@@ -1368,6 +1417,19 @@ function drawDevice(d){
   }
 }
 
+/* 端子的用途：接触器 13/14 常开、21/22 常闭、A1/A2 线圈，热继 95/96 常闭、97/98 常开 */
+function termRole(id){
+  if(/-(13|14|43|44)$/.test(id) || /^fr-9[78]$/.test(id)) return 'no';
+  if(/-(21|22|31|32)$/.test(id) || /^fr-9[56]$/.test(id)) return 'nc';
+  if(/-a[12]$/.test(id)) return 'coil';
+  return '';
+}
+const ROLE_TXT = {
+  no:'常开触点（NO）：平时断开，接触器吸合时接通 —— 13-14 用来<b>自锁</b>',
+  nc:'常闭触点（NC）：平时接通，吸合（热继是过载）时断开 —— 21-22 用来<b>互锁</b>，热继 95-96 用来<b>过载保护</b>',
+  coil:'线圈：A1、A2 两头通电，接触器就吸合'
+};
+function roleNote(id){ const r=termRole(id); return r ? '<br><span class="empty">'+ROLE_TXT[r]+'</span>' : ''; }
 function drawTerminal(id){
   const p=TPOS[id];
   const n=termCount(id);
@@ -1378,14 +1440,20 @@ function drawTerminal(id){
   /* 共用端子（同一颗螺丝压两根线）画成双环：外面再套一圈细描边，
      一眼跟只接一根的普通端子分开 —— 提醒「两个冷压端子一起套上再拧」 */
   if(shared) g.appendChild(el('circle',{class:'term-ring', cx:p.x, cy:p.y, r:10}));
-  const dot=el('circle',{class:'term-dot', cx:p.x, cy:p.y, r:(shared?7:6), 'data-term-dot':id});
+  const role = termRole(id);
+  const dot=el('circle',{class:'term-dot'+(role?' r-'+role:''), cx:p.x, cy:p.y, r:(shared?7:6), 'data-term-dot':id});
   g.appendChild(dot);
   const dk = (DEVICES.filter(function(d){return d.id===p.device;})[0]||{}).kind;
   const onTb = (dk==='tb');
   const lbl = onTb
     ? el('text',{class:'tlabel onstrip', x:p.x+18, y:p.y+3})     /* 标签条上，居中 */
     : el('text',{class:'tlabel', x:p.x+9, y:p.y-8});
-  lbl.textContent=p.label; g.appendChild(lbl);
+  lbl.textContent=p.label;
+  /* 编号后面跟一个小号的 NO / NC（线圈 A1/A2 本身就带字母，不加），跟模拟软件的 13NO、21NC 一样 */
+  if(role==='no' || role==='nc'){
+    const ts=el('tspan',{class:'ts r-'+role}); ts.textContent=role.toUpperCase(); lbl.appendChild(ts);
+  }
+  g.appendChild(lbl);
   /* 「×2」＝这一颗螺丝上要压两根线。端子排那一列间距只有 24，
      角标画在右下会盖住下一位的号码，所以挪到端子**左边**去 */
   if(shared){
@@ -1420,7 +1488,8 @@ function drawLegend(){
   if(CUR.mains && CUR.mains.length) items.push(['主电路（板上已接好，不用练）', '#b0a06a']);
   document.getElementById('legendH').innerHTML = items.map(function(it){
     return '<span><i style="background:'+it[1]+'"></i>'+it[0]+'</span>';
-  }).join('');
+  }).join('') + '<div class="legend-role">端子圈：<span><b style="border-color:#2f9e44"></b>绿＝常开 NO</span>' +
+    '<span><b style="border-color:#d4a017"></b>黄＝常闭 NC</span><span><b style="border-color:#d6336c"></b>红＝线圈 A1·A2</span></div>';
 }
 
 /* 整幅图重画一次：换电路时四个图层全部清空重建。
@@ -1865,7 +1934,12 @@ function solveNet(ws, closedFn){
   const P={};
   function fd(x){ if(P[x]===undefined) P[x]=x; while(P[x]!==x){ P[x]=P[P[x]]; x=P[x]; } return x; }
   E.forEach(function(e){ P[fd(e.a)] = fd(e.b); });
-  if(fd(sp.src[0])===fd(sp.src[1])){ res.short=true; return res; }
+  /* 每根线现在连着哪一头电源：1＝4 号熔断器那头（L1），2＝5 号那头（L2），0＝悬空。
+     试车时按这个上相色（照考试模拟软件：带电的线变相色，不带电的灰） */
+  res.pot = {};
+  const s0 = fd(sp.src[0]), s1 = fd(sp.src[1]);
+  ws.forEach(function(w){ const r = fd(w.from); res.pot['w'+w.id] = r===s0 ? 1 : (r===s1 ? 2 : 0); });
+  if(s0===s1){ res.short=true; return res; }
   sp.coils.forEach(function(c){ E.push({id:'k'+c.id, a:c.a, b:c.b, k:'k', coil:c}); });
   E.push({id:'src', a:sp.src[0], b:sp.src[1], k:'s'});
   res.edges = srcBlock(E);
@@ -2016,21 +2090,24 @@ function simRender(r){
   const kmS = sp.coils.map(function(c){ const k=SIM.km[c.id]; return (k.coil?1:0)+(k.on?2:0); }).join('');
   const btS = sp.buttons.map(function(b){ return SIM.btn[b.id].pressed?1:0; }).join('');
   const lgS = SIM.log.map(function(g){ return g.t0+':'+g.items.length; }).join(',');
-  const sig = [Object.keys(r.cur).sort().join(','), SIM.qf, SIM.frTrip, SIM.blown, SIM.motor, kmS, btS, lgS].join('|');
+  const potS = Object.keys(r.pot||{}).sort().map(function(k){ return k+r.pot[k]; }).join(',');
+  const sig = [Object.keys(r.cur).sort().join(','), potS, SIM.qf, SIM.frTrip, SIM.blown, SIM.motor, kmS, btS, lgS].join('|');
   if(sig===SIM.sig) return;
   SIM.sig = sig;
 
   simWires().forEach(function(w){
     const p = FREE.simUser ? gUser.querySelector('path[data-uid="'+w.id+'"]') : wirePath(w.id);
     if(!p) return;
-    const on = !!r.cur['w'+w.id];
+    const on = !!r.cur['w'+w.id], ph = (r.pot||{})['w'+w.id] || 0;
     p.classList.add('simw'); p.classList.remove('dim','hi');
     p.classList.toggle('live', on);
-    p.style.opacity = on ? 1 : .55;
+    p.classList.toggle('ph1', ph===1); p.classList.toggle('ph2', ph===2);
+    p.style.opacity = (on || ph) ? 1 : .55;
   });
   sp.coils.forEach(function(c){
     const k=SIM.km[c.id];
     gDev.querySelectorAll('.km-arm[data-km="'+c.id+'"]').forEach(function(a){ a.classList.toggle('in', k.on); });
+    const pull = gSim.querySelector('.sim-pull[data-pull="'+c.id+'"]'); if(pull) pull.classList.toggle('on', k.on);
     setPill(c.id, k.on ? (k.coil ? ['吸合','ok'] : ['释放中','mid']) : (k.coil ? ['吸合中','mid'] : ['释放','off']));
   });
   gDev.querySelectorAll('.qf-lever').forEach(function(l){ l.classList.toggle('off', !SIM.qf); });
@@ -2070,7 +2147,7 @@ function simRender(r){
   const rot = gSim.querySelector('.rotor');
   if(rot){ rot.classList.toggle('cw', SIM.motor>0); rot.classList.toggle('ccw', SIM.motor<0); }
   const mt = gSim.querySelector('.sim-mst');
-  if(mt) mt.textContent = SIM.motor ? sp.dirName[SIM.motor] : '停';
+  if(mt){ mt.textContent = SIM.motor ? sp.dirName[SIM.motor] : '停'; mt.classList.toggle('on', !!SIM.motor); }
 
   const q=document.getElementById('simQf'), f=document.getElementById('simFr');
   q.textContent = SIM.qf ? '分闸 QF' : '合闸 QF';     q.classList.toggle('on', SIM.qf);
@@ -2119,6 +2196,13 @@ function buildSim(){
   sp.coils.forEach(function(c){
     const d = DEVICES.filter(function(x){ return x.id===c.id; })[0];
     if(d) pill(c.id, d.x+98, d.y+106, 46);
+    /* 吸合时盖一个红章（照考试模拟软件），一眼看出哪只吸着 */
+    if(d){
+      const g = el('g',{class:'sim-pull', 'data-pull':c.id});
+      g.appendChild(el('circle',{cx:d.x+95, cy:d.y+76, r:18}));
+      const t = el('text',{x:d.x+95, y:d.y+76}); t.textContent='吸合'; g.appendChild(t);
+      gSim.appendChild(g);
+    }
   });
   const qf = dev('mcb');
   if(qf){
@@ -2212,9 +2296,9 @@ function simExit(){
   SIM.held = {};
   gSim.style.display = 'none';
   gWire.style.display = ''; gUser.style.display = 'none';
-  gUser.querySelectorAll('path').forEach(function(p){ p.classList.remove('simw','live'); p.style.opacity=''; });
+  gUser.querySelectorAll('path').forEach(function(p){ p.classList.remove('simw','live','ph1','ph2'); p.style.opacity=''; });
   FREE.simUser = false;
-  gWire.querySelectorAll('path.wire').forEach(function(p){ p.classList.remove('simw','live'); p.style.opacity=1; });
+  gWire.querySelectorAll('path.wire').forEach(function(p){ p.classList.remove('simw','live','ph1','ph2'); p.style.opacity=1; });
   gMain.querySelectorAll('path.mainw').forEach(function(p){ p.classList.remove('dead','run'); });
   gFlow.querySelectorAll('path.flowov').forEach(function(p){ p.classList.remove('on','rev'); });
   gDev.querySelectorAll('.km-arm,.qf-lever,.sbcap').forEach(function(e){ e.classList.remove('in','off','down'); });
@@ -2605,7 +2689,7 @@ document.getElementById('side').addEventListener('click', function(e){
    状态与三种模式
 ------------------------------------------------------------------ */
 const state = { mode:'browse', activeGroup:null, hoverTerm:null, selWire:null, selStack:[], schemaShown:false,
-  step:{index:0, playing:false, timer:null},
+  step:{index:0, playing:false, timer:null, speed:1, fx:null},
   test:{order:[], idx:0, score:0, answers:[], awaiting:false, mistakes:[]} };
 
 function setHint(gid){
@@ -2654,7 +2738,7 @@ function renderBrowse(){
     const list = WIRES.filter(function(w){ return w.from===id||w.to===id; });
     const side = document.getElementById('side');
     side.innerHTML = '<b>'+(TLABEL[id]||id)+'</b> 接了 '+list.length+' 根：<br>'+
-      list.map(function(w){ return '·　第 '+w.id+' 根　'+otherEndText(w, id); }).join('<br>');
+      list.map(function(w){ return '·　第 '+w.id+' 根　'+otherEndText(w, id); }).join('<br>') + roleNote(id);
   } else {
     document.getElementById('side').innerHTML =
       '<span class="empty">点一根线单独看它；悬停任意端子，看它接了几根线；点分组，只看这一组的走线。</span>';
@@ -2712,14 +2796,44 @@ function setGroup(gid){
 }
 
 /* ---- 逐根播放 ---- */
+/* 接线动画（09-28 照考试模拟软件）：这一根先把两头端子闪成洋红，停一下，再从起点把线「画」到终点。
+   倍速同时管闪圈时长、画线时长和自动播放的间隔 */
+function stepClearFx(){
+  if(state.step.fx){ clearTimeout(state.step.fx); state.step.fx=null; }
+  while(gStep.firstChild) gStep.removeChild(gStep.firstChild);
+  gWire.querySelectorAll('path.wire').forEach(function(p){
+    p.style.strokeDasharray=''; p.style.strokeDashoffset=''; p.style.transition='';
+  });
+}
+function stepAnimate(w){
+  const sp = state.step.speed, p = wirePath(w.id);
+  [w.from, w.to].forEach(function(t){
+    const q = TPOS[t];
+    gStep.appendChild(el('circle',{class:'step-ring', cx:q.x, cy:q.y, r:11}));
+  });
+  const L = p.getTotalLength ? p.getTotalLength() : 0;
+  if(!L) return;
+  p.style.transition='none'; p.style.strokeDasharray=L; p.style.strokeDashoffset=L;
+  p.getBoundingClientRect();
+  state.step.fx = setTimeout(function(){
+    p.style.transition='stroke-dashoffset '+Math.round(600/sp)+'ms linear';
+    p.style.strokeDashoffset=0;
+    state.step.fx = setTimeout(function(){
+      p.style.strokeDasharray=''; p.style.strokeDashoffset=''; p.style.transition='';
+      state.step.fx = null;
+    }, Math.round(650/sp));
+  }, Math.round(500/sp));
+}
 function renderStep(){
   const idx = state.step.index; // 0..14，已经画出的根数
+  stepClearFx();
   WIRES.forEach(function(w){
     const p=wirePath(w.id);
     p.classList.remove('dim');
     if(w.id<=idx){ p.style.opacity=1; p.classList.toggle('hi', w.id===idx); }
     else { p.style.opacity=0; p.classList.remove('hi'); }
   });
+  if(idx>0) stepAnimate(WIRES[idx-1]);
   const cur = document.getElementById('pCur');
   /* 镜头跟着当前这一根走：接线本来就是「盯着这两个端子」的活，
      整张图摆在那儿看不清哪两个孔（0.4 倍下端子只有 2px） */
@@ -2759,7 +2873,14 @@ function stepToggleAuto(){
   state.step.timer=setInterval(function(){
     if(state.step.index>=WIRES.length){ stepStopAuto(); return; }
     stepNext();
-  }, 1200);
+  }, Math.round(1900/state.step.speed));
+}
+const SPEEDS = [1, 2, 0.5];
+function stepCycleSpeed(){
+  const i = SPEEDS.indexOf(state.step.speed);
+  state.step.speed = SPEEDS[(i+1)%SPEEDS.length];
+  document.getElementById('pSpd').textContent = '倍速 '+state.step.speed+'×';
+  if(state.step.playing){ stepStopAuto(); stepToggleAuto(); }
 }
 
 /* ---- 自测模式 ---- */
@@ -2864,6 +2985,7 @@ function renderScrew(){
 ------------------------------------------------------------------ */
 function setMode(m){
   state.mode=m;
+  stepClearFx();
   simExit();
   freeExit();
   document.getElementById('simBar').style.display = m==='sim' ? 'block' : 'none';
@@ -2978,6 +3100,7 @@ document.getElementById('pPrev').addEventListener('click', stepPrev);
 document.getElementById('pNext').addEventListener('click', stepNext);
 document.getElementById('pAuto').addEventListener('click', stepToggleAuto);
 document.getElementById('pReset').addEventListener('click', stepReset);
+document.getElementById('pSpd').addEventListener('click', stepCycleSpeed);
 
 loadCircuit('k31');
 
