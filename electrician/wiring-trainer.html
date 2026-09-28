@@ -422,7 +422,7 @@ body.stage-fs-lock{overflow:hidden}
     <div class="legend-h" id="legendH"></div>
     <label class="chk"><input type="checkbox" id="labelChk" checked> 端子号</label>
   </div>
-  <div class="zoomtip" id="zoomTip">双指捏合放大 · 双击放大一档 · 放大后可拖动；点分组或「下一根」会自动凑近看</div>
+  <div class="zoomtip" id="zoomTip">双指捏合放大 · 双击放大一档 · 放大后可拖动；没放大时手指上下滑是滚网页</div>
 
   <div class="stage">
     <svg id="svg" viewBox="0 0 860 720" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -1443,11 +1443,16 @@ function drawTerminal(id){
   const role = termRole(id);
   const dot=el('circle',{class:'term-dot'+(role?' r-'+role:''), cx:p.x, cy:p.y, r:(shared?7:6), 'data-term-dot':id});
   g.appendChild(dot);
-  const dk = (DEVICES.filter(function(d){return d.id===p.device;})[0]||{}).kind;
+  const dv = DEVICES.filter(function(d){return d.id===p.device;})[0]||{}, dk = dv.kind;
   const onTb = (dk==='tb');
+  /* 接触器的端子标签照面板上主触点的印字：居中写在端子「里侧」（上排写下面、下排写上面）。
+     原来写在右上角，跟面板上印的 21NC / 22NC（K31 没接的那对）叠成「1422NC」（09-28 他截图） */
+  const kmTop = dk==='km' && p.y < dv.y + dv.h/2;
   const lbl = onTb
     ? el('text',{class:'tlabel onstrip', x:p.x+18, y:p.y+3})     /* 标签条上，居中 */
-    : el('text',{class:'tlabel', x:p.x+9, y:p.y-8});
+    : dk==='km'
+      ? el('text',{class:'tlabel', x:p.x, y:kmTop ? p.y+17 : p.y-10, style:'text-anchor:middle'})
+      : el('text',{class:'tlabel', x:p.x+9, y:p.y-8});
   lbl.textContent=p.label;
   /* 编号后面跟一个小号的 NO / NC（线圈 A1/A2 本身就带字母，不加），跟模拟软件的 13NO、21NC 一样 */
   if(role==='no' || role==='nc'){
@@ -1457,7 +1462,7 @@ function drawTerminal(id){
   /* 「×2」＝这一颗螺丝上要压两根线。端子排那一列间距只有 24，
      角标画在右下会盖住下一位的号码，所以挪到端子**左边**去 */
   if(shared){
-    const bx = onTb ? p.x-13 : p.x+11, by = onTb ? p.y : p.y+11;
+    const bx = onTb ? p.x-13 : p.x+11, by = onTb ? p.y : (kmTop ? p.y-11 : p.y+11);   /* 接触器上排的 ×2 挪到上面，别压下面的字 */
     g.appendChild(el('circle',{class:'badge-c', cx:bx, cy:by, r:7.5}));
     const bt=el('text',{class:'badge-t', x:bx, y:by}); bt.textContent='×'+n; g.appendChild(bt);
   }
@@ -2785,12 +2790,8 @@ function setGroup(gid){
   document.querySelectorAll('.grpbtn').forEach(function(b){
     b.classList.toggle('on', +b.dataset.g===state.activeGroup);
   });
-  if(state.activeGroup==null) zoomReset();
-  else {
-    let pts=[];
-    WIRES.forEach(function(w){ if(w.group===state.activeGroup) pts = pts.concat(wirePts(w)); });
-    fitTo(pts);
-  }
+  /* 09-28 他说「看线的时候不要这样放大，整体就好，要看清楚每个元件」：点分组 / 逐根播放都不再自动凑近，
+     保持整张图，只靠高亮和闪圈指出是哪根；要看细节他自己捏合放大 */
   setHint(state.activeGroup);
   renderBrowse();
 }
@@ -2840,7 +2841,6 @@ function renderStep(){
   if(idx===0){ cur.innerHTML='点击「下一根」开始'; zoomReset(); }
   else{
     const w=WIRES[idx-1];
-    fitTo(wirePts(w), 70);
     let html = '<b>'+idx+'.</b> '+wireDesc(w)+'　（第 '+w.group+' 组：'+GROUPS[w.group-1].name+'）';
     /* 某一端如果还挂着别的线，提醒「两个冷压端子一起压上再拧」，别拧一次松一次 */
     ['from','to'].forEach(function(end){
