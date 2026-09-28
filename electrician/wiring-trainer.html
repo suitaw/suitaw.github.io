@@ -597,27 +597,29 @@ const GCOLOR_HEX = {1:'#1f2328', 2:'#1f2328', 3:'#1f2328', 4:'#1f2328', 5:'#1f23
 /* WIRES：from/to 是端子 id。14 根，**数组顺序＝实际接线顺序**，照他 Notion「实训接线记录」：
    每个接触器的辅助端子**先接常闭再接常开**（22NC → 21NC → 14NO → 13NO）——
    21NC 和 13NO 在右侧挨着，22NC 和 14NO 在左侧挨着，先接常开线头会挡住旁边常闭的螺丝。
-   **不写拐点**：跟「自己接线」同一套 freeRoute 自动走直角线 */
+   **09-28 写回拐点**：自动走线（freeRoute）让几根线叠在同一条通道上，他说看不清。现在每根线手排一条专用通道：
+   KM 上方横线 y310/320/330（主电路彩线在 286~302），第 7、9 根走彩线上面 y274/282（那段彩线只在左边）、KM 下方 y510~540（彩线到 502）、两 KM 缝里竖道 x234/240、
+   KM2 和端子排之间竖道 x446~468、跳线贴端子排 x481/484。只剩「同一个端子压两根」的最后一小段会重合 */
 const WIRES = [
   /* ── 1 电源进线：4 号走热继电器 → 停止；5 号串两个线圈 A1 ── */
-  {id:1,  from:'fu4-out', to:'fr-96',  group:1},
-  {id:2,  from:'fr-95',   to:'tb-12',  group:1},
-  {id:3,  from:'fu5-out', to:'km2-a1', group:1},
-  {id:4,  from:'km2-a1',  to:'km1-a1', group:1},
+  {id:1,  from:'fu4-out', to:'fr-96',  group:1, waypoints:[[160,258],[234,258],[234,614]]},
+  {id:2,  from:'fr-95',   to:'tb-12',  group:1, waypoints:[[451,638],[451,522]]},
+  {id:3,  from:'fu5-out', to:'km2-a1', group:1, waypoints:[[202,266],[434,266]]},
+  {id:4,  from:'km2-a1',  to:'km1-a1', group:1, waypoints:[[434,330],[220,330]]},
   /* ── 2 常闭对线圈，交叉：我的 22NC 管对方的命 ── */
-  {id:5,  from:'km1-22',  to:'km2-a2', group:2},
-  {id:6,  from:'km2-22',  to:'km1-a2', group:2},
+  {id:5,  from:'km1-22',  to:'km2-a2', group:2, waypoints:[[198,522],[434,522]]},
+  {id:6,  from:'km2-22',  to:'km1-a2', group:2, waypoints:[[412,528],[220,528]]},
   /* ── 3 常闭对常开，交叉：我的 21NC 接对方 14NO，再下端子排（1 配 5，2 配 1）── */
-  {id:7,  from:'km1-21',  to:'km2-14', group:3},
-  {id:8,  from:'km2-14',  to:'tb-5',   group:3},
-  {id:9,  from:'km2-21',  to:'km1-14', group:3},
-  {id:10, from:'km1-14',  to:'tb-1',   group:3},
+  {id:7,  from:'km1-21',  to:'km2-14', group:3, waypoints:[[198,274],[446,274],[446,534],[386,534]]},
+  {id:8,  from:'km2-14',  to:'tb-5',   group:3, waypoints:[[386,516],[456,516],[456,354]]},
+  {id:9,  from:'km2-21',  to:'km1-14', group:3, waypoints:[[412,282],[240,282],[240,540],[172,540]]},
+  {id:10, from:'km1-14',  to:'tb-1',   group:3, waypoints:[[172,510],[462,510],[462,258]]},
   /* ── 4 常开对常开：13 对 13，再引一根去公共点 ── */
-  {id:11, from:'km1-13',  to:'km2-13', group:4},
-  {id:12, from:'km2-13',  to:'tb-2',   group:4},
+  {id:11, from:'km1-13',  to:'km2-13', group:4, waypoints:[[172,320],[386,320]]},
+  {id:12, from:'km2-13',  to:'tb-2',   group:4, waypoints:[[386,310],[468,310],[468,282]]},
   /* ── 5 端子排跳线：2—6、6—11 都是公共点 ── */
-  {id:13, from:'tb-2',    to:'tb-6',   group:5},
-  {id:14, from:'tb-6',    to:'tb-11',  group:5}
+  {id:13, from:'tb-2',    to:'tb-6',   group:5, waypoints:[[481,282],[481,378]]},
+  {id:14, from:'tb-6',    to:'tb-11',  group:5, waypoints:[[484,378],[484,498]]}
 ];
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 
