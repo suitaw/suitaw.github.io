@@ -112,6 +112,9 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
 .sim-pill-g.ok text,.sim-pill-g.mid text,.sim-pill-g.warn text{fill:#fff}
 .sim-mst{font-size:12px;font-weight:700;fill:var(--tx2)}
 .sim-mst.on{font-size:18px;fill:#e03131}
+.amp-needle{transform-box:fill-box;transform-origin:50% 100%;transform:rotate(-42deg);transition:transform .8s ease-out}
+.amp-needle.volt.live,.amp-needle.run{transform:rotate(6deg)}
+.amp-needle.run:nth-of-type(odd){transform:rotate(9deg)}
 .step-ring{fill:rgba(230,73,128,.18);stroke:#e64980;stroke-width:3;pointer-events:none;animation:stepblink .45s ease-in-out infinite alternate}
 @keyframes stepblink{from{opacity:1}to{opacity:.25}}
 .rotor{transform-box:fill-box;transform-origin:center}
@@ -523,9 +526,9 @@ function elbow(a, b, y){ return [a, [a[0],y], [b[0],y], b]; }
 function mkBus(devices){
   const tb = devices.filter(function(d){ return d.id==='tb'; })[0];
   const sb = devices.filter(function(d){ return d.id==='sb'; })[0], out=[];
-  const top = tb.y-30;
-  for(let i=0;i<12;i++){
-    const y = tb.y+22+i*24, gx = tb.x+tb.w+4+(i%4)*4, sx = sb.x+sb.w/2+(i-6)*3;
+  const top = tb.y-30, n = (tb.terminals||[]).length || 12;   /* K34 的端子排只有 8 位 */
+  for(let i=0;i<n;i++){
+    const y = tb.y+22+i*24, gx = tb.x+tb.w+4+(i%4)*4, sx = sb.x+sb.w/2+(i-n/2)*3;
     out.push([[tb.x+tb.w,y],[gx,y],[gx,top],[sx,top],[sx,sb.y+sb.h]]);
   }
   return out;
@@ -974,11 +977,154 @@ return { id:'k31', k:'K31',
          '⚠ 有 4 个端子要压两根线：<b>13NO、端子排 1、6、8</b> —— 两个冷压端子一起套上再拧'] };
 }
 
+/* ══ K34 带熔断器（断路器）、仪表、电流互感器的电动机运行控制（单接触器 · 控制回路 7 根）══════
+   2026-09-28 照他 09-05 拍的板（相册「实物接线图」照片 4~9）和 Notion「实训接线记录」K34 那 7 根做。
+   主电路（QF → FU1 → KM → FR → 三只电流互感器 → 出线端子排）和仪表板（3 只电流表 + 1 只电压表）画成背景，
+   不纳入练习 —— 他说「其他的（不带电能表的）控制线即可」。
+   **按钮在端子排上的位置是推测**：Notion 自己标着「待核查」，照片分辨不清。这里按 Notion 的说法排成 8 位 ——
+   1-2 启动常开、3-4 启动常闭、5-6 停止常开、7-8 停止常闭，于是「倒数第 1 位」＝8、「倒数第 2 位」＝7：
+     L1 → FU4 → FR 95 →[FR 常闭]→ 96 → tb8 →[停止·常闭]→ tb7 →跳线→ tb1（KM-13）
+        →[启动·常开 ∥ KM 13-14]→ tb2（KM-14 · A2）→ KM 线圈 A2→A1 → FU5 → L2
+   注意 95/96 跟 K32 反过来（K32 是 4 号 → 96），Notion 里也特意记了 */
+function defK34(){
+const DEVICES = [
+  {id:'qf', name:'DZ47s C16', sub:'3P 断路器 QF', tag:'QF', kind:'mcb', x:30, y:40, w:96, h:92,
+   pins:[[18,6,'1'],[48,6,'3'],[78,6,'5'],[18,86,'2'],[48,86,'4'],[78,86,'6']], terminals:[]},
+  {id:'fu1', name:'RT18-32X ×3', sub:'主回路熔断器 FU1', tag:'FU1', kind:'fuse3', x:32, y:160, w:96, h:92,
+   pins:[[16,6,''],[48,6,''],[80,6,''],[16,86,''],[48,86,''],[80,86,'']], terminals:[]},
+  {id:'fu4', name:'4号熔断器', sub:'RT18-32X', kind:'fuse', x:144, y:160, w:32, h:92,
+   pins:[[16,6,'']], terminals:[ {id:'fu4-out', label:'出', x:16, y:92} ]},
+  {id:'fu5', name:'5号熔断器', sub:'RT18-32X', kind:'fuse', x:186, y:160, w:32, h:92, nameDy:-36,
+   pins:[[16,6,'']], terminals:[ {id:'fu5-out', label:'出', x:16, y:92} ]},
+  {id:'km', name:'接触器 KM', sub:'CJX2s-0911', tag:'KM', kind:'km', x:30, y:340, w:KM_W, h:KM_H,
+   pins:KM_PINS.concat([[168,18,'21NC'],[168,132,'22NC']]),
+   terminals:[
+     {id:'km-13', label:'13', x:142, y:18},
+     {id:'km-a1', label:'A1', x:190, y:18},
+     {id:'km-14', label:'14', x:142, y:132},
+     {id:'km-a2', label:'A2', x:190, y:132}
+   ]},
+  {id:'fr', name:'JR36-20 热继电器', sub:'FR', tag:'FR', kind:'fr', x:30, y:520, w:154, h:104,
+   pins:FR_PINS,
+   terminals:[ {id:'fr-96', label:'96', x:154, y:64}, {id:'fr-95', label:'95', x:154, y:88} ]},
+  {id:'ct', name:'电流互感器', sub:'TA ×3', tag:'TA', kind:'ct', x:30, y:640, w:124, h:40,
+   pins:[[28,20],[60,20],[92,20]], terminals:[]},
+  {id:'amp', name:'仪表板', sub:'', kind:'amp', x:296, y:590, w:240, h:64, meters:['A','A','A','V'], terminals:[]},
+  {id:'tb', name:'端子排', sub:'TB · 8 位通按钮盒', kind:'tb', x:474, y:236, w:62, h:212,
+   terminals:(function(){
+     const out=[];
+     for(let i=0;i<8;i++) out.push({id:'tb-'+(i+1), label:String(i+1), x:14, y:22+i*24});
+     return out;
+   })()},
+  {id:'tbm', name:'出线端子排', sub:'去电动机 U V W', kind:'tbm', x:30, y:712, w:250, h:34, nameX:210, nameDy:-8,
+   pins:[[30,17,'U'],[70,17,'V'],[110,17,'W']], terminals:[]},
+  {id:'pe', name:'接地铜排 PE', sub:'', kind:'pe', x:300, y:712, w:120, h:26, terminals:[]},
+  {id:'sb', name:'按钮盒', sub:'绿·红', kind:'sb', x:440, y:40, w:116, h:130,
+   btns:[['#2f9e44','启动 SB2','1-4'],['#c0392b','停止 SB1','5-8']],
+   terminals:[]}
+];
+const TPOS = buildTPOS(DEVICES);
+const TLABEL = {
+  'fu4-out':'4号熔断器（L1）', 'fu5-out':'5号熔断器（L2）',
+  'fr-96':'热继电器96', 'fr-95':'热继电器95',
+  'km-a1':'接触器A1', 'km-a2':'接触器A2',
+  'km-13':'接触器13NO', 'km-14':'接触器14NO',
+  'tb-1':'端子排1（启动·常开）', 'tb-2':'端子排2（启动·常开）',
+  'tb-3':'端子排3（启动·常闭·不用）', 'tb-4':'端子排4（启动·常闭·不用）',
+  'tb-5':'端子排5（停止·常开·不用）', 'tb-6':'端子排6（停止·常开·不用）',
+  'tb-7':'端子排7＝倒数第2位（停止·常闭）', 'tb-8':'端子排8＝倒数第1位（停止·常闭）'
+};
+/* 分组照他 Notion 的三组 */
+const GROUPS = [
+  {id:1, name:'热继电器支路', hint:'4 号熔断器下方 → 热继电器 <b>95</b>，<b>96</b> → 端子排<b>倒数第 1 位</b>（停止按钮）。注意跟 K32 反过来（K32 是 4 号 → 96）'},
+  {id:2, name:'线圈支路',     hint:'5 号熔断器下方 → 接触器 <b>A1</b>；<b>A2 → 14NO</b>；14NO → 端子排<b>第 2 位</b>'},
+  {id:3, name:'自锁与跳线',   hint:'<b>13NO → 端子排第 1 位</b>；跳线 <b>第 1 位 — 倒数第 2 位</b>。记法：4 号走热继电器下端子排，5 号串线圈；线圈出来经 13-14 落到端子排 1、2 位'}
+];
+const GCOLOR_HEX = {1:'#2f9e44', 2:'#c0392b', 3:'#e67e22'};
+const WIRES = [
+  {id:1, from:'fu4-out', to:'fr-95', group:1},
+  {id:2, from:'fr-96',   to:'tb-8',  group:1},
+  {id:3, from:'fu5-out', to:'km-a1', group:2},
+  {id:4, from:'km-a2',   to:'km-14', group:2},
+  {id:5, from:'km-14',   to:'tb-2',  group:2},
+  {id:6, from:'km-13',   to:'tb-1',  group:3},
+  {id:7, from:'tb-1',    to:'tb-7',  group:3}
+];
+WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
+const L1='#e0a92e', L2='#3fa845', L3='#cf4436', PH=[L1,L2,L3];
+function P(id, i){ return devPin(DEVICES, id, i); }
+/* 下标：0-2 进 QF / 3-5 QF→FU1 / 6-8 FU1→KM / 9-11 KM→FR / 12-14 FR→互感器 / 15-17 互感器→出线端子排 */
+const MAINS = [];
+[0,1,2].forEach(function(i){ const b=P('qf',i), y=38-6*i; MAINS.push({c:PH[i], p:[[4,y],[b[0],y],b]}); });
+[0,1,2].forEach(function(i){ const a=P('qf',3+i), b=P('fu1',i); MAINS.push({c:PH[i], p:elbow(a,b,(a[1]+b[1])/2)}); });
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('fu1',3+i), P('km',i), P('fu1',3)[1]+14+8*i)}); });
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('km',3+i), P('fr',i), P('km',3)[1]+14+8*i)}); });
+[0,1,2].forEach(function(i){ const a=P('fr',3+i), b=P('ct',i); MAINS.push({c:PH[i], p:elbow(a,b,(a[1]+b[1])/2)}); });
+[0,1,2].forEach(function(i){ MAINS.push({c:PH[i], p:elbow(P('ct',i), P('tbm',i), P('ct',0)[1]+18+5*i)}); });
+const BUS = mkBus(DEVICES);
+const SIMSPEC = {
+  src:['fu4-out','fu5-out'],
+  coils:[ {id:'km', a:'km-a1', b:'km-a2', name:'KM', pick:'：主触点合上、13-14 接通'} ],
+  contacts:[
+    {a:'tb-1', b:'tb-2', no:true,  by:'sb2', n:'启动 SB2 常开（1-2）'},
+    {a:'tb-3', b:'tb-4', no:false, by:'sb2', n:'启动 SB2 常闭（3-4）'},
+    {a:'tb-5', b:'tb-6', no:true,  by:'sb1', n:'停止 SB1 常开（5-6）'},
+    {a:'tb-7', b:'tb-8', no:false, by:'sb1', n:'停止 SB1 常闭（7-8）'},
+    {a:'km-13', b:'km-14', no:true, by:'km', n:'KM 自锁 13-14'},
+    {a:'fr-95', b:'fr-96', no:false, by:'fr', n:'热继 95-96'}
+  ],
+  buttons:[
+    {id:'sb2', name:'启动', sub:'SB2', tb:'1~4', cls:'b-g', start:true},
+    {id:'sb1', name:'停止', sub:'SB1', tb:'5~8', cls:'b-r'}
+  ],
+  motor:{km:1}, dirName:{'1':'运转'},
+  mains:{ always:[0,1,2], qf:[3,4,5,6,7,8], out:[9,10,11,12,13,14,15,16,17],
+    run:{ km:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17] }, rev:{} },
+  checks:[
+    {n:'合闸、不按按钮：KM 不吸',
+     f:function(T){ return !T.on('km'); },
+     h:'没按就吸合：多半是把启动按钮的两头短接了，或者接到了常闭上'},
+    {n:'按启动：KM 吸合',
+     f:function(T){ T.press('sb2'); return T.on('km'); },
+     h:'顺着走一遍：4 号熔断器 → 热继 95-96 → 端子排 8 → 停止常闭 → 7 → 跳线 → 1 → 启动常开 → 2 → 14NO → A2 → 线圈 → A1 → 5 号熔断器'},
+    {n:'松开启动：KM 保持（自锁）',
+     f:function(T){ T.tap('sb2'); return T.on('km'); },
+     h:'自锁：13NO 接端子排 1、14NO 接端子排 2，13-14 正好并在启动按钮两端'},
+    {n:'按停止：KM 释放',
+     f:function(T){ T.tap('sb2'); if(!T.on('km')) return null; T.tap('sb1'); return !T.on('km'); },
+     h:'停止的常闭 7-8 要串在回路里：8 接热继 96，7 用跳线接到 1'},
+    {n:'热继动作：KM 释放',
+     f:function(T){ T.tap('sb2'); if(!T.on('km')) return null; T.fr(true); return !T.on('km'); },
+     h:'热继的 95-96 要串在回路里：95 接 4 号熔断器，96 接端子排 8'}
+  ],
+  explain:function(S){
+    const k=S.km.km.on, b=S.btn;
+    if(k && !b.sb2.pressed) return '<b>自锁</b>：松手照转 —— KM 自己的 13-14（端子排 1↔2）接通，等于把启动按钮短接住了。' +
+      '<br>看右边仪表板：<b>三只电流表都摆起来、读数差不多</b> —— 试车时要口述「A、B、C 相电流正常，三相电流平衡」';
+    if(k) return '按着启动时，启动按钮和 KM 的 13-14 两条路并联着供电；松手后只剩 13-14 那条';
+    return '';
+  }
+};
+return { id:'k34', k:'K34',
+  name:'带熔断器（断路器）、仪表、电流互感器的电动机运行控制电路',
+  sub:'单接触器 · 练控制回路 7 根（主电路、互感器、仪表板上已接好）',
+  title:'带仪表和电流互感器 · 实物接线图',
+  devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
+  mains:MAINS, bus:BUS, sim:SIMSPEC,
+  viewBox:'0 0 560 870', hasSchema:false,
+  warns:['⚠ <b>按钮接在端子排哪几位是推测</b>（Notion 也标着「待核查」）：这里按 1-2 启动常开、7-8 停止常闭排。' +
+         '上板先用万用表通断档量：按下绿钮哪两位通了就是启动常开，红钮不按时通、按下断的两位是停止常闭',
+         '⚠ 端子排按<b>位置</b>叫（第 1 位 … 倒数第 1 位），不是图纸线号；这里 8 位，倒数第 1 位＝8、倒数第 2 位＝7',
+         '⚠ <b>95/96 跟 K32 反过来</b>：K32 是 4 号 → 96，这块是 4 号 → 95。它们是一对常闭的两头，接反不影响通断，但按 Notion 记的接',
+         '⚠ 有 2 个端子要压两根线：<b>14NO、端子排第 1 位</b>',
+         '⚠ 试车按绿钮后看电流表，口述：<b>A 相电流正常、B 相电流正常、C 相电流正常，三相电流平衡</b>'] };
+}
+
 /* 电路登记表：key 是电路 id（对应实操材料的 K 编号）。
    加 K33/K34 只要再写一个 defK33() 挂进来 —— 渲染层全部读「当前电路」，
    没有任何一处认死某一块板 */
-const CIRCUITS = { k31: defK31(), k32: defK32() };
-const CIRCUIT_ORDER = ['k31','k32'];
+const CIRCUITS = { k31: defK31(), k32: defK32(), k34: defK34() };
+const CIRCUIT_ORDER = ['k31','k32','k34'];
 
 /* 「当前电路」的活动引用：loadCircuit() 换的就是这几个，
    下面所有渲染 / 模式代码照旧读 DEVICES / WIRES / TPOS…，一个字都不用改 */
@@ -1396,6 +1542,31 @@ function drawDevice(d){
   if(d.kind==='pe'){
     add(el('rect',{class:'p-brass', x:d.x, y:d.y, width:d.w, height:d.h, rx:2}));
     for(let i=0;i<5;i++) add(el('circle',{class:'p-screw', cx:d.x+16+i*22, cy:d.y+d.h/2, r:4.4}));
+    devName(d, -8);
+    return;
+  }
+  /* ── 电流互感器 ×3（K34）：主电路的相线从圆孔中间穿过去，二次侧两根细线去电流表 ── */
+  if(d.kind==='ct'){
+    (d.pins||[]).forEach(function(p, i){
+      const cx=d.x+p[0], cy=d.y+p[1], col=['#e0a92e','#3fa845','#cf4436'][i];
+      add(el('rect',{x:cx-15, y:cy-13, width:30, height:26, rx:5, fill:'#f1f3f5', stroke:col, 'stroke-width':2.2}));
+      add(el('circle',{cx:cx, cy:cy, r:7.5, fill:'#fff', stroke:'#5a636d', 'stroke-width':1.4}));
+    });
+    txt('p-tiny', d.x+d.w-2, d.y+d.h+10, 'LMZ 互感器 ×3（相线穿心）', 'end');
+    devName(d, -8);
+    return;
+  }
+  /* ── 仪表板（K34）：三只电流表 + 一只电压表，表盘上画指针；试车时指针摆起来 ── */
+  if(d.kind==='amp'){
+    add(el('rect',{x:d.x, y:d.y, width:d.w, height:d.h, rx:4, fill:'#dfe3e8', stroke:'#8d949b'}));
+    (d.meters||[]).forEach(function(m, i){
+      const cx=d.x+30+i*58, cy=d.y+d.h/2+2;
+      add(el('rect',{x:cx-24, y:cy-24, width:48, height:48, rx:3, fill:'#fff', stroke:'#39424b', 'stroke-width':1.4}));
+      add(el('path',{d:'M'+(cx-17)+','+(cy+4)+' A19,19 0 0 1 '+(cx+17)+','+(cy+4), fill:'none', stroke:'#9aa5b1', 'stroke-width':1.2}));
+      txt('p-mark', cx, cy+18, m);
+      add(el('line',{class:'amp-needle'+(m==='V'?' volt':''), x1:cx, y1:cy+8, x2:cx, y2:cy-14, stroke:'#d6336c', 'stroke-width':1.6, 'stroke-linecap':'round'}));
+    });
+    txt('p-tiny', d.x+d.w/2, d.y+d.h+10, 'A 表经互感器测三相电流 · V 表测电压（板上已接好）');
     devName(d, -8);
     return;
   }
@@ -2153,6 +2324,11 @@ function simRender(r){
   if(rot){ rot.classList.toggle('cw', SIM.motor>0); rot.classList.toggle('ccw', SIM.motor<0); }
   const mt = gSim.querySelector('.sim-mst');
   if(mt){ mt.textContent = SIM.motor ? sp.dirName[SIM.motor] : '停'; mt.classList.toggle('on', !!SIM.motor); }
+  /* K34 的表：合闸电压表就有读数；电动机转起来三只电流表才摆（互感器在出线上） */
+  gDev.querySelectorAll('.amp-needle').forEach(function(n){
+    if(n.classList.contains('volt')) n.classList.toggle('live', !!SIM.qf);
+    else n.classList.toggle('run', !!SIM.motor);
+  });
 
   const q=document.getElementById('simQf'), f=document.getElementById('simFr');
   q.textContent = SIM.qf ? '分闸 QF' : '合闸 QF';     q.classList.toggle('on', SIM.qf);
@@ -2304,6 +2480,7 @@ function simExit(){
   gUser.querySelectorAll('path').forEach(function(p){ p.classList.remove('simw','live','ph1','ph2'); p.style.opacity=''; });
   FREE.simUser = false;
   gWire.querySelectorAll('path.wire').forEach(function(p){ p.classList.remove('simw','live','ph1','ph2'); p.style.opacity=1; });
+  gDev.querySelectorAll('.amp-needle').forEach(function(n){ n.classList.remove('run','live'); });
   gMain.querySelectorAll('path.mainw').forEach(function(p){ p.classList.remove('dead','run'); });
   gFlow.querySelectorAll('path.flowov').forEach(function(p){ p.classList.remove('on','rev'); });
   gDev.querySelectorAll('.km-arm,.qf-lever,.sbcap').forEach(function(e){ e.classList.remove('in','off','down'); });
