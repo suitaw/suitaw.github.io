@@ -1113,24 +1113,33 @@ const SIMSPEC = {
     {id:'qf2', name:'QF2 插座',   dev:'qf2', states:['分闸','合闸']},
     {id:'qf3', name:'QF3 照明',   dev:'qf3', states:['分闸','合闸']},
     {id:'s1',  name:'S1 双控',    dev:'s1',  states:['L1','L2']},
-    {id:'s2',  name:'S2 双控',    dev:'s2',  states:['L1','L2']},
+    {id:'s2',  name:'S2 双控',    dev:'s2',  states:['L1','L2'], init:1},   /* 起始位置：S1 在 L1、S2 在 L2 → 灯是灭的，才能照考场那套「左开、右关、右开、左关」走 */
     {id:'s3',  name:'S3 日光灯',  dev:'s3',  states:['断开','接通']}
   ],
   motor:{}, dirName:{}, noFr:true, qfLabel:['电源合闸','电源分闸'],
   offHint:'先点「电源合闸」（试车台送电），再按考场顺序<b>从左到右</b>合 QF1、QF2、QF3 —— 图上的空开、开关直接点也能扳',
   mains:{ always:[], qf:[], out:[], run:{}, rev:{} },
-  simTip:'先点「电源合闸」，再<b>从左到右</b>合 QF1、QF2、QF3（图上的空开、开关也能直接点）。' +
-    '<b>带电的线变色</b>：红＝连着相线 L、蓝＝连着零线 N，加粗发光的＝这一刻有电流。插座有电右下角亮红点，电能表有电器在用就转',
+  simTip:'<b>照考场通电试车的顺序走</b>（Notion「通电试车操作流程」K33）：' +
+    '① 点「电源合闸」，再<b>从左到右</b>合 QF1、QF2、QF3；' +
+    '② 验电：3 个断路器出线端，相线有电、零线无电（口述；图上看线颜色：红有电、蓝是零线）；' +
+    '③ 灯泡：<b>扳左边 S1 开灯 → 扳右边 S2 关灯 → 扳右边 S2 开灯 → 扳左边 S1 关灯</b>；' +
+    '④ 开右边单控 S3 点亮日光灯，再关；看插座有电（右下红点）、相序对；' +
+    '⑤ 试车完毕断电：<b>从右至左</b>分 QF3、QF2、QF1，最后点「电源分闸」。' +
+    '（图上的空开、开关也能直接点。）<b>带电的线变色</b>：红＝连着相线 L、蓝＝连着零线 N，加粗发光的＝这一刻有电流。插座有电右下角亮红点，电能表有电器在用就转',
   statusText:function(S){
     const on = [['xs','插座有电'],['el','白炽灯亮'],['fl','日光灯亮']].filter(function(x){ return S.km[x[0]].on; }).map(function(x){ return x[1]; });
-    if(on.length) return ['on', on.join(' · '), '电能表转盘在转、读数在走（有电器在用电；读数是加速演示，真表 60W 的灯亮 1 小时才走 0.06 度）。试试扳 S1 或 S2：两个开关<b>任意一个</b>都能开关白炽灯'];
+    if(on.length) return ['on', on.join(' · '), '电能表转盘在转、读数在走（有电器在用电；读数是加速演示，真表 60W 的灯亮 1 小时才走 0.06 度）。灯泡按考场顺序：<b>左 S1 开 → 右 S2 关 → 右 S2 开 → 左 S1 关</b>（两个开关<b>任意一个</b>都能开关）；收尾<b>从右至左</b>分 QF3、QF2、QF1'];
     const q = [1,2,3].filter(function(i){ return !S.tog['qf'+i]; }).map(function(i){ return 'QF'+i; });
-    return ['off', '电源已送 · 没有电器在用电', q.length ? '还没合：'+q.join('、')+'（从左到右合）' : '空开都合上了：扳一下 S3，或者扳 S1 / S2'];
+    return ['off', '电源已送 · 没有电器在用电', q.length ? '还没合：'+q.join('、')+'（从左到右合）' : '空开都合上了，灯是灭的（S1 在 L1、S2 在 L2）：先扳<b>左边 S1</b> 开灯，再按顺序走；单控 S3 管日光灯'];
   },
   checks:[
     {n:'送电、空开全分：灯不亮、插座没电',
      f:function(T){ return !T.on('el') && !T.on('fl') && !T.on('xs'); },
      h:'空开都没合就有电器通电：多半是有线绕过了空开，直接从电能表接到了负载'},
+    {n:'验电：3 个断路器出线端，相线有电、零线无电',
+     f:function(T){ ['qf1','qf2','qf3'].forEach(function(k){ T.set(k,1); });
+       return ['qf1','qf2','qf3'].every(function(k){ return T.live(k+'-lo') && !T.live(k+'-no'); }); },
+     h:'合闸后每个断路器的出线端：L 口连着电源相线（有电）、N 口连着零线（验电笔不亮）。L、N 接反或者串到别的口，这里就不对'},
     {n:'合 QF1、QF2：插座有电',
      f:function(T){ T.set('qf1',1); T.set('qf2',1); return T.on('xs'); },
      h:'顺着走：电源 L → 表 1 → 2 → QF1 → QF2 → 插座 L；电源 N → 表 3 → 4 → QF1 → QF2 → 插座 N'},
@@ -1143,6 +1152,12 @@ const SIMSPEC = {
     {n:'断开 S3：日光灯灭，而且镇流器 L 端不带电（开关断的是相线）',
      f:function(T){ T.set('qf1',1); T.set('qf3',1); T.set('s3',1); if(!T.on('fl')) return null; T.set('s3',0); return !T.on('fl') && !T.live('bal-l'); },
      h:'S3 要串在相线上：QF3 L → S3 → 镇流器 L，零线直接从 QF3 N 去镇流器 N'},
+    {n:'灯泡按考场顺序：左 S1 开 → 右 S2 关 → 右 S2 开 → 左 S1 关',
+     f:function(T){ T.set('qf1',1); T.set('qf3',1);
+       if(T.on('el')) return false;                                      /* 起始位置灯该是灭的 */
+       const seq=[['s1',1,true],['s2',0,false],['s2',1,true],['s1',0,false]];
+       return seq.every(function(x){ T.set(x[0],x[1]); return T.on('el')===x[2]; }); },
+     h:'起始 S1 在 L1、S2 在 L2（灯灭）。扳 S1 → 亮，扳 S2 → 灭，再扳 S2 → 亮，扳 S1 → 灭：两个开关任意一个都能开关，说明联络线 L1—L1、L2—L2 接对了'},
     /* 两个位置都要试：联络线接错成「串联」时，从某个位置开始扳也能开关一次，换个起点就不灵了 */
     {n:'扳 S1：白炽灯能开也能关（S2 在哪个位置都一样）',
      f:function(T){ T.set('qf1',1); T.set('qf3',1);
@@ -1173,6 +1188,7 @@ return { id:'k33', k:'K33',
          '⚠ 电能表 <b>1 进火 2 出火 3 进零 4 出零</b>；接反了表会倒转或不走',
          '⚠ 插座 <b>左零右火上接地</b>；开关（S1 S2 S3）<b>一定接相线</b>，零线直接去灯',
          '⚠ 双控：S1、S2 的 <b>L 是公共端</b>，L1、L2 是两根联络线对接；公共端一头接相线、另一头接灯',
+         '⚠ 试车按 Notion「通电试车操作流程」K33：合闸<b>从左至右</b>；灯泡 <b>左 S1 开 → 右 S2 关 → 右 S2 开 → 左 S1 关</b>；单控 S3 开关灯管；断电<b>从右至左</b>',
          '⚠ 线色：<b>相线红、零线蓝、PE 黄绿</b>。有 4 个端子要压两根线：<b>QF1 下口 L、N，QF3 下口 L、N</b>'] };
 }
 
@@ -1208,7 +1224,19 @@ const DEVICES = [
    terminals:[ {id:'fr-96', label:'96', x:154, y:64}, {id:'fr-95', label:'95', x:154, y:88} ]},
   {id:'ct', name:'电流互感器', sub:'TA ×3', tag:'TA', kind:'ct', x:30, y:640, w:124, h:40,
    pins:[[28,20],[60,20],[92,20]], terminals:[]},
-  {id:'amp', name:'仪表板', sub:'', kind:'amp', x:296, y:590, w:240, h:64, meters:['A','A','A','V'], terminals:[]},
+  {id:'amp', name:'仪表板', sub:'', kind:'amp', x:296, y:590, w:240, h:64, meters:['A','A','A','V'],
+   terminals:(function(){      /* 三只电流表各两个接线柱，在表下面那条端子条上（要自己接互感器二次侧）*/
+     const out=[];
+     for(let i=0;i<3;i++){ out.push({id:'am'+(i+1)+'-1', label:'1', x:20+58*i, y:76}, {id:'am'+(i+1)+'-2', label:'2', x:40+58*i, y:76}); }
+     return out;
+   })()},
+  /* 互感器二次侧接线柱：每只互感器 S1、S2 两个。放在对应电流表正下方，S1 一根竖线、S2 一根竖线，不交叉 */
+  {id:'tas', name:'互感器二次接线', sub:'', kind:'tas', x:296, y:700, w:240, h:52,
+   terminals:(function(){
+     const out=[];
+     for(let i=0;i<3;i++){ out.push({id:'ta'+(i+1)+'-s1', label:'S1', x:20+58*i, y:12}, {id:'ta'+(i+1)+'-s2', label:'S2', x:40+58*i, y:40}); }
+     return out;
+   })()},
   {id:'tb', name:'端子排', sub:'TB · 8 位通按钮盒', kind:'tb', x:474, y:236, w:62, h:212,
    terminals:(function(){
      const out=[];
@@ -1217,7 +1245,8 @@ const DEVICES = [
    })()},
   {id:'tbm', name:'出线端子排', sub:'去电动机 U V W', kind:'tbm', x:30, y:712, w:250, h:34, nameX:210, nameDy:-8,
    pins:[[30,17,'U'],[70,17,'V'],[110,17,'W']], terminals:[]},
-  {id:'pe', name:'接地铜排 PE', sub:'', kind:'pe', x:300, y:712, w:120, h:26, terminals:[]},
+  {id:'pe', name:'接地铜排 PE', sub:'', kind:'pe', x:326, y:790, w:120, h:26, nameX:150, nameDy:16,
+   terminals:[ {id:'pe-1', label:'', x:16, y:13}, {id:'pe-2', label:'', x:60, y:13}, {id:'pe-3', label:'', x:104, y:13} ]},
   {id:'sb', name:'按钮盒', sub:'绿·红', kind:'sb', x:440, y:40, w:116, h:130,
    btns:[['#2f9e44','启动 SB2','1-4'],['#c0392b','停止 SB1','5-8']],
    terminals:[]}
@@ -1231,15 +1260,22 @@ const TLABEL = {
   'tb-1':'端子排1（启动·常开）', 'tb-2':'端子排2（启动·常开）',
   'tb-3':'端子排3（启动·常闭·不用）', 'tb-4':'端子排4（启动·常闭·不用）',
   'tb-5':'端子排5（停止·常开·不用）', 'tb-6':'端子排6（停止·常开·不用）',
-  'tb-7':'端子排7＝倒数第2位（停止·常闭）', 'tb-8':'端子排8＝倒数第1位（停止·常闭）'
+  'tb-7':'端子排7＝倒数第2位（停止·常闭）', 'tb-8':'端子排8＝倒数第1位（停止·常闭）',
+  'am1-1':'A 相电流表 接线柱1', 'am1-2':'A 相电流表 接线柱2', 'am2-1':'B 相电流表 接线柱1', 'am2-2':'B 相电流表 接线柱2',
+  'am3-1':'C 相电流表 接线柱1', 'am3-2':'C 相电流表 接线柱2',
+  'ta1-s1':'A 相互感器 S1', 'ta1-s2':'A 相互感器 S2', 'ta2-s1':'B 相互感器 S1', 'ta2-s2':'B 相互感器 S2',
+  'ta3-s1':'C 相互感器 S1', 'ta3-s2':'C 相互感器 S2',
+  'pe-1':'接地铜排', 'pe-2':'接地铜排', 'pe-3':'接地铜排'
 };
 /* 分组照他 Notion 的三组 */
 const GROUPS = [
   {id:1, name:'热继电器支路', hint:'4 号熔断器下方 → 热继电器 <b>95</b>，<b>96</b> → 端子排<b>倒数第 1 位</b>（停止按钮）。注意跟 K32 反过来（K32 是 4 号 → 96）'},
   {id:2, name:'线圈支路',     hint:'5 号熔断器下方 → 接触器 <b>A1</b>；<b>A2 → 14NO</b>；14NO → 端子排<b>第 2 位</b>'},
-  {id:3, name:'自锁与跳线',   hint:'<b>13NO → 端子排第 1 位</b>；跳线 <b>第 1 位 — 倒数第 2 位</b>。记法：4 号走热继电器下端子排，5 号串线圈；线圈出来经 13-14 落到端子排 1、2 位'}
+  {id:3, name:'自锁与跳线',   hint:'<b>13NO → 端子排第 1 位</b>；跳线 <b>第 1 位 — 倒数第 2 位</b>。记法：4 号走热继电器下端子排，5 号串线圈；线圈出来经 13-14 落到端子排 1、2 位'},
+  {id:4, name:'互感器二次侧', hint:'每相一组：<b>互感器 S1 → 电流表接线柱 1</b>，<b>电流表接线柱 2 → 互感器 S2</b>，再<b>S2 → 接地铜排</b>。三相一样（A、B、C 各接各的表）。' +
+    '<b>二次侧一端必须接地；运行中二次侧不许开路</b>（开路会在二次侧感应出高压）'}
 ];
-const GCOLOR_HEX = {1:'#2f9e44', 2:'#c0392b', 3:'#e67e22'};
+const GCOLOR_HEX = {1:'#2f9e44', 2:'#c0392b', 3:'#e67e22', 4:'#7048e8'};
 const WIRES = [
   {id:1, from:'fu4-out', to:'fr-95', group:1},
   {id:2, from:'fr-96',   to:'tb-8',  group:1},
@@ -1249,6 +1285,15 @@ const WIRES = [
   {id:6, from:'km-13',   to:'tb-1',  group:3},
   {id:7, from:'tb-1',    to:'tb-7',  group:3}
 ];
+/* 互感器二次侧 9 根（每相：S1→表1、表2→S2、S2→接地）。Notion 只记了「三只互感器各接一只电流表、二次侧一端接地」，
+   逐根走法没记 —— 这 9 根是我按常规接法排的，warn 里标了 */
+[1,2,3].forEach(function(i){
+  const pex = [342,386,430][i-1], sx = 336+58*(i-1);
+  WIRES.push(
+    {id:5+3*i, from:'ta'+i+'-s1', to:'am'+i+'-1',   group:4, waypoints:[]},
+    {id:6+3*i, from:'am'+i+'-2',  to:'ta'+i+'-s2',  group:4, waypoints:[]},
+    {id:7+3*i, from:'ta'+i+'-s2', to:'pe-'+i,       group:4, waypoints:[[sx,770],[pex,770]]});
+});
 WIRES.forEach(function(w){ w.color = GCOLOR_HEX[w.group]; });
 const L1='#e0a92e', L2='#3fa845', L3='#cf4436', PH=[L1,L2,L3];
 function P(id, i){ return devPin(DEVICES, id, i); }
@@ -1270,8 +1315,11 @@ const SIMSPEC = {
     {a:'tb-5', b:'tb-6', no:true,  by:'sb1', n:'停止 SB1 常开（5-6）'},
     {a:'tb-7', b:'tb-8', no:false, by:'sb1', n:'停止 SB1 常闭（7-8）'},
     {a:'km-13', b:'km-14', no:true, by:'km', n:'KM 自锁 13-14'},
-    {a:'fr-95', b:'fr-96', no:false, by:'fr', n:'热继 95-96'}
+    {a:'fr-95', b:'fr-96', no:false, by:'fr', n:'热继 95-96'},
+    {a:'pe-1', b:'pe-2', by:'fix', n:'接地铜排'}, {a:'pe-2', b:'pe-3', by:'fix', n:'接地铜排'}
   ],
+  /* 三个电流表回路：互感器 S1—表 1、表 2—S2 都接上了，表才有读数 */
+  ampLoops:[1,2,3].map(function(i){ return {s1:'ta'+i+'-s1', s2:'ta'+i+'-s2', p:'am'+i+'-1', n:'am'+i+'-2'}; }),
   buttons:[
     {id:'sb2', name:'启动', sub:'SB2', tb:'1~4', cls:'b-g', start:true},
     {id:'sb1', name:'停止', sub:'SB1', tb:'5~8', cls:'b-r'}
@@ -1294,19 +1342,30 @@ const SIMSPEC = {
      h:'停止的常闭 7-8 要串在回路里：8 接热继 96，7 用跳线接到 1'},
     {n:'热继动作：KM 释放',
      f:function(T){ T.tap('sb2'); if(!T.on('km')) return null; T.fr(true); return !T.on('km'); },
-     h:'热继的 95-96 要串在回路里：95 接 4 号熔断器，96 接端子排 8'}
+     h:'热继的 95-96 要串在回路里：95 接 4 号熔断器，96 接端子排 8'},
+    {n:'三只电流表都接在自己那相的互感器上（S1→表 1、表 2→S2）',
+     f:function(T){ return [1,2,3].every(function(i){
+         return T.conn('ta'+i+'-s1','am'+i+'-1') && T.conn('ta'+i+'-s2','am'+i+'-2') && !T.conn('ta'+i+'-s1','ta'+i+'-s2'); }); },
+     h:'每相一个回路：互感器 S1 → 电流表接线柱 1，电流表接线柱 2 → 互感器 S2。A 相互感器接 A 表，别串到别的相；S1、S2 不能直接短接'},
+    {n:'互感器二次侧一端接地（三只 S2 都接到接地铜排）',
+     f:function(T){ return [1,2,3].every(function(i){ return T.conn('ta'+i+'-s2','pe-1'); }); },
+     h:'二次侧要有一个接地点，防止一次侧高压串到二次侧：每只互感器的 S2 接到接地铜排'}
   ],
   explain:function(S){
     const k=S.km.km.on, b=S.btn;
-    if(k && !b.sb2.pressed) return '<b>自锁</b>：松手照转 —— KM 自己的 13-14（端子排 1↔2）接通，等于把启动按钮短接住了。' +
-      '<br>看右边仪表板：<b>三只电流表都摆起来、读数差不多</b> —— 试车时要口述「A、B、C 相电流正常，三相电流平衡」';
+    if(k && !b.sb2.pressed){
+      const bad = [0,1,2].filter(function(i){ return !ampLoopOk(i); }).map(function(i){ return 'ABC'[i]; });
+      return '<b>自锁</b>：松手照转 —— KM 自己的 13-14（端子排 1↔2）接通，等于把启动按钮短接住了。' +
+        (bad.length ? '<br>⚠ <b>'+bad.join('、')+' 相电流表没有读数</b>：互感器二次侧没接好（S1→表 1、表 2→S2）。回去检查第 4 组线'
+                    : '<br>看右边仪表板：<b>三只电流表都摆起来、读数差不多</b> —— 试车时要口述「A 相电流正常。B 相电流正常。C 相电流正常。三相电流平衡。」再按红色停止');
+    }
     if(k) return '按着启动时，启动按钮和 KM 的 13-14 两条路并联着供电；松手后只剩 13-14 那条';
     return '';
   }
 };
 return { id:'k34', k:'K34',
   name:'带熔断器（断路器）、仪表、电流互感器的电动机运行控制电路',
-  sub:'单接触器 · 练控制回路 7 根（主电路、互感器、仪表板上已接好）',
+  sub:'单接触器 · 控制回路 7 根 + 互感器二次侧 9 根（主电路、互感器一次侧上已接好）',
   title:'带仪表和电流互感器 · 实物接线图',
   devices:DEVICES, wires:WIRES, groups:GROUPS, tpos:TPOS, labels:TLABEL, colors:GCOLOR_HEX,
   mains:MAINS, bus:BUS, sim:SIMSPEC,
@@ -1316,6 +1375,8 @@ return { id:'k34', k:'K34',
          '⚠ 端子排按<b>位置</b>叫（第 1 位 … 倒数第 1 位），不是图纸线号；这里 8 位，倒数第 1 位＝8、倒数第 2 位＝7',
          '⚠ <b>95/96 跟 K32 反过来</b>：K32 是 4 号 → 96，这块是 4 号 → 95。它们是一对常闭的两头，接反不影响通断，但按 Notion 记的接',
          '⚠ 有 2 个端子要压两根线：<b>14NO、端子排第 1 位</b>',
+         '⚠ <b>互感器二次侧那 9 根是我按常规接法排的</b>（Notion 只记了「三只互感器各接一只电流表、二次侧一端接地」，逐根走法、接地点在哪都没记）。上板前对照实物：互感器 S1/S2 印字位置、电流表接线柱怎么叫，以板上为准',
+         '⚠ <b>互感器二次侧运行中不许开路</b>（开路二次侧会感应出高压）；要拆电流表先把二次侧短接。二次侧一端接地，是为了防止一次侧高压串到二次侧',
          '⚠ 试车按绿钮后看电流表，口述：<b>A 相电流正常、B 相电流正常、C 相电流正常，三相电流平衡</b>'] };
 }
 
@@ -1928,7 +1989,7 @@ function drawDevice(d){
       add(el('rect',{x:cx-15, y:cy-13, width:30, height:26, rx:5, fill:'#f1f3f5', stroke:col, 'stroke-width':2.2}));
       add(el('circle',{cx:cx, cy:cy, r:7.5, fill:'#fff', stroke:'#5a636d', 'stroke-width':1.4}));
     });
-    txt('p-tiny', d.x+d.w-2, d.y+d.h+10, 'LMZ 互感器 ×3（相线穿心）', 'end');
+    txt('p-tiny', d.x+d.w-2, d.y+d.h+10, 'LMZ 互感器 ×3（相线穿心，二次侧线接右边）', 'end');
     devName(d, -8);
     return;
   }
@@ -1942,8 +2003,19 @@ function drawDevice(d){
       txt('p-mark', cx, cy+18, m);
       add(el('line',{class:'amp-needle'+(m==='V'?' volt':''), x1:cx, y1:cy+8, x2:cx, y2:cy-14, stroke:'#d6336c', 'stroke-width':1.6, 'stroke-linecap':'round'}));
     });
-    txt('p-tiny', d.x+d.w/2, d.y+d.h+10, 'A 表经互感器测三相电流 · V 表测电压（板上已接好）');
+    /* 三只电流表下面那条端子条：每表两个接线柱，接互感器二次侧（要自己接） */
+    add(el('rect',{x:d.x+6, y:d.y+d.h, width:160, height:22, rx:2, fill:'#cfd4da', stroke:'#8d949b'}));
+    txt('p-tiny', d.x+172, d.y+d.h+14, '← 接互感器二次侧', 'start');
     devName(d, -8);
+    return;
+  }
+  /* ── 互感器二次接线柱（K34）：三只互感器的 S1 / S2，每相一列，颜色跟相线一致 ── */
+  if(d.kind==='tas'){
+    add(el('rect',{x:d.x, y:d.y, width:d.w, height:d.h, rx:4, fill:'#eef1f4', stroke:'#8d949b'}));
+    ['#e0a92e','#3fa845','#cf4436'].forEach(function(col, i){
+      add(el('rect',{x:d.x+58*i+2, y:d.y+3, width:54, height:d.h-6, rx:3, fill:'none', stroke:col, 'stroke-width':1.6}));
+      txt('p-tiny', d.x+30+58*i, d.y+29, 'TA'+(i+1), 'middle');
+    });
     return;
   }
   /* ── 按钮盒：橙色盒 + 三颗按钮（颜色照实物，K31 绿黄红 / K32 绿红红）── */
@@ -2726,9 +2798,11 @@ function simRender(r){
   const mt = gSim.querySelector('.sim-mst');
   if(mt){ mt.textContent = SIM.motor ? sp.dirName[SIM.motor] : '停'; mt.classList.toggle('on', !!SIM.motor); }
   /* K34 的表：合闸电压表就有读数；电动机转起来三只电流表才摆（互感器在出线上） */
+  /* 电流表要接对了互感器二次侧才摆；没接（或接错相）表不动 —— 试车时口述「A/B/C 相电流正常」全靠它 */
+  let ai = 0;
   gDev.querySelectorAll('.amp-needle').forEach(function(n){
     if(n.classList.contains('volt')) n.classList.toggle('live', !!SIM.qf);
-    else n.classList.toggle('run', !!SIM.motor);
+    else n.classList.toggle('run', !!SIM.motor && ampLoopOk(ai++));
   });
 
   const q=document.getElementById('simQf'), f=document.getElementById('simFr');
@@ -2737,6 +2811,17 @@ function simRender(r){
   f.style.display = sp.noFr ? 'none' : '';
   f.textContent = SIM.frTrip ? '热继复位' : '模拟过载'; f.classList.toggle('warn', SIM.frTrip);
   simPanel(r);
+}
+/* 第 i 只电流表的二次回路通不通：S1—表 1、表 2—S2 都接上（用当前这组线：标准的 / 自己接的）。
+   板子没有 ampLoops（K31~K33）时一律算通 */
+function ampLoopOk(i){
+  const L = (CUR.sim.ampLoops||[])[i];
+  if(!L) return true;
+  const P={};
+  function fd(x){ if(P[x]===undefined) P[x]=x; while(P[x]!==x){ P[x]=P[P[x]]; x=P[x]; } return x; }
+  simWires().forEach(function(w){ P[fd(w.from)]=fd(w.to); });
+  CUR.sim.contacts.forEach(function(c){ if(c.by==='fix') P[fd(c.a)]=fd(c.b); });
+  return fd(L.s1)===fd(L.p) && fd(L.s2)===fd(L.n);
 }
 function simPanel(r){
   const sp=CUR.sim;
