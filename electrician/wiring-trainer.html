@@ -213,6 +213,8 @@ svg.freemode .badge-c,svg.freemode .badge-t,svg.freemode .term-ring{display:none
 #fsBox:not([hidden]){position:fixed;inset:0;z-index:50;background:var(--bg);height:100vh;height:100dvh;overflow:hidden}
 .stage.fs{position:absolute;inset:0;border:0;border-radius:0;padding:0;background:var(--card)}
 .stage.fs svg{width:100%;height:100%}
+/* 顶上留出「工具 / 说明 / 缩放」那一排按钮的高度，不压图（09-29 K33 的电能表、日光灯被盖住）；底边由 fitBot 让到操作条上面 */
+.stage.fs{padding-top:56px}
 /* 缩放钮横排在右上角：右侧中间正好是端子排，竖排会把端子挡住（截图看出来的）；顶上右边是空的 */
 .stage.fs .zoombar{top:8px;right:8px;bottom:auto;flex-direction:row}
 .fs-pane{position:absolute;left:0;right:0;z-index:6;overflow-y:auto;-webkit-overflow-scrolling:touch;
@@ -1120,7 +1122,7 @@ const SIMSPEC = {
     '<b>带电的线变色</b>：红＝连着相线 L、蓝＝连着零线 N，加粗发光的＝这一刻有电流。插座有电右下角亮红点，电能表有电器在用就转',
   statusText:function(S){
     const on = [['xs','插座有电'],['el','白炽灯亮'],['fl','日光灯亮']].filter(function(x){ return S.km[x[0]].on; }).map(function(x){ return x[1]; });
-    if(on.length) return ['on', on.join(' · '), '电能表转盘在转（有电器在用电）。试试扳 S1 或 S2：两个开关<b>任意一个</b>都能开关白炽灯'];
+    if(on.length) return ['on', on.join(' · '), '电能表转盘在转、读数在走（有电器在用电；读数是加速演示，真表 60W 的灯亮 1 小时才走 0.06 度）。试试扳 S1 或 S2：两个开关<b>任意一个</b>都能开关白炽灯'];
     const q = [1,2,3].filter(function(i){ return !S.tog['qf'+i]; }).map(function(i){ return 'QF'+i; });
     return ['off', '电源已送 · 没有电器在用电', q.length ? '还没合：'+q.join('、')+'（从左到右合）' : '空开都合上了：扳一下 S3，或者扳 S1 / S2'];
   },
@@ -1563,7 +1565,14 @@ function toUser(cx, cy){
     top.hidden = which!=='top'; info.hidden = which!=='info';
     tBtn.classList.toggle('on', which==='top'); iBtn.classList.toggle('on', which==='info');
     bot.style.display = which==='info' ? 'none' : '';
+    fitBot();
   }
+  /* 09-29 他截图：试车时底部那排空开 / 开关按钮盖住了插座和开关。
+     画布底边让到操作条上面（操作条高度变了——换模式、换板子——跟着重算） */
+  function fitBot(){
+    stage.style.bottom = (isOn() && bot.style.display!=='none' && bot.offsetHeight) ? bot.offsetHeight+'px' : '';
+  }
+  if(window.ResizeObserver) new ResizeObserver(fitBot).observe(bot);
   tBtn.addEventListener('click', function(){ pane(top.hidden ? 'top' : null); });
   iBtn.addEventListener('click', function(){ pane(info.hidden ? 'info' : null); });
   /* 在工具层里点了模式 / 电路，收起工具层，好看图 */
@@ -1591,6 +1600,7 @@ function toUser(cx, cy){
     document.body.classList.toggle('stage-fs-lock', on);
     btn.innerHTML = on ? '✕' : ICON_FS;
     btn.title = on ? '退出全屏' : '全屏';
+    fitBot();
     zoomReset();
     /* 真全屏（藏掉浏览器地址栏）。iOS Safari 之类不支持元素全屏的，就停在铺满视口的浮层，照样能用 */
     if(on && box.requestFullscreen && !document.fullscreenElement){
@@ -1616,6 +1626,18 @@ function toUser(cx, cy){
    孔是主电路那些不参与练习的接线位，画成深色实心；端子是要接的，
    由 drawTerminal 另画成可点的白点 */
 function add(a){ gDev.appendChild(a); return a; }
+/* 电能表读数（K33）：有电器在用就往上走。真表 60W 的灯亮 1 小时才走 0.06 度，照实走根本看不出来，
+   所以是加速演示：每样在用的电器每秒 +0.1 度。读数跨板子 / 跨模式保留，刷新页面才归零 */
+let METER_KWH = 0, METER_N = 0, METER_T = null;
+function kwhText(){ return METER_KWH.toFixed(1).padStart(7,'0')+' kWh'; }
+function meterRun(n){
+  METER_N = n;
+  if(n && !METER_T) METER_T = setInterval(function(){
+    METER_KWH += 0.05*METER_N;
+    document.querySelectorAll('.meter-read').forEach(function(t){ t.textContent = kwhText(); });
+  }, 500);
+  if(!n && METER_T){ clearInterval(METER_T); METER_T = null; }
+}
 function txt(cls, x, y, s, anchor){
   const t=el('text',{class:cls, x:x, y:y, 'text-anchor':anchor||'middle'});
   t.textContent=s; return add(t);
@@ -1753,7 +1775,7 @@ function drawDevice(d){
   if(d.kind==='meter'){
     add(el('rect',{x:d.x, y:d.y, width:d.w, height:d.h, rx:6, fill:'#2b2f33', stroke:'#15171a'}));
     add(el('rect',{x:d.x+14, y:d.y+12, width:d.w-28, height:30, rx:3, fill:'#c6d9c0', stroke:'#6f8a66'}));
-    txt('p-model-d', d.x+d.w/2, d.y+32, '00000.0 kWh');
+    txt('p-model-d meter-read', d.x+d.w/2, d.y+32, kwhText());
     const g = add(el('g',{class:'meter-disk'}));
     g.appendChild(el('ellipse',{cx:d.x+d.w/2, cy:d.y+62, rx:22, ry:7, fill:'#adb5bd', stroke:'#495057'}));
     g.appendChild(el('rect',{x:d.x+d.w/2-2, y:d.y+56, width:4, height:12, fill:'#e03131'}));
@@ -2599,6 +2621,7 @@ function simRender(r){
   gDev.querySelectorAll('[data-tog]').forEach(function(e){ e.classList.toggle('on', (SIM.tog||{})[e.dataset.tog]===1); });
   const anyLoad = sp.coils.some(function(c){ return c.load && SIM.km[c.id].on; });
   gDev.querySelectorAll('.meter-disk').forEach(function(e){ e.classList.toggle('on', anyLoad); });
+  meterRun(sp.coils.filter(function(c){ return c.load && SIM.km[c.id].on; }).length);
   document.querySelectorAll('#simBtns button[data-tg]').forEach(function(bt){
     const t = (sp.toggles||[]).filter(function(x){ return x.id===bt.dataset.tg; })[0], v = SIM.tog[t.id];
     bt.classList.toggle('on', v===1);
@@ -2826,6 +2849,7 @@ function simExit(){
   gWire.querySelectorAll('path.wire').forEach(function(p){ p.classList.remove('simw','live','ph1','ph2'); p.style.opacity=1; });
   gDev.querySelectorAll('.amp-needle').forEach(function(n){ n.classList.remove('run','live'); });
   gDev.querySelectorAll('[data-load],[data-tog],.meter-disk').forEach(function(e){ e.classList.remove('on'); });
+  meterRun(0);
   gMain.querySelectorAll('path.mainw').forEach(function(p){ p.classList.remove('dead','run'); });
   gFlow.querySelectorAll('path.flowov').forEach(function(p){ p.classList.remove('on','rev'); });
   gDev.querySelectorAll('.km-arm,.qf-lever,.sbcap').forEach(function(e){ e.classList.remove('in','off','down'); });
