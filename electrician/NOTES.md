@@ -1187,6 +1187,8 @@ Y → tb11 →[SB1 停止·动断]→ tb12 → FR 96 →[FR 常闭]→ 95 → FU
   · 仿真扩展（通用）：SIMSPEC.toggles（扳了就停的开关，SIM.tog）、触点 by:'fix'（表内/接地排）与 when:（开关在某位置才通）、
     coils 里 load:true 的负载（灯/插座，无吸合延时、不画状态牌和吸合章、data-load 元素加 .on）、测试台 T.set/T.live/T.conn；
     simTip/qfLabel/offHint/statusText/noFr/pathEnds/legend 按板子覆盖；svg[data-circ] 挂板子 id 给 K33 换相色
+  · **09-29 K33 重排**：他指出照片没转正 —— 照片 0（IMG_20260905_015841）EXIF 方向=8，之前直接读原始像素，整块板躺倒了（底排开关变成左列）。
+    按 exif_transpose 后的照片重排：左上电能表、上中日光灯+镇流器、中间三只空开+右边灯座、底排 接地排/插座/S1/S2/S3；20 根走线重画，viewBox 560×510
   · K33 判分 10 项含：插座左零右火上接地、开关断相线（灭灯时灯座两头都不带电）、双控在对方两个位置下都能开关（防联络线接成串联）
   · 测试 t_k34.js 11、t_k33.js 14（含 4 种故意接错：开关接零线、插座 L/N 反、联络线接公共端、漏接 PE）
 
