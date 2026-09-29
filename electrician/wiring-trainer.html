@@ -444,6 +444,7 @@ body.stage-fs-lock{overflow:hidden}
   <div class="legendrow">
     <div class="legend-h" id="legendH"></div>
     <label class="chk"><input type="checkbox" id="labelChk" checked> 端子号</label>
+    <label class="chk"><input type="checkbox" id="sndChk" checked> 声音</label>
   </div>
   <div class="zoomtip" id="zoomTip">双指捏合放大 · 双击放大一档 · 放大后可拖动；没放大时手指上下滑是滚网页</div>
 
@@ -1626,6 +1627,61 @@ function toUser(cx, cy){
    孔是主电路那些不参与练习的接线位，画成深色实心；端子是要接的，
    由 drawTerminal 另画成可点的白点 */
 function add(a){ gDev.appendChild(a); return a; }
+/* ════ 声音 / 震动（09-29 他要「接线盘加上声音」，选了操作音效）════
+   照正反转原理页 fwd-rev.html 那套：WebAudio 现合成，不用音频文件。
+   浏览器要求第一次点屏幕之后才能出声，所以 AudioContext 在第一次按下时才建；「声音」勾掉就全静音（震动也停） */
+let AC = null, HUM = null, SOUND = true, SND_LOG = [];   /* SND_LOG：最近响过哪些声，给测试核对 */
+function sl(n){ SND_LOG.push(n); if(SND_LOG.length > 40) SND_LOG.shift(); }
+try{ SOUND = localStorage.getItem('elec_wt_snd') !== '0'; }catch(_){}
+function initAudio(){
+  if(AC || !SOUND) return;
+  try{
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), f = AC.createBiquadFilter(), gn = AC.createGain();
+    o.type = 'sawtooth'; o.frequency.value = 50;
+    f.type = 'lowpass'; f.frequency.value = 420;
+    gn.gain.value = 0;
+    o.connect(f); f.connect(gn); gn.connect(AC.destination); o.start();
+    HUM = {o:o, g:gn};
+  }catch(_){ AC = null; }
+}
+document.addEventListener('pointerdown', initAudio, true);
+function noise(dur, freq, q, vol, type){
+  if(!AC || !SOUND) return;
+  const n = Math.floor(AC.sampleRate * dur), buf = AC.createBuffer(1, n, AC.sampleRate), d = buf.getChannelData(0);
+  for(let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+  const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+  src.buffer = buf; f.type = type || 'bandpass'; f.frequency.value = freq; f.Q.value = q; g.gain.value = vol;
+  src.connect(f); f.connect(g); g.connect(AC.destination); src.start();
+}
+function tone(freq, dur, vol, at){
+  if(!AC || !SOUND) return;
+  const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime + (at||0);
+  o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + dur);
+}
+function thump(freq, dur, vol){
+  if(!AC || !SOUND) return;
+  const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+  o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(freq * 0.5, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(AC.destination); o.start(); o.stop(t + dur);
+}
+function buzz(p){ if(!SOUND) return; try{ if(navigator.vibrate) navigator.vibrate(p); }catch(_){} }
+function sndBtn(){ sl('sndBtn'); noise(0.03, 3000, 1, 0.25); }                                   /* 按钮 / 开关：清脆一下 */
+function sndQF(){ sl('sndQF'); noise(0.05, 1800, 1.2, 0.5); thump(160, 0.06, 0.3); }            /* 空开：咔哒 */
+function sndKM(on){ sl('sndKM'); noise(0.06, on ? 900 : 1300, 1.5, 0.6); thump(on ? 110 : 150, 0.08, 0.45); }  /* 接触器吸合 / 释放：啪 */
+function sndBang(){ sl('sndBang'); noise(0.6, 600, 0.4, 1.2, 'lowpass'); thump(70, 0.4, 0.8); }   /* 短路 / 熔断 */
+function sndWire(){ sl('sndWire'); noise(0.02, 4200, 2, 0.3); thump(260, 0.04, 0.2); }            /* 接上一根线：螺丝压紧那一下 */
+function sndOk(){ sl('sndOk'); tone(660, 0.18, 0.18); tone(880, 0.25, 0.18, 0.14); }            /* 交卷全对 */
+function sndErr(){ sl('sndErr'); tone(220, 0.3, 0.2); }                                          /* 交卷有错 / 接不上 */
+function hum(on){                                                                  /* 电动机转着：低低的嗡嗡声 */
+  sl(on ? 'hum+' : 'hum-');
+  if(!HUM) return;
+  HUM.g.gain.setTargetAtTime(SOUND && on ? 0.05 : 0, AC.currentTime, 0.08);
+}
+
 /* 电能表读数（K33）：有电器在用就往上走。真表 60W 的灯亮 1 小时才走 0.06 度，照实走根本看不出来，
    所以是加速演示：每样在用的电器每秒 +0.1 度。读数跨板子 / 跨模式保留，刷新页面才归零 */
 let METER_KWH = 0, METER_N = 0, METER_T = null;
@@ -2477,6 +2533,7 @@ function simPress(id, down){
   if(down){
     if(s.pressed){ s.relAt=0; return; }
     s.pressed=true; s.t=now; s.relAt=0; s.nc=false;
+    sndBtn(); buzz(12);
     simAct('按下 '+b.name+' '+b.sub);
     if(usedPair(id,false)) simLog(b.name+'的动断'+(usedPair(id,true)?'先':'')+'断开');
   } else {
@@ -2489,13 +2546,14 @@ function simPress(id, down){
 function simRelease(id, now){
   const s=SIM.btn[id], b=simBtnSpec(id);
   s.pressed=false; s.t=now; s.relAt=0; s.no=false;
+  sndBtn();
   simAct('松开 '+b.name+' '+b.sub, now);
   if(usedPair(id,true)) simLog(b.name+'的动合'+(usedPair(id,false)?'先':'')+'断开', now);
 }
 function simQF(on){
   if(!SIM.on) return;
   simAdvance(performance.now());
-  SIM.qf=on; simAct(on ? 'QF 合闸' : 'QF 分闸'); simTick();
+  SIM.qf=on; sndQF(); buzz(20); simAct(on ? 'QF 合闸' : 'QF 分闸'); simTick();
 }
 function simFR(trip){
   if(!SIM.on) return;
@@ -2532,6 +2590,7 @@ function simStep(now){
   let r = simSolve();
   if(r.short){
     SIM.blown = '控制回路短路，4 号熔断器熔断';
+    sndBang(); buzz([80, 40, 120]);
     simLog('⚠ '+SIM.blown, now);
     r = simSolve();
   }
@@ -2542,6 +2601,7 @@ function simStep(now){
     /* 灯、插座这种负载一通电就亮，没有吸合延时 */
     if(k.on!==k.coil && now-k.t>=(c.load ? 0 : (k.coil?PICK:DROP))){
       k.on=k.coil; moved=true;
+      if(!c.load){ sndKM(k.on); buzz(25); }
       simLog(c.name+(c.load ? (k.on ? (c.onTxt||' 通电') : (c.offTxt||' 断电')) : (k.on ? ' 吸合'+(c.pick||'') : ' 释放')), now);
       /* 一只先动了，它的触点马上变，后面那只要按新状态算 ——
          机械上没有真正的「同时」，不这么做的话两个启动一起按会两只同时吸 */
@@ -2550,12 +2610,13 @@ function simStep(now){
   });
   if(sp.mainShort && SIM.qf && sp.mainShort.every(function(id){ return SIM.km[id].on; })){
     SIM.qf=false; moved=true;
+    sndBang(); buzz([80, 40, 120]);
     simLog('⚠ 两只接触器同时吸合 —— 主电路相间短路，QF 跳闸', now);
   }
   if(moved) r = simSolve();
   let dir=0;
   if(SIM.qf) sp.coils.forEach(function(c){ if(SIM.km[c.id].on) dir += (sp.motor[c.id]||0); });
-  if(dir!==SIM.motor){ SIM.motor=dir; simLog(dir ? '电动机'+sp.dirName[dir] : '电动机停转', now); }
+  if(dir!==SIM.motor){ SIM.motor=dir; hum(!!dir); simLog(dir ? '电动机'+sp.dirName[dir] : '电动机停转', now); }
   SIM.last = r;
 }
 
@@ -2797,6 +2858,8 @@ function simToggle(id){
   const t = (CUR.sim.toggles||[]).filter(function(x){ return x.id===id; })[0]; if(!t) return;
   simAdvance(performance.now());
   SIM.tog[id] = 1 - (SIM.tog[id]||0);
+  if(/^qf/.test(id)) sndQF(); else sndBtn();
+  buzz(15);
   simAct(t.name+' 扳到「'+t.states[SIM.tog[id]]+'」');
   simTick();
 }
@@ -2849,7 +2912,7 @@ function simExit(){
   gWire.querySelectorAll('path.wire').forEach(function(p){ p.classList.remove('simw','live','ph1','ph2'); p.style.opacity=1; });
   gDev.querySelectorAll('.amp-needle').forEach(function(n){ n.classList.remove('run','live'); });
   gDev.querySelectorAll('[data-load],[data-tog],.meter-disk').forEach(function(e){ e.classList.remove('on'); });
-  meterRun(0);
+  meterRun(0); hum(false);
   gMain.querySelectorAll('path.mainw').forEach(function(p){ p.classList.remove('dead','run'); });
   gFlow.querySelectorAll('path.flowov').forEach(function(p){ p.classList.remove('on','rev'); });
   gDev.querySelectorAll('.km-arm,.qf-lever,.sbcap').forEach(function(e){ e.classList.remove('in','off','down'); });
@@ -2862,6 +2925,16 @@ window.addEventListener('pointerup', simReleaseHeld);
 window.addEventListener('pointercancel', simReleaseHeld);
 /* 连按两下 QF（合了又分）不该触发「双击放大」 */
 gSim.addEventListener('dblclick', function(e){ e.stopPropagation(); });
+(function(){
+  const c = document.getElementById('sndChk');
+  c.checked = SOUND;
+  c.addEventListener('change', function(){
+    SOUND = c.checked;
+    try{ localStorage.setItem('elec_wt_snd', SOUND ? '1' : '0'); }catch(_){}
+    if(SOUND){ initAudio(); if(AC && AC.resume) AC.resume(); sndBtn(); }
+    hum(SOUND && SIM.on && !!SIM.motor);
+  });
+})();
 document.getElementById('simQf').addEventListener('click', function(){ simQF(!SIM.qf); });
 document.getElementById('simFr').addEventListener('click', function(){ simFR(!SIM.frTrip); });
 document.getElementById('simRst').addEventListener('click', function(){
@@ -2975,8 +3048,9 @@ function freeAct(a){ freeApply(a); FREE.undo.push(a); FREE.redo=[]; freeChanged(
 function freeConnect(a, b){
   if(a===b) return;
   const dup = FREE.wires.some(function(w){ return (w.from===a&&w.to===b) || (w.from===b&&w.to===a); });
-  if(dup){ FREE.msg='这两个端子之间已经有一根了'; return; }
+  if(dup){ FREE.msg='这两个端子之间已经有一根了'; sndErr(); buzz(40); return; }
   FREE.msg = '接上了：'+tl(a)+' → '+tl(b);
+  sndWire(); buzz(15);
   freeAct({t:'add', w:{id:FREE.uid++, from:a, to:b}});
 }
 
@@ -3164,6 +3238,7 @@ function freeGrade(){
   FREE.bad = {}; nb.forEach(function(x){ FREE.bad[x.t]=1; });
   FREE.sel = null; FREE.selWire = null;
   FREE.graded = {res:res, nb:nb, time: FREE.t0 ? Date.now()-FREE.t0 : 0, n:FREE.wires.length};
+  if(res.every(function(r){ return r.ok; }) && !nb.length){ sndOk(); buzz([30, 60, 30]); } else { sndErr(); buzz([60, 40, 60]); }
   FREE.msg = '交卷了，结果在下面；接着改的话红圈会自动清掉';
   freeRender(); freeSidePanel();
 }
@@ -3213,7 +3288,8 @@ function freeEnter(){
   FREE.sel=null; FREE.selWire=null; FREE.msg='';
   gWire.style.display='none'; gUser.style.display=''; gFree.style.display='';
   svg.classList.add('freemode');
-  document.querySelector('.legendrow').style.display='none';
+  /* 图例和端子号开关在这个模式用不上藏掉，「声音」开关留着 */
+  ['legendH','labelChk'].forEach(function(id){ const e=document.getElementById(id); (id==='labelChk'?e.parentNode:e).style.display='none'; });
   if(FREE.timer) clearInterval(FREE.timer);
   FREE.timer = setInterval(freeTime, 1000);
   freeTime(); freeRender(); freeSidePanel();
@@ -3224,7 +3300,7 @@ function freeExit(){
   if(FREE.timer){ clearInterval(FREE.timer); FREE.timer=null; }
   gWire.style.display=''; gUser.style.display='none'; gFree.style.display='none';
   svg.classList.remove('freemode');
-  document.querySelector('.legendrow').style.display='';
+  ['legendH','labelChk'].forEach(function(id){ const e=document.getElementById(id); (id==='labelChk'?e.parentNode:e).style.display=''; });
 }
 document.getElementById('fUndo').addEventListener('click', function(){
   const a=FREE.undo.pop(); if(!a) return;
@@ -3669,6 +3745,8 @@ loadCircuit('k31');
    这几项必须走 getter：换电路时 DEVICES/WIRES… 会被整组重新赋值，
    写成 DEVICES:DEVICES 的话拿到的永远是页面初始化那一刻的旧数组 */
 window.__MRW = {
+  get snd(){ return {ac:!!AC, hum:!!HUM, on:SOUND, log:SND_LOG.slice()}; },
+  clearSnd: function(){ SND_LOG.length = 0; },
   get DEVICES(){ return DEVICES; },
   get WIRES(){ return WIRES; },
   get GROUPS(){ return GROUPS; },
