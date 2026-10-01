@@ -133,7 +133,13 @@ function openZoom(id){
      反而不如不放大。1.5 倍 + 从最左边开始看，拖一下就到头。 */
   var body=z.querySelector('[data-role="zbody"]');
   body.innerHTML=f.s;
-  var svg=body.querySelector('svg');
+  var svg=body.querySelector('svg'), img=body.querySelector('img.photo');
+  body.classList.toggle('is-photo', !!img);
+  if(img){
+    /* 照片：放到 2 倍屏宽，上下左右都能拖 */
+    img.style.width=Math.round(Math.max(window.innerWidth*2, 700))+'px';
+    img.style.height='auto';
+  }
   if(svg){
     var vb=(svg.getAttribute('viewBox')||'0 0 100 100').split(/\s+/);
     var w=parseFloat(vb[2])||100, h=parseFloat(vb[3])||100;
@@ -144,7 +150,7 @@ function openZoom(id){
   }
   z.classList.add('on');
   document.body.style.overflow='hidden';
-  body.scrollLeft=0;
+  body.scrollLeft=0; body.scrollTop=0;
 }
 function closeZoom(){
   if(!zoom) return;
@@ -281,7 +287,8 @@ function makeFolds(){
   outer.forEach(function(d,i){
     var body=d.querySelector('.fold-body');
     var inner=wrapFolds(body, isH3, 'fold fold-in', 2);
-    inner.forEach(function(f){ addPreview(f); f.open=false; });
+    /* 第一块里的第一小节也展开：一进来就有字可读，不用先点（2026-10-01 改） */
+    inner.forEach(function(f,j){ addPreview(f); f.open=(i===0&&j===0); });
     addPreview(d);
     /* 外层默认只展开第一块——一进来看到的是骨架，不是一片空白也不是一堵墙 */
     d.open = (i===0);
@@ -343,12 +350,36 @@ function bind(){
   });
 }
 
+/* ══════════ ⑥ 自测题 ══════════
+   节末 <div class="quiz"> 里每题一个 <div class="q" data-ans="B">：
+   <p class="qt">题干</p> + 若干 <button data-k="A">A. …</button> + <div class="qx">解析</div>。
+   点一个选项：对的变绿、选错的变红并亮出正确项，解析出来；一题只算第一次点的。 */
+function bindQuiz(){
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('.quiz .q button[data-k]'); if(!b) return;
+    var q=b.closest('.q'); if(q.classList.contains('done')) return;
+    q.classList.add('done');
+    var ans=q.getAttribute('data-ans');
+    q.querySelectorAll('button[data-k]').forEach(function(x){
+      if(x.getAttribute('data-k')===ans) x.classList.add('ok');
+    });
+    if(b.getAttribute('data-k')!==ans) b.classList.add('bad');
+    var box=q.closest('.quiz'), n=box.querySelectorAll('.q').length,
+        dn=box.querySelectorAll('.q.done').length;
+    /* 对的题 = 做完的题里没有 .bad 的 */
+    var ok=Array.prototype.filter.call(box.querySelectorAll('.q.done'),function(x){return !x.querySelector('.bad');}).length;
+    var sc=box.querySelector('.qscore');
+    if(sc) sc.textContent= dn<n ? ('已做 '+dn+'/'+n) : ('做完了：对 '+ok+' / '+n+(ok===n?'，全对 👍':'，红的回正文再看一眼'));
+  });
+}
+
 function init(){
   renderFigBoxes();   /* 先铺图卡，folds 会把它们搬进折叠块 */
   markRefs();
   renderSymLib();
   makeFolds();
   bind();
+  bindQuiz();
   global.LVUI={openFig:openSheet, zoomFig:openZoom, figs:FIGS};
 }
 
