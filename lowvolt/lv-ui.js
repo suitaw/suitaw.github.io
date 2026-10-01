@@ -21,6 +21,8 @@ function el(tag, cls, html){
   if(html!=null) d.innerHTML=html;
   return d;
 }
+/* 图号牌上的字：书上图号直接「图 1-21」；电子版自己编号的（如 1-4 的图 1）用 f.d 覆盖 */
+function figLabel(f){ return f.d || ('图 '+f.n); }
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
@@ -34,7 +36,7 @@ function renderFigBoxes(){
     fig.id='fig-'+id;
     fig.innerHTML=
       '<div class="canvas">'+f.s+'</div>'+
-      '<figcaption><span class="fignum">图 '+esc(f.n)+'</span>'+
+      '<figcaption><span class="fignum">'+esc(figLabel(f))+'</span>'+
       '<span class="ft">'+esc(f.t)+'</span>'+
       '<button class="fig-zoom" type="button" data-zoom="'+esc(id)+'">放大 ⤢</button></figcaption>'+
       (f.r ? '<div class="fig-read"><b>怎么看这张图：</b>'+f.r+'</div>' : '');
@@ -89,7 +91,7 @@ function openSheet(id){
   var f=FIGS[id]; if(!f) return;
   var s=ensureSheet();
   sheetCur=id;
-  s.querySelector('[data-role="num"]').textContent='图 '+f.n;
+  s.querySelector('[data-role="num"]').textContent=figLabel(f);
   s.querySelector('[data-role="title"]').textContent=f.t;
   s.querySelector('[data-role="canvas"]').innerHTML=f.s;
   var rd=s.querySelector('[data-role="read"]');
@@ -126,7 +128,7 @@ function ensureZoom(){
 function openZoom(id){
   var f=FIGS[id]; if(!f) return;
   var z=ensureZoom();
-  z.querySelector('[data-role="num"]').textContent='图 '+f.n;
+  z.querySelector('[data-role="num"]').textContent=figLabel(f);
   z.querySelector('[data-role="title"]').textContent=f.t;
   /* 放大：撑到 1.5 倍视口宽。
      第一版用 1.9 倍 + 滚到中间，截图一看图 1-21 只剩中间一截、电池和灯泡都在屏外，

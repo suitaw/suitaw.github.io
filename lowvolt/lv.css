@@ -218,6 +218,8 @@ tr:last-child td{border-bottom:none;}
 .note.key .nh{color:var(--red);}
 .note.tip{border-left-color:var(--teal);}
 .note.tip .nh{color:var(--teal);}
+/* 和考试标准不一致的地方（1-1 心肺复苏、灭火距离）：整块描红底，比普通「⚑」更扎眼 */
+.note.exam{border:1px solid var(--red);border-left-width:4px;}
 
 /* ── 符号库（表1-2 那 22 组，做成可搜索的卡片而不是死表）── */
 .symbar{
