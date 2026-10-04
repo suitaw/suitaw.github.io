@@ -410,6 +410,7 @@
   #prPlanSeq span{padding:5px 9px;border-radius:var(--r3);background:var(--panel2);
     white-space:nowrap;cursor:pointer;user-select:none}
   #prPlanSeq span.done{color:#454c58}
+  #prPlanSeq small{font-size:10px;margin-left:1px;opacity:.75;font-family:system-ui,sans-serif}
   #prPlanSeq span.cur{background:var(--acc);color:var(--accTxt);font-weight:700}
   /* 分步解法的段名：「1 白十字」插在每段第一手前面，点它跳到段首 */
   #prPlanSeq span.stg{flex:none;background:none;border:1px solid var(--line);color:var(--dim);font-family:inherit}
@@ -4227,6 +4228,9 @@ const relMove  = (m, G) => relFace(m[0], G) + m.slice(1);
 const physMove = (m, G) => physFace(m[0], G) + m.slice(1);
 // 「右面（绿）」：位置按拿法叫，颜色是那一面真实的颜色
 const describeRel = mv => POS_CN[relFace(mv[0])] + '（' + COLOR_CN[mv[0]] + '），正对着它 ' + MOVE_DIR[mv.slice(1)];
+// 解法格子里的小注：L' → (左逆)，U2 → (上180°)。M/E/S 这类没有就不注
+const moveNote = mv => { const p = POS_CN[relFace(mv[0])];
+  return p ? `<small>(${p[0]}${{"":'顺',"'":'逆',"2":'180°'}[mv.slice(1)]})</small>` : ''; };
 // 整体转的记号：x 跟 R 同向、y 跟 U 同向、z 跟 F 同向，三个的 sign 都是 -1
 const WHOLE_CH = ['x','y','z'], WHOLE_SIGN = [-1,-1,-1];
 function wholeLabel(axis, rotSign, quarter){
@@ -4755,7 +4759,7 @@ function prPlanRender(){
   seq.innerHTML = prPlan.moves.map((m,k) => {
     const at = mi0, gk = G.findIndex(g => g.from === k);
     return (gk >= 0 ? `<span data-k="${k}" class="stg${gk===si?' now':''}">${gk+1} ${G[gk].label}</span>` : '')
-      + `<span data-k="${k}" class="${k<at?'done':k===at?'cur':''}">${relMove(m)}</span>`;
+      + `<span data-k="${k}" class="${k<at?'done':k===at?'cur':''}">${relMove(m)}${moveNote(m)}</span>`;
   }).join('');
   // 当前这手是段首就连段名一起露出来
   const cur = seq.querySelector('span.cur'), tag = cur && cur.previousElementSibling;
@@ -6434,7 +6438,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-09-26 22:21';
+const BUILD = '2026-10-04 08:19';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
