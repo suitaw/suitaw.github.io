@@ -23,7 +23,7 @@
   --shadow:0 1px 3px rgba(43,38,32,.08),0 8px 24px rgba(43,38,32,.06);
   /* 底部导航实际高度。所有吸底元素（正文留白/toast/撤回条/＋词/翻页箭头）都按它算偏移，
      改导航热区时只动这一个数，不用去五个地方对齐 */
-  --nav-h:88px;
+  --nav-h:76px;
 }
 @media(prefers-color-scheme:dark){
   :root{
@@ -87,6 +87,57 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .g-again{border-color:var(--accent-soft)} .g-again:active{background:var(--accent-soft)}
 .g-good{border-color:var(--green-border)} .g-good:active{background:var(--green-active)}
 
+/* ===== 背卡沉浸模式（2026-10 改版）=====
+   背卡时藏起顶栏/底部导航，打分键固定在屏幕底部（大拇指区），翻面就能点。
+   原来翻面后打分键在 797px、底部导航从 783px 起，每张卡都得往下滑才能打分 */
+body.studying .topbar,body.studying .nav,body.studying .panel{display:none!important}
+body.sheet-open{overflow:hidden}
+body.studying{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+.icon-btn{width:44px;height:44px;flex:none;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;border-radius:10px;color:var(--ink-dim);cursor:pointer;padding:0}
+.icon-btn:active{background:var(--paper2)}
+.icon-btn:disabled{opacity:.35;cursor:default}
+.icon-btn svg,.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.study-head{display:flex;align-items:center;gap:4px;margin:-4px -6px 10px}
+.study-bar{flex:1;height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:0 6px}
+.study-bar>div{height:100%;background:var(--accent);border-radius:3px;transition:width .3s}
+.study-count{font-size:.8rem;color:var(--ink-dim);min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+.card.is-front{min-height:calc(100vh - 220px);min-height:calc(100dvh - 220px);justify-content:space-between;gap:16px}
+.card.is-back{padding:44px 20px 20px;cursor:default}
+.front-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.back-head{display:flex;align-items:center;gap:12px;text-align:left}
+.back-head .word{font-size:2rem;line-height:1.15;word-break:break-word}
+.back-head .phonetic{margin-top:2px}
+.speak.round{width:48px;height:48px;padding:0;border-radius:50%;margin:0;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.ctx-box{background:var(--green-soft);border:1px solid var(--green-border);border-radius:12px;padding:11px 13px;text-align:left}
+.ctx-box .ctx-src{display:flex;align-items:center;gap:5px;font-size:.75rem;color:var(--green);margin-bottom:4px}
+.ctx-box .ctx-src .ico{width:14px;height:14px}
+.ctx-box .ctx-text{font-size:.92rem;line-height:1.6}
+.back-actions{display:flex;gap:8px;margin-top:12px}
+.back-actions .gear{min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);font-size:.85rem}
+.back-actions .gear .ico{width:17px;height:17px}
+.study-foot{position:fixed;left:0;right:0;bottom:0;z-index:120;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(12px + env(safe-area-inset-bottom))}
+.study-foot>div{max-width:616px;margin:0 auto}
+.study-foot .grades{margin-top:0}
+.study-foot .reveal{margin:0;min-height:54px;font-size:1rem;border-radius:14px}
+.grade{min-height:58px}
+.g-again{background:var(--accent-soft);color:var(--accent)}
+.g-good{background:var(--green-soft)}
+/* AI 讲解抽屉：原来卡片背面堆着 9 个 AI 按钮+问 AI 框，把打分键挤出屏幕 */
+.sheet-mask{display:none;position:fixed;inset:0;background:rgba(43,38,32,.45);z-index:228}
+.sheet-mask.open{display:block}
+.sheet{display:none;position:fixed;left:0;right:0;bottom:0;max-width:640px;margin:0 auto;max-height:86vh;z-index:229;background:var(--card);border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(43,38,32,.18);flex-direction:column;text-align:left}
+.sheet.open{display:flex}
+.sheet-grip{width:40px;height:4px;border-radius:2px;background:var(--line);margin:10px auto 0;flex:none}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 8px 4px 16px;flex:none}
+.sheet-head h3{font-size:1rem;font-weight:600}
+.sheet-head h3 span{font-family:Fraunces,serif;color:var(--accent)}
+.sheet-body{overflow-y:auto;padding:4px 16px calc(18px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+.sheet-body .sheet-main{width:100%;min-height:52px;font-size:.92rem;color:var(--ink);background:var(--green-soft);border-color:var(--green-border);font-weight:600}
+.sheet-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.sheet-row .gear{flex:1}
+#ai-sheet #tag-bar{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))}
+#ai-sheet #tag-bar .gear{color:var(--ink)}
+
 /* AI 造句区 */
 .ai-box{margin-top:16px;text-align:left}
 .ai-box textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:.85rem;resize:vertical;min-height:64px;background:var(--paper)}
@@ -104,8 +155,51 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 /* 底部导航 */
 .nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
 /* 热区 44px 起：这是全站按得最多的东西，原来只有 23px 高，挨着的两项很容易点错 */
-.nav button{background:none;border:none;font-size:.8rem;color:var(--ink-dim);cursor:pointer;font-family:inherit;padding:12px 16px;border-radius:8px;min-height:44px}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;font-size:.75rem;color:var(--ink-dim);cursor:pointer;font-family:inherit;padding:6px 4px;border-radius:8px;min-height:52px}
+.nav button .ico{width:22px;height:22px}
 .nav button.active{color:var(--accent);font-weight:600}
+/* 「＋词」浮钮的功能挪进了查词页和词库页（2026-10 改版）：它总盖住列表右边的数字 */
+#quick-add-fab{display:none!important}
+
+/* ===== 首页（复习优先）===== */
+.home{display:flex;flex-direction:column;gap:14px;padding-top:4px}
+.today{background:var(--accent);color:#fff;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.today-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.today-t{font-weight:600;font-size:.95rem}
+.today-s{font-size:.82rem;opacity:.9;margin-top:2px}
+.today-n{font-family:Fraunces,serif;font-weight:700;font-size:2.6rem;line-height:1}
+.today-go{display:flex;align-items:center;justify-content:center;gap:6px;min-height:52px;border:none;border-radius:12px;background:#fff;color:var(--accent);font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer}
+.today-go .ico{width:18px;height:18px}
+.today-new{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:0 4px;background:none;border:none;border-top:1px solid rgba(255,255,255,.3);color:#fff;font-size:.86rem;font-family:inherit;cursor:pointer}
+.today-new span:last-child{opacity:.85}
+@media(prefers-color-scheme:dark){.today{color:#1d1915}.today-go{background:#1d1915}.today-new{color:#1d1915;border-top-color:rgba(0,0,0,.2)}}
+.lk-bar{display:flex;gap:8px}
+.lk-input{flex:1;min-width:0;display:flex;align-items:center;gap:10px;min-height:50px;padding:0 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;color:var(--ink-dim);font-size:.9rem;font-family:inherit;cursor:pointer;text-align:left}
+.lk-input span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lk-paste{flex:none;display:flex;align-items:center;gap:5px;min-height:50px;padding:0 14px;border:none;border-radius:12px;background:var(--ink);color:var(--paper);font-size:.88rem;font-weight:600;font-family:inherit;cursor:pointer}
+.lk-paste .ico{width:17px;height:17px}
+.row-card{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:58px;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;color:var(--ink);font-family:inherit;text-align:left;cursor:pointer}
+.rc-t{font-size:.92rem;font-weight:600}
+.rc-s{font-size:.78rem;color:var(--ink-dim)}
+.rc-n{font-family:Fraunces,serif;font-weight:700;font-size:1.35rem;color:var(--accent)}
+.rc-arrow{color:var(--ink-dim)}
+.sec-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sec-h h2{font-size:.95rem;font-weight:600}
+.link-btn{background:none;border:none;color:var(--accent);font-size:.82rem;font-family:inherit;cursor:pointer;min-height:44px;padding:0 4px}
+.list-card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lc-row{display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;background:none;border:none;border-bottom:1px solid var(--line);color:var(--ink);font-family:inherit;text-align:left;cursor:pointer}
+.lc-row:last-child{border-bottom:none}
+.lc-row:active,.row-card:active{background:var(--paper2)}
+.lc-w{font-family:Fraunces,serif;font-weight:600;font-size:1.05rem}
+.lc-c{font-size:.8rem;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lc-m{font-size:.72rem;color:var(--ink-dim);text-align:right;flex:none}
+.lc-row .ico{width:18px;height:18px;color:var(--ink-dim)}
+.empty-tip{font-size:.82rem;color:var(--ink-dim);line-height:1.65;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:12px 14px}
+/* 分段切换（词库页四个标签） */
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;background:var(--paper2);border-radius:12px;margin-bottom:14px}
+.seg button{min-height:40px;border:none;border-radius:9px;background:transparent;color:var(--ink-dim);font-size:.85rem;font-family:inherit;cursor:pointer;padding:0 2px;white-space:nowrap}
+.seg button small{font-size:.72rem;opacity:.8}
+.seg button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(43,38,32,.12)}
 
 /* 复习本 */
 .mistake-item{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
@@ -127,7 +221,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 .lk-chip{display:inline-block;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 9px;margin:0 5px 5px 0;font-size:.84rem;font-family:inherit;cursor:pointer;min-height:32px}
 .lk-chip:active{background:var(--accent-soft);border-color:var(--accent)}
 .lk-chip.known{opacity:.45;font-size:.78rem}
-.toast{position:fixed;bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:20px;font-size:.78rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
+.toast{position:fixed;bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:20px;font-size:.78rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:300}
 .import-overlay{display:none;position:fixed;inset:0;background:rgba(43,38,32,.4);z-index:200;overflow-y:auto;padding:20px 12px}
 .import-overlay.open{display:block}
 #quick-add-fab{position:fixed;right:16px;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));z-index:150;width:52px;height:52px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:.92rem;font-weight:700;font-family:inherit;box-shadow:0 4px 14px rgba(43,38,32,.28);cursor:pointer}
@@ -205,10 +299,6 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <h1>Vocab AI</h1>
       <div class="sub" id="sub">每天背几个，慢慢攒</div>
     </div>
-    <div style="display:flex;gap:6px;align-items:center">
-      <button class="gear" onclick="openAgent()" title="AI 智能体">⚡ 智能体</button>
-      <button class="gear" onclick="togglePanel()">⚙ 设置</button>
-    </div>
   </div>
 
   <div class="panel" id="panel">
@@ -226,7 +316,7 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
       <label>模型</label>
       <select id="model"></select>
     </div>
-    <div class="hint">Key 只存在你本机浏览器里，不上传。每个服务商的 Key 分开保存，切换服务商会自动带出对应的 Key。深度思考开关在「AI 助手」页。</div>
+    <div class="hint">Key 只存在你本机浏览器里，不上传。每个服务商的 Key 分开保存，切换服务商会自动带出对应的 Key。深度思考开关在「查词」页的「问 AI」里。</div>
     <label>每次学习上限（张卡）</label>
     <input type="number" id="daily-limit" min="5" max="200" step="5" placeholder="20">
     <div class="hint">每次进入背卡，最多出现多少张（新词+到期复习合计）。默认 20，词多想多背可调大。</div>
@@ -269,10 +359,10 @@ h1{font-family:Fraunces,serif;font-weight:700;font-size:1.5rem;letter-spacing:-.
 </div>
 
 <div class="nav">
-  <button id="nav-home" class="active" onclick="tapNavHome()">学习</button>
-  <button id="nav-assistant" onclick="go('assistant')">AI 助手</button>
-  <button id="nav-mistake" onclick="go('mistake')">复习 / 库</button>
-  <button id="nav-stats" onclick="go('stats')">统计</button>
+  <button id="nav-home" class="active" onclick="tapNavHome()"><svg class="ico" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg>学习</button>
+  <button id="nav-assistant" onclick="go('assistant')"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>查词</button>
+  <button id="nav-mistake" onclick="go('mistake')"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>词库</button>
+  <button id="nav-stats" onclick="go('stats')"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>我的</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -797,6 +887,32 @@ function mistakeQueue(){
   else list.sort((a,b)=>unfamiliarScore(a.id,a._phrase)-unfamiliarScore(b.id,b._phrase)); // unfamiliar：连对少的在前
   return list;
 }
+// 「我的」页的设置入口（原来在顶栏右上角）。设置表单本体还是顶栏下那块 #panel
+function openSettings(section){
+  const el=document.getElementById("panel");
+  if(!el.classList.contains("open"))togglePanel();
+  if(section==="backup"){const g=el.querySelectorAll("details.set-group")[0];if(g)g.open=true}
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function lastBackupText(){
+  const t=parseInt(localStorage.getItem("vocab_v5_last_backup")||"0",10);
+  if(!t)return {t:"还没备份过，换手机前一定要导出",warn:true};
+  const n=Math.floor((Date.now()-t)/86400000);
+  return {t:n<=0?"今天备份过":`上次备份 ${n} 天前`,warn:n>=14};
+}
+function settingsListHtml(){
+  const pv={deepseek:"DeepSeek",kimi:"Kimi",anthropic:"Claude",openrouter:"OpenRouter",openai:"ChatGPT"}[cfg.provider]||cfg.provider;
+  const hasKey=cfg.apikey||(cfg.keys&&cfg.keys[cfg.provider]);
+  const bk=lastBackupText();
+  const row=(ico,t,s,fn,warn)=>`<button class="lc-row" onclick="${fn}">${ico}<div style="flex:1;min-width:0"><div style="font-size:.92rem">${t}</div><div class="lc-c"${warn?' style="color:var(--accent)"':""}>${s}</div></div>${ICON.right}</button>`;
+  return `<div class="list-card" style="margin-bottom:14px">
+    ${row(ICON.sparkle,"AI 服务商与 Key",hasKey?pv:"还没填 Key，查词和 AI 讲解要用","openSettings()",!hasKey)}
+    ${row(ICON.sliders,"学习设置",`每次 ${cfg.dailyLimit||20} 张 · 目标记住率 ${Math.round(desiredRetention()*100)}%`,"openSettings()")}
+    ${row(ICON.zap,"智能体","说一句话让它帮你操作","openAgent()")}
+    ${row(ICON.archive,"备份与恢复",bk.t,"openSettings('backup')",bk.warn)}
+    ${row(ICON.trash,"回收站","找回删掉的词","openTrash()")}
+  </div>`;
+}
 // 进入复习本一键复习
 function startMistakeReview(){
   const n=mistakes.length+phrases.filter(p=>p.inReview&&srs[p.id]).length;
@@ -820,9 +936,7 @@ function go(p){
 // 底部"学习"tab：已在学习页的子页面（分类预览/文章/词表）时再点一次 = 回到分类首页；
 // 背词进行中不打断（用卡片上方的"← 返回"退出）。只有用户点 tab 才走这里，程序内跳转仍用 go()
 function tapNavHome(){
-  if(page==="home"&&!studyStarted&&(previewCat!==null||curArticle!==null||articleListOpen)){
-    previewCat=null;curArticle=null;articleListOpen=false;render();return;
-  }
+  if(!studyStarted){previewCat=null;curArticle=null;articleListOpen=false}
   go("home");
 }
 let studyStarted=false;  // 是否已从分类页进入学习
@@ -830,8 +944,30 @@ let roundTotal=0;        // 本轮词数（建队列时定）
 let roundDone=new Set(); // 本轮已过关的去重词 id（点难/记得/秒答即过关，忘了不算）
 let askHistory=[];       // 问 AI 当前词的多轮对话历史 [{role,content}]
 let askWordId=null;      // askHistory 归属的词 id；切到别的词时自动作废
+// 导航高亮：分类预览/文章这些子页挂在 page="home" 下，但它们属于「词库」
+function navKey(){
+  if(page==="home"&&!studyStarted&&(previewCat!==null||curArticle!==null||articleListOpen))return "mistake";
+  if(page==="trash")return "stats";
+  return page;
+}
+const PAGE_TITLE={assistant:"查词",mistake:"词库",stats:"我的",trash:"我的"};
+function updateChrome(){
+  const k=navKey();
+  ["home","assistant","mistake","stats"].forEach(x=>{const el=document.getElementById("nav-"+x);if(el)el.classList.toggle("active",x===k)});
+  const h=document.querySelector(".topbar h1"),sub=document.getElementById("sub");
+  if(h)h.textContent=PAGE_TITLE[k]||"Vocab AI";
+  if(sub){
+    if(k==="home"){
+      const d=new Date(),st=streakDays();
+      sub.textContent=`${d.getMonth()+1}月${d.getDate()}日 周${"日一二三四五六"[d.getDay()]}`+(st?` · 连续 ${st} 天`:"");
+      sub.style.display="";
+    }else sub.style.display="none";
+  }
+}
 function render(){
   const v=document.getElementById("view");
+  document.body.classList.remove("studying","sheet-open");
+  updateChrome();
   // 记录"当前是否真的在背词卡片视图"，供刷新后 restoreSession 判断是否需要拉回卡片
   // （page==="home" 还包含分类预览/文章详情/文章列表等子状态，不能仅凭 page 判断）
   save("vocab_v5_studying",page==="home"&&studyStarted);
@@ -854,35 +990,45 @@ function render(){
   if(!cur){
     v.innerHTML=`<div class="done"><h2>这组都复习完啦</h2><p>当前分类没有到期的词。</p><button class="ai-btn" style="max-width:200px;margin:16px auto 0" onclick="backToHome()">← 选其他分类</button></div>`;return;
   }
-  v.innerHTML=`
-    <div class="stage">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="gear" onclick="backToHome()">← 返回</button>
-          <button class="gear" onclick="restartStudy()" title="放弃当前组，重新洗一组新词">🔄 换一组</button>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          ${peekSnapshot?"":`<button class="gear" ${viewed.length?`onclick="prevWord()"`:`disabled style="opacity:.4;cursor:default"`}>↩ 上一个</button>`}
-          <div class="progress" style="margin:0">已过 ${roundDone.size} / ${roundTotal||queue.length}</div>
-        </div>
-      </div>
-      ${peekSnapshot?`<div style="background:var(--accent-soft);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:.78rem;color:var(--accent);display:flex;justify-content:space-between;align-items:center">
-        <span>👀 回看上一个（不影响进度）</span>
-        <button class="ai-btn" style="width:auto;padding:6px 14px;margin:0" onclick="resumeFromPeek()">继续背 →</button>
-      </div>`:""}
-      <div style="height:4px;background:var(--line);border-radius:2px;margin-bottom:12px;overflow:hidden">
-        <div style="height:100%;width:${roundTotal?Math.round(roundDone.size/roundTotal*100):0}%;background:var(--accent);border-radius:2px;transition:width .3s"></div>
-      </div>
-      <div class="card" id="card" onclick="if(!flipped&&!peekSnapshot)flip()">
-        <span class="cat-tag" onclick="event.stopPropagation();gotoSource()" style="cursor:pointer" title="查看来源">${escapeHtml(catName(cur.cat))} ↗</span>
+  document.body.classList.add("studying");
+  const sheetOpen=flipped&&!peekSnapshot&&aiSheetFor===cur.id;
+  document.body.classList.toggle("sheet-open",sheetOpen);
+  const pct=roundTotal?Math.round(roundDone.size/roundTotal*100):0;
+  const head=flipped
+    ?`<div class="back-head"><div style="flex:1;min-width:0">
         <div class="word">${escapeHtml(cur.word)}</div>
         ${cur.phonetic?`<div class="phonetic">${escapeHtml(cur.phonetic)}</div>`:""}
-        <button class="speak" onclick="event.stopPropagation();speak(this)">🔊 发音</button>
-        ${flipped?backHtml():`<div class="flip-hint">点卡片看释义 · 左滑下一个，右滑返回</div>`}
+      </div><button class="speak round" onclick="event.stopPropagation();speak(this)" aria-label="发音">${ICON.speaker}</button></div>`
+    :`<div class="front-main">
+        <div class="word">${escapeHtml(cur.word)}</div>
+        ${cur.phonetic?`<div class="phonetic">${escapeHtml(cur.phonetic)}</div>`:""}
+        <button class="speak" style="display:inline-flex;align-items:center;gap:6px" onclick="event.stopPropagation();speak(this)">${ICON.speaker}发音</button>
       </div>
-      ${(flipped&&!peekSnapshot)?gradesHtml():""}
-      ${(flipped&&!peekSnapshot)?aiHtml():""}
-    </div>`;
+      <div>
+        ${cur.ctx?ctxBoxHtml():""}
+        <div class="flip-hint" style="margin-top:12px">${cur.ctx?"先想：这句里它是什么意思？":"先在心里回想意思"} · 左右滑切换</div>
+      </div>`;
+  const foot=peekSnapshot
+    ?`<button class="ai-btn reveal" onclick="resumeFromPeek()">继续背 →</button>`
+    :flipped?gradesHtml():`<button class="ai-btn reveal" onclick="flip()">显示答案</button>`;
+  v.innerHTML=`
+    <div class="stage">
+      <div class="study-head">
+        <button class="icon-btn" onclick="backToHome()" aria-label="结束，回首页">${ICON.x}</button>
+        <div class="study-bar"><div style="width:${pct}%"></div></div>
+        <div class="study-count">${roundDone.size} / ${roundTotal||queue.length}</div>
+        ${peekSnapshot?"":`<button class="icon-btn" ${viewed.length?`onclick="prevWord()"`:"disabled"} aria-label="上一个">${ICON.undo}</button>`}
+        <button class="icon-btn" onclick="restartStudy()" aria-label="换一组（放弃当前组重新洗牌）">${ICON.shuffle}</button>
+      </div>
+      ${peekSnapshot?`<div style="background:var(--accent-soft);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:.8rem;color:var(--accent)">👀 回看上一个（不影响进度）</div>`:""}
+      <div class="card ${flipped?"is-back":"is-front"}" id="card" onclick="if(!flipped&&!peekSnapshot)flip()">
+        <span class="cat-tag" onclick="event.stopPropagation();gotoSource()" style="cursor:pointer" title="查看来源">${escapeHtml(catName(cur.cat))} ↗</span>
+        ${head}
+        ${flipped?backHtml():""}
+      </div>
+    </div>
+    <div class="study-foot"><div>${foot}</div></div>
+    ${(flipped&&!peekSnapshot)?aiSheetHtml():""}`;
   bindSwipe();
   // 翻面后：若该词已拆解过，自动恢复显示（修复切走再回来丢失）
   if(flipped&&cur&&dissectCache[cur.id]&&!peekSnapshot){
@@ -1076,13 +1222,14 @@ function backToHome(){
   go("home");
 }
 // 分类选择页（内置 + 7大类，词数<3的归入"我的收藏"显示）
-function renderHome(v){
+// 分类行 + 首页各计数（首页和词库「分类」标签共用）
+function homeCatData(){
   const MIN=3;  // 自定义大类至少3词才单独成类
   const all=allWords();
   // 固定候选分类（按顺序），有词才显示
   const fixedCats=[
     {key:"all",name:"全部",desc:"混合所有分类"},
-    {key:"wild",name:"🌍 野生词",desc:"推特·技术文章里撞见的"},
+    {key:"wild",name:"野生词",desc:"推特·技术文章里撞见的"},
     {key:"nce2",name:"新概念二",desc:"课本基础生词"},
     {key:"dev",name:"科技开发",desc:"编程·报错·文档·AI"},
     {key:"tv",name:"影视口语",desc:"看剧高频·课本不教"},
@@ -1132,50 +1279,59 @@ function renderHome(v){
   // 到期待回顾的语法点（不进闪卡，点击跳语法库）
   const dueGrammar=grammar.filter(g=>g.due&&g.due<=Date.now()).length;
 
-  const todayPanel=`
-    <div style="background:linear-gradient(135deg,var(--accent),#a0563a);border-radius:16px;padding:18px;margin-bottom:16px;color:#fff">
-      <div style="font-family:Fraunces,serif;font-size:1.1rem;font-weight:600;margin-bottom:2px">今天学什么</div>
-      <div style="font-size:.8rem;opacity:.85;margin-bottom:14px">跟着下面走就行，不用自己想</div>
-      <div onclick="${dueNow?`startStudy('__due__')`:''}" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;margin-bottom:8px;${dueNow?'cursor:pointer':'opacity:.6'}">
-        <div><div style="font-weight:600">📚 复习到期</div><div style="font-size:.8rem;opacity:.85">${dueNow?`记忆该巩固了${duePhraseCount?`（含 ${duePhraseCount} 短语）`:''}`:'今天没有到期的，太棒了'}</div></div>
-        <div style="font-family:Fraunces,serif;font-weight:700;font-size:1.5rem">${dueNow}</div>
+  return {rows,dueNow,duePhraseCount,newCount,misCount,dueGrammar};
+}
+// 首页（2026-10 改版，复习优先）：今日复习 → 查生词 → 到期语法 → 最近查过的野生词。分类列表挪去词库
+function renderHome(v){
+  const d=homeCatData();
+  const now=Date.now();
+  const wildDue=allWords().filter(w=>w.cat===LOOKUP_CAT&&srs[w.id]&&srs[w.id].due&&srs[w.id].due<=now).length;
+  const limit=cfg.dailyLimit||20;
+  const recent=imported.filter(w=>w.cat===LOOKUP_CAT).slice(-3).reverse();
+  // 查词入库的 id 是 "imp"+时间戳+"_lk"，从里面取入库日期
+  const ago=id=>{const t=parseInt(String(id).slice(3),10);if(!t)return "";
+    const n=Math.round((new Date().setHours(0,0,0,0)-new Date(t).setHours(0,0,0,0))/86400000);
+    return n<=0?"今天":n===1?"昨天":n+" 天前"};
+  const go1=d.dueNow?{t:"开始复习",fn:"startStudy('__due__')"}
+    :d.newCount?{t:`背 ${Math.min(limit,d.newCount)} 个新词`,fn:"startStudy('__new__')"}:null;
+  v.innerHTML=`<div class="home">
+    <section class="today">
+      <div class="today-top">
+        <div><div class="today-t">今日复习</div>
+          <div class="today-s">${d.dueNow?(wildDue?`野生词 ${wildDue} 个排在最前`:`记忆该巩固了${d.duePhraseCount?`（含 ${d.duePhraseCount} 短语）`:""}`):"今天没有到期的，太棒了"}</div></div>
+        <div class="today-n">${d.dueNow}</div>
       </div>
-      <div onclick="${newCount?`startStudy('__new__')`:''}" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;${dueGrammar?'margin-bottom:8px;':''}${newCount?'cursor:pointer':'opacity:.6'}">
-        <div><div style="font-weight:600">✨ 背几个新词</div><div style="font-size:.8rem;opacity:.85">${newCount?'从所有分类里挑新词':'新词都学过啦'}</div></div>
-        <div style="font-family:Fraunces,serif;font-weight:700;font-size:1.5rem">${newCount}</div>
-      </div>
-      ${dueGrammar?`<div onclick="gotoGrammarReview()" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;cursor:pointer">
-        <div><div style="font-weight:600">📖 语法该回顾了</div><div style="font-size:.8rem;opacity:.85">点开看 AI 详解，回顾一遍就顺延</div></div>
-        <div style="font-family:Fraunces,serif;font-weight:700;font-size:1.5rem">${dueGrammar}</div>
-      </div>`:""}
-    </div>`;
-
-  v.innerHTML=`<div style="padding-top:8px">
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <div onclick="openSearch()" style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer;color:var(--ink-dim)">
-        🔍 <span style="font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">搜索单词或释义…</span>
-      </div>
-      <div onclick="pasteLookup()" title="粘贴刚遇到的生词，一步查到" style="flex:none;display:flex;align-items:center;gap:5px;background:var(--accent);color:#fff;border-radius:10px;padding:10px 13px;cursor:pointer;font-size:.86rem;font-weight:600">
-        📋 <span>查生词</span>
-      </div>
+      ${go1?`<button class="today-go" onclick="${go1.fn}">${go1.t}${ICON.right}</button>`:`<div class="today-s">新词也都学过了，去查几个野生词吧</div>`}
+      ${d.dueNow&&d.newCount?`<button class="today-new" onclick="startStudy('__new__')"><span>再背几个新词</span><span>还有 ${d.newCount} 个</span></button>`:""}
+    </section>
+    <div class="lk-bar">
+      <button class="lk-input" onclick="openLookup('')">${ICON.search}<span>输入刚遇到的生词</span></button>
+      <button class="lk-paste" onclick="pasteLookup()">${ICON.clip}粘贴</button>
     </div>
-    ${todayPanel}
-    <p style="color:var(--ink-dim);font-size:.82rem;margin-bottom:10px">或按分类自己选 · 长按卡片可拖动排序</p>
-    <div id="home-cats">
-      <div class="mistake-item" style="cursor:pointer" onclick="openArticleList()">
-        <div><div class="w">📄 我的文章</div><div class="c">精读文章·自动攒生词 · 共 ${articles.length} 篇</div></div>
-        <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${articles.reduce((s,a)=>s+wordsOfArticle(a.id).length,0)}</div><div class="c">词</div></div>
-      </div>
-      ${misCount?`<div class="mistake-item" style="cursor:pointer" onclick="startMistakeReview()">
-        <div><div class="w">🔖 复习本</div><div class="c">收录的难词/忘词 · 连对3次自动毕业</div></div>
-        <div style="text-align:right"><div style="font-family:Fraunces,serif;font-weight:700;color:var(--accent)">${misCount}</div><div class="c">词</div></div>
-      </div>`:""}
-      <div class="mistake-item" style="cursor:pointer" onclick="openCatManager()">
-        <div><div class="w">⚙ 管理分类</div><div class="c">合并·改名·整理分类</div></div>
-        <div style="text-align:right;font-size:1.2rem;color:var(--ink-dim)">›</div>
-      </div>
-      <div id="cat-sort-list">${renderSortedCatRows(rows)}</div>
+    ${d.dueGrammar?`<button class="row-card" onclick="gotoGrammarReview()"><div><div class="rc-t">语法该回顾了</div><div class="rc-s">点开看讲解，看一遍就顺延</div></div><div class="rc-n">${d.dueGrammar}</div></button>`:""}
+    <section>
+      <div class="sec-h"><h2>最近查过的词</h2>${recent.length?`<button class="link-btn" onclick="openCatPreview('${LOOKUP_CAT}')">全部野生词</button>`:""}</div>
+      ${recent.length?`<div class="list-card">${recent.map(w=>`<button class="lc-row" onclick="startStudyAt('${LOOKUP_CAT}','${w.id}')">
+          <div style="flex:1;min-width:0"><div class="lc-w">${escapeHtml(w.word)}</div><div class="lc-c">${escapeHtml(w.cn||"")}</div></div>
+          <div class="lc-m">${w.src?escapeHtml(w.src)+"<br>":""}${ago(w.id)}</div></button>`).join("")}</div>`
+        :`<div class="empty-tip">读英文时撞见不认识的词：复制这个词或整句，回来点上面的「粘贴」。查过的词连同原句一起存进「野生词」，复习时能看到你在哪儿遇到它。</div>`}
+    </section>
+  </div>`;
+}
+// 词库「分类」标签：原首页的分类列表 + 文章 + 搜索/管理/批量加词
+function renderCatsTab(v,tabBar){
+  const d=homeCatData();
+  v.innerHTML=`<div style="padding-top:8px">${tabBar}
+    <div class="lk-bar" style="margin-bottom:10px"><button class="lk-input" onclick="openSearch()">${ICON.search}<span>搜索单词或释义</span></button></div>
+    <button class="row-card" style="margin-bottom:8px" onclick="openArticleList()">
+      <div><div class="rc-t">我的文章</div><div class="rc-s">精读过的文章 · 共 ${articles.length} 篇</div></div>
+      <div class="rc-n">${articles.reduce((s,a)=>s+wordsOfArticle(a.id).length,0)}</div></button>
+    <div id="cat-sort-list">${renderSortedCatRows(d.rows)}</div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="gear" style="flex:1" onclick="openCatManager()">管理分类</button>
+      <button class="gear" style="flex:1" onclick="openQuickAdd()">＋ 批量加词</button>
     </div>
+    <p style="font-size:.75rem;color:var(--ink-dim);text-align:center;margin-top:10px">长按分类左边的 ⠿ 可拖动排序</p>
   </div>`;
   initCatDrag();
 }
@@ -1346,7 +1502,7 @@ function toggleCell(ev,el){
   const shown=el.querySelector(".pv-show").style.display!=="none";
   if(shown)hideCell(el);else revealCell(el);
 }
-function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;catSuggestItems=null;catSuggestLoading=false;reclassifyProgress=null;dedupGroups=null;render()}
+function openCatPreview(cat){previewCat=cat;studyStarted=false;cur=null;catSuggestItems=null;catSuggestLoading=false;reclassifyProgress=null;dedupGroups=null;page="home";save("vocab_v5_page","home");render()}
 // 从背词卡片点右上角来源标签 → 跳到来源（文章详情 / 分类预览）。背词进度已存 session，可稍后恢复
 function gotoSource(){
   if(!cur)return;
@@ -1375,7 +1531,7 @@ function resumeStudy(){
   if(s&&s.queue&&s.queue.length&&tryResumeSession(s.scope))return;
   toast("没有可恢复的背词进度");
 }
-function closeCatPreview(){previewCat=null;catSuggestItems=null;catSuggestLoading=false;reclassifyProgress=null;dedupGroups=null;render()}
+function closeCatPreview(){previewCat=null;catSuggestItems=null;catSuggestLoading=false;reclassifyProgress=null;dedupGroups=null;mistakeTab="cats";save("vocab_v5_mtab","cats");go("mistake")}
 // ===== AI 一键归类（把"我的收藏"里的零散词按词义自动归到主题大类，复核后写入）=====
 let catSuggestItems=null;    // 非空=正在复核 AI 建议：[{id,word,cn,cat}]
 let catSuggestLoading=false; // AI 归类请求进行中
@@ -1926,35 +2082,54 @@ function backHtml(){
   <div class="back">
     <div class="cn">${escapeHtml(cur.cn)}<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">phr.</span></div>
     ${cur.tip?`<div class="tip">💡 ${escapeHtml(cur.tip)}</div>`:""}
+    ${backActionsHtml()}
   </div>`;
   }
-  const fav=mistakes.find(m=>m.id===cur.id)?"★ 已收藏":"☆ 收藏";
   const pos=cur.pos?`<span style="font-size:.8rem;color:var(--ink-dim);font-style:italic;margin-left:6px">${escapeHtml(cur.pos)}</span>`:"";
   const scene=cur.scene?`<div class="tip" style="background:var(--green-soft);border-left:3px solid var(--green)">🎬 ${escapeHtml(cur.scene)}</div>`:"";
   // 野生词才有：他当初真正遇到这个词的那一句。记忆锚点靠这个，不靠 AI 编的例句
-  const ctxBlock=cur.ctx?`<div style="background:var(--green-soft);border:1px solid var(--green-border);border-left:3px solid var(--green);border-radius:8px;padding:9px 11px;margin:8px 0">
-    <div style="font-size:.72rem;color:var(--ink-dim);margin-bottom:4px">📍 你在这儿遇到它${cur.src?" · "+escapeHtml(cur.src):""}</div>
-    <div style="font-size:.86rem;line-height:1.6">${highlightWord(cur.ctx,cur.word)}</div>
-  </div>`:"";
   return `
   <div class="back">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div class="cn">${escapeHtml(cur.cn)}${pos}</div>
-      <button class="gear" id="fav-btn" onclick="event.stopPropagation();toggleFav()">${fav}</button>
-    </div>
+    <div class="cn">${escapeHtml(cur.cn)}${pos}</div>
     ${cur.tip?`<div class="tip">💡 ${escapeHtml(cur.tip)}</div>`:""}
-    ${ctxBlock}
+    ${cur.ctx?`<div style="margin:8px 0">${ctxBoxHtml()}</div>`:""}
     ${scene}
     ${cur.exampleEn?`<div class="ex">${escapeHtml(cur.exampleEn)}</div>`:""}
     ${cur.exampleCn?`<div class="ex-cn">${escapeHtml(cur.exampleCn)}</div>`:""}
-    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-      ${cur.ctx?`<button class="gear" onclick="event.stopPropagation();playAudio(cur.ctx,null)">🔊 读原句</button>`:""}
-      ${cur.exampleEn?`<button class="gear" onclick="event.stopPropagation();playAudio(cur.exampleEn,null)">🔊 读例句</button>`:""}
-      <button class="gear" id="dissect-btn" onclick="event.stopPropagation();dissectExample(${cur.ctx?"cur.ctx":""})">🔍 拆解${cur.ctx?"原句":"这句话"}</button>
+    ${backActionsHtml()}
+  </div>`;
+}
+// 野生词才有：他当初真正遇到这个词的那一句。记忆锚点靠这个，不靠 AI 编的例句（正面背面都显示）
+function ctxBoxHtml(){
+  return `<div class="ctx-box"><div class="ctx-src">${ICON.pin}你在${cur.src?" "+escapeHtml(cur.src)+" ":"这儿"}遇到它</div>
+    <div class="ctx-text">${highlightWord(cur.ctx,cur.word)}</div></div>`;
+}
+// 背面底部两颗键：AI 讲解（打开抽屉）+ 收藏。短语卡没有收藏
+function backActionsHtml(){
+  const fav=mistakes.find(m=>m.id===cur.id)?"★ 已收藏":"☆ 收藏";
+  return `<div class="back-actions">
+    <button class="gear" style="flex:1" onclick="event.stopPropagation();toggleAiSheet(true)">${ICON.sparkle}AI 讲解${ICON.down}</button>
+    ${cur._phrase?"":`<button class="gear" id="fav-btn" onclick="event.stopPropagation();toggleFav()">${fav}</button>`}
+  </div>`;
+}
+// 抽屉内容：拆解、朗读、8 个词条标签、问 AI。各元素 id 不变，dissectExample/queryTag/askWord 照旧按 id 找
+function aiSheetHtml(){
+  const open=aiSheetFor===cur.id?" open":"";
+  return `<div class="sheet-mask${open}" onclick="toggleAiSheet(false)"></div>
+  <div class="sheet${open}" id="ai-sheet" role="dialog" aria-label="AI 讲解">
+    <div class="sheet-grip"></div>
+    <div class="sheet-head"><h3>AI 讲解 <span>${escapeHtml(cur.word)}</span></h3>
+      <button class="icon-btn" onclick="toggleAiSheet(false)" aria-label="关闭">${ICON.x}</button></div>
+    <div class="sheet-body">
+      ${cur._phrase?"":`<button class="gear sheet-main" id="dissect-btn" onclick="dissectExample(${cur.ctx?"cur.ctx":""})">🔍 拆解${cur.ctx?"原句":"这句话"}</button>
+      <div id="dissect-result" style="display:none;margin-top:10px"></div>`}
+      ${(cur.ctx||cur.exampleEn)?`<div class="sheet-row">
+        ${cur.ctx?`<button class="gear" onclick="playAudio(cur.ctx,null)">🔊 读原句</button>`:""}
+        ${cur.exampleEn?`<button class="gear" onclick="playAudio(cur.exampleEn,null)">🔊 读例句</button>`:""}
+      </div>`:""}
+      ${cur._phrase?"":tagBarHtml()}
+      ${aiHtml()}
     </div>
-
-    <div id="dissect-result" style="display:none;margin-top:10px"></div>
-    ${tagBarHtml()}
   </div>`;
 }
 function toggleFav(){
@@ -1962,12 +2137,14 @@ function toggleFav(){
   else{addMistake(cur,"手动收藏");toast("已加入复习本")}
   document.getElementById("fav-btn").textContent=mistakes.find(m=>m.id===cur.id)?"★ 已收藏":"☆ 收藏";
 }
-function gradesHtml(){return `
+function gradesHtml(){
+  const d=q=>fmtDays(previewDays(cur.id,q));
+  return `
   <div class="grades">
-    <button class="grade g-again" onclick="rate(0)">忘了<small>重来</small></button>
-    <button class="grade" onclick="rate(3)">难<small>勉强</small></button>
-    <button class="grade g-good" onclick="rate(4)">记得<small>good</small></button>
-    <button class="grade g-good" onclick="rate(5)">秒答<small>easy</small></button>
+    <button class="grade g-again" onclick="rate(0)">忘了<small>这组再来</small></button>
+    <button class="grade" onclick="rate(3)">难<small>${d(3)}</small></button>
+    <button class="grade g-good" onclick="rate(4)">记得<small>${d(4)}</small></button>
+    <button class="grade g-good" onclick="rate(5)">秒答<small>${d(5)}</small></button>
   </div>`;
 }
 function aiHtml(){
@@ -2431,7 +2608,7 @@ function renderTrash(v){
   }).join("");
   v.innerHTML=`<div style="padding-top:8px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-      <button class="gear" onclick="go('home')">← 返回</button>
+      <button class="gear" onclick="go('stats')">← 返回</button>
       <div style="font-family:Fraunces,serif;font-size:1.15rem;font-weight:700">🗑 回收站</div>
     </div>
     <p style="color:var(--ink-dim);font-size:.8rem;margin-bottom:12px">删除的单词/短语/语法/复习本/文章会在这里保留最多 ${TRASH_DAYS} 天，可随时恢复（含复习进度）。</p>
@@ -2440,7 +2617,7 @@ function renderTrash(v){
 }
 // 文章列表页
 function openArticleList(){articleListOpen=true;curArticle=null;previewCat=null;studyStarted=false;go("home")}
-function closeArticleList(){articleListOpen=false;curArticle=null;render()}
+function closeArticleList(){articleListOpen=false;curArticle=null;mistakeTab="cats";save("vocab_v5_mtab","cats");go("mistake")}
 function openArticleDetail(id){curArticle=id;render()}
 function delArticle(id){
   if(isNceArticle(id)){toast("NCE 课程文章为内置内容，不可删除");return}
@@ -2631,7 +2808,7 @@ function renderDissect(box,o){
     <div style="font-size:.82rem;line-height:1.6;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px">
       ${o.structure?`<div style="margin-bottom:8px"><span style="color:var(--ink-dim);font-size:.8rem">句子主干</span><br>${escapeHtml(o.structure)}</div>`:""}
       ${phraseRows?`<div style="color:var(--ink-dim);font-size:.8rem;margin:8px 0 4px">短语 / 搭配</div>${phraseRows}`:""}
-      ${grammarRows?`<div style="color:var(--ink-dim);font-size:.8rem;margin:8px 0 4px">语法点</div>${grammarRows}<div style="font-size:.8rem;color:var(--ink-dim);margin-top:4px">想系统学这个语法？去「AI 助手」直接问，它给你讲整块 →</div>`:""}
+      ${grammarRows?`<div style="color:var(--ink-dim);font-size:.8rem;margin:8px 0 4px">语法点</div>${grammarRows}<div style="font-size:.8rem;color:var(--ink-dim);margin-top:4px">想系统学这个语法？去「查词」页的「问 AI」直接问，它给你讲整块 →</div>`:""}
       ${o.memory?`<div style="margin-top:8px;background:var(--green-soft);border-left:3px solid var(--green);border-radius:6px;padding:8px 10px">🧠 ${escapeHtml(o.memory)}</div>`:""}
     </div>`;
 }
@@ -2739,6 +2916,45 @@ function bindSwipe(){
   });
 }
 const GRADUATE_STREAK=3;  // 复习本的词连续点"记得/秒答"达到此次数自动毕业移出
+// 线条图标（替代界面上的 emoji）。class="ico" 统一尺寸/描边，颜色跟随 currentColor
+const ICON={
+  x:'<svg class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  undo:'<svg class="ico" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
+  shuffle:'<svg class="ico" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>',
+  speaker:'<svg class="ico" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  sparkle:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>',
+  down:'<svg class="ico" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
+  right:'<svg class="ico" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
+  pin:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+  star:'<svg class="ico" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
+  book:'<svg class="ico" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg>',
+  search:'<svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  stack:'<svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>',
+  user:'<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  clip:'<svg class="ico" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/></svg>',
+  plus:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  zap:'<svg class="ico" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
+  sliders:'<svg class="ico" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+  archive:'<svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9M10 13h4"/></svg>',
+  trash:'<svg class="ico" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  refresh:'<svg class="ico" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>',
+  doc:'<svg class="ico" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>',
+  chat:'<svg class="ico" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+};
+// 打分键上预告"点了下次什么时候再考"：照 grade() 的 FSRS 算一遍，但不写入
+function previewDays(id,q){
+  const g=fsrsG(q),c=srs[id]||{};
+  let S;
+  if(typeof c.s==="number"&&typeof c.d==="number"&&c.lr){
+    const R=fsrsR(Math.max(0,Math.floor((Date.now()-c.lr)/86400000)),c.s);
+    S=(g===1)?fsrsForgetS(c.d,c.s,R):fsrsRecallS(c.d,c.s,R,g);
+  }else S=fsrsS0(g);
+  return fsrsInterval(S,desiredRetention());
+}
+function fmtDays(d){return d<30?d+" 天":d<365?Math.round(d/30)+" 个月":"1 年"}
+// AI 讲解抽屉：记的是"为哪个词打开的"，换词自动收起，不用在每个切词函数里复位
+let aiSheetFor=null;
+function toggleAiSheet(open){aiSheetFor=open&&cur?cur.id:null;render()}
 function rate(q){
   grade(cur.id,q);
   if(q>=3)roundDone.add(cur.id);  // 难/记得/秒答=本轮过关；忘了不算
@@ -2837,17 +3053,15 @@ function delMistake(id){
   if(m)trashPush("mistake",{mistake:JSON.parse(JSON.stringify(m))},m.word||m.cn||"复习本词条");
   removeMistake(id);renderMistake(document.getElementById("view"));
 }
-let mistakeTab=load("vocab_v5_mtab","mistake");  // mistake | phrase | grammar
+let mistakeTab=load("vocab_v5_mtab","cats");  // cats | mistake | phrase | grammar
 // 分组折叠状态 {组key:true=折叠}，记住上次。短语/语法/文章列表通用
 let collapsed=load("vocab_v5_collapsed",{});
 function toggleGroup(key){collapsed[key]=!collapsed[key];save("vocab_v5_collapsed",collapsed);render()}
-if(!["mistake","phrase","grammar"].includes(mistakeTab))mistakeTab="mistake";
+if(!["cats","mistake","phrase","grammar"].includes(mistakeTab))mistakeTab="cats";
 function renderMistake(v){
-  const tabBar=`<div style="display:flex;gap:6px;margin-bottom:14px">
-    <button class="gear" style="flex:1${mistakeTab==='mistake'?';background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600':''}" onclick="switchMistakeTab('mistake')">复习本 ${mistakes.length}</button>
-    <button class="gear" style="flex:1${mistakeTab==='phrase'?';background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600':''}" onclick="switchMistakeTab('phrase')">短语 ${phrases.length}</button>
-    <button class="gear" style="flex:1${mistakeTab==='grammar'?';background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600':''}" onclick="switchMistakeTab('grammar')">语法 ${grammar.length}</button>
-  </div>`;
+  const tabs=[["cats","分类",null],["mistake","复习本",mistakes.length],["phrase","短语",phrases.length],["grammar","语法",grammar.length]];
+  const tabBar=`<div class="seg">${tabs.map(([k,l,n])=>`<button class="${mistakeTab===k?"on":""}" onclick="switchMistakeTab('${k}')">${l}${n?` <small>${n}</small>`:""}</button>`).join("")}</div>`;
+  if(mistakeTab==="cats")return renderCatsTab(v,tabBar);
   if(mistakeTab==="phrase")return renderPhraseTab(v,tabBar);
   if(mistakeTab==="grammar")return renderGrammarTab(v,tabBar);
   if(!mistakes.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>复习本是空的</h2><p>背单词点“忘了/难”自动进来；翻面点☆也能手动收藏。</p></div></div>`;return}
@@ -2929,7 +3143,7 @@ function fmtDue(ts){
   if(d<=0)return"今天";if(d===1)return"明天";return d+"天后";
 }
 function renderGrammarTab(v,tabBar){
-  if(!grammar.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>语法库是空的</h2><p>语法重在系统学。想学某个语法，直接去「AI 助手」问它，会给你讲整块、配例句，比存零散卡片更有用。</p></div></div>`;return}
+  if(!grammar.length){v.innerHTML=`<div style="padding-top:8px">${tabBar}<div class="done"><h2>语法库是空的</h2><p>语法重在系统学。想学某个语法，直接去「查词」页的「问 AI」问它，会给你讲整块、配例句，比存零散卡片更有用。</p></div></div>`;return}
   const now=Date.now();
   const groups=[["tense","时态"],["word","词法"],["sentence","句法"],["other","其他"]];
   const due=grammar.filter(g=>g.due&&g.due<=now);
@@ -3080,7 +3294,9 @@ function statTile(value,label,color){
 }
 // 单序列柱状图。手机没有 hover，tooltip 不可靠，所以数值直接标在柱顶——
 // 这是唯一的取值通道，因此柱子控制在 7 根以内，标签不会挤成一团
-function barChart(items,color){
+function barChart(items,color,emptyText){
+  // 全是 0 时不画一排空柱子，直接说明为什么空、怎么才会有
+  if(emptyText&&!items.some(x=>x.n))return `<div style="font-size:.8rem;color:var(--ink-dim);line-height:1.6;padding:6px 0">${emptyText}</div>`;
   const max=Math.max(1,...items.map(x=>x.n));
   return `<div style="display:flex;align-items:flex-end;justify-content:space-between;height:88px;gap:6px">
     ${items.map(x=>`<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
@@ -3146,12 +3362,13 @@ function renderStats(v){
 
     <div style="${CARD_BOX}">
       <div style="${CARD_TITLE}">最近 7 天练习量</div>
-      ${barChart(last7,"var(--accent)")}
+      ${barChart(last7,"var(--accent)","这 7 天还没背过，背完一组这里就有柱子了。")}
     </div>
+    ${settingsListHtml()}
 
     <div style="${CARD_BOX}">
       <div style="${CARD_TITLE}">未来 7 天要复习</div>
-      ${barChart(next7,"var(--accent)")}
+      ${barChart(next7,"var(--accent)","未来 7 天没有要复习的词。")}
       <div style="font-size:.75rem;color:var(--ink-dim);margin-top:10px;line-height:1.55">
         “今天”这格含逾期没复习的。未来 30 天共 ${fc30} 张到期。
         ${peak>limit?`<br><span style="color:var(--gold)">⚠ 最高一天 ${peak} 张，超过你设的每次上限 ${limit} 张，那天背不完会顺延堆积。</span>`:""}
@@ -3475,11 +3692,16 @@ function clearChat(){if(!chatHistory.length)return toast("对话已经是空的"
 function renderAssistant(v){
   const on=cfg.thinkOn;
   v.innerHTML=`<div style="padding-top:8px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <p style="color:var(--ink-dim);font-size:.8rem;margin:0">问任何英语问题：语法、用法、翻译、词的区别…</p>
-      ${chatHistory.length?`<button class="gear" onclick="clearChat()">清空</button>`:""}
+    <div class="lk-bar" style="margin-bottom:10px">
+      <button class="lk-input" onclick="openLookup('')">${ICON.search}<span>输入刚遇到的生词或整句</span></button>
+      <button class="lk-paste" onclick="pasteLookup()">${ICON.clip}粘贴</button>
     </div>
-    <button class="gear" style="width:100%;margin-bottom:12px;padding:10px" onclick="openArticleReader()">📄 精读一篇文章（AI 讲解 + 自动挑生词入库）</button>
+    <div class="list-card" style="margin-bottom:18px">
+      <button class="lc-row" onclick="openArticleReader()"><div style="flex:1;min-width:0"><div style="font-size:.92rem;font-weight:500">精读一篇文章</div><div class="lc-c">AI 逐段讲解，自动挑出生词</div></div>${ICON.right}</button>
+      <button class="lc-row" onclick="openQuickAdd()"><div style="flex:1;min-width:0"><div style="font-size:.92rem;font-weight:500">批量加词</div><div class="lc-c">贴一串词、一篇文章或几张截图</div></div>${ICON.right}</button>
+    </div>
+    <div class="sec-h"><h2>问 AI</h2>${chatHistory.length?`<button class="link-btn" onclick="clearChat()">清空对话</button>`:""}</div>
+    <p style="color:var(--ink-dim);font-size:.8rem;margin-bottom:10px">语法、用法、翻译、改句子，也能发图让它讲</p>
     <div id="chat-log" style="margin-bottom:12px">${chatHistory.map(m=>chatBubble(m)).join("")}</div>
     ${chatHistory.length?"":`<div style="margin-bottom:14px">
       <p style="font-size:.8rem;color:var(--ink-dim);margin-bottom:8px">不知道问什么？点一个系统话题，让 AI 给你讲整块：</p>
@@ -3489,7 +3711,7 @@ function renderAssistant(v){
         ["冠词 a/an/the 怎么用","系统讲清楚 a、an、the 的用法区别和什么时候不用冠词，初学者最容易错的地方，配例句。"],
         ["介词 in/on/at 区分","系统讲 in、on、at 在表示时间和地点时怎么区分，给一个好记的规律和例句。"],
         ["非谓语动词是什么","系统讲不定式、动名词、分词这些非谓语动词分别是什么、什么时候用、怎么区分，配例句。"]
-      ].map(([t,q])=>`<button class="gear" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:10px 12px" onclick="askTopic(${JSON.stringify(q).replace(/"/g,'&quot;')})">📖 ${t}</button>`).join("")}
+      ].map(([t,q])=>`<button class="gear" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:10px 12px" onclick="askTopic(${JSON.stringify(q).replace(/"/g,'&quot;')})">${t}</button>`).join("")}
     </div>`}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px">
       <select onchange="switchProvider(this.value)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:11px 10px;min-height:44px;font-family:inherit;font-size:.8rem;background:var(--card);color:var(--ink)">
@@ -3743,6 +3965,7 @@ function exportAll(){
   const d=new Date();const stamp=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
   const a=document.createElement("a");a.href=url;a.download=`vocab-backup-${stamp}.json`;a.click();
   URL.revokeObjectURL(url);
+  try{localStorage.setItem("vocab_v5_last_backup",String(Date.now()))}catch(e){}
   toast("已导出完整备份 ✓",2600);
 }
 function importAll(input){
@@ -4392,9 +4615,9 @@ const AGENT_ACTIONS={
       if(!hit.length)return `库里没有「${a.q}」`;
       return hit.map(w=>`${w.word}${w.phonetic||""} ${w.cn||""}（${catName(w.cat)}）`).join("\n");
     }},
-  goTab:{safe:1,ui:1,desc:"切底部标签",args:'tab=home(学习)|assistant(AI助手)|mistake(复习/库)|stats(统计)',
+  goTab:{safe:1,ui:1,desc:"切底部标签",args:'tab=home(学习·今日复习)|assistant(查词·问AI·精读)|mistake(词库·分类/复习本/短语/语法)|stats(我的·统计/设置)',
     run:a=>{
-      const t={home:"学习",assistant:"AI 助手",mistake:"复习/库",stats:"统计"};
+      const t={home:"学习",assistant:"查词",mistake:"词库",stats:"我的"};
       if(!t[a.tab])return "没有这个标签";
       go(a.tab);return "已切到"+t[a.tab];
     }},
@@ -4592,7 +4815,7 @@ function renderAgent(){
   if(!agentLog.length){
     const chip=t=>`<span class="agent-chip" onclick="agentQuick(${JSON.stringify(t).replace(/"/g,"&quot;")})">${escapeHtml(t)}</span>`;
     box.innerHTML=`<div style="font-size:.82rem;color:var(--ink-dim);line-height:1.7">
-      <p style="margin-bottom:6px">跟它说人话，它直接动手改这个 App——不像「AI 助手」只会聊天。</p>
+      <p style="margin-bottom:6px">跟它说人话，它直接动手改这个 App——不像「查词」页的「问 AI」只会聊天。</p>
       <p style="margin-bottom:10px;font-size:.78rem">它会一轮轮做下去：做一批动作 → 看结果 → 再决定下一步，
       做完自己停（最多 ${agentMaxTurns()} 轮，可在设置里改）。跑的时候「发送」会变成「停止」。</p>
       <div style="font-size:.78rem;color:var(--ink);font-weight:600;margin-bottom:6px">让它动手：</div>
@@ -4732,7 +4955,7 @@ async function agentRunLoop(imgs){
 }
 
 // 构建标记：当前这份代码是哪一版。设置页显示它，checkUpdate() 拿它跟线上比
-const BUILD_STAMP="v5.5.1 · 2026-10-05 · 模型列表更新到 Claude 5.5 / GPT-6 / DeepSeek V4.1";
+const BUILD_STAMP="v5.6.0 · 2026-10-05 · 改版：背卡沉浸+打分键固定底部，导航改学习/查词/词库/我的";
 (function(){const el=document.getElementById("build-stamp");if(el)el.textContent=BUILD_STAMP})();
 // 检查线上有没有新版：带时间戳抓一份线上的自己，把里面的版本号抠出来跟当前跑的比。
 // 光看"当前正在跑哪版"回答不了"线上已经是哪版了"——缓存住的旧版显示的也是它自己的旧版本号
