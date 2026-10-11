@@ -56,6 +56,16 @@ class PView {
     const scr = v => [W / 2 + v[0] * f / (CAM_D - v[2]), H / 2 - v[1] * f / (CAM_D - v[2])];
     const shade = n => 0.70 + 0.34 * Math.max(dot(n, LK), 0) + 0.12 * Math.max(dot(n, LF), 0);
     const draws = [], ps = [], pyra = puz instanceof Pyra, inset = pyra ? 0.80 : 0.86, cut = pyra ? 0.16 : 0.2;
+    // 转动中：魔方被切成「下块 / 转的那层 / 上块」(g=-1/0/1)。整块先按块排远近再块内排序 ——
+    // 切面是一整张大平面，跟小贴纸混在一起按中心点排一定排错（黑切面盖住贴纸，2026-10-11 截图）
+    const ax = a ? norm(a.axis) : null, cen = pts => [0, 1, 2].map(k => pts.reduce((s, v) => s + v[k], 0) / pts.length);
+    let lo = 0, hi = 0, mid = 0;
+    if (a) { const ds = []; for (let i = 0; i < puz.S; i++) if (a.sel[i]) ds.push(dot(cen(puz.poly[i]), ax));
+      lo = Math.min(...ds); hi = Math.max(...ds); mid = (lo + hi) / 2;
+      const cd = a.caps.map(cp => dot(cen(cp), ax)); if (cd.length) { lo = Math.min(...cd); hi = Math.max(...cd); } }
+    const grp = i => !a ? 0 : a.sel[i] ? 0 : dot(cen(puz.poly[i]), ax) < mid ? -1 : 1;
+    // 相机在转轴方向上的位置 → 三块从远到近的先后
+    const camS = a ? CAM_D * Mx.v(R, ax)[2] : 0, rank = gp => !a ? 0 : camS > hi ? gp : camS < lo ? -gp : (gp === 0 ? 2 : 0);
     for (let i = 0; i < puz.S; i++) {
       const mv = !!(a && a.sel[i]);
       const cell = puz.poly[i].map(p => view(p, mv)), nr = view(puz.nrm[i], mv);
@@ -67,15 +77,18 @@ class PView {
       const hot = !!(this.hl && this.hl[i]), dimmed = this.focus && !this.focus[i], sh = shade(nr);
       const col = this.st[i] < 0 ? BLANK : puz.palette[this.st[i]];
       const base = cell.map(scr), face = ins.map(scr);
-      draws.push({ z: c[2], body: base, bodyCol: hex(BODY, sh * (dimmed ? 0.6 : 1)), stk: stk.map(scr), stkCol: hex(col, sh * (dimmed ? 0.42 : hot ? 1.3 : 1)), hot, face });
+      draws.push({ r: rank(grp(i)), z: c[2], body: base, bodyCol: hex(BODY, sh * (dimmed ? 0.6 : 1)), stk: stk.map(scr), stkCol: hex(col, sh * (dimmed ? 0.42 : hot ? 1.3 : 1)), hot, face });
       ps.push({ z: c[2], base, face, i, hot });
     }
     // 转动中的那一层：切开的地方补黑面
     if (a) for (const cp of a.caps) for (const mv of [false, true]) {
-      const pts = cp.map(p => view(p, mv)), c = [0, 1, 2].map(k => pts.reduce((s, v) => s + v[k], 0) / pts.length);
-      draws.push({ z: c[2] - 0.01, body: pts.map(scr), bodyCol: hex(BODY, 0.8) });
+      const below = dot(cen(cp), ax) < mid, pts = cp.map(p => view(p, mv)), c = cen(pts);
+      // 切面朝外的方向：转的那层朝静止块那边，静止块朝转的那层；背对相机的不画
+      const n = view(ax.map(v => v * ((below === mv) ? -1 : 1)), mv);
+      if (n[0] * c[0] + n[1] * c[1] + n[2] * (c[2] - CAM_D) >= 0) continue;
+      draws.push({ r: rank(mv ? 0 : below ? -1 : 1), z: c[2] - 0.01, body: pts.map(scr), bodyCol: hex(BODY, 0.8) });
     }
-    draws.sort((x, y) => x.z - y.z); ps.sort((x, y) => x.z - y.z);
+    draws.sort((x, y) => x.r - y.r || x.z - y.z); ps.sort((x, y) => x.z - y.z);
     this.polys = ps; this.arrow = this.planArrow(ps, f);
     const g = this.cv.getContext('2d'), dpr = this.cv.width / W;
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
@@ -90,8 +103,8 @@ class PView {
     for (const d of draws) {
       path(d.body); g.fillStyle = d.bodyCol; g.fill(); g.strokeStyle = d.bodyCol; g.lineWidth = 0.8; g.stroke();
       if (d.stk) { path(d.stk); g.fillStyle = d.stkCol; g.fill(); }
+      if (d.hot) { path(d.face); g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 2.2; g.stroke(); }   // 跟着排序画，被挡住的就该被挡住
     }
-    for (const d of draws) if (d.hot) { path(d.face); g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 2.2; g.stroke(); }
     const ar = this.arrow;
     if (ar) {
       const ah = () => { g.beginPath(); g.moveTo(ar.x0, ar.y0); g.lineTo(ar.x1, ar.y1);
