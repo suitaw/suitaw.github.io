@@ -498,7 +498,7 @@ paths:
 - `cube-puz.js`：模型 + 求解器，**照 App 的 Kotlin 逐段翻**（Puz/Pyra/Big/Red5/课程/花色/CamPlan）。改算法先改 App，再照搬过来
 - `cube-puz-ui.js`：`PView`（App 的 PuzView：2D 画布 + 画家算法，不用 three.js）+ `PZ` 调度（`cube_pz_<k>_<mode>` 存进度，`cube_<id>_times` 存成绩）
 - `cube-puz-pages.js`：四个页签的界面。`PZ.k≠0` 时 `goTab` 末尾调 `PZ.show(i)`，把三阶页面全藏掉、画进 `#pzRoot`
-- 求解：金字塔最优（≤11 步）；四阶 `cube-tpr.js`（TeaVM 从 App 同一份 Java 编出，`cube-tpr-worker.js` 模块 Worker 里跑，首次建表十来秒）约 45 步；
+- 求解：金字塔最优（实测最多 13 步，含尖角）；四阶 `cube-tpr.js`（TeaVM 从 App 同一份 Java 编出，`cube-tpr-worker.js` 模块 Worker 里跑，首次建表十来秒）约 45 步；
   五阶 Red5 中心（`cube-b5/*.bin`，3.8MB 按需取）+ 换位子，约 160–200 步（App 用的 cube555 表 120MB，网页不上）
 - **重新编 cube-tpr.js**：`~/cube-app/webjs`，`gradle generateJavaScript`，产物 `webjs/build/generated/teavm/js/tpr.js`，拷过来保留文件头的 MIT 声明
 - 截图验：起本地 http 服务（Worker/fetch 在 file:// 下不行），`/sdcard/webdev/pzflow.js` 能预设 `cube_puz_k` 再按步骤点击截图
