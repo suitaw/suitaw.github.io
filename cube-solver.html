@@ -884,6 +884,107 @@
   #pIn.ready .appBar #btnSolve{display:inline-block;animation:solvePop .5s ease}
   @keyframes solvePop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1)}}
   #pIn{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+
+  /* ---- 金字塔 / 四阶 / 五阶（cube-puz-pages.js 画进 #pzRoot；跟 App 的 PuzPages 对应）---- */
+  .pzChip{flex:none;margin-left:8px;margin-right:auto;padding:5px 10px;min-height:32px;font-size:13px;border-radius:999px;
+    background:var(--panel2);border:1px solid var(--line2);color:var(--accL)}
+  #pzRoot .appBar b{flex:none}
+  .pzOpt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin-bottom:8px;padding:8px 12px}
+  .pzOpt.on{border-color:rgba(247,209,20,.6)}
+  .pzOpt canvas{width:40px;height:40px;flex:none}
+  .pzOpt span{flex:1;display:flex;flex-direction:column;gap:2px}
+  .pzOpt i,.pzLesson i{font-style:normal;font-size:12px;color:var(--dim)}
+  .pzOpt em{font-style:normal;color:var(--acc);font-weight:700}
+  #pzRoot.pzFull{display:flex;flex-direction:column;overflow-y:auto;padding-bottom:0;
+    height:calc(100vh - var(--navH) - env(safe-area-inset-bottom));
+    height:calc(100dvh - var(--navH) - env(safe-area-inset-bottom))}
+  #pzRoot.pzFull>*{flex:none}
+  #pzRoot.pzFull>.pzStage{flex:1 1 0;min-height:180px}
+  .pzStage{position:relative;width:100%;overflow:hidden;
+    background:radial-gradient(120% 100% at 50% 0%,#1c2028,var(--stage) 72%);
+    border:1px solid var(--line);border-radius:var(--r);touch-action:none}
+  .pzStage>canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .pzBar{position:absolute;left:12px;right:12px;top:9px;z-index:2;display:flex;align-items:center;gap:8px;pointer-events:none}
+  .pzBar~.flip [data-f=u]{top:50px}   /* 练习页顶上压着计时行，往下让一格 */
+  .pzBar b{font-size:20px;font-family:ui-monospace,Menlo,monospace}
+  .pzBar .pzN{margin-left:auto;font-size:13px;color:var(--dim)}
+  .pzSw{pointer-events:auto;padding:4px 10px;min-height:30px;font-size:12.5px;border-radius:999px;
+    font-family:ui-monospace,Menlo,monospace;background:rgba(255,255,255,.06)}
+  .pzSw.run{color:var(--accTxt);background:var(--acc);border-color:var(--acc)}
+  .pzMsg{min-height:20px;margin:6px 0 4px;font-size:13px;color:var(--dim);text-align:center;line-height:1.45}
+  .pzMsg:empty{min-height:0;margin:4px 0}
+  .pzMsg.win{color:var(--acc);font-weight:600}
+  .pzMsg.err{color:#ff8a7a}
+  .row2,.row3{display:grid;gap:8px;margin-top:8px}
+  .row2{grid-template-columns:1fr 1fr} .row3{grid-template-columns:1fr 1fr 1fr}
+  .row2 button,.row3 button{min-width:0;padding-left:4px;padding-right:4px}
+  #pzRoot.pzFull>.row2:last-child,#pzRoot.pzFull>.row3:last-child{margin-bottom:10px}
+  .pzKeys{display:grid;gap:5px;margin-top:8px}
+  .pzKeys button{padding:8px 0 10px;min-width:0;font-size:14px;font-weight:600}
+  .pzSmall{display:block;width:100%;margin:8px 0 10px;background:transparent;border-color:var(--line);color:var(--dim);font-size:13px;box-shadow:none}
+  .pzPlan{margin-top:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px}
+  .pzPlan.end{display:flex;align-items:center;gap:8px}
+  .pzPlan.end span{flex:1;font-size:14px}
+  .pzPlan .ok{color:var(--acc);font-size:18px}
+  .ppNow{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+  .ppNow b{font-size:24px;font-family:ui-monospace,Menlo,monospace;color:var(--accL);min-width:40px}
+  .ppNow span{font-size:13px;color:var(--dim);line-height:1.4}
+  .ppOff{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;color:#ff8a7a}
+  .ppOff span{flex:1}
+  .ppCtl{display:flex;align-items:center;gap:6px}
+  .ppCtl button{padding:6px 10px;min-height:36px;font-size:13px}
+  .ppCtl button.ctl{width:40px;padding:0}
+  .ppCtl button.on{color:var(--accL);border-color:rgba(247,209,20,.5)}
+  .ppCtl button:disabled{opacity:.35}
+  .ppSeq{display:flex;gap:4px;overflow-x:auto;margin-top:8px;padding-bottom:2px;scrollbar-width:none}
+  .ppSeq button{flex:none;padding:4px 7px;min-height:30px;font-size:13px;font-family:ui-monospace,Menlo,monospace;background:transparent;box-shadow:none}
+  .ppSeq button.done{color:var(--dim2)}
+  .ppSeq button.cur{background:var(--acc);color:var(--accTxt);border-color:var(--acc)}
+  .ppSeq em{flex:none;align-self:center;font-style:normal;font-size:12px;color:var(--dim2);padding:0 4px}
+  .pzPal{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px}
+  .pzPal button{height:44px;padding:0;font-weight:700;font-size:15px;border:2px solid transparent}
+  .pzPal button.on{border-color:#fff;box-shadow:0 0 0 2px var(--acc)}
+  .pzGo{flex:none;padding:7px 14px;font-size:14px;margin-right:2px}
+  .pzCamBtn{display:block;width:100%;margin-top:8px}
+  .pzLesson{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin-bottom:8px;padding:8px 10px}
+  .pzLesson canvas{width:56px;height:56px;flex:none}
+  .pzLesson span{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+  .pzLesson i.dim{color:var(--dim2)}
+  .pzStep{margin-left:auto;font-size:13px;color:var(--dim)}
+  .pzText{margin-top:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;max-height:28vh;overflow-y:auto}
+  .pzText b{font-size:14px}
+  .pzText p{margin:4px 0 0;font-size:13px;color:var(--dim);line-height:1.55}
+  .pzAlg{font-family:ui-monospace,Menlo,monospace;font-size:14px;text-align:center;margin:0 0 10px;word-break:break-word}
+  #patFollow{margin-bottom:10px}
+  .pzHist{display:flex;flex-wrap:wrap;gap:4px}
+  .pzHist button{padding:4px 8px;min-height:30px;font-size:13px;font-family:ui-monospace,Menlo,monospace}
+  .pzHist button.on{color:var(--accL);border-color:rgba(247,209,20,.5)}
+  .steps p{margin:8px 0;font-size:14px;color:var(--dim);line-height:1.5}
+  .pzStats{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
+  .pzStats .stHd{display:flex;align-items:center;font-size:12px;color:var(--dim);margin-bottom:8px}
+  .pzStats .stHd button{margin-left:auto;padding:5px 10px;font-size:12px;border-radius:var(--r3);min-height:32px}
+  .pzStats em{font-style:normal;font-size:12.5px;color:var(--dim2)}
+  .pzStats .stRow{display:flex;gap:8px}
+  .pzStats .stRow div{flex:1;text-align:center;font-size:11px;color:var(--dim);background:var(--panel);border-radius:var(--r3);padding:8px 2px}
+  .pzStats .stRow b{display:block;font-size:18px;color:var(--txt);font-family:ui-monospace,Menlo,monospace;margin-bottom:2px}
+  .pzStats .stList{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .pzStats .stList span{font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:4px 8px;border-radius:6px;background:var(--panel)}
+  .pzStats .stList span.as{opacity:.55}
+  .pzStats .stList i{font-style:normal;font-size:11px;color:var(--dim2);margin-left:4px}
+  #pzCamOv{position:fixed;inset:0;z-index:70;background:var(--bg,#0f1115);overflow-y:auto;padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;max-width:620px;margin:0 auto}
+  #pzCamOv .appBar{margin:0 0 4px}
+  .pcSay{font-size:14px;line-height:1.5;margin:0 0 8px;color:var(--txt)}
+  .pcSay.err{color:#ff8a7a}
+  .pcBox{position:relative;width:100%;aspect-ratio:1;overflow:hidden;border-radius:var(--r);background:#000}
+  .pcBox video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .pcBox canvas{position:absolute;inset:0;width:100%;height:100%}
+  .pcFaces{display:flex;gap:6px;overflow-x:auto;margin:10px 0}
+  .pcFaces button{flex:none;position:relative;width:52px;height:52px;padding:0;display:flex;align-items:center;justify-content:center}
+  .pcFaces button.on{border-color:var(--acc)}
+  .pcFaces canvas{position:absolute;inset:3px;width:44px;height:44px}
+  .pcFaces span{position:relative;font-weight:700;color:var(--dim)}
+  #pcShot{width:100%;padding:14px}
 </style>
 
 <!-- 底部导航（App 式）。DOM 顺序和 id 都没动 —— goTab(i) 的下标全篇硬编码十来处；
@@ -1322,6 +1423,7 @@
 <!-- 设置：原来是练习页里的一块可展开区域，可是里面有一半的项
      （震动、转动动画、快划翻面）在输入页和花色页照样生效 ——
      放在练习页里等于藏起来了。挪成全局弹窗，⚙ 在每一页的左上角同一个位置 -->
+<div id="pzRoot" class="page"></div>
 <div id="setOv">
   <div id="setCard">
     <div id="setHd"><b>设置</b><button id="setClose" class="sub">完成</button></div>
@@ -3686,6 +3788,7 @@ function goTab(i){
   if(i===2){ prResize(); prRender(); }
   if(i===3){ tuEnter(); }
   if(i===4){ patResize(); patRender(); patCurRender(); }
+  if(window.PZ && PZ.show) PZ.show(i);   // 选了金字塔/四阶/五阶：四个页签换成 #pzRoot 那一套（cube-puz-pages.js）
 }
 TABS.forEach(([t],i)=> $(t).onclick = () => goTab(i));
 $('goToIn').onclick = () => goTab(0);            // 第②页空着的时候那颗引路按钮
@@ -6438,7 +6541,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-10-04 08:19';
+const BUILD = '2026-10-11 20:54';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
@@ -6450,3 +6553,6 @@ $('verReload').onclick = () => {
   location.replace(u.toString());
 };
 </script>
+<script src="cube-puz.js"></script>
+<script src="cube-puz-ui.js"></script>
+<script src="cube-puz-pages.js"></script>

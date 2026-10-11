@@ -5,8 +5,10 @@
 //   （Vocab 那个 SW 故意不缓存，就是怕这个；网络优先没有这个问题）
 // - 断网时拿上次存下的那份，页面、three.js、图标都在
 // 只管同源的 GET；别的请求（比如以后接的接口）原样放行
-const CACHE = 'cube-v1';
-const CORE = ['/cube-solver.html', '/three.min.js', '/cube-icon-192.png', '/cube-manifest.json'];
+const CACHE = 'cube-v2';
+// 金字塔/四阶/五阶的脚本一起预存；五阶的表（cube-b5/，3.8MB）第一次用五阶时才取，取到也会存下
+const CORE = ['/cube-solver.html', '/three.min.js', '/cube-icon-192.png', '/cube-manifest.json',
+  '/cube-puz.js', '/cube-puz-ui.js', '/cube-puz-pages.js', '/cube-tpr.js', '/cube-tpr-worker.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
