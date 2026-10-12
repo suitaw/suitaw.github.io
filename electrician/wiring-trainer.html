@@ -457,7 +457,18 @@ body.stage-fs-lock{overflow:hidden}
 .ex-rs.fail{background:var(--redbg)} .ex-rs.ded{background:#fdf1de} .ex-rs.wrong{background:#f3eefc} .ex-rs.other{background:#eef1f4}
 .ex-note{font-size:.7rem;color:var(--tx3);margin-top:8px}
 .ex-result button.pri{margin-top:8px;width:100%;border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:8px;padding:9px;font-size:.84rem}
-#gExam{pointer-events:none}
+svg.ex-mode .sim-motor{display:none}
+#gExam > :not(.ex-hit){pointer-events:none}   /* 画上去的线、牌子不挡点击，只有热区收 */
+.ex-lb{font-size:12px;fill:#39424b;text-anchor:middle;font-weight:700}
+.ex-lb.s{font-weight:400;font-size:11px;fill:#5b6570}
+.ex-tiny{font-size:11px;fill:#5b6570;text-anchor:middle}
+.ex-dk{font-size:14px;fill:#eef7f3;text-anchor:middle;font-weight:600}
+.ex-sign{font-size:17px;fill:#c0392b;text-anchor:middle;font-weight:800;letter-spacing:1px}
+.ex-held{fill:none;stroke:#ffd36b;stroke-width:3;stroke-dasharray:5 4}
+.ex-lamp.on{filter:drop-shadow(0 0 5px currentColor)}
+.ex-menu button{flex:1 1 40%}
+
+.ex-hit{fill:transparent;cursor:pointer}
 .ex-tp{fill:rgba(26,111,212,.12);stroke:#1a6fd4;stroke-width:1.5;stroke-dasharray:3 2}
 .ex-mk.live{fill:#ff5a3c;filter:drop-shadow(0 0 4px #ff5a3c)}
 .ex-mk.dead{fill:#9aa4ae}
@@ -2754,7 +2765,10 @@ function simQF(on){
   /* 考场模拟：图上点 QF 也要先问用哪只手；拿着验电笔时点到它不算 */
   if(EX.on && !EX.internal){
     if(EX.pen || EX.result) return;
-    exAsk(on ? '合闸（配电盘开关）' : '分闸（配电盘开关）', function(h){ exPanel(on, h); });
+    exMenu('配电盘开关 QF（现在'+(SIM.qf ? '合着' : '断开')+'）', [
+      ['确认开关状态', function(){ exCheck('panel'); }],
+      [on ? '合闸' : '分闸', function(){ exAsk(on ? '合闸（配电盘开关）' : '分闸（配电盘开关）', function(h){ exPanel(on, h); }); }]
+    ]);
     return;
   }
   simAdvance(performance.now());
@@ -3126,18 +3140,19 @@ function buildSim(){
   /* 电动机：画在出线端子排正下方，三根电缆从 U V W 下来 */
   const tm = dev('tbm');
   if(tm && tm.pins && tm.pins.length===3){
+    const mg = el('g',{class:'sim-motor'}); gSim.appendChild(mg);
     const pins = tm.pins.map(function(p){ return [tm.x+p[0], tm.y+p[1]]; });
     const cx = pins[1][0], cy = tm.y+tm.h+74;
     const cols = ['#e0a92e','#3fa845','#cf4436'];
     pins.forEach(function(p,i){
       const bx = cx-12+i*12;
-      gSim.appendChild(el('path',{d:'M'+p[0]+','+(p[1]+5)+' L'+p[0]+','+(cy-52)+' L'+bx+','+(cy-44)+' L'+bx+','+(cy-38),
+      mg.appendChild(el('path',{d:'M'+p[0]+','+(p[1]+5)+' L'+p[0]+','+(cy-52)+' L'+bx+','+(cy-44)+' L'+bx+','+(cy-38),
         fill:'none', stroke:cols[i], 'stroke-width':3, 'stroke-linejoin':'round', opacity:.8}));
     });
-    gSim.appendChild(el('rect',{x:cx-18, y:cy-40, width:36, height:10, rx:2, fill:'#4a525c'}));
-    gSim.appendChild(el('rect',{x:cx-30, y:cy+26, width:60, height:8, rx:2, fill:'#4a525c'}));
-    gSim.appendChild(el('circle',{cx:cx, cy:cy, r:30, fill:'#6f7a85', stroke:'#39424b', 'stroke-width':1.6}));
-    gSim.appendChild(el('circle',{cx:cx, cy:cy, r:23, fill:'#46505a'}));
+    mg.appendChild(el('rect',{x:cx-18, y:cy-40, width:36, height:10, rx:2, fill:'#4a525c'}));
+    mg.appendChild(el('rect',{x:cx-30, y:cy+26, width:60, height:8, rx:2, fill:'#4a525c'}));
+    mg.appendChild(el('circle',{cx:cx, cy:cy, r:30, fill:'#6f7a85', stroke:'#39424b', 'stroke-width':1.6}));
+    mg.appendChild(el('circle',{cx:cx, cy:cy, r:23, fill:'#46505a'}));
     /* 转子：外面垫一个看不见的整圆，fill-box 的中心才落在轴上（三片叶本身不对称） */
     const rot = el('g',{class:'rotor'});
     rot.appendChild(el('circle',{cx:cx, cy:cy, r:22, fill:'none'}));
@@ -3146,12 +3161,12 @@ function buildSim(){
         transform:'rotate('+(i*120)+' '+cx+' '+cy+')'}));
     }
     rot.appendChild(el('circle',{cx:cx, cy:cy, r:4.5, fill:'#8d959e'}));
-    gSim.appendChild(rot);
+    mg.appendChild(rot);
     /* 靠左要写进 style：.dev-name 的 CSS 是居中，class 规则会盖掉 text-anchor 属性 */
     const t1 = el('text',{x:cx+40, y:cy-6, class:'dev-name', style:'text-anchor:start'});
-    t1.textContent = '电动机 M 3~'; gSim.appendChild(t1);
+    t1.textContent = '电动机 M 3~'; mg.appendChild(t1);
     const t2 = el('text',{x:cx+40, y:cy+12, class:'sim-mst', 'text-anchor':'start'});
-    t2.textContent = '停'; gSim.appendChild(t2);
+    t2.textContent = '停'; mg.appendChild(t2);
   }
 }
 function simToggle(id){
@@ -4052,7 +4067,7 @@ const EXAMS = {
             {id:'km5', n:'接触器上端 L3', pin:['km',2]},
             {id:'fu4', n:'4号熔断器下端', term:'fu4-out'}, {id:'fu5', n:'5号熔断器下端', term:'fu5-out'} ],
     /* 停电后二次验电：配电盘接线排的电源线黄绿红三相（画在下面「配电盘」卡片上） */
-    dead: [ {id:'pL1', n:'接线排电源 黄'}, {id:'pL2', n:'接线排电源 绿'}, {id:'pL3', n:'接线排电源 红'} ],
+    dead: [ {id:'pL1', n:'接线排电源 L1', lin:0}, {id:'pL2', n:'接线排电源 L2', lin:1}, {id:'pL3', n:'接线排电源 L3', lin:2} ],
     trial: {start:'sb2', stop:'sb1', jog:'sb3', jogMs:800}
   }
 };
@@ -4060,8 +4075,8 @@ const EXAMS = {
 function exSteps(){
   const X = EXAMS[CUR.id], C = X.cables;
   const st = [
-    {g:'环境检查', t:'确认配电盘电源开关是断开的（点「配电盘开关」旁的「确认」）', ok:function(E){ return E.chk.panel; }},
-    {g:'环境检查', t:'翻开标示牌，确认操作台电源总开关是断开的', ok:function(E){ return E.opened && E.chk.table; }},
+    {g:'环境检查', t:'确认配电盘电源开关是断开的（点板上的 QF → 确认开关状态）', ok:function(E){ return E.chk.panel; }},
+    {g:'环境检查', t:'翻开标示牌（点牌子），再确认操作台电源总开关是断开的（点操作台最左边的空开）', ok:function(E){ return E.opened && E.chk.table; }},
     {g:'环境检查', t:'「禁止合闸，有人工作」标示牌挡住操作台电源总开关', ok:function(E){ return E.opened && E.sign==='block'; }},
     {g:'环境检查', t:'报告考官：「'+X.reports.env.say+'」', say:'env', ok:function(E){ return E.rep.env; }}
   ];
@@ -4071,7 +4086,7 @@ function exSteps(){
   st.push({g:'接线', t:'报告考官：「'+X.reports.wired.say+'」', say:'wired', ok:function(E){ return E.rep.wired; }});
   st.push({g:'通电试车', t:'标示牌反扣在桌面', ok:function(E){ return E.sign==='flat'; }});
   st.push({g:'通电试车', t:'送电：先合操作台电源总开关，再合配电盘开关', ok:function(E){ return E.table && SIM.qf; }});
-  st.push({g:'通电试车', t:'验电：'+X.live.map(function(p){ return p.n; }).join('、')+'，每处喊「有电！」（先点「验电笔」）',
+  st.push({g:'通电试车', t:'验电：'+X.live.map(function(p){ return p.n; }).join('、')+'，每处喊「有电！」（先点桌上的验电笔拿起来）',
     ok:function(E){ return X.live.every(function(p){ return E.vLive[p.id]; }); }});
   st.push({g:'通电试车', t:'试车 ①：按绿色启动，电动机连续转', ok:function(E){ return E.tr.start; }});
   st.push({g:'通电试车', t:'试车 ②：按红色停止', ok:function(E){ return E.tr.stop; }});
@@ -4094,7 +4109,7 @@ function exReset(){
   EX.cab={}; Object.keys(X.cables).forEach(function(k){ EX.cab[k]=0; });
   EX.rep={}; EX.vLive={}; EX.vDead={}; EX.pend=[]; EX.marks={};
   EX.tr={start:0, stop:0, jog:0}; EX.jogOn=0; EX.lastBtn=''; EX.btnT={};
-  EX.ev=[]; EX.si=0; EX.ask=null; EX.pen=0; EX.heard=''; EX.rec=''; EX.result=null;
+  EX.ev=[]; EX.si=0; EX.ask=null; EX.menu=null; EX.hold=''; EX.pen=0; EX.heard=''; EX.rec=''; EX.result=null;
   EX.say = EX.mode==='exam' ? '开始考试：K31 电动机单向连续运转（带点动控制）。可以开始了。'
                             : '练习模式：每一步我都会提示，做错了当场告诉你。先做环境检查。';
   EX.warn=''; EX.t0=performance.now(); EX.typed = !exKey();
@@ -4128,7 +4143,7 @@ function exWarn(msg){ if(EX.mode!=='exam'){ EX.warn = msg; sndErr(); buzz(40); }
 
 /* ---- 要用手的动作：先问哪只手 ---- */
 function exAsk(label, fn){
-  EX.ask = {label:label, fn:fn};
+  EX.ask = {label:label, fn:fn}; EX.menu = null;
   exRender();
 }
 function exHand(h){
@@ -4218,21 +4233,219 @@ function exPoint(id){
 }
 function exPointPos(p){
   if(p.pin) return devPin(DEVICES, p.pin[0], p.pin[1]);
+  if(p.lin!==undefined) return exLin(p.lin);
   if(p.term) return [TPOS[p.term].x, TPOS[p.term].y];
   return null;
 }
 let gEx = null;
-function exMarks(){
+/* ══ 考场画面：配电盘（原图）下面接操作台和桌面，照他 09-06 实训视频（video_20260906_213330）══
+   操作台（MR-WK1614L 实训装置）从左到右：MAINS POWER 红色 4P 空开（＝操作台电源总开关，「禁止合闸」牌就立在它前面）
+   → 急停 → AC 380V（黄绿红指示灯、三只 5A 保险、L1 L2 L3 N PE 插孔）→ DC 24V。
+   桌面是绿胶垫：标示牌、黄绿线、电源线、验电笔，电动机在右边，自带三相线和地线。
+   出线端子排右半边画三个「电源进线 L1 L2 L3」端子（实物上电源线和电机线接在同一条接线排上） */
+const EXG = { y0:745, h:1150 };
+function exLin(i){ const d = DEVICES.filter(function(x){ return x.id==='tbm'; })[0]; return [d.x+160+i*30, d.y+17]; }
+function exUVW(i){ return devPin(DEVICES, 'tbm', i); }
+function exPEbar(i){ const d = DEVICES.filter(function(x){ return x.id==='pe'; })[0]; return [d.x+20+i*20, d.y+13]; }
+const EXP = {                       /* 桌上 / 操作台上各处的坐标 */
+  brk:[40,787,90,70], jackL:[262,859], jackPE:[402,859], lamp:[270,797],
+  peCoil:[205,1000], pwCoil:[310,1035], motor:[478,1015], pen:[140,1105],
+  signStand:[24,830,124,92], signOpen:[18,960], signFlat:[18,1040]
+};
+function exJack(i){ return [EXP.jackL[0]+i*34, EXP.jackL[1]]; }
+function exMarks(){ exScene(); }
+let exSceneQ = 0;
+function scheduleScene(){ if(exSceneQ) return; exSceneQ = requestAnimationFrame(function(){ exSceneQ = 0; exScene(); }); }
+function exScene(){
   if(!gEx){ gEx = el('g',{id:'gExam'}); svg.appendChild(gEx); }
   gEx.innerHTML = '';
   if(!EX.on) return;
-  EXAMS[CUR.id].live.forEach(function(p){
-    const xy = exPointPos(p), m = EX.marks[p.id];
-    if(!xy) return;
-    if(EX.pen) gEx.appendChild(el('circle',{cx:xy[0], cy:xy[1], r:9, class:'ex-tp'}));
-    if(m) gEx.appendChild(el('circle',{cx:xy[0], cy:xy[1], r:6, class:'ex-mk '+m+(EX.vLive[p.id]?' ok':'')}));
+  const X = EXAMS[CUR.id], G = gEx;
+  function a(tag, at, txt){ const e = el(tag, at); if(txt!==undefined) e.textContent = txt; G.appendChild(e); return e; }
+  function hit(tag, at, fn){
+    const e = a(tag, Object.assign({class:'ex-hit'}, at));
+    e.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); ev.preventDefault(); EX.tapT = performance.now(); EX.skipClick = 1; if(!EX.result) fn(); });
+    return e;
+  }
+  function curve(p, q, bend){
+    const mx=(p[0]+q[0])/2+(bend||0), my=(p[1]+q[1])/2+40;
+    return 'M'+p[0]+','+p[1]+' Q'+mx+','+my+' '+q[0]+','+q[1];
+  }
+  function lead(p, q, col, w, bend){
+    a('path',{d:curve(p,q,bend), fill:'none', stroke:'#2b2f33', 'stroke-width':(w||3)+1.6, 'stroke-linecap':'round', opacity:.35});
+    a('path',{d:curve(p,q,bend), fill:'none', stroke:col, 'stroke-width':w||3, 'stroke-linecap':'round'});
+  }
+  function pegy(p, q, bend){ lead(p,q,'#3fa845',3.4,bend); a('path',{d:curve(p,q,bend), fill:'none', stroke:'#e0c12e', 'stroke-width':3.4, 'stroke-dasharray':'7 7'}); }
+  function coil(c, cols, on){
+    cols.forEach(function(col, k){
+      a('ellipse',{cx:c[0]+k*3, cy:c[1]+k*2, rx:30-k*3, ry:13-k, fill:'none', stroke:col, 'stroke-width':3});
+    });
+    if(on) a('ellipse',{cx:c[0]+3, cy:c[1]+2, rx:40, ry:22, class:'ex-held'});
+  }
+  const PH = ['#e0a92e','#3fa845','#cf4436'];
+  /* —— 配电盘上加的：电源进线端子 —— */
+  [0,1,2].forEach(function(i){
+    const xy = exLin(i);
+    a('circle',{cx:xy[0], cy:xy[1], r:6, fill:'#d8dde2', stroke:'#555', 'stroke-width':1});
+    a('text',{x:xy[0], y:xy[1]+22, class:'ex-lb'}, ['L1','L2','L3'][i]);
   });
+  a('text',{x:exLin(1)[0], y:exLin(1)[1]+34, class:'ex-lb s'}, '电源进线');
+  [0,1,2].forEach(function(i){ const xy=exUVW(i); a('text',{x:xy[0], y:xy[1]+22, class:'ex-lb'}, ['U','V','W'][i]); });
+  a('text',{x:exUVW(1)[0], y:exUVW(1)[1]+34, class:'ex-lb s'}, '去电动机');
+  /* —— 操作台 —— */
+  const y0 = EXG.y0;
+  a('rect',{x:6, y:y0, width:548, height:150, rx:8, fill:'#e6e9ec', stroke:'#b8c0c8', 'stroke-width':1.5});
+  a('text',{x:14, y:y0+14, class:'ex-tiny', style:'text-anchor:start'}, 'MR-WK1614L 电气技术技能及工艺实训装置');
+  /* MAINS POWER：4P 空开 */
+  a('rect',{x:16, y:y0+22, width:140, height:118, rx:6, fill:'#f4f6f8', stroke:'#a9b2bb'});
+  a('text',{x:86, y:y0+34, class:'ex-tiny'}, 'MAINS POWER');
+  const b = EXP.brk;
+  a('rect',{x:b[0], y:b[1], width:b[2], height:b[3], rx:4, fill:'#fff', stroke:'#8a949e'});
+  for(let k=0;k<4;k++) a('rect',{x:b[0]+6+k*21, y:b[1]+(EX.table?14:34), width:16, height:22, rx:2, fill:'#d63a2f'});
+  a('rect',{x:b[0]+4, y:b[1]+(EX.table?20:40), width:b[2]-8, height:6, rx:2, fill:'#b02a21'});
+  a('text',{x:b[0]+b[2]/2, y:b[1]+b[3]-4, class:'ex-tiny'}, EX.table ? 'ON 合' : 'OFF 分');
+  hit('rect',{x:16, y:y0+22, width:140, height:118}, exTapBreaker);
+  /* 急停（装饰） */
+  a('rect',{x:164, y:y0+22, width:62, height:118, rx:6, fill:'#f4f6f8', stroke:'#a9b2bb'});
+  a('circle',{cx:195, cy:y0+80, r:20, fill:'#e8c21c'}); a('circle',{cx:195, cy:y0+80, r:13, fill:'#cf2f25'});
+  a('text',{x:195, y:y0+116, class:'ex-tiny'}, 'STOP');
+  /* AC 380V */
+  a('rect',{x:234, y:y0+22, width:200, height:118, rx:6, fill:'#f4f6f8', stroke:'#a9b2bb'});
+  a('text',{x:334, y:y0+34, class:'ex-tiny'}, 'AC 380V');
+  const lit = EX.table;
+  ['#f0b429','#3fbf4f','#e5483b'].forEach(function(c, k){
+    a('circle',{cx:EXP.lamp[0]+k*34, cy:EXP.lamp[1], r:9, fill:lit ? c : '#c9cdd1', stroke:'#7d858d', class:lit ? 'ex-lamp on' : 'ex-lamp'});
+    a('circle',{cx:EXP.lamp[0]+k*34, cy:EXP.lamp[1]+24, r:6, fill:'#2b2f33'});
+    a('text',{x:EXP.lamp[0]+k*34, y:EXP.lamp[1]+42, class:'ex-tiny'}, '5A');
+  });
+  ['L1','L2','L3','N'].forEach(function(t, k){
+    const xy = exJack(k);
+    a('circle',{cx:xy[0], cy:xy[1], r:7, fill:['#e0a92e','#3fa845','#cf4436','#2e6fd1'][k], stroke:'#555'});
+    a('text',{x:xy[0], y:xy[1]+20, class:'ex-tiny'}, t);
+  });
+  a('circle',{cx:EXP.jackPE[0], cy:EXP.jackPE[1], r:7, fill:'#3fa845', stroke:'#e0c12e', 'stroke-width':2.5});
+  a('text',{x:EXP.jackPE[0], y:EXP.jackPE[1]+20, class:'ex-tiny'}, 'PE');
+  hit('rect',{x:exJack(0)[0]-14, y:EXP.jackL[1]-16, width:3*34+4, height:34}, function(){ exTapTarget('jack'); });
+  hit('circle',{cx:EXP.jackPE[0], cy:EXP.jackPE[1], r:16}, function(){ exTapTarget('jackPE'); });
+  /* DC 24V（装饰） */
+  a('rect',{x:442, y:y0+22, width:104, height:118, rx:6, fill:'#f4f6f8', stroke:'#a9b2bb'});
+  a('text',{x:494, y:y0+34, class:'ex-tiny'}, 'DC 24V');
+  a('circle',{cx:476, cy:y0+70, r:6, fill:'#cf4436'}); a('circle',{cx:512, cy:y0+70, r:6, fill:'#2b2f33'});
+  a('rect',{x:482, y:y0+98, width:24, height:14, rx:2, fill:'#2b2f33'});
+  /* —— 桌面 —— */
+  a('rect',{x:0, y:y0+156, width:560, height:EXG.h-(y0+156), fill:'#2f7f6c'});
+  /* 板上可点的接线目标（拿着线时才响应） */
+  hit('rect',{x:exUVW(0)[0]-16, y:exUVW(0)[1]-14, width:112, height:30}, function(){ exTapTarget('uvw'); });
+  hit('rect',{x:exLin(0)[0]-14, y:exLin(0)[1]-14, width:88, height:30}, function(){ EX.pen ? exTapLin() : exTapTarget('lin'); });
+  hit('rect',{x:exPEbar(0)[0]-20, y:exPEbar(0)[1]-14, width:120, height:28}, function(){ exTapTarget('pebar'); });
+  /* 接上的线 */
+  if(EX.cab.pe1) pegy(EXP.peCoil, exPEbar(0), -40);
+  if(EX.cab.pe2) pegy(EXP.peCoil, EXP.jackPE, 30);
+  if(EX.cab.mpe) pegy(EXP.motor, exPEbar(2), -30);
+  if(EX.cab.mot) [0,1,2].forEach(function(i){ lead([EXP.motor[0]-8+i*8, EXP.motor[1]-30], exUVW(i), PH[i], 3, -60+i*6); });
+  if(EX.cab.pw1) [0,1,2].forEach(function(i){ lead([EXP.pwCoil[0]-10+i*10, EXP.pwCoil[1]], exLin(i), PH[i], 3, -20+i*6); });
+  if(EX.cab.pw2) [0,1,2].forEach(function(i){ lead([EXP.pwCoil[0]-10+i*10, EXP.pwCoil[1]], exJack(i), PH[i], 3, 10+i*6); });
+  /* 线卷 */
+  coil(EXP.peCoil, ['#3fa845','#e0c12e'], EX.hold==='pe');
+  a('text',{x:EXP.peCoil[0], y:EXP.peCoil[1]+30, class:'ex-dk'}, '黄绿双色线');
+  hit('ellipse',{cx:EXP.peCoil[0], cy:EXP.peCoil[1], rx:42, ry:26}, function(){ exTakeCable('pe'); });
+  coil(EXP.pwCoil, PH, EX.hold==='pw');
+  a('text',{x:EXP.pwCoil[0], y:EXP.pwCoil[1]+30, class:'ex-dk'}, '电源线');
+  hit('ellipse',{cx:EXP.pwCoil[0], cy:EXP.pwCoil[1], rx:42, ry:26}, function(){ exTakeCable('pw'); });
+  /* 电动机：自带三相线、地线 */
+  const m = EXP.motor;
+  a('rect',{x:m[0]-44, y:m[1]+20, width:88, height:10, rx:2, fill:'#4a525c'});
+  a('rect',{x:m[0]-40, y:m[1]-24, width:80, height:46, rx:10, fill:'#3d6fb5', stroke:'#284b80'});
+  a('rect',{x:m[0]-14, y:m[1]-36, width:28, height:14, rx:2, fill:'#2b2f33'});
+  const rot = a('g',{class:'rotor'+((SIM.motor && !SIM.noMotor && SIM.sup) ? ' cw' : '')});
+  rot.appendChild(el('circle',{cx:m[0]+46, cy:m[1], r:15, fill:'#5c6a78'}));
+  for(let k=0;k<3;k++) rot.appendChild(el('ellipse',{cx:m[0]+46, cy:m[1]-7, rx:3.5, ry:7, fill:'#cfd6dc', transform:'rotate('+(k*120)+' '+(m[0]+46)+' '+m[1]+')'}));
+  a('text',{x:m[0], y:m[1]+46, class:'ex-dk'}, '电动机 '+((SIM.motor && !SIM.noMotor && SIM.sup) ? '运转中' : '停'));
+  if(!EX.cab.mot){ coil([m[0]-30, m[1]-52], PH, EX.hold==='mot'); a('text',{x:m[0]-74, y:m[1]-70, class:'ex-dk', style:'text-anchor:start'}, '电机三相线'); }
+  if(!EX.cab.mpe){ coil([m[0]+20, m[1]+66], ['#3fa845','#e0c12e'], EX.hold==='mpe'); a('text',{x:m[0]+20, y:m[1]+92, class:'ex-dk'}, '电机地线'); }
+  hit('rect',{x:m[0]-70, y:m[1]-74, width:90, height:44}, function(){ exTakeCable('mot'); });
+  hit('rect',{x:m[0]-20, y:m[1]+46, width:84, height:44}, function(){ exTakeCable('mpe'); });
+  /* 标示牌 */
+  function sign(x, y, w, h, face, rot){
+    const g = a('g',{transform:rot ? 'rotate('+rot+' '+(x+w/2)+' '+(y+h/2)+')' : ''});
+    g.appendChild(el('rect',{x:x, y:y, width:w, height:h, rx:3, fill:face ? '#fff' : '#cfd4d9', stroke:face ? '#c0392b' : '#9aa4ae', 'stroke-width':face ? 2.5 : 1.5}));
+    if(face){
+      const t1 = el('text',{x:x+w/2, y:y+h*0.42, class:'ex-sign'}); t1.textContent='禁止合闸'; g.appendChild(t1);
+      const t2 = el('text',{x:x+w/2, y:y+h*0.72, class:'ex-sign'}); t2.textContent='有人工作'; g.appendChild(t2);
+    } else { const t = el('text',{x:x+w/2, y:y+h/2+4, class:'ex-dk', style:'fill:#6b7580'}); t.textContent='（标示牌反扣着）'; g.appendChild(t); }
+    return g;
+  }
+  let sb;
+  if(EX.sign==='block'){ const q=EXP.signStand; sign(q[0], q[1], q[2], q[3], true); sb=[q[0], q[1], q[2], q[3]]; }
+  else if(EX.sign==='open'){ const q=EXP.signOpen; sign(q[0], q[1], 104, 78, true, -10); sb=[q[0], q[1], 104, 78]; }
+  else { const q=EXP.signFlat; sign(q[0], q[1], 116, 50, false); sb=[q[0], q[1], 116, 50]; }
+  hit('rect',{x:sb[0], y:sb[1], width:sb[2], height:sb[3]}, exTapSign);
+  /* 验电笔 */
+  if(!EX.pen){
+    const q = EXP.pen;
+    a('rect',{x:q[0], y:q[1]-5, width:70, height:10, rx:5, fill:'#e8eef3', stroke:'#8a949e'});
+    a('rect',{x:q[0]+46, y:q[1]-6, width:28, height:12, rx:4, fill:'#f0c419'});
+    a('path',{d:'M'+q[0]+','+q[1]+' l-14,0', stroke:'#8a949e', 'stroke-width':3});
+    a('text',{x:q[0]+34, y:q[1]+22, class:'ex-dk'}, '验电笔');
+  } else a('text',{x:EXP.pen[0]+34, y:EXP.pen[1]+4, class:'ex-dk', style:'fill:#ffd36b'}, '（验电笔在手上）');
+  hit('rect',{x:EXP.pen[0]-20, y:EXP.pen[1]-18, width:110, height:44}, function(){ EX.pen = !EX.pen; EX.hold=''; sndBtn(); exRender(); });
+  /* 验电位置 + 验过的标记 */
+  X.live.concat(X.dead).forEach(function(p){
+    const xy = exPointPos(p), mk = EX.marks[p.id];
+    if(!xy) return;
+    if(EX.pen) a('circle',{cx:xy[0], cy:xy[1], r:9, class:'ex-tp'});
+    if(mk) a('circle',{cx:xy[0], cy:xy[1], r:6, class:'ex-mk '+mk+((EX.vLive[p.id]||EX.vDead[p.id])?' ok':'')});
+  });
+  /* 拿着的东西提示，跟着手 */
 }
+/* 线和接线点的对应：拿哪根、点哪里 → 哪一次接线 */
+const EX_LINK = { pe:{pebar:'pe1', jackPE:'pe2'}, mpe:{pebar:'mpe'}, mot:{uvw:'mot'}, pw:{lin:'pw1', jack:'pw2'} };
+const EX_AT = { pebar:['pe1','mpe'], jackPE:['pe2'], uvw:['mot'], lin:['pw1'], jack:['pw2'] };
+const EX_TN = { pebar:'配电盘接地端子', jackPE:'操作台接地点（PE 插孔）', uvw:'接线排 U V W', lin:'接线排电源进线', jack:'操作台总电源插孔' };
+function exTakeCable(c){
+  if(EX.pen){ exWarn('手上拿着验电笔，先把它放回桌上'); exRender(); return; }
+  if((c==='mot'||c==='mpe') && EX.cab[c]){ exTapTarget(c==='mot' ? 'uvw' : 'pebar'); return; }
+  EX.hold = EX.hold===c ? '' : c;
+  EX.warn = ''; sndBtn(); exRender();
+}
+function exTapTarget(t){
+  const X = EXAMS[CUR.id];
+  if(EX.pen && t!=='lin'){ exWarn('拿着验电笔。要接线先把验电笔放回桌上'); exRender(); return; }
+  if(EX.hold){
+    const id = (EX_LINK[EX.hold]||{})[t];
+    if(!id){ exWarn('这根线不接这里'); exRender(); return; }
+    if(EX.cab[id]){ EX.warn = '已经接上了'; exRender(); return; }
+    const c = EX.hold;
+    return exAsk('接「'+X.cables[id].full+'」', function(h){ exCable(id, h); if(c!=='pe' && c!=='pw') EX.hold=''; else if(EX.cab[Object.values(EX_LINK[c])[0]] && EX.cab[Object.values(EX_LINK[c])[1]]) EX.hold=''; });
+  }
+  const on = (EX_AT[t]||[]).filter(function(k){ return EX.cab[k]; });
+  if(!on.length){ EX.warn = EX_TN[t]+'：没接线。要接线先点桌上的线拿起来'; exRender(); return; }
+  exMenu(EX_TN[t], on.map(function(k){
+    return ['拆下：'+X.cables[k].n, function(){ exAsk('拆「'+X.cables[k].n+'」', function(h){ exCable(k, h); }); }];
+  }));
+}
+function exTapLin(){
+  /* 拿着验电笔点接线排电源进线：挑最近的那一相——这里简单按三相依次验，没验过的先 */
+  const X = EXAMS[CUR.id];
+  const p = X.dead.filter(function(q){ return !EX.marks[q.id]; })[0] || X.dead[0];
+  exTest(p);
+}
+function exTapBreaker(){
+  if(EX.pen){ exWarn('拿着验电笔'); exRender(); return; }
+  if(EX.sign==='block'){ exWarn('标示牌挡着总开关，先点标示牌把它翻开'); exRender(); return; }
+  exMenu('操作台电源总开关（现在'+(EX.table ? '合着' : '断开')+'）', [
+    ['确认开关状态', function(){ exCheck('table'); }],
+    [EX.table ? '分闸' : '合闸', function(){ exAsk(EX.table ? '分闸（操作台总开关）' : '合闸（操作台总开关）', function(h){ exTable(!EX.table, h); }); }]
+  ]);
+}
+function exTapSign(){
+  exMenu('「禁止合闸，有人工作」标示牌', [
+    ['翻开（看总开关）', function(){ exSign('open'); }],
+    ['立回去，挡住总开关', function(){ exSign('block'); }],
+    ['反扣在桌面', function(){ exSign('flat'); }]
+  ]);
+}
+function exMenu(title, items){ EX.menu = {title:title, items:items}; EX.ask = null; exRender(); }
 
 /* ---- 嘴说的：一句话进来，先看是不是在喊「有电 / 无电」，再看是哪句报告 ---- */
 function exNorm(s){
@@ -4250,6 +4463,7 @@ function exHear(text, typed){
       if(saidLive===q.live){
         (q.live ? EX.vLive : EX.vDead)[q.p.id] = 1;
         exLog('call', {id:q.p.id, live:q.live?1:0, ok:1});
+        EX.warn = EX.okMsg = q.p.n+'：「'+w+'」✓';
       } else {
         exLog('call', {id:q.p.id, live:q.live?1:0, ok:0, w:w});
         exWarn(q.p.n+'验电笔'+(q.live?'亮着':'不亮')+'，应该喊「'+(q.live?'有电':'无电')+'」，你喊的是「'+w+'」');
@@ -4472,7 +4686,11 @@ function exRender(){
   let h = '<div class="ex-top"><div class="ex-say"><span class="ex-av">考官</span>'+EX.say.replace(/^考官：/,'')+'</div>'+
     '<div class="ex-seg"><button data-ex="mode:prac" class="'+(prac?'on':'')+'">练习</button><button data-ex="mode:exam" class="'+(prac?'':'on')+'">考试</button></div></div>';
   if(prac && !EX.result) h += '<div class="ex-next">'+(cur ? '<span>'+cur.g+' '+(EX.si+1)+'/'+st.length+'</span>▶ '+cur.t : '✓ 流程走完了，点「交卷」看成绩单')+'</div>';
+  if(EX.hold) h += '<div class="ex-next">✋ 手上拿着：<b>'+{pe:'黄绿双色线',pw:'电源线',mot:'电机三相线',mpe:'电机地线'}[EX.hold]+'</b> —— 点它要接的地方（再点一下线卷放下）</div>';
   if(EX.warn) h += '<div class="ex-warn'+(EX.warn===EX.okMsg?' ok':'')+'">'+EX.warn+'</div>';
+  if(EX.menu) h += '<div class="ex-ask ex-menu"><div class="q">'+EX.menu.title+'</div>'+EX.menu.items.map(function(it, k){
+    return '<button data-ex="menu:'+k+'">'+it[0]+'</button>';
+  }).join('')+'<button data-ex="menu:x" class="x">取消</button></div>';
   if(EX.ask) h += '<div class="ex-ask"><div class="q">用哪只手'+EX.ask.label+'？</div><button data-ex="hand:L">左手</button><button data-ex="hand:R">右手</button><button data-ex="hand:x" class="x">取消</button></div>';
   /* 嘴说 */
   if(EX.typed){
@@ -4487,28 +4705,11 @@ function exRender(){
       '<button data-ex="typed" class="lk">不用语音</button></div>';
   }
   const pend = EX.pend.length ? '<span class="ex-pend">待喊：'+EX.pend.map(function(q){ return q.p.n; }).join('、')+'</span>' : '';
-  h += '<div class="ex-grid">'+
-    '<div class="ex-card"><div class="ex-h">操作台</div>'+
-      '<div class="ex-row">电源总开关 '+(EX.sign==='block' ? '<b class="ex-off">（被牌挡着）</b>' : sw(EX.table))+'</div>'+
-      '<div class="ex-btns"><button data-ex="chk:table">确认</button><button data-ex="table">'+(EX.table?'分闸':'合闸')+'</button></div>'+
-      '<div class="ex-row">标示牌：'+signTx+'</div>'+
-      '<div class="ex-btns"><button data-ex="sign:open">翻开</button><button data-ex="sign:block">挡住</button><button data-ex="sign:flat">反扣</button></div>'+
-    '</div>'+
-    '<div class="ex-card"><div class="ex-h">配电盘</div>'+
-      '<div class="ex-row">配电盘开关（板上 QF）'+sw(SIM.qf)+'</div>'+
-      '<div class="ex-btns"><button data-ex="chk:panel">确认</button><button data-ex="panel">'+(SIM.qf?'分闸':'合闸')+'</button></div>'+
-      '<div class="ex-row">接线排·电源线'+(EX.pen ? '（点一相验电）' : '')+'</div>'+
-      '<div class="ex-btns">'+X.dead.map(function(p, i){
-        const m = EX.marks[p.id];
-        return '<button data-ex="tp:'+p.id+'" class="ph ph'+(i+1)+(m ? ' '+m : '')+(EX.vDead[p.id]?' ok':'')+'">'+['黄','绿','红'][i]+'</button>';
-      }).join('')+'</div>'+
-    '</div></div>';
-  h += '<div class="ex-h2">外部接线（点一根 = 接上 / 再点 = 拆下）</div><div class="ex-cabs">'+X.show.map(function(id){
-    return '<button data-ex="cab:'+id+'" class="'+(EX.cab[id]?'on':'')+'">'+(EX.cab[id]?'● ':'○ ')+X.cables[id].n+'</button>';
-  }).join('')+'</div>';
-  h += '<div class="ex-tools"><button data-ex="pen" class="'+(EX.pen?'on':'')+'">🖊 验电笔'+(EX.pen?'（拿着）':'')+'</button>'+pend+
+  h += '<div class="ex-tools">'+(EX.pen ? '<span class="ex-pend">🖊 验电笔在手上</span>' : '')+pend+
     '<button data-ex="submit" class="pri">交卷</button><button data-ex="reset">重来</button></div>';
-  if(EX.pen) h += '<div class="ex-tip">拿着验电笔：点图上要验的位置（'+X.live.map(function(p){ return p.n; }).join('、')+'），或上面接线排的黄绿红；点完马上喊出来</div>';
+  h += '<div class="ex-tip">直接点下面画面里的东西：标示牌、操作台总开关、板上 QF、桌上的线和验电笔。'+
+    '拿起线再点它要插的地方；拿着验电笔点要验的位置。建议点图右上角全屏。</div>';
+  scheduleScene();
   box.innerHTML = h;
   exSide();
 }
@@ -4553,15 +4754,7 @@ function exSide(){
     if(p[0]==='mode'){ EX.mode = p[1]==='exam' ? 'exam' : 'prac'; exReset(); exMarks(); exUpdate(); return; }
     if(EX.result && a!=='reset') return;
     if(p[0]==='hand'){ if(p[1]==='x'){ EX.ask=null; exRender(); } else exHand(p[1]); return; }
-    if(a==='table') return exAsk(EX.table ? '分闸（操作台总开关）' : '合闸（操作台总开关）', function(h){ exTable(!EX.table, h); });
-    if(a==='panel') return exAsk(SIM.qf ? '分闸（配电盘开关）' : '合闸（配电盘开关）', function(h){ exPanel(!SIM.qf, h); });
-    if(p[0]==='cab'){
-      return exAsk((EX.cab[p[1]] ? '拆' : '接')+'「'+EXAMS[CUR.id].cables[p[1]].n+'」', function(h){ exCable(p[1], h); });
-    }
-    if(p[0]==='chk') return exCheck(p[1]);
-    if(p[0]==='sign') return exSign(p[1]);
-    if(p[0]==='tp') return exTest(exPoint(p[1]));
-    if(a==='pen'){ EX.pen = !EX.pen; exMarks(); exRender(); return; }
+    if(p[0]==='menu'){ const m = EX.menu; EX.menu = null; if(p[1]!=='x' && m) m.items[+p[1]][1](); else exRender(); return; }
     if(a==='mic') return exMic();
     if(a==='typed'){ EX.typed = true; exRender(); return; }
     if(a==='key'){
@@ -4589,10 +4782,12 @@ function exSide(){
   /* 拿着验电笔点图上：挑最近的验电位置（缩放会抢指针捕获，跟自己接线一样在 svg 上听 click 自己算） */
   svg.addEventListener('click', function(e){
     if(state.mode!=='exam' || !EX.on || !EX.pen || e.defaultPrevented || EX.result) return;
+    /* 考场画面的热区在 pointerdown 已经处理过这一下，紧跟着的 click 不再当验电（只吞这一次） */
+    if(EX.skipClick){ EX.skipClick = 0; if(performance.now() - (EX.tapT||0) < 1500) return; }
     const u = svgPoint(e.clientX, e.clientY); if(!u) return;
     const r = clamp(24/u.k, 10, 30);
     let best=null, bd=r;
-    EXAMS[CUR.id].live.forEach(function(p){
+    EXAMS[CUR.id].live.concat(EXAMS[CUR.id].dead).forEach(function(p){
       const xy = exPointPos(p); if(!xy) return;
       const d = Math.hypot(xy[0]-u.x, xy[1]-u.y);
       if(d<bd){ bd=d; best=p; }
@@ -4608,6 +4803,7 @@ function exEnter(){
   EX.on = true;
   exReset();
   svg.classList.add('ex-mode');
+  setViewBox('0 0 560 '+EXG.h);
   exMarks(); exUpdate();
   exSpeak(EX.say);
 }
@@ -4619,6 +4815,7 @@ function exExit(){
   SIM.sup = undefined; SIM.noMotor = false;
   svg.classList.remove('ex-mode');
   exMarks();
+  setViewBox(CUR.viewBox);
 }
 
 (function(){
@@ -4692,6 +4889,13 @@ window.__MRW = {
   ex: {
     get E(){ return EX; },
     grade: exGrade,
+    /* 测试用：绕过画面直接做动作（判分测试要造各种错法） */
+    act: function(k, a, b){
+      if(k==='table') exTable(a, b); else if(k==='panel') exPanel(a, b); else if(k==='cable') exCable(a, b);
+      else if(k==='check') exCheck(a); else if(k==='sign') exSign(a); else if(k==='test') exTest(exPoint(a));
+      else if(k==='pen') EX.pen = a;
+      exUpdate();
+    },
     hear: function(t){ exHear(t, true); },
     hand: exHand
   },
