@@ -405,6 +405,63 @@ body.stage-fs-lock{overflow:hidden}
 .hintbar .warnbtn{margin-left:8px;border:1px solid #e8c98d;background:#fdf1de;color:#a86200;
   border-radius:7px;padding:2px 8px;font-size:.7rem;font-weight:600}
 .foot-pad{height:8px}
+/* ── 考场模拟 ── */
+.ex-top{display:flex;gap:6px;align-items:flex-start}
+.ex-say{flex:1;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:7px 9px;font-size:.82rem;line-height:1.5}
+.ex-av{display:inline-block;background:#4a525c;color:#fff;border-radius:6px;font-size:.66rem;padding:1px 6px;margin-right:6px;vertical-align:1px}
+.ex-seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex:none}
+.ex-seg button{border:0;background:var(--card);color:var(--tx2);font-size:.76rem;padding:7px 10px}
+.ex-seg button.on{background:var(--acc);color:#fff}
+.ex-next{margin-top:6px;background:var(--accbg);border:1px solid #b9d3f3;border-radius:9px;padding:6px 9px;font-size:.8rem;line-height:1.5;color:#1a4f94}
+.ex-next span{display:inline-block;font-size:.66rem;color:#5b7fae;margin-right:6px}
+.ex-warn{margin-top:6px;background:#fdf1de;border:1px solid #e8c98d;color:#8a5200;border-radius:9px;padding:6px 9px;font-size:.78rem;line-height:1.5}
+.ex-warn.ok{background:var(--greenbg);border-color:#9bd3a6;color:#1e6b2e}
+.ex-ask{margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:#fff7e0;border:2px solid #e0a92e;border-radius:10px;padding:7px 9px;font-size:.82rem;font-weight:600}
+.ex-ask .q{width:100%}
+.ex-ask button{flex:1;min-width:64px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:9px 4px;font-size:.86rem;font-weight:700}
+.ex-ask button.x{flex:none;min-width:0;font-weight:400;font-size:.74rem;color:var(--tx3)}
+.ex-voice{margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ex-mic{border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:22px;padding:9px 14px;font-size:.84rem;font-weight:700}
+.ex-mic.on{background:var(--red);border-color:var(--red);animation:expulse 1s ease-in-out infinite}
+.ex-mic.busy{background:#8b96a1;border-color:#8b96a1}
+@keyframes expulse{50%{box-shadow:0 0 0 6px rgba(192,57,43,.2)}}
+.ex-heard{flex:1;min-width:0;font-size:.74rem;color:var(--tx2);line-height:1.4}
+.ex-voice .lk{border:0;background:none;color:var(--tx3);font-size:.7rem;text-decoration:underline;padding:2px}
+.ex-voice.typed button:not(.lk){border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 7px;font-size:.72rem;text-align:left}
+.ex-vt{width:100%;font-size:.72rem;color:var(--tx3)}
+.ex-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.ex-card{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:6px 7px;font-size:.74rem;min-width:0}
+.ex-h{font-weight:700;font-size:.78rem;margin-bottom:3px}
+.ex-row{color:var(--tx2);margin-top:3px;line-height:1.4}
+.ex-on{color:var(--red)} .ex-off{color:var(--tx3);font-weight:400}
+.ex-btns{display:flex;gap:4px;margin-top:3px}
+.ex-btns button{flex:1;min-width:0;border:1px solid var(--line);background:#f7f9fb;border-radius:7px;padding:6px 2px;font-size:.72rem;color:var(--tx)}
+.ex-btns .ph1{border-color:#e0a92e} .ex-btns .ph2{border-color:#3fa845} .ex-btns .ph3{border-color:#cf4436}
+.ex-btns .ph.live{background:#ffe3df} .ex-btns .ph.dead{background:#eef1f4}
+.ex-btns .ph.ok:after{content:' ✓';color:var(--green)}
+.ex-h2{font-size:.74rem;color:var(--tx3);margin:8px 0 4px}
+.ex-cabs{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.ex-cabs button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 6px;font-size:.72rem;text-align:left;color:var(--tx2);line-height:1.3}
+.ex-cabs button.on{border-color:var(--green);background:var(--greenbg);color:#1e6b2e}
+.ex-tools{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap}
+.ex-tools button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 10px;font-size:.78rem}
+.ex-tools button.on{border-color:var(--red);background:var(--redbg);color:var(--red);font-weight:700}
+.ex-tools button.pri{background:var(--acc);border-color:var(--acc);color:#fff;margin-left:auto}
+.ex-pend{font-size:.7rem;color:var(--red)}
+.ex-tip{font-size:.72rem;color:var(--tx3);margin-top:5px;line-height:1.5}
+.ex-log{font-size:.74rem;color:var(--tx2);line-height:1.6;margin-top:3px}
+.ex-result{font-size:.8rem;line-height:1.55}
+.ex-vd{font-size:1.05rem;font-weight:800;margin-bottom:6px}
+.ex-vd.fail{color:var(--red)} .ex-vd.mid{color:#a86200} .ex-vd.ok{color:var(--green)}
+.ex-rs{margin-top:6px;border-radius:8px;padding:6px 8px}
+.ex-rs.fail{background:var(--redbg)} .ex-rs.ded{background:#fdf1de} .ex-rs.wrong{background:#f3eefc} .ex-rs.other{background:#eef1f4}
+.ex-note{font-size:.7rem;color:var(--tx3);margin-top:8px}
+.ex-result button.pri{margin-top:8px;width:100%;border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:8px;padding:9px;font-size:.84rem}
+#gExam{pointer-events:none}
+.ex-tp{fill:rgba(26,111,212,.12);stroke:#1a6fd4;stroke-width:1.5;stroke-dasharray:3 2}
+.ex-mk.live{fill:#ff5a3c;filter:drop-shadow(0 0 4px #ff5a3c)}
+.ex-mk.dead{fill:#9aa4ae}
+.ex-mk.ok{stroke:#2f9e44;stroke-width:2.5}
 </style>
 </head>
 <body>
@@ -425,6 +482,7 @@ body.stage-fs-lock{overflow:hidden}
     <button data-mode="screw">上螺丝顺序</button>
     <button data-mode="free">自己接线</button>
     <button data-mode="sim">通电试车</button>
+    <button data-mode="exam">考场模拟</button>
   </div>
 
   <div class="sbar" id="schemaBar" style="display:none">
@@ -463,6 +521,8 @@ body.stage-fs-lock{overflow:hidden}
     <div class="stip">先合闸，再按启动。按钮都是按下就弹回的 —— <b>按住</b>和<b>点一下</b>结果不一样的地方（点动）正是要看的。
       图上按钮盒的按钮、断路器也能直接按。<b>带电的线变相色</b>（黄＝接 4 号熔断器 L1 那头、绿＝接 5 号 L2 那头），<b>加粗发光的＝这一刻有电流流过</b>；接触器吸合会盖红章。</div>
   </div>
+
+  <div class="sbar" id="examBar" style="display:none"></div>
 
   <div class="toolbar" id="browseBar">
     <div class="grpbtns" id="grpBtns"></div>
@@ -1678,7 +1738,7 @@ function toUser(cx, cy){
   /* 原样搬节点，不复制：按钮上挂的监听、setMode 写的内联 display 全都跟着走。
      每个节点原位留一个注释占位，退出时插回占位前面 */
   const TOP_IDS  = ['circuitBtns','.modes','browseBar','testHead','screwHead','.legendrow'];
-  const BOT_IDS  = ['schemaBar','freeBar','simBar','playBar'];
+  const BOT_IDS  = ['schemaBar','freeBar','simBar','examBar','playBar'];
   const INFO_IDS = ['side','hintbar'];
   const held = [];
   function el(k){ return k.charAt(0)==='.' ? document.querySelector(k) : document.getElementById(k); }
@@ -2612,7 +2672,7 @@ function srcBlock(E){
 /* 试车跑的是哪一套线：平时是标准答案，「用我接的线试车」时是他自己接的 */
 function simWires(){ return FREE.simUser ? FREE.wires : WIRES; }
 function simSolve(){
-  if(!SIM.qf || SIM.blown){
+  if(!SIM.qf || SIM.blown || SIM.sup===false){      /* sup：考场模拟里操作台没送电时 QF 上口是空的 */
     const res = {coil:{}, cur:{}, edges:[], short:false};
     CUR.sim.coils.forEach(function(c){ res.coil[c.id]=false; });
     return res;
@@ -2691,6 +2751,12 @@ function simRelease(id, now){
 }
 function simQF(on){
   if(!SIM.on) return;
+  /* 考场模拟：图上点 QF 也要先问用哪只手；拿着验电笔时点到它不算 */
+  if(EX.on && !EX.internal){
+    if(EX.pen || EX.result) return;
+    exAsk(on ? '合闸（配电盘开关）' : '分闸（配电盘开关）', function(h){ exPanel(on, h); });
+    return;
+  }
   simAdvance(performance.now());
   SIM.qf=on; sndQF(); buzz(20); simAct(on ? 'QF 合闸' : 'QF 分闸'); guideFeed('qf:'+(on?1:0)); simTick();
 }
@@ -2796,7 +2862,7 @@ function simRender(r){
   const lgS = SIM.log.map(function(g){ return g.t0+':'+g.items.length; }).join(',');
   const potS = Object.keys(r.pot||{}).sort().map(function(k){ return k+r.pot[k]; }).join(',');
   const tgS = Object.keys(SIM.tog||{}).map(function(k){ return k+SIM.tog[k]; }).join(',');
-  const sig = [Object.keys(r.cur).sort().join(','), potS, tgS, SIM.qf, SIM.frTrip, SIM.blown, SIM.motor, kmS, btS, lgS].join('|');
+  const sig = [Object.keys(r.cur).sort().join(','), potS, tgS, SIM.qf, SIM.sup, SIM.noMotor, SIM.frTrip, SIM.blown, SIM.motor, kmS, btS, lgS].join('|');
   if(sig===SIM.sig) return;
   SIM.sig = sig;
 
@@ -2840,8 +2906,8 @@ function simRender(r){
   /* 主电路：QF 上口常带电；QF 合上后一路带电到接触器进线；
      哪只接触器吸着，就从它那一路起有电流（白点往电动机那头流） */
   const M=sp.mains, live={}, run={}, rev={};
-  M.always.forEach(function(i){ live[i]=1; });
-  if(SIM.qf){
+  if(SIM.sup!==false) M.always.forEach(function(i){ live[i]=1; });
+  if(SIM.qf && SIM.sup!==false){
     M.qf.forEach(function(i){ live[i]=1; });
     if(sp.coils.some(function(c){ return SIM.km[c.id].on; })) (M.out||[]).forEach(function(i){ live[i]=1; });
   }
@@ -2861,7 +2927,8 @@ function simRender(r){
     p.classList.toggle('rev', !!rev[i]);
   });
   const rot = gSim.querySelector('.rotor');
-  if(rot){ rot.classList.toggle('cw', SIM.motor>0); rot.classList.toggle('ccw', SIM.motor<0); }
+  const spin = SIM.noMotor ? 0 : SIM.motor;      /* 考场模拟：电动机三相没接上就不转 */
+  if(rot){ rot.classList.toggle('cw', spin>0); rot.classList.toggle('ccw', spin<0); }
   const mt = gSim.querySelector('.sim-mst');
   if(mt){ mt.textContent = SIM.motor ? sp.dirName[SIM.motor] : '停'; mt.classList.toggle('on', !!SIM.motor); }
   /* K34 的表：合闸电压表就有读数；电动机转起来三只电流表才摆（互感器在出线上） */
@@ -2914,6 +2981,7 @@ function guideNext(){
   guideEnter();
 }
 function guideFeed(tok){
+  if(EX.on) exFeed(tok);
   const g=SIM.g, st=g && guideSteps()[g.i];
   if(!st || !st.seq || st.seq.indexOf(tok)<0 || g.got[tok]) return;
   const need = st.seq.filter(function(x){ return !g.got[x]; })[0];
@@ -2969,6 +3037,7 @@ function guideUpdate(){
   });
 })();
 function simPanel(r){
+  if(EX.on){ exUpdate(); return; }      /* 考场模拟有自己的面板和侧栏 */
   const sp=CUR.sim;
   let cls='off', st, why='';
   if(SIM.blown){ cls='warn'; st='熔断器烧了'; why=SIM.blown+'。点「全部复位」换上新的再来'; }
@@ -3854,9 +3923,11 @@ function renderScrew(){
 function setMode(m){
   state.mode=m;
   stepClearFx();
+  exExit();
   simExit();
   freeExit();
   document.getElementById('simBar').style.display = m==='sim' ? 'block' : 'none';
+  document.getElementById('examBar').style.display = m==='exam' ? 'block' : 'none';
   document.getElementById('freeBar').style.display = m==='free' ? 'block' : 'none';
   document.querySelectorAll('.modes button').forEach(function(b){ b.classList.toggle('on', b.dataset.mode===m); });
   const wantSchema = (m==='schema');
@@ -3865,7 +3936,7 @@ function setMode(m){
   document.getElementById('playBar').style.display   = m==='step' ? 'flex' : 'none';
   /* 上螺丝顺序是一长列步骤（K31 有 16 步），吸底的记法条会浮在列表中间盖住两三步；
      而这个模式本来也不显示分组记法，直接收起来。原理图那屏有自己的状态条，也不用它 */
-  document.getElementById('hintbar').style.display = (m==='screw'||m==='sim'||m==='free'||wantSchema) ? 'none' : 'block';
+  document.getElementById('hintbar').style.display = (m==='screw'||m==='sim'||m==='free'||m==='exam'||wantSchema) ? 'none' : 'block';
   document.getElementById('testHead').innerHTML = '';
   document.getElementById('screwHead').innerHTML = '';
 
@@ -3895,6 +3966,7 @@ function setMode(m){
   if(m==='browse'){ renderBrowse(); }
   if(m==='screw'){ renderScrew(); }
   if(m==='sim'){ simEnter(); }
+  if(m==='exam'){ exEnter(); }
   if(m==='free'){ freeEnter(); }
 }
 
@@ -3936,10 +4008,617 @@ function loadCircuit(id){
      与其留一颗点了没反应的按钮，不如整个藏掉 */
   const sBtn = document.querySelector('.modes button[data-mode="schema"]');
   if(sBtn) sBtn.style.display = CUR.hasSchema ? '' : 'none';
+  const eBtn = document.querySelector('.modes button[data-mode="exam"]');
+  if(eBtn) eBtn.style.display = EXAMS[id] ? '' : 'none';       /* 考场模拟目前只做了 K31 */
   state.schemaShown = false;
   buildScene();
   buildGroupBtns();
   setMode('browse');
+}
+
+/* ══ 考场模拟（2026-10-12）══════════════════════════════════════════════
+   他的话：「包括考官也做进去吧，操作也不像考场，验电这些也没有，我要的是关键点全都能体现，
+   甚至于用左手合闸这种」「是用右手合闸，左手合闸判错」「用说的吧」。
+   一块板一份 EXAMS[id]（目前只有 K31）。流程、扣分全照他背诵版材料（/sdcard/webdev/shicao_cards.py
+   里 K31「通电试车流程」+「K3 通用：扣分硬条和通则」），别凭印象加步骤。
+   - 盘内控制线按标准答案接好（WIRES），练的是考场外围
+   - 板上 QF＝「配电盘开关」；另有「操作台电源总开关」。SIM.sup＝总开关合着且电源线两头都接上，
+     没它 QF 合了也没电（simSolve / 主电路上色都认 SIM.sup）；电动机三相没接，KM 吸了也不转（SIM.noMotor）
+   - 合闸 / 分闸 / 接线 / 拆线每次都问用哪只手（通则：都用右手，左手判错）
+   - 报告考官、验电喊「有电 / 无电」用嘴说：录音 → OpenRouter 千问 Omni 转文字 → 本地按关键词判。
+     密钥他自己粘贴，只存这台设备的 localStorage；没密钥时换成「我说了」按钮
+   - 练习模式：考官提示下一步、做错当场说；考试模式：考官只回应报告，交卷才出成绩单 */
+const EXAMS = {
+  k31: {
+    reports: {
+      env:   {say:'报告考官，现场环境安全，请求接线', keys:['报告考官','现场','环境安全','请求接线'], reply:'可以接线。',
+              wrongs:[['周围','「周围环境」是 K32 的说法，K31 说「现场环境」'], ['作业','「作业环境」是 K33 的说法，K31 说「现场环境」']]},
+      wired: {say:'报告考官，接线完毕，请求送电试车', keys:['报告考官','接线完毕','请求送电试车'], reply:'可以送电试车。', wrongs:[]}
+    },
+    /* 外部接线 6 根。show 是画面上的摆放顺序 —— 故意跟答案顺序不一样，不然等于把顺序告诉他了 */
+    cables: {
+      pe1: {n:'黄绿线 → 配电盘接地端子', full:'黄绿双色线一端接至配电盘接地端子', pe:true},
+      pe2: {n:'黄绿线 → 操作台接地点',   full:'黄绿双色线另一端插至操作台接地点', pe:true},
+      mpe: {n:'电机地线 → 配电盘接地',   full:'电动机接地线接至配电盘接地端子', pe:true},
+      mot: {n:'电机三相 → 配电盘接线排', full:'电动机黄绿红三相接至配电盘接线排'},
+      pw1: {n:'电源线 → 配电盘接线排',   full:'电源黄绿红三相一端接至配电盘接线排'},
+      pw2: {n:'电源线 → 操作台总电源',   full:'电源线另一端插至操作台总电源插孔'}
+    },
+    show: ['mot','pw2','pe1','pw1','mpe','pe2'],
+    conOrder: ['pe1','pe2','mpe','mot','pw1','pw2'],
+    disOrder: ['pw2','pw1','mot','mpe','pe2','pe1'],
+    /* 送电后验电：接触器上端主回路三相 + 控制回路熔断器下端两相 */
+    live: [ {id:'km1', n:'接触器上端 L1', pin:['km',0]}, {id:'km3', n:'接触器上端 L2', pin:['km',1]},
+            {id:'km5', n:'接触器上端 L3', pin:['km',2]},
+            {id:'fu4', n:'4号熔断器下端', term:'fu4-out'}, {id:'fu5', n:'5号熔断器下端', term:'fu5-out'} ],
+    /* 停电后二次验电：配电盘接线排的电源线黄绿红三相（画在下面「配电盘」卡片上） */
+    dead: [ {id:'pL1', n:'接线排电源 黄'}, {id:'pL2', n:'接线排电源 绿'}, {id:'pL3', n:'接线排电源 红'} ],
+    trial: {start:'sb2', stop:'sb1', jog:'sb3', jogMs:800}
+  }
+};
+/* 练习模式的步骤（照材料顺序）。ok 只看「现在的状态」，从当前步往后顺着推 —— 提前做了的后面自动算过 */
+function exSteps(){
+  const X = EXAMS[CUR.id], C = X.cables;
+  const st = [
+    {g:'环境检查', t:'确认配电盘电源开关是断开的（点「配电盘开关」旁的「确认」）', ok:function(E){ return E.chk.panel; }},
+    {g:'环境检查', t:'翻开标示牌，确认操作台电源总开关是断开的', ok:function(E){ return E.opened && E.chk.table; }},
+    {g:'环境检查', t:'「禁止合闸，有人工作」标示牌挡住操作台电源总开关', ok:function(E){ return E.opened && E.sign==='block'; }},
+    {g:'环境检查', t:'报告考官：「'+X.reports.env.say+'」', say:'env', ok:function(E){ return E.rep.env; }}
+  ];
+  X.conOrder.forEach(function(id){
+    st.push({g:'接线', t:C[id].full, ok:function(E){ return E.cab[id]===1; }});
+  });
+  st.push({g:'接线', t:'报告考官：「'+X.reports.wired.say+'」', say:'wired', ok:function(E){ return E.rep.wired; }});
+  st.push({g:'通电试车', t:'标示牌反扣在桌面', ok:function(E){ return E.sign==='flat'; }});
+  st.push({g:'通电试车', t:'送电：先合操作台电源总开关，再合配电盘开关', ok:function(E){ return E.table && SIM.qf; }});
+  st.push({g:'通电试车', t:'验电：'+X.live.map(function(p){ return p.n; }).join('、')+'，每处喊「有电！」（先点「验电笔」）',
+    ok:function(E){ return X.live.every(function(p){ return E.vLive[p.id]; }); }});
+  st.push({g:'通电试车', t:'试车 ①：按绿色启动，电动机连续转', ok:function(E){ return E.tr.start; }});
+  st.push({g:'通电试车', t:'试车 ②：按红色停止', ok:function(E){ return E.tr.stop; }});
+  st.push({g:'通电试车', t:'试车 ③：长按黑色（板上黄色）点动钮，按住转、松手停', ok:function(E){ return E.tr.jog; }});
+  st.push({g:'拆线', t:'停电：先断配电盘开关，再断操作台电源总开关', ok:function(E){ return !SIM.qf && !E.table; }});
+  st.push({g:'拆线', t:'标示牌挡住操作台电源总开关', ok:function(E){ return E.sign==='block'; }});
+  st.push({g:'拆线', t:'二次验电：配电盘接线排的电源线黄绿红三相，每处喊「无电！」',
+    ok:function(E){ return X.dead.every(function(p){ return E.vDead[p.id]; }); }});
+  X.disOrder.forEach(function(id){
+    st.push({g:'拆线', t:'拆：'+C[id].full.replace(/接至|插至/,' 从 ').replace(/一端|另一端/,''), ok:function(E){ return E.cab[id]===0; }});
+  });
+  return st;
+}
+
+const EX = { on:false };
+function exKey(){ try{ return localStorage.getItem('elec_or_key')||''; }catch(_){ return ''; } }
+function exReset(){
+  const X = EXAMS[CUR.id];
+  EX.chk={panel:0, table:0}; EX.opened=0; EX.sign='block'; EX.table=0;
+  EX.cab={}; Object.keys(X.cables).forEach(function(k){ EX.cab[k]=0; });
+  EX.rep={}; EX.vLive={}; EX.vDead={}; EX.pend=[]; EX.marks={};
+  EX.tr={start:0, stop:0, jog:0}; EX.jogOn=0; EX.lastBtn=''; EX.btnT={};
+  EX.ev=[]; EX.si=0; EX.ask=null; EX.pen=0; EX.heard=''; EX.rec=''; EX.result=null;
+  EX.say = EX.mode==='exam' ? '开始考试：K31 电动机单向连续运转（带点动控制）。可以开始了。'
+                            : '练习模式：每一步我都会提示，做错了当场告诉你。先做环境检查。';
+  EX.warn=''; EX.t0=performance.now(); EX.typed = !exKey();
+  simReset();
+  SIM.qf=false; exPower();
+}
+/* 电从操作台来：总开关合着、电源线两头都接上，QF 上口才有电 */
+function exPower(){
+  SIM.sup = !!(EX.table && EX.cab.pw1 && EX.cab.pw2);
+  SIM.noMotor = !EX.cab.mot;
+}
+function exSnap(){ return {table:EX.table, panel:SIM.qf?1:0, sign:EX.sign, sup:SIM.sup?1:0}; }
+function exLog(k, o){
+  const e = Object.assign({k:k, t:performance.now(), s:exSnap()}, o||{});
+  EX.ev.push(e); return e;
+}
+function exSay(text, speak){
+  EX.say = text;
+  if(speak!==false) exSpeak(text.replace(/^考官：/,''));
+}
+function exSpeak(text){
+  try{
+    if(!window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.lang='zh-CN'; u.rate=1.05;
+    speechSynthesis.speak(u);
+  }catch(_){}
+}
+/* 练习模式当场提醒，考试模式不吭声（交卷再算） */
+function exWarn(msg){ if(EX.mode!=='exam'){ EX.warn = msg; sndErr(); buzz(40); } }
+
+/* ---- 要用手的动作：先问哪只手 ---- */
+function exAsk(label, fn){
+  EX.ask = {label:label, fn:fn};
+  exRender();
+}
+function exHand(h){
+  const a = EX.ask; EX.ask = null;
+  if(!a) return;
+  EX.warn='';
+  if(h==='L') exWarn('左手'+a.label+' —— 判错。考场要求：接线、拆线、合闸都用右手');
+  a.fn(h);
+  exUpdate();
+}
+function exTable(on, h){
+  EX.table = on?1:0;
+  sndQF(); buzz(20);
+  exLog('sw', {id:'table', on:EX.table, hand:h});
+  if(on && SIM.qf) exWarn('送电顺序反了：应先合操作台电源总开关，再合配电盘开关');
+  if(!on && SIM.qf) exWarn('停电顺序反了：应先断配电盘开关，再断操作台电源总开关');
+  if(on && EX.sign!=='flat') exWarn('标示牌还挡着总开关 —— 送电前先把标示牌反扣在桌面');
+  exPower(); simTick();
+}
+function exPanel(on, h){
+  EX.internal = 1; simQF(on); EX.internal = 0;
+  exLog('sw', {id:'panel', on:on?1:0, hand:h});
+  if(on && !EX.table) exWarn('送电顺序反了：应先合操作台电源总开关，再合配电盘开关');
+  if(!on && !EX.table) exWarn('停电顺序反了：应先断配电盘开关，再断操作台电源总开关');
+  exPower(); simTick();
+}
+function exCable(id, h){
+  const X = EXAMS[CUR.id], conn = !EX.cab[id];
+  const s = exSnap();
+  EX.cab[id] = conn ? 1 : 0;
+  sndWire(); buzz(15);
+  exLog(conn ? 'con' : 'dis', {id:id, hand:h});
+  if(s.sup) exWarn('带电接拆线！操作台电源总开关合着、电源线也接着');
+  else if(s.panel) exWarn('配电盘开关是合着的就接拆线 —— 扣 25 分');
+  if(conn){
+    if(!EX.rep.env) exWarn('还没报告考官就开始接线');
+    if(EX.sign!=='block') exWarn('标示牌没挡住总开关就接线 —— 不立牌扣 10 分');
+    const need = X.conOrder.filter(function(k){ return !EX.cab[k] && k!==id; })[0];
+    const before = X.conOrder.indexOf(need) < X.conOrder.indexOf(id);
+    if(need && before) exWarn('接线顺序不对：应该先「'+X.cables[need].full+'」' + (X.cables[need].pe ? '（先接地线）' : ''));
+  } else {
+    const left = X.disOrder.filter(function(k){ return EX.cab[k] && k!==id; });
+    const need = left[0];
+    if(need && X.disOrder.indexOf(need) < X.disOrder.indexOf(id)) exWarn('拆线顺序不对：应该先拆「'+X.cables[need].n+'」' + (X.cables[id].pe ? '（地线最后拆）' : ''));
+    if(!vDeadAll()) exWarn('二次验电还没做完就拆线');
+  }
+  exPower(); simTick();
+}
+function vDeadAll(){ return EXAMS[CUR.id].dead.every(function(p){ return EX.vDead[p.id]; }); }
+
+/* ---- 不用手的动作 ---- */
+function exCheck(which){
+  const on = which==='panel' ? SIM.qf : EX.table;
+  if(which==='table' && !EX.opened){ exWarn('标示牌挡着，先翻开标示牌才看得到总开关'); exUpdate(); return; }
+  EX.chk[which] = 1;
+  exLog('chk', {id:which, on:on?1:0});
+  EX.warn = (which==='panel' ? '配电盘开关' : '操作台电源总开关') + (on ? '是合着的！先分闸' : '：断开 ✓');
+  EX.okMsg = on ? '' : EX.warn;
+  sndBtn(); exUpdate();
+}
+function exSign(to){
+  if(to==='open'){ EX.opened = 1; EX.sign='open'; }
+  else EX.sign = to;
+  exLog('sign', {id:to});
+  sndBtn(); exUpdate();
+}
+
+/* ---- 验电 ---- */
+function exLiveAt(p){
+  if(p.pin || p.term) return !!(SIM.sup && SIM.qf && !SIM.blown);
+  return !!(EX.table && EX.cab.pw1 && EX.cab.pw2);       /* 接线排电源线：操作台那头送着电就有 */
+}
+function exTest(p){
+  if(!EX.pen){ exWarn('先点「验电笔」把它拿在手上'); exUpdate(); return; }
+  const live = exLiveAt(p);
+  EX.pend = EX.pend.filter(function(x){ return x.p.id!==p.id; });
+  EX.pend.push({p:p, live:live});
+  EX.marks[p.id] = live ? 'live' : 'dead';
+  exLog('test', {id:p.id, live:live?1:0});
+  if(live) tone(1200, 0.08, 0.06); else sndBtn();
+  EX.warn = '验电笔'+(live ? '氖泡亮了' : '不亮')+'：'+p.n+' —— 现在喊出来（'+(live?'有电':'无电')+'）';
+  exMarks(); exUpdate();
+}
+function exPoint(id){
+  const X = EXAMS[CUR.id];
+  return X.live.concat(X.dead).filter(function(p){ return p.id===id; })[0];
+}
+function exPointPos(p){
+  if(p.pin) return devPin(DEVICES, p.pin[0], p.pin[1]);
+  if(p.term) return [TPOS[p.term].x, TPOS[p.term].y];
+  return null;
+}
+let gEx = null;
+function exMarks(){
+  if(!gEx){ gEx = el('g',{id:'gExam'}); svg.appendChild(gEx); }
+  gEx.innerHTML = '';
+  if(!EX.on) return;
+  EXAMS[CUR.id].live.forEach(function(p){
+    const xy = exPointPos(p), m = EX.marks[p.id];
+    if(!xy) return;
+    if(EX.pen) gEx.appendChild(el('circle',{cx:xy[0], cy:xy[1], r:9, class:'ex-tp'}));
+    if(m) gEx.appendChild(el('circle',{cx:xy[0], cy:xy[1], r:6, class:'ex-mk '+m+(EX.vLive[p.id]?' ok':'')}));
+  });
+}
+
+/* ---- 嘴说的：一句话进来，先看是不是在喊「有电 / 无电」，再看是哪句报告 ---- */
+function exNorm(s){
+  return (s||'').replace(/[\s，。、,.！!？?：:；;“”"'「」…—\-]/g,'').replace(/呃|嗯|啊|呀|那个/g,'');
+}
+function exHear(text, typed){
+  const X = EXAMS[CUR.id], n = exNorm(text);
+  EX.heard = text;
+  exLog('heard', {text:text, typed:typed?1:0});
+  const calls = n.match(/有电|无电|没电/g);
+  if(calls && EX.pend.length){
+    calls.forEach(function(w){
+      const q = EX.pend.shift(); if(!q) return;
+      const saidLive = w==='有电';
+      if(saidLive===q.live){
+        (q.live ? EX.vLive : EX.vDead)[q.p.id] = 1;
+        exLog('call', {id:q.p.id, live:q.live?1:0, ok:1});
+      } else {
+        exLog('call', {id:q.p.id, live:q.live?1:0, ok:0, w:w});
+        exWarn(q.p.n+'验电笔'+(q.live?'亮着':'不亮')+'，应该喊「'+(q.live?'有电':'无电')+'」，你喊的是「'+w+'」');
+      }
+    });
+    exMarks(); exUpdate(); return;
+  }
+  let k = null;
+  if(/接线完毕|请求送电/.test(n)) k='wired';
+  else if(/请求接线|环境安全|环境/.test(n)) k='env';
+  if(!k){
+    EX.warn = '没听出是哪句报告。'+(calls ? '（要先用验电笔点了位置再喊）' : '');
+    sndErr(); exUpdate(); return;
+  }
+  const R = X.reports[k];
+  const miss = R.keys.filter(function(w){ return n.indexOf(w)<0; });
+  const bad = R.wrongs.filter(function(w){ return n.indexOf(w[0])>=0; }).map(function(w){ return w[1]; });
+  const ok = !miss.length && !bad.length;
+  exLog('rep', {id:k, ok:ok?1:0, text:text, miss:miss, bad:bad});
+  if(ok || EX.mode==='exam'){
+    EX.rep[k] = 1;               /* 考试时说错了考官照样让你往下做，错处交卷再算 */
+    exSay('考官：'+R.reply);
+  } else {
+    EX.say = '考官：（没回应）';
+    EX.warn = '报告说法不对'+(miss.length ? '：少了「'+miss.join('」「')+'」' : '')+(bad.length ? '；'+bad.join('；') : '')+
+      '。标准说法：「'+R.say+'」';
+    sndErr();
+  }
+  exUpdate();
+}
+
+/* ---- 录音 → 16k 单声道 wav → 千问 Omni 转文字 ---- */
+const EXREC = { mr:null, chunks:[], stream:null };
+function exMic(){
+  if(EX.rec==='busy') return;
+  if(EX.rec==='on'){ try{ EXREC.mr.stop(); }catch(_){} return; }
+  if(!navigator.mediaDevices || !window.MediaRecorder){ EX.warn='这个浏览器不能录音，改用下面的按钮'; EX.typed=true; exRender(); return; }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    EXREC.stream = stream; EXREC.chunks = [];
+    const mr = new MediaRecorder(stream); EXREC.mr = mr;
+    mr.ondataavailable = function(e){ if(e.data && e.data.size) EXREC.chunks.push(e.data); };
+    mr.onstop = function(){
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      EX.rec = 'busy'; exRender();
+      exTranscribe(new Blob(EXREC.chunks, {type:mr.mimeType||'audio/webm'})).then(function(t){
+        EX.rec=''; if(t) exHear(t); else exRender();
+      }, function(err){
+        EX.rec=''; EX.warn='识别出错：'+(err && err.message || err)+'。可以再说一遍，或改用按钮'; sndErr(); exRender();
+      });
+    };
+    mr.start(); EX.rec='on'; EX.warn=''; exRender();
+  }, function(){
+    EX.warn='没拿到麦克风权限。浏览器地址栏左边的锁 → 权限 → 麦克风打开；或者改用下面的按钮'; EX.typed=true; exRender();
+  });
+}
+function exTranscribe(blob){
+  return blob.arrayBuffer().then(function(buf){
+    const C = window.AudioContext || window.webkitAudioContext, ac = new C();
+    return ac.decodeAudioData(buf).then(function(ab){ ac.close(); return ab; });
+  }).then(function(ab){
+    const n = Math.max(1, Math.ceil(ab.duration*16000));
+    const oc = new OfflineAudioContext(1, n, 16000), src = oc.createBufferSource();
+    src.buffer = ab; src.connect(oc.destination); src.start();
+    return oc.startRendering();
+  }).then(function(out){
+    const d = out.getChannelData(0);
+    let peak = 0; for(let i=0;i<d.length;i++){ const v=Math.abs(d[i]); if(v>peak) peak=v; }
+    /* 没人声时模型会自己编字（蜂鸣声测出过「嗯。」「对。」）—— 太小声直接不送 */
+    if(d.length < 16000*0.4 || peak < 0.03){ EX.warn='没听到声音，再说一遍（说之前先点开始，说完点停止）'; return ''; }
+    const b = new DataView(new ArrayBuffer(44 + d.length*2));
+    function s(o, t){ for(let i=0;i<t.length;i++) b.setUint8(o+i, t.charCodeAt(i)); }
+    s(0,'RIFF'); b.setUint32(4, 36+d.length*2, true); s(8,'WAVE'); s(12,'fmt ');
+    b.setUint32(16,16,true); b.setUint16(20,1,true); b.setUint16(22,1,true);
+    b.setUint32(24,16000,true); b.setUint32(28,32000,true); b.setUint16(32,2,true); b.setUint16(34,16,true);
+    s(36,'data'); b.setUint32(40, d.length*2, true);
+    for(let i=0;i<d.length;i++){ const v=Math.max(-1, Math.min(1, d[i])); b.setInt16(44+i*2, v<0 ? v*0x8000 : v*0x7fff, true); }
+    const u8 = new Uint8Array(b.buffer); let bin='';
+    for(let i=0;i<u8.length;i+=0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i+0x8000));
+    return fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method:'POST',
+      headers:{'Authorization':'Bearer '+exKey(), 'Content-Type':'application/json'},
+      body: JSON.stringify({model:'qwen/qwen3.8-omni-flash', temperature:0, messages:[{role:'user', content:[
+        {type:'text', text:'把这段录音里人说的话逐字转写成中文。听到什么写什么，不要改正、不要补全、不要加解释，只输出转写文字。没有人声或完全听不清就只输出：【无人声】'},
+        {type:'input_audio', input_audio:{data:btoa(bin), format:'wav'}}]}]})
+    }).then(function(r){
+      if(!r.ok) return r.text().then(function(t){ throw new Error('HTTP '+r.status+' '+t.slice(0,80)); });
+      return r.json();
+    }).then(function(j){
+      const t = ((j.choices||[])[0]||{}).message;
+      const txt = (t && t.content || '').trim();
+      if(!txt || /无人声/.test(txt)){ EX.warn='没听清，再说一遍'; return ''; }
+      return txt;
+    });
+  });
+}
+
+/* ---- 试车：从仿真里看出来做没做到 ---- */
+function exFeed(tok){
+  const T = EXAMS[CUR.id].trial, m = /^(bd|bu):(\w+)$/.exec(tok);
+  if(!m) return;
+  exLog('btn', {id:m[2], down:m[1]==='bd'?1:0});
+  if(m[1]==='bd'){
+    EX.lastBtn = m[2]; EX.btnT[m[2]] = performance.now();
+    if(m[2]===T.jog) EX.jogOn = 0;
+    const X = EXAMS[CUR.id];
+    if(!X.live.every(function(p){ return EX.vLive[p.id]; })) exWarn('还没验电就开始试车 —— 不验电判不合格');
+  } else if(m[2]===T.jog){
+    if(EX.jogOn && performance.now()-EX.btnT[T.jog] >= T.jogMs) EX.tr.jog = 1;
+    else if(EX.jogOn) exWarn('点动要长按：按住看它转，再松手看它停');
+  }
+}
+function exTrialWatch(){
+  const T = EXAMS[CUR.id].trial, on = SIM.km.km && SIM.km.km.on && !SIM.noMotor;
+  if(on && EX.lastBtn===T.start && !SIM.btn[T.start].pressed) EX.tr.start = 1;
+  if(!on && EX.tr.start && EX.lastBtn===T.stop) EX.tr.stop = 1;
+  if(on && SIM.btn[T.jog].pressed) EX.jogOn = 1;
+}
+
+/* ---- 交卷判分：照「K3 通用：扣分硬条和通则」 ---- */
+function exGrade(){
+  const X = EXAMS[CUR.id], ev = EX.ev, R = {fail:[], ded:[], wrong:[], other:[]};
+  function idx(f, from){ for(let i=from||0;i<ev.length;i++) if(f(ev[i])) return i; return Infinity; }
+  const fc = idx(function(e){ return e.k==='con'; });
+  ['panel','table'].forEach(function(w){
+    if(idx(function(e){ return e.k==='chk' && e.id===w; }) > fc)
+      R.fail.push('没有「确认电源开关」动作：'+(w==='panel' ? '配电盘开关' : '操作台电源总开关')+'（接线前要确认）');
+  });
+  /* 送电 / 停电时刻：把事件回放一遍，看哪一下之后「总开关、配电盘开关都合着且电源线两头接着」 */
+  let tb=0, pn=0, pw={}, pOn=Infinity, pOff=Infinity;
+  ev.forEach(function(e, i){
+    if(e.k==='sw'){ if(e.id==='table') tb=e.on; else pn=e.on; }
+    if(e.k==='con'||e.k==='dis') pw[e.id] = e.k==='con';
+    if(pOn===Infinity && tb && pn && pw.pw1 && pw.pw2) pOn = i;
+    if(pOn!==Infinity && pOff===Infinity && i>pOn && !tb && !pn) pOff = i;
+  });
+  if(pOn===Infinity) R.other.push('没有送电试车');
+  else {
+    const fb = idx(function(e){ return e.k==='btn' && e.down; }, pOn);
+    const got = {}; ev.slice(pOn, fb===Infinity ? ev.length : fb).forEach(function(e){ if(e.k==='call' && e.ok && e.live) got[e.id]=1; });
+    const miss = X.live.filter(function(p){ return !got[p.id]; });
+    if(miss.length) R.fail.push('不验电：送电后试车前没验'+(miss.length===X.live.length ? '' : '全，缺 '+miss.map(function(p){ return p.n; }).join('、')));
+    if(ev[pOn].s.sign!=='flat') R.wrong.push('送电时标示牌没反扣在桌面');
+    /* 合上的最后一下是总开关 ＝ 配电盘开关先合了 */
+    if(ev[pOn].k==='sw' && ev[pOn].id==='table') R.ord = (R.ord||[]).concat('送电：先合了配电盘开关（应先合操作台电源总开关）');
+  }
+  if(ev[pOff] && ev[pOff].id==='panel') R.ord = (R.ord||[]).concat('停电：先断了操作台总开关（应先断配电盘开关）');
+  const fd = idx(function(e){ return e.k==='dis'; }, pOff===Infinity ? 0 : pOff);
+  if(fd!==Infinity){
+    const got = {}; ev.slice(0, fd).forEach(function(e){ if(e.k==='call' && e.ok && !e.live) got[e.id]=1; });
+    const miss = X.dead.filter(function(p){ return !got[p.id]; });
+    if(miss.length) R.fail.push('不验电（二次验电）：拆线前没验'+(miss.length===X.dead.length ? '' : '全，缺 '+miss.map(function(p){ return p.n; }).join('、')));
+    if(ev[fd].s.sign!=='block') R.ded.push([10, '停电后没立牌（标示牌没挡住总开关就拆线）']);
+  }
+  if(ev[fc] && ev[fc].s.sign!=='block') R.ded.push([10, '接线时标示牌没挡住操作台电源总开关']);
+  if(ev.some(function(e){ return (e.k==='con'||e.k==='dis') && e.s.panel; })) R.ded.push([25, '配电盘开关处于合闸状态时接 / 拆线']);
+  if(ev.some(function(e){ return (e.k==='con'||e.k==='dis') && e.s.sup; })) R.wrong.push('带电接 / 拆线（操作台总开关合着、电源线接着）');
+  /* 接线 / 拆线顺序：每根第一次接上（拆下）时，排在它前面的有没有还没做的 */
+  function order(kind, list, word){
+    const done = {};
+    ev.forEach(function(e){
+      if(e.k!==kind || done[e.id]) return;
+      const need = list.slice(0, list.indexOf(e.id)).filter(function(k){ return !done[k]; });
+      if(need.length) R.ord = (R.ord||[]).concat(word+'：「'+X.cables[e.id].n+'」排在「'+X.cables[need[0]].n+'」前面了');
+      done[e.id]=1;
+    });
+  }
+  order('con', X.conOrder, '接线');
+  order('dis', X.disOrder, '拆线');
+  if(R.ord && R.ord.length) R.ded.push([20, '操作顺序相反（累计扣 20 分）：'+R.ord.join('；')]);
+  /* 左手 */
+  const lab = {table:'操作台总开关', panel:'配电盘开关'};
+  ev.forEach(function(e){
+    if(e.hand!=='L') return;
+    if(e.k==='sw') R.wrong.push('左手'+(e.on?'合闸':'分闸')+'：'+lab[e.id]);
+    else R.wrong.push('左手'+(e.k==='con'?'接线':'拆线')+'：'+X.cables[e.id].n);
+  });
+  /* 报告 */
+  ['env','wired'].forEach(function(k){
+    const before = k==='env' ? fc : pOn;
+    const tries = ev.filter(function(e, i){ return e.k==='rep' && e.id===k && i<before; });
+    const good = tries.some(function(e){ return e.ok; });
+    if(!tries.length) R.wrong.push((k==='env' ? '接线前' : '送电前')+'没报告考官（「'+X.reports[k].say+'」）');
+    else if(!good){
+      const t = tries[tries.length-1];
+      R.wrong.push('报告说法不对：你说「'+t.text+'」'+(t.miss.length ? '，少了「'+t.miss.join('」「')+'」' : '')+(t.bad.length ? '，'+t.bad.join('；') : ''));
+    }
+  });
+  ev.forEach(function(e){ if(e.k==='call' && !e.ok) R.wrong.push(exPoint(e.id).n+'：应该喊「'+(e.live?'有电':'无电')+'」，你喊了「'+e.w+'」'); });
+  const tn = {start:'绿色启动', stop:'红色停止', jog:'长按点动'};
+  const miss = Object.keys(tn).filter(function(k){ return !EX.tr[k]; });
+  if(pOn!==Infinity && miss.length) R.other.push('试车没做全：缺 '+miss.map(function(k){ return tn[k]; }).join('、'));
+  if(SIM.qf || EX.table) R.other.push('交卷时电源还没断开');
+  const left = Object.keys(EX.cab).filter(function(k){ return EX.cab[k]; });
+  if(left.length) R.other.push('线还没拆完：'+left.map(function(k){ return X.cables[k].n; }).join('、'));
+  R.pts = R.ded.reduce(function(a, d){ return a+d[0]; }, 0);
+  return R;
+}
+function exSubmit(){
+  EX.result = exGrade();
+  const R = EX.result;
+  exSay('考官：'+(R.fail.length ? '本项判不合格。' : (R.pts ? '扣 '+R.pts+' 分。' : '操作完毕，没有扣分项。')));
+  if(R.fail.length) sndErr(); else sndOk();
+  exUpdate();
+  setTimeout(function(){ const s=document.getElementById('side'); if(s) s.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
+}
+
+/* ---- 画面 ---- */
+function exUpdate(){
+  if(!EX.on) return;
+  exTrialWatch();
+  const st = exSteps();
+  while(EX.si < st.length && st[EX.si].ok(EX)) EX.si++;
+  exRender();
+}
+function exRender(){
+  const box = document.getElementById('examBar'); if(!box || !EX.on) return;
+  const X = EXAMS[CUR.id], st = exSteps(), cur = st[EX.si], prac = EX.mode!=='exam';
+  function sw(on){ return on ? '<b class="ex-on">合闸</b>' : '<b class="ex-off">分闸</b>'; }
+  const signTx = {block:'立着，挡住总开关', open:'翻开了', flat:'反扣在桌面'}[EX.sign];
+  let h = '<div class="ex-top"><div class="ex-say"><span class="ex-av">考官</span>'+EX.say.replace(/^考官：/,'')+'</div>'+
+    '<div class="ex-seg"><button data-ex="mode:prac" class="'+(prac?'on':'')+'">练习</button><button data-ex="mode:exam" class="'+(prac?'':'on')+'">考试</button></div></div>';
+  if(prac && !EX.result) h += '<div class="ex-next">'+(cur ? '<span>'+cur.g+' '+(EX.si+1)+'/'+st.length+'</span>▶ '+cur.t : '✓ 流程走完了，点「交卷」看成绩单')+'</div>';
+  if(EX.warn) h += '<div class="ex-warn'+(EX.warn===EX.okMsg?' ok':'')+'">'+EX.warn+'</div>';
+  if(EX.ask) h += '<div class="ex-ask"><div class="q">用哪只手'+EX.ask.label+'？</div><button data-ex="hand:L">左手</button><button data-ex="hand:R">右手</button><button data-ex="hand:x" class="x">取消</button></div>';
+  /* 嘴说 */
+  if(EX.typed){
+    h += '<div class="ex-voice typed"><span class="ex-vt">口述（点你说的那句）：</span>'+
+      '<button data-ex="say:env">「'+X.reports.env.say+'」</button><button data-ex="say:wired">「'+X.reports.wired.say+'」</button>'+
+      '<button data-ex="say:有电">「有电！」</button><button data-ex="say:无电">「无电！」</button>'+
+      '<button data-ex="key" class="lk">'+(exKey() ? '改用语音' : '🔑 设置语音密钥，改用嘴说')+'</button></div>';
+  } else {
+    const lb = EX.rec==='on' ? '■ 说完点这里' : EX.rec==='busy' ? '识别中…' : '🎤 点一下开始说';
+    h += '<div class="ex-voice"><button data-ex="mic" class="ex-mic '+EX.rec+'">'+lb+'</button>'+
+      '<span class="ex-heard">'+(EX.heard ? '听到：「'+EX.heard+'」' : '报告考官、验电喊「有电」都用嘴说')+'</span>'+
+      '<button data-ex="typed" class="lk">不用语音</button></div>';
+  }
+  const pend = EX.pend.length ? '<span class="ex-pend">待喊：'+EX.pend.map(function(q){ return q.p.n; }).join('、')+'</span>' : '';
+  h += '<div class="ex-grid">'+
+    '<div class="ex-card"><div class="ex-h">操作台</div>'+
+      '<div class="ex-row">电源总开关 '+(EX.sign==='block' ? '<b class="ex-off">（被牌挡着）</b>' : sw(EX.table))+'</div>'+
+      '<div class="ex-btns"><button data-ex="chk:table">确认</button><button data-ex="table">'+(EX.table?'分闸':'合闸')+'</button></div>'+
+      '<div class="ex-row">标示牌：'+signTx+'</div>'+
+      '<div class="ex-btns"><button data-ex="sign:open">翻开</button><button data-ex="sign:block">挡住</button><button data-ex="sign:flat">反扣</button></div>'+
+    '</div>'+
+    '<div class="ex-card"><div class="ex-h">配电盘</div>'+
+      '<div class="ex-row">配电盘开关（板上 QF）'+sw(SIM.qf)+'</div>'+
+      '<div class="ex-btns"><button data-ex="chk:panel">确认</button><button data-ex="panel">'+(SIM.qf?'分闸':'合闸')+'</button></div>'+
+      '<div class="ex-row">接线排·电源线'+(EX.pen ? '（点一相验电）' : '')+'</div>'+
+      '<div class="ex-btns">'+X.dead.map(function(p, i){
+        const m = EX.marks[p.id];
+        return '<button data-ex="tp:'+p.id+'" class="ph ph'+(i+1)+(m ? ' '+m : '')+(EX.vDead[p.id]?' ok':'')+'">'+['黄','绿','红'][i]+'</button>';
+      }).join('')+'</div>'+
+    '</div></div>';
+  h += '<div class="ex-h2">外部接线（点一根 = 接上 / 再点 = 拆下）</div><div class="ex-cabs">'+X.show.map(function(id){
+    return '<button data-ex="cab:'+id+'" class="'+(EX.cab[id]?'on':'')+'">'+(EX.cab[id]?'● ':'○ ')+X.cables[id].n+'</button>';
+  }).join('')+'</div>';
+  h += '<div class="ex-tools"><button data-ex="pen" class="'+(EX.pen?'on':'')+'">🖊 验电笔'+(EX.pen?'（拿着）':'')+'</button>'+pend+
+    '<button data-ex="submit" class="pri">交卷</button><button data-ex="reset">重来</button></div>';
+  if(EX.pen) h += '<div class="ex-tip">拿着验电笔：点图上要验的位置（'+X.live.map(function(p){ return p.n; }).join('、')+'），或上面接线排的黄绿红；点完马上喊出来</div>';
+  box.innerHTML = h;
+  exSide();
+}
+function exSide(){
+  const side = document.getElementById('side'); if(!side) return;
+  const R = EX.result;
+  if(!R){
+    const tail = EX.ev.filter(function(e){ return e.k!=='heard' && e.k!=='btn'; }).slice(-6).reverse().map(function(e){
+      const X = EXAMS[CUR.id];
+      const hand = e.hand ? (e.hand==='L' ? '左手' : '右手') : '';
+      const m = e.k==='sw' ? hand+(e.on?'合':'断')+(e.id==='table'?'操作台总开关':'配电盘开关')
+        : e.k==='con' ? hand+'接：'+X.cables[e.id].n : e.k==='dis' ? hand+'拆：'+X.cables[e.id].n
+        : e.k==='chk' ? '确认'+(e.id==='table'?'操作台总开关':'配电盘开关')+(e.on?'（合着！）':'断开')
+        : e.k==='sign' ? '标示牌：'+{open:'翻开',block:'挡住总开关',flat:'反扣'}[e.id]
+        : e.k==='test' ? '验电：'+exPoint(e.id).n+(e.live?' 亮':' 不亮')
+        : e.k==='call' ? '喊「'+(e.ok ? (e.live?'有电':'无电') : e.w)+'」'+(e.ok?'':' ✗')
+        : e.k==='rep' ? '报告：「'+e.text+'」'+(e.ok?'':' ✗') : '';
+      return '<div>'+m+'</div>';
+    }).join('');
+    side.innerHTML = '<div class="srun off"><div class="st">考场记录</div><div class="ex-log">'+(tail || '还没开始')+'</div></div>';
+    return;
+  }
+  function list(cls, title, arr){
+    return arr.length ? '<div class="ex-rs '+cls+'"><b>'+title+'</b>'+arr.map(function(x){ return '<div>· '+x+'</div>'; }).join('')+'</div>' : '';
+  }
+  const verdict = R.fail.length ? '<div class="ex-vd fail">✘ 判不合格</div>'
+    : '<div class="ex-vd '+(R.pts||R.wrong.length ? 'mid' : 'ok')+'">'+(R.pts ? '扣 '+R.pts+' 分' : '没有扣分项')+'</div>';
+  side.innerHTML = '<div class="ex-result">'+verdict+
+    list('fail', '判不合格（一条就不合格）', R.fail)+
+    list('ded', '扣分（材料写明分值的）', R.ded.map(function(d){ return '扣 '+d[0]+'：'+d[1]; }))+
+    list('wrong', '判错（材料没写分值）', R.wrong)+
+    list('other', '没做完', R.other)+
+    '<div class="ex-note">判分照背诵版「K3 通用：扣分硬条和通则」。左手、报告说法、喊错这几类材料没写扣几分，单列出来。</div>'+
+    '<button data-ex="reset" class="pri">再考一次</button></div>';
+}
+
+(function(){
+  const box = document.getElementById('examBar');
+  box.addEventListener('click', function(e){
+    const b = e.target.closest('button[data-ex]'); if(!b || !EX.on) return;
+    const a = b.dataset.ex, p = a.split(':');
+    if(p[0]==='mode'){ EX.mode = p[1]==='exam' ? 'exam' : 'prac'; exReset(); exMarks(); exUpdate(); return; }
+    if(EX.result && a!=='reset') return;
+    if(p[0]==='hand'){ if(p[1]==='x'){ EX.ask=null; exRender(); } else exHand(p[1]); return; }
+    if(a==='table') return exAsk(EX.table ? '分闸（操作台总开关）' : '合闸（操作台总开关）', function(h){ exTable(!EX.table, h); });
+    if(a==='panel') return exAsk(SIM.qf ? '分闸（配电盘开关）' : '合闸（配电盘开关）', function(h){ exPanel(!SIM.qf, h); });
+    if(p[0]==='cab'){
+      return exAsk((EX.cab[p[1]] ? '拆' : '接')+'「'+EXAMS[CUR.id].cables[p[1]].n+'」', function(h){ exCable(p[1], h); });
+    }
+    if(p[0]==='chk') return exCheck(p[1]);
+    if(p[0]==='sign') return exSign(p[1]);
+    if(p[0]==='tp') return exTest(exPoint(p[1]));
+    if(a==='pen'){ EX.pen = !EX.pen; exMarks(); exRender(); return; }
+    if(a==='mic') return exMic();
+    if(a==='typed'){ EX.typed = true; exRender(); return; }
+    if(a==='key'){
+      let k = exKey();
+      if(!k){
+        k = (prompt('粘贴 OpenRouter 密钥（sk-or-…）。只存在这台设备的浏览器里，不会上传到网站') || '').trim();
+        if(!k) return;
+        try{ localStorage.setItem('elec_or_key', k); }catch(_){ alert('浏览器不让存，这次关掉页面就要重新粘贴'); }
+      }
+      EX.typed = false; exRender(); return;
+    }
+    if(p[0]==='say'){
+      const X = EXAMS[CUR.id];
+      return exHear(p[1]==='env' ? X.reports.env.say : p[1]==='wired' ? X.reports.wired.say : p[1]+'！', true);
+    }
+    if(a==='submit') return exSubmit();
+    if(a==='reset'){ exReset(); exMarks(); exUpdate(); return; }
+  });
+  /* 结果卡片里的「再考一次」在 #side 里 */
+  document.getElementById('side').addEventListener('click', function(e){
+    const b = e.target.closest('button[data-ex="reset"]'); if(!b || !EX.on) return;
+    exReset(); exMarks(); exUpdate();
+    document.getElementById('examBar').scrollIntoView({behavior:'smooth', block:'start'});
+  });
+  /* 拿着验电笔点图上：挑最近的验电位置（缩放会抢指针捕获，跟自己接线一样在 svg 上听 click 自己算） */
+  svg.addEventListener('click', function(e){
+    if(state.mode!=='exam' || !EX.on || !EX.pen || e.defaultPrevented || EX.result) return;
+    const u = svgPoint(e.clientX, e.clientY); if(!u) return;
+    const r = clamp(24/u.k, 10, 30);
+    let best=null, bd=r;
+    EXAMS[CUR.id].live.forEach(function(p){
+      const xy = exPointPos(p); if(!xy) return;
+      const d = Math.hypot(xy[0]-u.x, xy[1]-u.y);
+      if(d<bd){ bd=d; best=p; }
+    });
+    if(best) exTest(best);
+    else { exWarn('这里不是要验的位置。K31 送电后验：'+EXAMS[CUR.id].live.map(function(p){ return p.n; }).join('、')); exRender(); }
+  });
+})();
+function exEnter(){
+  if(!EXAMS[CUR.id]) return;
+  EX.mode = EX.mode || 'prac';
+  simEnter();
+  EX.on = true;
+  exReset();
+  svg.classList.add('ex-mode');
+  exMarks(); exUpdate();
+  exSpeak(EX.say);
+}
+function exExit(){
+  if(!EX.on) return;
+  EX.on = false; EX.ask = null;
+  if(EXREC.mr && EX.rec==='on'){ try{ EXREC.mr.stop(); }catch(_){} }
+  try{ speechSynthesis.cancel(); }catch(_){}
+  SIM.sup = undefined; SIM.noMotor = false;
+  svg.classList.remove('ex-mode');
+  exMarks();
 }
 
 (function(){
@@ -4009,6 +4688,12 @@ window.__MRW = {
       pt.x=TPOS[id].x; pt.y=TPOS[id].y;
       const q=pt.matrixTransform(m); return {x:q.x, y:q.y};
     }
+  },
+  ex: {
+    get E(){ return EX; },
+    grade: exGrade,
+    hear: function(t){ exHear(t, true); },
+    hand: exHand
   },
   sim: {
     press: function(id, down){ simPress(id, down); },
