@@ -125,6 +125,8 @@ svg text{font-family:inherit}
 .btns.five{grid-template-columns:repeat(5,1fr);gap:4px}
 .btns.five button{font-size:.7rem;padding:8px 1px}
 .rot.rev{animation-direction:reverse}
+.step2{min-height:7.6em;padding:2px 6px 8px}
+.tracer{fill:#fff;stroke:var(--acc);stroke-width:2.2}
 /* 第④屏：页面不动，只有下面的实训板那块自己上下滑（overscroll-behavior 防止滑到头带着整页一起动） */
 #sc3.on{display:flex;flex-direction:column;height:calc(100vh - var(--tabsH,58px));height:calc(100dvh - var(--tabsH,58px))}
 #sc3 .pin{position:static;flex:none}
@@ -203,22 +205,22 @@ body.lock3{padding-bottom:0}
   <section class="scene" id="sc2">
     <div class="say info"><div class="st">接线的诀窍：先给图编号，再照号接</div>
       <div class="why">用导线直接连着、中间<b>没隔着任何元件</b>的那一片，算一个「点」，编一个号。碰到元件（触点、线圈、熔断器）号就要换。<b>同一个号的所有端子，最后要用导线接到一起</b> —— 这就是接线的全部规则。</div></div>
-    <div class="say"><div class="st">两种数字别搞混：端子号 ≠ 线号</div><div class="why" id="numNote"></div></div>
     <div class="card">
       <h2>标线号 <span class="prog" id="p2"></span><button class="zbtn">放大</button></h2>
+      <div class="info step2" id="i2"></div>
       <div class="zw"><svg id="s2"></svg></div>
       <div class="btns three" id="b2">
         <button data-k="prev">‹ 上一个</button>
         <button data-k="next" class="on">下一个 ›</button>
         <button data-k="all">全部标出</button>
       </div>
-      <div class="info" id="i2"></div>
     </div>
     <div class="card" id="sum2" hidden>
       <h2>控制电路的接线清单 <small id="sum2H"></small></h2>
       <ul class="list" id="sum2L"></ul>
       <div class="info"><span id="sum2X"></span>同号的几个端子接成一串（A→B→C），不用两两都接。<b>一个端子最多压两根线</b>，压多了拧不紧。现场每根线两头还要套上印着这个号的<b>号码管</b>，排故时照号就能在图上找到它。</div>
     </div>
+    <div class="say"><div class="st">两种数字别搞混：端子号 ≠ 线号</div><div class="why" id="numNote"></div></div>
   </section>
 
   <!-- ④ 接线 -->
@@ -411,19 +413,24 @@ ZS.els = function(st){
   return el;
 };
 ZS.steps = [
-  {n:'m11', t:'U11 / V11 / W11', tags:[[46,67,'U11'],[71,67,'V11'],[96,67,'W11']],
-   b:'QF 下面到 FU1 上面这一片。注意 L1、L2 往右拐出去的两根线也连在这一片上（拐角有黑点）—— 所以 <b>两只 FU2 的上桩也是 U11、V11</b>，接线时直接从 FU1 上桩或 QF 下桩取电。'},
-  {n:'m12', t:'U12 / V12 / W12', tags:[[46,97,'U12'],[71,97,'V12'],[96,97,'W12']],
-   b:'FU1 下面到 KM 主触点上面。主电路的号是「相别字母 + 两位数」，过一个元件数字加 1。'},
-  {n:'m13', t:'U13 / V13 / W13', tags:[[46,128,'U13'],[71,128,'V13'],[96,128,'W13']],
-   b:'KM 主触点下面到 FR 发热元件上面。实物里 KM 的 2/4/6 和 FR 的进线常常是直接插在一起的，不用另走线。'},
-  {n:'mM', t:'U / V / W', tags:[[46,160,'U'],[71,160,'V'],[96,160,'W']],
-   b:'FR 下面到电动机接线盒。进电机的三根就叫 U、V、W，跟电机接线盒里印的字母对上。<b>主电路编完了，下面编控制电路。</b>'},
-  {n:'c1', t:'1 号', tags:[[176,94,'1']], b:'FU2 下桩到 FR 的 95。中间只有导线，所以是一个号：<b>FU2 下桩 ↔ FR 95</b>，一根线。'},
-  {n:'c2', t:'2 号', tags:[[176,123,'2']], b:'FR 的 96 到停止按钮 SB1 的 11。<b>FR 96 ↔ SB1 11</b>。按钮装在柜门上，实际接线要经端子排转一下，见第④屏。'},
-  {n:'c3', t:'3 号', tags:[[176,151,'3']], b:'SB1 下面这片分了岔：往下到 SB2 的 13，往右到 KM 的 13。<b>三个端子都是 3 号</b>：SB1 12、SB2 13、KM 13。'},
-  {n:'c4', t:'4 号', tags:[[176,200,'4']], b:'SB2 下面和 KM 13-14 下面在黑点处汇合，再到线圈 A1。又是三个端子：<b>SB2 14、KM 14、KM A1</b>。'},
-  {n:'c5', t:'5 号', tags:[[268,233,'5']], b:'线圈 A2 绕到右边，回到另一只 FU2 的下桩。<b>KM A2 ↔ FU2 下桩</b>。控制电路一共 5 个号。'}
+  {n:'c1', t:'1 号', from:[190,88], tags:[[176,94,'1']],
+   b:'从 FU2 下面出发，顺着线往下走，碰到 FR 的触点就停 —— 走过的这一小段就是 <b>1 号</b>。'},
+  {n:'c2', t:'2 号', from:[190,118], tags:[[176,123,'2']],
+   b:'穿过 FR 的触点，号换成 2。接着往下走，碰到停止按钮 SB1 停。'},
+  {n:'c3', t:'3 号', from:[190,146], tags:[[176,151,'3']],
+   b:'穿过 SB1，换成 3 号。走到黑点处<b>分了岔</b>：一路往下到 SB2，一路往右到 KM 的 13。分岔的每一头都还是 3 号，直到各自碰到元件。'},
+  {n:'c4', t:'4 号', from:[190,184], tags:[[176,200,'4']],
+   b:'穿过 SB2（或者右边的 KM 13-14），换成 4 号。两路在下面的黑点汇合，往下碰到线圈 KM 的 A1 停。'},
+  {n:'c5', t:'5 号', from:[190,226], tags:[[268,233,'5']],
+   b:'穿过线圈，换成 5 号：从 A2 出来绕到右边，往上一直走到右边那只 FU2 的下面。<b>控制电路编完了，一共 5 个号。</b>'},
+  {n:'m11', t:'主电路：U11 / V11 / W11', tags:[[46,67,'U11'],[71,67,'V11'],[96,67,'W11']],
+   b:'主电路三根线一起编，每一层同时出三个号。<b>字母说是哪一根</b>：U＝L1 那根、V＝L2、W＝L3；<b>数字从 11 开始，每穿过一个元件加 1</b>。QF 下面到 FU1 上面这一层是 U11、V11、W11。往右拐去 FU2 的两根跟它直接连着（拐角有黑点），所以也是 U11、V11 —— FU2 就是从这里取电的。'},
+  {n:'m12', t:'主电路：U12 / V12 / W12', tags:[[46,97,'U12'],[71,97,'V12'],[96,97,'W12']],
+   b:'穿过 FU1，数字加 1：FU1 下面到 KM 主触点上面是 U12、V12、W12。'},
+  {n:'m13', t:'主电路：U13 / V13 / W13', tags:[[46,128,'U13'],[71,128,'V13'],[96,128,'W13']],
+   b:'再穿过 KM 主触点，加 1：KM 下面到 FR 上面是 U13、V13、W13。'},
+  {n:'mM', t:'主电路：U / V / W', tags:[[46,160,'U'],[71,160,'V'],[96,160,'W']],
+   b:'FR 下面到电动机：进电机的三根直接叫 U、V、W，跟电机接线盒里印的字母对上。<b>全部编完了。</b>'}
 ];
 ZS.info = {
   QF:'<b>QF 断路器（总开关）</b>。三副触点用一根虚线连着＝三极一起动。图上画成断开，因为图一律画「没操作」的样子。',
@@ -654,22 +661,30 @@ ZF.els = function(st){
   return el;
 };
 ZF.steps = [
-  {n:'m11', t:'U11 / V11 / W11', tags:[[30,66,'U11'],[50,66,'V11'],[70,66,'W11']],
-   b:'QF 下面到 FU1 上面，连同往右拐去 FU2 的两根。跟自锁那张一样，<b>FU2 上桩就是 U11、V11</b>。'},
-  {n:'m12', t:'U12 / V12 / W12', tags:[[30,110,'U12'],[50,110,'V12'],[70,110,'W12']],
-   b:'FU1 下面这片<b>分了岔</b>：一路往下进 KM1，一路往右进 KM2。所以 KM1 和 KM2 的进线是同一个号 —— 实物上就是 KM1 的 1/3/5 和 KM2 的 1/3/5 各连一根。'},
-  {n:'m13', t:'U13 / V13 / W13', tags:[[30,140,'U13'],[50,140,'V13'],[70,140,'W13']],
-   b:'主触点下面到 FR 上面。看 KM2 出来的三根：最右那根（来自 L3）拐到了 <b>U13</b>，最左那根（来自 L1）拐到了 <b>W13</b> —— <b>L1、L3 对调，电机就反转</b>。接线时 KM2 的 2 接 W13、6 接 U13，中间那根不动。'},
-  {n:'mM', t:'U / V / W', tags:[[30,187,'U'],[50,187,'V'],[70,187,'W']],
-   b:'FR 下面到电动机。<b>主电路编完了，下面编控制电路。</b>'},
-  {n:'c1', t:'1 号', tags:[[166,93,'1']], b:'FU2 下桩到 FR 95。<b>FU2 下桩 ↔ FR 95</b>，一根线。'},
-  {n:'c2', t:'2 号', tags:[[166,121,'2']], b:'FR 96 到停止按钮 SB1 的 11。<b>FR 96 ↔ SB1 11</b>。按钮装在柜门上，实际接线要经端子排转一下，见第④屏。'},
-  {n:'c3', t:'3 号', tags:[[261,152,'3']], b:'SB1 下面这片分了<b>四个岔</b>：SB2 13、KM1 13（正转那对）、SB3 13、KM2 13（反转那对）。连 SB1 12 在内，<b>五个端子都是 3 号</b>。'},
-  {n:'c4', t:'4 号', tags:[[216,190,'4']], b:'SB2 14 和 KM1 14 汇合，往下到 <b>KM2</b> 的 21 —— 注意是 KM2 的常闭，不是 KM1 的。三个端子：<b>SB2 14、KM1 14、KM2 21</b>。'},
-  {n:'c5', t:'5 号', tags:[[200,223,'5']], b:'KM2 22 到 KM1 线圈 A1。<b>正转线圈前面串的是反转接触器的常闭</b>：KM2 一吸合这里就断，KM1 吸不上。'},
-  {n:'c6', t:'6 号', tags:[[315,190,'6']], b:'反转这边一模一样：<b>SB3 14、KM2 14、KM1 21</b>。'},
-  {n:'c7', t:'7 号', tags:[[300,223,'7']], b:'KM1 22 到 KM2 线圈 A1。'},
-  {n:'c8', t:'8 号', tags:[[245,258,'8']], b:'两个线圈的 A2 汇到一起，回到右边 FU2：<b>KM1 A2、KM2 A2、FU2 下桩</b>。控制电路一共 8 个号。'}
+  {n:'c1', t:'1 号', from:[180,88], tags:[[166,93,'1']],
+   b:'从 FU2 下面出发，顺着线往下走，碰到 FR 的触点就停 —— 走过的这一小段就是 <b>1 号</b>。'},
+  {n:'c2', t:'2 号', from:[180,116], tags:[[166,121,'2']],
+   b:'穿过 FR 的触点，号换成 2。接着往下走，碰到停止按钮 SB1 停。'},
+  {n:'c3', t:'3 号', from:[180,144], tags:[[261,152,'3']],
+   b:'穿过 SB1，换成 3 号。这一号往右分了<b>四个岔</b>：SB2、KM1 的 13（正转那对），SB3、KM2 的 13（反转那对），四个岔都还是 3 号。'},
+  {n:'c4', t:'4 号', from:[200,180], tags:[[216,190,'4']],
+   b:'左边是正转：穿过 SB2（或 KM1 13-14）换成 4 号，两路在黑点汇合，往下碰到 <b>KM2 的 21</b> 停 —— 注意是 KM2 的常闭，不是 KM1 的。'},
+  {n:'c5', t:'5 号', from:[200,218], tags:[[200,223,'5']],
+   b:'穿过 KM2 的 21-22，换成 5 号，往下到 KM1 线圈的 A1。'},
+  {n:'c6', t:'6 号', from:[300,180], tags:[[315,190,'6']],
+   b:'右边是反转，跟左边一模一样：穿过 SB3（或 KM2 13-14）是 6 号，往下碰到 <b>KM1 的 21</b> 停。'},
+  {n:'c7', t:'7 号', from:[300,218], tags:[[300,223,'7']],
+   b:'穿过 KM1 的 21-22，换成 7 号，往下到 KM2 线圈的 A1。'},
+  {n:'c8', t:'8 号', from:[200,248], tags:[[250,258,'8']],
+   b:'两个线圈下面的 A2 出来汇到一起，绕到右边，往上到右边那只 FU2 —— 8 号。<b>控制电路编完了，一共 8 个号。</b>'},
+  {n:'m11', t:'主电路：U11 / V11 / W11', tags:[[30,66,'U11'],[50,66,'V11'],[70,66,'W11']],
+   b:'主电路三根线一起编，每一层同时出三个号。<b>字母说是哪一根</b>：U＝L1 那根、V＝L2、W＝L3；<b>数字从 11 开始，每穿过一个元件加 1</b>。QF 下面到 FU1 上面这一层是 U11、V11、W11；往右拐去 FU2 的两根跟它直接连着（拐角有黑点），也是 U11、V11。'},
+  {n:'m12', t:'主电路：U12 / V12 / W12', tags:[[30,110,'U12'],[50,110,'V12'],[70,110,'W12']],
+   b:'穿过 FU1 加 1 → U12、V12、W12。这一层往右<b>分了岔</b>：一路进 KM1、一路进 KM2，两个接触器的进线是同一个号。'},
+  {n:'m13', t:'主电路：U13 / V13 / W13', tags:[[30,140,'U13'],[50,140,'V13'],[70,140,'W13']],
+   b:'穿过主触点加 1 → U13、V13、W13。看 KM2 出来的三根：最右那根（来自 L3）拐到了 U13，最左那根（来自 L1）拐到了 W13 —— <b>L1、L3 对调，电机就反转</b>。'},
+  {n:'mM', t:'主电路：U / V / W', tags:[[30,187,'U'],[50,187,'V'],[70,187,'W']],
+   b:'FR 下面到电动机：进电机的三根直接叫 U、V、W。<b>全部编完了。</b>'}
 ];
 ZF.info = {
   QF:ZS.info.QF, FU1:ZS.info.FU1, FU2:ZS.info.FU2, M:ZS.info.M,
@@ -951,6 +966,7 @@ function schem(st, ov){
   /* ov.fade 是「要调暗的那一块」：点「主电路」传 'ctrl'，调暗控制电路 */
   let out = '<g' + (ov.fade === 'main' ? ' class="faded"' : '') + '>' + mainG.join('') + '</g>' +
             '<g' + (ov.fade === 'ctrl' ? ' class="faded"' : '') + '>' + ctrlG.join('') + '</g>';
+  out += ov.under || '';   // ③屏的蓝点和端子圈：画在线号标签下面，标签不被挡
   if(numOn) C.steps.forEach((s, i) => { if(i <= ov.step) s.tags.forEach(t => { out += pill(t[0], t[1], t[2], i < ov.step); }); });
   (ov.rings || []).forEach(r => {
     out += '<circle class="ring pulse' + (r[2] ? ' ' + r[2] : '') + '" cx="' + r[0] + '" cy="' + r[1] + '" r="5"/>';
@@ -1040,12 +1056,58 @@ bindCtl($('b1'), S1, upd1);
 
 /* ================= ③ 编号 ================= */
 let step2 = -1;
+/* ③屏：把这一号的线段拼成一张图，每个连通块派一个蓝点从端子出发走一遍（分岔处走进去再退回来），
+   两头的端子（只连一根线的点）画圈。没打点的交叉不相连 —— 只有端点落在别的线段上才算接上 */
+function trace(st){
+  const kp = q => q[0] + ',' + q[1];
+  const segs = C.segs.filter(g => g.n === st.n);
+  const pts = [];
+  segs.forEach(g => g.p.forEach(q => { if(!pts.some(r => kp(r) === kp(q))) pts.push(q); }));
+  const adj = {};
+  const link = (a, b) => { (adj[kp(a)] = adj[kp(a)] || []).push(b); (adj[kp(b)] = adj[kp(b)] || []).push(a); };
+  segs.forEach(g => { for(let i = 1; i < g.p.length; i++){
+    const a = g.p[i-1], b = g.p[i];
+    const mid = pts.filter(q => kp(q) !== kp(a) && kp(q) !== kp(b) &&
+      Math.abs((b[0]-a[0])*(q[1]-a[1]) - (b[1]-a[1])*(q[0]-a[0])) < 0.5 &&
+      q[0] >= Math.min(a[0], b[0]) && q[0] <= Math.max(a[0], b[0]) && q[1] >= Math.min(a[1], b[1]) && q[1] <= Math.max(a[1], b[1]));
+    mid.sort((u, v) => Math.hypot(u[0]-a[0], u[1]-a[1]) - Math.hypot(v[0]-a[0], v[1]-a[1]));
+    let prev = a; mid.concat([b]).forEach(q => { link(prev, q); prev = q; });
+  } });
+  const deg = q => (adj[kp(q)] || []).length;
+  let h = '';
+  pts.filter(q => deg(q) === 1).forEach(q => { h += '<circle class="ring" cx="' + q[0] + '" cy="' + q[1] + '" r="4.5"/>'; });
+  const seen = {};
+  pts.slice().sort((u, v) => u[1] - v[1] || u[0] - v[0]).forEach(p0 => {
+    if(seen[kp(p0)]) return;
+    const comp = [], stack = [p0];
+    while(stack.length){ const q = stack.pop(); if(seen[kp(q)]) continue; seen[kp(q)] = 1; comp.push(q); (adj[kp(q)] || []).forEach(r => stack.push(r)); }
+    const tips = comp.filter(q => deg(q) === 1).sort((u, v) => u[1] - v[1] || u[0] - v[0]);
+    const start = (st.from && comp.find(q => kp(q) === kp(st.from))) || tips[0] || p0;
+    const path = [start], vis = {};
+    let lastNew = 1;
+    (function walk(u){ vis[kp(u)] = 1; (adj[kp(u)] || []).forEach(v => { if(vis[kp(v)]) return; path.push(v); lastNew = path.length; walk(v); path.push(u); }); })(start);
+    path.length = lastNew;
+    if(path.length < 2) return;
+    let L = 0; for(let i = 1; i < path.length; i++) L += Math.hypot(path[i][0]-path[i-1][0], path[i][1]-path[i-1][1]);
+    h += '<circle class="tracer" r="3.4"><animateMotion dur="' + Math.max(1.2, L / 70).toFixed(2) + 's" repeatCount="indefinite" calcMode="linear" keyPoints="0;1;1" keyTimes="0;0.8;1" path="M' + path.map(q => q[0] + ',' + q[1]).join(' L') + '"/></circle>';
+  });
+  return h;
+}
 function draw2(){
-  $('s2').innerHTML = schem(NORMAL, {step:step2});
-  $('p2').textContent = step2 < 0 ? '' : (step2 + 1) + ' / ' + C.steps.length;
-  $('i2').innerHTML = step2 < 0 ? '点「下一个」，一片一片地标。蓝色加粗的就是当前这个号覆盖的导线。'
-    : '<b>' + C.steps[step2].t + '</b>：' + C.steps[step2].b;
-  $('sum2').hidden = step2 < C.steps.length - 1;
+  const st = step2 >= 0 ? C.steps[step2] : null;
+  $('s2').innerHTML = schem(NORMAL, {step:step2, under:st ? trace(st) : ''});
+  $('p2').textContent = st ? (step2 + 1) + ' / ' + C.steps.length : '';
+  if(!st) $('i2').innerHTML = '点「下一个」开始。<b>蓝点会顺着这一号的导线走一遍，碰到元件就停</b>；圈出来的是这一号两头的端子。先编控制电路（从 1 号起），最后编主电路。';
+  else {
+    let h = '<b>' + st.t + '</b>：' + st.b;
+    if(st.n[0] === 'c'){
+      const n = +st.n.slice(1);
+      h += '<br><b>这一号连着</b>：' + C.need[n].filter(t => !isXT(t)).map(t => C.terms[t].nm).join('、');
+    }
+    $('i2').innerHTML = h;
+  }
+  /* 控制电路编完就给接线清单 */
+  $('sum2').hidden = step2 < C.steps.findIndex(x => x.n[0] === 'm') - 1;
 }
 $('b2').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
