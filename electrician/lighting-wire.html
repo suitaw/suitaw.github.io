@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K33 照明电路接线</title>
+<style>
+:root{
+  --bg:#f4f6f8; --card:#fff; --line:#d7dde3; --tx:#232a32; --tx2:#5b6570; --tx3:#8b96a1;
+  --acc:#1a6fd4; --accbg:#e8f1fc;
+  --red:#c0392b; --green:#2f9e44; --orange:#e67e22;
+  --redbg:#fbe9e7; --greenbg:#e8f7ea; --orangebg:#fdf1e3;
+  --wire:#2b3036; --live:#d62828; --plate:#e9ecef; --pre:#adb5bd;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif}
+body{padding-bottom:30px}
+.wrap{max-width:720px;margin:0 auto;padding:10px 12px 0}
+.top{display:flex;align-items:center;gap:8px;padding:4px 2px 6px}
+.top h1{font-size:1.05rem;margin:0;flex:1 1 auto;line-height:1.35}
+.top a{font-size:.76rem;color:var(--tx3);text-decoration:none;border:1px solid var(--line);
+  border-radius:8px;padding:5px 9px;white-space:nowrap;background:var(--card)}
+.tabs{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;
+  background:var(--bg);padding:6px 0 8px}
+.tabs button{border:1px solid var(--line);background:var(--card);color:var(--tx2);border-radius:9px;
+  padding:7px 2px;font-size:.76rem;font-weight:600;line-height:1.25;touch-action:manipulation}
+.tabs button span{display:block;font-size:.62rem;font-weight:400;color:var(--tx3)}
+.tabs button.on{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+.tabs button.on span{color:inherit}
+.scene{display:none}
+.scene.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:10px}
+.card h2{font-size:.86rem;margin:2px 4px 6px;display:flex;align-items:center;gap:6px}
+.card h2 small{font-weight:400;color:var(--tx3);font-size:.7rem}
+svg{display:block;width:100%;height:auto;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+svg text{font-family:inherit}
+.say{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:10px 12px;margin-bottom:10px}
+.say .st{font-weight:700;font-size:.92rem}
+.say .why{font-size:.8rem;color:var(--tx2);line-height:1.7;margin-top:4px}
+.say .why b{color:var(--tx)}
+.say.ok{border-color:var(--green);background:var(--greenbg)} .say.ok .st{color:var(--green)}
+.say.bad{border-color:var(--red);background:var(--redbg)} .say.bad .st{color:var(--red)}
+.say.info .st{color:var(--acc)}
+.info{font-size:.78rem;color:var(--tx2);line-height:1.65;padding:6px 6px 2px;min-height:1.6em}
+.info b{color:var(--tx)}
+.rules{margin:0;padding:0 4px 0 22px;font-size:.8rem;line-height:1.7;color:var(--tx2)}
+.rules li{margin:4px 0}
+.rules b{color:var(--tx)}
+.btns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.btns.three{grid-template-columns:repeat(3,1fr)}
+.btns button{border:1px solid var(--line);background:var(--card);color:var(--tx2);border-radius:9px;
+  padding:8px 2px;font-size:.76rem;font-weight:600;line-height:1.25;touch-action:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.btns button span{display:block;font-size:.62rem;font-weight:400;color:var(--tx3)}
+.btns button.on{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+.btns button.on span{color:inherit}
+.btns .g{border-color:#9bd3a8} .btns .r{border-color:#e7a39b} .btns .y{border-color:#e8cf7a}
+.btns .y.down{background:#d4a017;color:#fff}
+.btns .g.down{background:var(--green);color:#fff}
+.btns .r.down{background:var(--red);color:#fff}
+.btns button.down span{color:rgba(255,255,255,.85)}
+.btns .w.on{background:var(--orangebg);border-color:var(--orange);color:var(--orange)}
+.list{margin:6px 0 0;padding:0 4px 0 20px;font-size:.8rem;line-height:1.8;color:var(--tx2)}
+.list b{color:var(--tx)}
+.prog{font-size:.72rem;color:var(--tx3);font-weight:400;margin-left:auto}
+
+/* 原理图 */
+.w{fill:none;stroke:var(--wire);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.w.on{stroke:var(--live);stroke-width:1.9}
+.w.nb{stroke:var(--acc);stroke-width:2.6}
+.ant{fill:none;stroke:#fff;stroke-width:1;stroke-dasharray:1.6 5;stroke-linecap:round;animation:ant .55s linear infinite}
+@keyframes ant{to{stroke-dashoffset:-6.6}}
+.arm{stroke:var(--wire);stroke-width:1.5;stroke-linecap:round;fill:none}
+.arm.on{stroke:var(--live)}
+.dot{fill:var(--wire)}
+.gang{stroke:var(--tx3);stroke-width:.8;stroke-dasharray:2.5 2;fill:none}
+.lb{font-size:8px;font-weight:700;fill:var(--tx)}
+.lb2{font-size:6.5px;fill:var(--tx3)}
+.tn{font-size:7px;fill:var(--tx2)}
+.box{fill:#fff;stroke:var(--wire);stroke-width:1.2}
+.box.on{fill:#fde2e2;stroke:var(--live);stroke-width:1.7}
+.hit{fill:transparent;cursor:pointer}
+.sel{fill:rgba(26,111,212,.10);stroke:var(--acc);stroke-width:.8;stroke-dasharray:2 2}
+.faded{opacity:.18}
+.pill rect{fill:var(--acc)} .pill text{fill:#fff;font-size:6px;font-weight:700}
+.pill.old rect{fill:#8fb5e6}
+.ring{fill:none;stroke:var(--acc);stroke-width:1.6}
+.ring.bad{stroke:var(--red)}
+.ring.pulse{animation:pulse .9s ease-in-out infinite}
+@keyframes pulse{50%{stroke-width:3;opacity:.5}}
+.rot{animation:rot .6s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* 实物板 */
+.plate{fill:var(--plate);stroke:#ced4da}
+.dev{fill:#f8f9fa;stroke:#868e96;stroke-width:1}
+.dev2{fill:#dee2e6;stroke:#868e96;stroke-width:.8}
+.pw{fill:none;stroke:#6c757d;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pw.on{stroke:#e57373}
+.uw{fill:none;stroke:var(--wire);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.uw.on{stroke:var(--live)}
+.uw.hi{stroke:var(--acc);stroke-width:2.4}
+.duct{fill:#f8f9fa;stroke:#ced4da;stroke-width:.8}
+.duct-t{stroke:#ced4da;stroke-width:.8}
+.duct.lid{fill:#ced4da;fill-opacity:.93;stroke:#adb5bd}
+.xtb{fill:#f8f9fa;stroke:#868e96;stroke-width:.8}
+.xtn{font-size:7px;font-weight:700;fill:var(--tx)}
+.hint{fill:none;stroke:var(--acc);stroke-width:1.6;animation:pulse .9s ease-in-out infinite}
+.term{fill:#ced4da;stroke:#495057;stroke-width:1}
+.term.ok{fill:#c3e6cb}
+.term.selt{fill:var(--accbg);stroke:var(--acc);stroke-width:2}
+.tlab{font-size:7px;font-weight:700;fill:var(--tx2)}
+.dlab{font-size:9px;font-weight:700;fill:var(--tx)}
+.dlab2{font-size:6.5px;fill:var(--tx3)}
+.sleeve rect{fill:#fff;stroke:#868e96;stroke-width:.6}
+.sleeve text{font-size:6px;font-weight:700;fill:var(--tx)}
+.flash{animation:flash .15s linear 4 alternate}
+@keyframes flash{to{opacity:.3}}
+.cir{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 4px}
+.cir button{border:1px solid var(--line);background:var(--card);color:var(--tx2);border-radius:10px;
+  padding:8px 4px;font-size:.84rem;font-weight:700;touch-action:manipulation}
+.cir button span{display:block;font-weight:400;font-size:.66rem;color:var(--tx3)}
+.cir button.on{background:var(--tx);border-color:var(--tx);color:#fff}
+.cir button.on span{color:rgba(255,255,255,.7)}
+.btns.five{grid-template-columns:repeat(5,1fr);gap:4px}
+.btns.five button{font-size:.7rem;padding:8px 1px}
+.rot.rev{animation-direction:reverse}
+.osw{display:flex;gap:6px;align-items:center;margin-bottom:8px;font-size:.74rem;color:var(--tx3)}
+.osw button{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:4px 9px;font-size:.74rem;color:var(--tx2)}
+.osw button.on{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+.order3{margin:8px 4px 2px;font-size:.78rem;color:var(--tx2);line-height:1.55}
+.og{border-left:3px solid var(--line);padding:2px 0 4px 8px;margin-bottom:6px}
+.og.done{border-color:var(--green)}
+.og b{color:var(--tx);display:block}
+.og span{font-size:.7rem;color:var(--tx3)}
+.og ol{margin:2px 0 0;padding-left:20px}
+.og li.ok{color:var(--tx3);text-decoration:line-through}
+.og li.cur{color:var(--acc);font-weight:700}
+.og li i{font-style:normal;font-size:.68rem;color:var(--tx3)}
+.step2{min-height:7.6em;padding:2px 6px 8px}
+.tracer{fill:#fff;stroke:var(--acc);stroke-width:2.2}
+/* 第④屏：页面不动，只有下面的实训板那块自己上下滑（overscroll-behavior 防止滑到头带着整页一起动） */
+#sc3.on{display:flex;flex-direction:column;height:calc(100vh - var(--tabsH,58px));height:calc(100dvh - var(--tabsH,58px))}
+#sc3 .pin{position:static;flex:none}
+.pane3{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border-radius:12px}
+body.lock3{padding-bottom:0}
+.pin{position:sticky;top:var(--tabsH,58px);z-index:4;display:grid;grid-template-columns:58% 1fr;gap:6px;
+  background:var(--bg);padding:0 0 6px;margin-bottom:4px}
+.pin-l{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px}
+.pin-r{margin:0;padding:8px;overflow-y:auto;contain:size;-webkit-overflow-scrolling:touch}
+.pin-r .st{font-size:.8rem;line-height:1.35}
+.pin-r .why{font-size:.72rem;line-height:1.55}
+.zw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.zw.zoom svg{width:200%;max-width:none}
+.zbtn{margin-left:auto;border:1px solid var(--line);background:var(--card);border-radius:7px;padding:3px 9px;
+  font-size:.72rem;color:var(--tx2);white-space:nowrap;font-weight:400}
+.prog + .zbtn{margin-left:6px}
+.w.hv{stroke:#e03131;stroke-width:1.3;stroke-dasharray:3 2}
+.rules details{margin-top:4px}
+.rules summary{color:var(--acc);font-size:.76rem;cursor:pointer}
+.rules details div{background:var(--accbg);border-radius:8px;padding:6px 8px;margin-top:4px;font-size:.78rem;color:var(--tx)}
+.btns button[data-k="qf"],.btns button[data-k="fr"]{touch-action:manipulation}
+.wL{stroke:#c92a2a !important} .wN{stroke:#1c7ed6 !important}
+.wP{stroke:#74b816 !important;stroke-dasharray:5 3}
+.lamp{fill:#fff;stroke:var(--wire);stroke-width:1.2}
+.lamp.lit{fill:#ffe066;stroke:#e8a400}
+.tube{fill:#f1f3f5;stroke:var(--wire);stroke-width:1.1}
+.tube.lit{fill:#fff3bf;stroke:#e8a400}
+.pin33{position:static;flex:none;background:var(--bg);padding:0 0 6px}
+.pin33 .pin-l{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px}
+.pin33 .pin-l svg{max-height:33vh}
+.pin33 .say{margin:6px 0 0;padding:7px 10px}
+.pin33 .say .st{font-size:.82rem}
+.pin33 .say .why{font-size:.74rem;line-height:1.5;margin-top:2px;max-height:4.6em;overflow-y:auto}
+#sc2.on{display:flex;flex-direction:column;height:calc(100vh - var(--tabsH,58px));height:calc(100dvh - var(--tabsH,58px))}
+.btns.six{grid-template-columns:repeat(3,1fr)}
+.warnbox{border:1px solid var(--orange);background:var(--orangebg);border-radius:10px;padding:8px 10px;font-size:.76rem;line-height:1.6;color:var(--tx2);margin-bottom:10px}
+.warnbox b{color:var(--tx)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>K33 照明电路 · 照图接线</h1>
+    <a href="schema-to-wire.html">电机控制板 ›</a>
+  </div>
+  <div class="tabs" id="tabs" style="grid-template-columns:repeat(3,1fr)">
+    <button class="on" data-i="0">① 看图<span>规矩</span></button>
+    <button data-i="1">② 通电<span>开关灯</span></button>
+    <button data-i="2">③ 接线<span>照板接</span></button>
+  </div>
+
+  <!-- ① 看图 -->
+  <section class="scene on" id="sc0">
+    <div class="say info"><div class="st">K33：电能表 + 插座 + 两种灯</div>
+      <div class="why">一户人家的配电：电从<b>电能表</b>进来，过<b>总开关 QF1</b> 分成两路 —— 插座一路（<b>QF2 带漏电保护</b>），照明一路（QF3）。照明里有一盏<b>两个开关都能控制</b>的白炽灯，一盏单控的日光灯。<b>点图上任何一个符号</b>看它是什么。</div></div>
+    <div class="card">
+      <h2>原理图 <small>点符号看说明</small><button class="zbtn">放大</button></h2>
+      <div class="zw"><svg id="s0" viewBox="0 0 360 312"></svg></div>
+      <div class="btns" id="b0">
+        <button data-k="all" class="on">全部</button>
+        <button data-k="L">相线 L<span>红</span></button>
+        <button data-k="N">零线 N<span>蓝</span></button>
+        <button data-k="P">地线 PE<span>黄绿</span></button>
+      </div>
+      <div class="info" id="i0">点一个符号试试。</div>
+    </div>
+    <div class="card">
+      <h2>照明电路的五条规矩</h2>
+      <ol class="rules">
+        <li><b>电能表：1 进火、2 出火、3 进零、4 出零。</b>单相表常见这种接法，记成「1、3 进，2、4 出」。</li>
+        <li><b>总开关后面分路</b>：插座一路、照明一路，各有自己的空开。插座那路用<b>带漏电保护</b>的（QF2），人碰到漏电它会跳。</li>
+        <li><b>开关一定接相线。</b>灯的零线直接接 N，开关断的是相线 —— 关了灯，灯座就不带电，换灯泡才安全。</li>
+        <li><b>插座左零右火上接地</b>（面对插座看）：左孔 N、右孔 L、上孔 PE。</li>
+        <li><b>双控</b>：两个开关的公共端 L，一个接相线、一个接灯；中间两根<b>联络线 L1 接 L1、L2 接 L2</b>。两个开关拨到同一边灯亮，扳任意一个就灭。</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ② 通电 -->
+  <section class="scene" id="sc1">
+    <div class="say" id="say1"><div class="st" id="say1T"></div><div class="why" id="say1B"></div></div>
+    <div class="card">
+      <h2>原理图 <small>红色流动＝有电流 · 红虚线＝带电没电流</small><button class="zbtn">放大</button></h2>
+      <div class="zw"><svg id="s1" viewBox="0 0 360 312"></svg></div>
+      <div class="btns six" id="b1"></div>
+    </div>
+    <div class="card">
+      <h2>自己验证这三件事</h2>
+      <ol class="rules" id="tasks1"></ol>
+    </div>
+  </section>
+
+  <!-- ③ 接线 -->
+  <section class="scene" id="sc2">
+    <div class="pin33">
+      <div class="pin-l"><svg id="s2" viewBox="0 0 360 312"></svg></div>
+      <div class="say" id="say2"><div class="st" id="say2T"></div><div class="why" id="say2B"></div></div>
+    </div>
+    <div class="pane3" id="pane2">
+      <div class="card">
+        <h2>K33 实训板 <small>线色：红 L · 蓝 N · 黄绿 PE</small><span class="prog" id="p2"></span><button class="zbtn">放大</button></h2>
+        <div class="zw"><svg id="board" viewBox="0 0 360 312"></svg></div>
+        <div class="btns six" id="b2"></div>
+        <div class="btns">
+          <button data-k="undo" id="undoBtn">撤销<span>上一根</span></button>
+          <button data-k="hint" id="hintBtn" class="on">引导<span>开</span></button>
+          <button data-k="lid" id="lidBtn">盖线槽<span>真板子样</span></button>
+          <button data-k="reset" id="resetBtn">拆光<span>重接</span></button>
+        </div>
+        <div class="order3" id="order2"></div>
+        <div class="info">主电源进线、日光灯里面镇流器到灯管那段已经接好，你接板上 20 根。线的颜色按国标：<b>相线红、零线蓝、地线黄绿</b>。</div>
+      </div>
+      <div class="warnbox"><b>注意：这 20 根是照考试软件 K33 的原理图排的，没有你的实做记录。</b>板上元件的位置照的是你拍的 K33 板照片。考前拿考题图对一遍，有出入以考题为准。</div>
+    </div>
+  </section>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+function pl(p){ return p.map(q => q[0] + ',' + q[1]).join(' '); }
+function txt(x, y, s, cls, al){ return '<text class="' + (cls || 'lb') + '" x="' + x + '" y="' + y + '"' + (al ? ' text-anchor="' + al + '"' : '') + '>' + s + '</text>'; }
+function finder(edges){
+  const P = {};
+  const f = x => { while(P[x] !== undefined && P[x] !== x) x = P[x]; return x; };
+  edges.forEach(e => { P[e[0]] = P[e[0]] || e[0]; P[e[1]] = P[e[1]] || e[1]; const a = f(e[0]), b = f(e[1]); if(a !== b) P[a] = b; });
+  return f;
+}
+
+/* ================= 状态 =================
+   s1 / s2：双控开关拨在 0＝L1、1＝L2（起始 S1 在 L1、S2 在 L2，灯是灭的 —— 考场顺序「左开、右关、右开、左关」从这儿开始） */
+const fresh = () => ({qf1:false, qf2:false, qf3:false, s1:0, s2:1, s3:false});
+/* 原理图上：灯亮、日光灯亮、插座有电 */
+const loads = st => {
+  const L3 = st.qf1 && st.qf3;
+  return {el:L3 && st.s1 === st.s2, fl:L3 && st.s3, xs:st.qf1 && st.qf2};
+};
+
+/* ================= 原理图 =================
+   坐标 360×312。左边电源进线 → 电能表（1 进火 2 出火 3 进零 4 出零）→ QF1 → 两路：
+   左下插座（QF2 漏保）、右下照明（QF3 → S1/S2 双控白炽灯、S3 单控日光灯）。
+   每段线：n＝原理图上哪一根线（1~15，接线屏判断要不要接在一起用），c＝L/N/PE，g＝什么时候有电流 */
+const SEGS = [
+  {p:[[4,76],[32,76],[32,64]], n:1, c:'L', g:'mt'},
+  {p:[[64,64],[64,92]], n:2, c:'L', g:'mt'},
+  {p:[[4,84],[96,84],[96,64]], n:3, c:'N', g:'mt'},
+  {p:[[128,64],[128,92]], n:4, c:'N', g:'mt'},
+  {p:[[64,110],[64,118]], n:5, c:'L', g:'mt'},
+  {p:[[64,118],[30,118],[30,140]], n:5, c:'L', g:'no'},
+  {p:[[64,118],[170,118],[170,140]], n:5, c:'L', g:'b3'},
+  {p:[[128,110],[128,128]], n:6, c:'N', g:'mt'},
+  {p:[[128,128],[50,128],[50,140]], n:6, c:'N', g:'no'},
+  {p:[[128,128],[200,128],[200,140]], n:6, c:'N', g:'b3'},
+  {p:[[30,158],[30,176],[68,176],[68,206]], n:7, c:'L', g:'no'},
+  {p:[[50,158],[50,184],[24,184],[24,206]], n:8, c:'N', g:'no'},
+  {p:[[4,194],[46,194],[46,200]], n:9, c:'P', g:'no'},
+  {p:[[170,158],[170,172]], n:10, c:'L', g:'b3'},
+  {p:[[170,172],[170,188]], n:10, c:'L', g:'el'},
+  {p:[[170,172],[280,172],[280,188]], n:10, c:'L', g:'fl'},
+  {p:[[160,204],[160,236]], n:11, c:'L', g:'k1'},
+  {p:[[180,204],[180,236]], n:12, c:'L', g:'k2'},
+  {p:[[170,252],[170,267]], n:13, c:'L', g:'el'},
+  {p:[[200,158],[200,300]], n:14, c:'N', g:'b3'},
+  {p:[[170,285],[170,300],[200,300]], n:14, c:'N', g:'el'},
+  {p:[[280,284],[280,300],[200,300]], n:14, c:'N', g:'fl'},
+  {p:[[280,206],[280,216]], n:15, c:'L', g:'fl'},
+  {p:[[280,232],[280,244]], n:0, c:'L', g:'fl'}           // 镇流器到灯管（灯具里面，已接好）
+];
+const DOTS = [[64,118],[128,128],[170,172],[200,300]];
+const N_OF = {L:[1,2,5,7,10,11,12,13,15], N:[3,4,6,8,14], P:[9]};
+function liveOf(st){
+  const ld = loads(st), any = ld.el || ld.fl;
+  return {mt:any, b3:any, el:ld.el, fl:ld.fl, k1:ld.el && st.s1 === 0, k2:ld.el && st.s1 === 1, no:false};
+}
+/* 带电（对地有电压）：只看相线这一侧 —— 相线经过空开、开关能传下去，过了负载就是零线那头了 */
+function voltOf(st){
+  const v = {1:true, 2:true};
+  if(st.qf1) v[5] = true;
+  if(v[5] && st.qf2) v[7] = true;
+  if(v[5] && st.qf3) v[10] = true;
+  if(v[10]){ v[st.s1 === 0 ? 11 : 12] = true; if(st.s3) v[15] = true; v[0] = !!st.s3; }
+  if((st.s2 === 0 && v[11]) || (st.s2 === 1 && v[12])) v[13] = true;
+  return v;
+}
+/* 开关、空开：竖着画。2P 空开两根竖线 xL/xN */
+function brk2(xL, xN, ya, yb, closed, on, rcd){
+  let h = '';
+  [xL, xN].forEach(x => {
+    const ex = closed ? x : x - 7, ey = ya + (closed ? 4 : 5);
+    h += '<polyline class="w' + (on ? ' on' : '') + '" points="' + x + ',' + ya + ' ' + x + ',' + (ya+4) + '"/>' +
+      '<line class="w' + (on ? ' on' : '') + '" x1="' + x + '" y1="' + (yb-4) + '" x2="' + x + '" y2="' + yb + '"/>' +
+      '<line class="arm' + (on ? ' on' : '') + '" x1="' + x + '" y1="' + (yb-4) + '" x2="' + ex + '" y2="' + ey + '"/>' +
+      '<path class="w" d="M' + (x-2.2) + ',' + (ya+1.8) + 'l4.4,4.4M' + (x+2.2) + ',' + (ya+1.8) + 'l-4.4,4.4"/>';
+  });
+  const my = (ya + yb) / 2 + 0.5;
+  h += '<line class="gang" x1="' + (xL-4) + '" y1="' + my + '" x2="' + (xN-4) + '" y2="' + my + '"/>';
+  if(rcd) h += '<rect x="' + (xN+4) + '" y="' + (my-5) + '" width="10" height="10" rx="2" fill="none" stroke="var(--wire)" stroke-width="1"/>' + txt(xN+9, my+2.4, '漏', 'tn', 'middle');
+  return h;
+}
+/* 双控开关：公共端 c，两个掷点 L1（左）L2（右）；up＝公共端在上 */
+function sw2(x, yc, yt, pos, up, on){
+  const tx = pos === 0 ? x - 10 : x + 10, c = on ? ' on' : '';
+  return '<circle cx="' + (x-10) + '" cy="' + yt + '" r="1.6" class="dot"/><circle cx="' + (x+10) + '" cy="' + yt + '" r="1.6" class="dot"/>' +
+    '<line class="w' + c + '" x1="' + x + '" y1="' + yc + '" x2="' + x + '" y2="' + (yc + (up ? 4 : -4)) + '"/>' +
+    '<line class="arm' + c + '" x1="' + x + '" y1="' + (yc + (up ? 4 : -4)) + '" x2="' + tx + '" y2="' + yt + '"/>' +
+    tn(x-12, yt + (up ? 9 : -4), 'L1', 'end') + tn(x+12, yt + (up ? 9 : -4), 'L2');
+}
+function tn(x, y, s, al){ return txt(x, y, s, 'tn', al); }
+function els(st){
+  const ld = loads(st), any = ld.el || ld.fl;
+  const el = {};
+  el.SRC = {h:txt(2, 72, 'L', 'lb2') + txt(2, 92, 'N', 'lb2') + txt(2, 190, 'PE', 'lb2'), box:[0,64,30,26]};
+  el.MT = {h:'<rect class="box" x="20" y="20" width="120" height="36" rx="3"/>' + txt(80, 36, 'kWh', 'lb', 'middle') + txt(80, 47, '电能表', 'lb2', 'middle') +
+    '<rect class="box" x="20" y="58" width="120" height="10" rx="1"/>' +
+    [[32,'1'],[64,'2'],[96,'3'],[128,'4']].map(t => '<circle cx="' + t[0] + '" cy="64" r="2" class="dot"/>' + tn(t[0]+4, 66.5, t[1])).join('') +
+    (any ? '<g class="rot" style="transform-origin:122px 38px"><line x1="122" y1="31" x2="122" y2="45" stroke="#d62828" stroke-width="1.6"/></g>' : ''), box:[18,18,126,54]};
+  el.QF1 = {h:brk2(64, 128, 92, 110, st.qf1, any) + txt(142, 100, 'QF1', 'lb') + txt(142, 108, '总开关', 'lb2'), box:[54,90,120,22]};
+  el.QF2 = {h:brk2(30, 50, 140, 158, st.qf2, false, true) + txt(70, 150, 'QF2', 'lb') + txt(70, 158, '插座·漏保', 'lb2'), box:[20,138,90,22]};
+  el.QF3 = {h:brk2(170, 200, 140, 158, st.qf3, any) + txt(208, 150, 'QF3', 'lb') + txt(208, 158, '照明', 'lb2'), box:[160,138,76,22]};
+  el.XS = {h:'<rect class="box" x="14" y="200" width="64" height="24" rx="4"/>' +
+    '<circle cx="24" cy="212" r="2.4" fill="none" stroke="var(--wire)"/><circle cx="68" cy="212" r="2.4" fill="none" stroke="var(--wire)"/><circle cx="46" cy="206" r="2.4" fill="none" stroke="var(--wire)"/>' +
+    tn(24, 221, 'N', 'middle') + tn(68, 221, 'L', 'middle') + tn(46, 216, 'PE', 'middle') + txt(46, 236, 'XS 插座', 'lb', 'middle') + txt(46, 244, '左零右火上接地', 'lb2', 'middle') +
+    (ld.xs ? '<circle cx="74" cy="201" r="2.6" fill="#d62828"/>' : ''), box:[10,196,72,52]};
+  el.S1 = {h:'<circle cx="170" cy="188" r="1.6" class="dot"/>' + sw2(170, 188, 204, st.s1, true, ld.el) + txt(150, 196, 'S1', 'lb', 'end') + txt(150, 204, '双控', 'lb2', 'end'), box:[132,184,58,26]};
+  el.S2 = {h:'<circle cx="170" cy="252" r="1.6" class="dot"/>' + sw2(170, 252, 236, st.s2, false, ld.el) + txt(150, 244, 'S2', 'lb', 'end') + txt(150, 252, '双控', 'lb2', 'end'), box:[132,230,58,26]};
+  el.EL = {h:'<circle class="lamp' + (ld.el ? ' lit' : '') + '" cx="170" cy="276" r="9"/><path d="M163.6,269.6l12.8,12.8M176.4,269.6l-12.8,12.8" stroke="var(--wire)" stroke-width="1"/>' +
+    txt(156, 274, 'EL', 'lb', 'end') + txt(156, 282, '白炽灯', 'lb2', 'end'), box:[130,264,52,24]};
+  el.S3 = {h:'<circle cx="280" cy="188" r="1.6" class="dot"/><circle cx="280" cy="206" r="1.6" class="dot"/>' +
+    '<line class="arm' + (ld.fl ? ' on' : '') + '" x1="280" y1="206" x2="' + (st.s3 ? 280 : 273) + '" y2="' + (st.s3 ? 189 : 191) + '"/>' +
+    txt(292, 196, 'S3', 'lb') + txt(292, 204, '单控', 'lb2'), box:[266,184,60,26]};
+  el.FL = {h:'<rect class="box" x="272" y="216" width="16" height="16" rx="2"/>' + txt(280, 227, '镇', 'tn', 'middle') +
+    '<rect class="tube' + (ld.fl ? ' lit' : '') + '" x="275" y="244" width="10" height="40" rx="3"/>' +
+    txt(292, 227, '镇流器', 'lb2') + txt(292, 262, '日光灯', 'lb') + txt(292, 270, '灯管', 'lb2'), box:[266,212,64,76]};
+  return el;
+}
+const INFO = {
+  SRC:'<b>电源进线</b>：L 相线、N 零线、PE 保护地线。板上是一个进线端子排，已经接好电源。',
+  MT:'<b>单相电能表</b>（电度表），计用了多少电。下面一排 4 个端子：<b>1 进火、2 出火、3 进零、4 出零</b>。有电器在用电，表盘就转。',
+  QF1:'<b>QF1 总开关</b>，2P 空开：相线和零线一起断。考场合闸<b>从左到右</b>（QF1→QF2→QF3），分闸<b>从右到左</b>。',
+  QF2:'<b>QF2 插座回路，带漏电保护</b>（「漏」字小框）。人碰到相线、电流从人身上流到地，它会跳闸。',
+  QF3:'<b>QF3 照明回路</b>空开。下面分两路：双控白炽灯、单控日光灯。',
+  XS:'<b>五孔插座</b>（这里画的是三孔那一组）：面对插座<b>左零右火上接地</b>。QF1、QF2 都合上它才有电，有电时右上角亮红点。',
+  S1:'<b>S1 双控开关</b>：一个公共端 L，两个掷点 L1、L2，扳一下就从一边换到另一边。公共端接<b>相线</b>（从 QF3 来）。',
+  S2:'<b>S2 双控开关</b>：公共端接灯。L1、L2 两个掷点用两根<b>联络线</b>跟 S1 的 L1、L2 对接 —— 两个开关拨到同一边，相线才走得通。',
+  EL:'<b>EL 白炽灯</b>：一头经双控开关接相线，另一头直接接零线。',
+  S3:'<b>S3 单控开关</b>，管日光灯。也是串在<b>相线</b>上。',
+  FL:'<b>日光灯</b>：镇流器和灯管串在一起，镇流器到灯管那段在灯具里已经接好。'
+};
+const HL = {L:'<b>相线 L（红）</b>：电源 L → 表 1 → 2 → QF1 → 两路空开 → 插座右孔 / 开关 → 灯。<b>所有开关都在这条线上。</b>',
+  N:'<b>零线 N（蓝）</b>：电源 N → 表 3 → 4 → QF1 → 两路空开 → 插座左孔 / 灯的另一头。<b>零线不过开关</b>，直接到灯。',
+  P:'<b>地线 PE（黄绿）</b>：电源 PE → 接地排 → 插座上孔。不进电能表，也不过任何开关。'};
+function schem(st, ov){
+  ov = ov || {};
+  const live = ov.cur ? liveOf(st) : {}, volt = ov.volt ? voltOf(st) : {};
+  let h = '';
+  SEGS.forEach(g => {
+    const on = live[g.g], hv = !on && volt[g.n];
+    let cls = 'w' + (on ? ' on' : hv ? ' hv' : '') + (ov.color && !on && !hv ? ' w' + g.c : '');
+    if(ov.hl && N_OF[ov.hl].indexOf(g.n) >= 0) cls = 'w nb';
+    if(ov.hln != null && g.n === ov.hln) cls = 'w nb';
+    h += '<polyline class="' + cls + '" points="' + pl(g.p) + '"/>';
+    if(on) h += '<polyline class="ant" points="' + pl(g.p) + '"/>';
+  });
+  DOTS.forEach(d => { h += '<circle class="dot" cx="' + d[0] + '" cy="' + d[1] + '" r="1.9"/>'; });
+  const e = els(st);
+  for(const id in e){
+    h += '<g data-id="' + id + '">' + e[id].h + '<rect class="hit' + (ov.sel === id ? ' sel' : '') + '" x="' + e[id].box[0] + '" y="' + e[id].box[1] + '" width="' + e[id].box[2] + '" height="' + e[id].box[3] + '" rx="3"/></g>';
+  }
+  (ov.rings || []).forEach(r => { h += '<circle class="ring pulse' + (r[2] ? ' ' + r[2] : '') + '" cx="' + r[0] + '" cy="' + r[1] + '" r="5"/>'; });
+  return h;
+}
+
+/* ================= 页签 ================= */
+let cur = 0;
+$('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  cur = +b.dataset.i;
+  document.querySelectorAll('#tabs button').forEach(t => t.classList.toggle('on', +t.dataset.i === cur));
+  document.querySelectorAll('.scene').forEach((s, i) => s.classList.toggle('on', i === cur));
+  document.body.classList.toggle('lock3', cur === 2);
+  if(cur === 2){ window.scrollTo(0, $('sc2').getBoundingClientRect().top + window.scrollY - $('tabs').offsetHeight); $('pane2').scrollTop = 0; }
+  else window.scrollTo(0, 0);
+});
+document.querySelectorAll('.zbtn').forEach(b => b.addEventListener('click', () => {
+  const z = b.closest('.card').querySelector('.zw').classList.toggle('zoom');
+  b.textContent = z ? '缩小' : '放大';
+}));
+function tabsH(){ document.documentElement.style.setProperty('--tabsH', $('tabs').offsetHeight + 'px'); }
+tabsH(); window.addEventListener('resize', tabsH);
+
+/* 开关按钮：空开、开关都是点一下扳一下 */
+const TOG = [['qf1','QF1','总开关'],['qf2','QF2','插座'],['qf3','QF3','照明'],['s1','S1','双控'],['s2','S2','双控'],['s3','S3','日光灯']];
+function togHTML(st){
+  return TOG.map(t => {
+    const k = t[0], on = typeof st[k] === 'number' ? 'L' + (st[k] + 1) : (st[k] ? '合' : '分');
+    const lit = typeof st[k] === 'number' ? false : st[k];
+    return '<button data-k="' + k + '"' + (lit ? ' class="on"' : '') + '>' + t[1] + ' ' + t[2] + '<span>' + (k[0] === 's' && k !== 's3' ? '拨在 ' + on : (k === 's3' ? (st.s3 ? '接通' : '断开') : (st.qf1 !== undefined && st[k] ? '合闸' : '分闸'))) + '</span></button>';
+  }).join('');
+}
+function bindTog(box, st, onChange){
+  box.addEventListener('click', e => {
+    const b = e.target.closest('button[data-k]'); if(!b) return;
+    const k = b.dataset.k;
+    st[k] = typeof st[k] === 'number' ? 1 - st[k] : !st[k];
+    onChange();
+  });
+}
+
+/* ================= ① 看图 ================= */
+const NORMAL = fresh();
+let v0 = {};
+function draw0(){ $('s0').innerHTML = schem(NORMAL, Object.assign({color:true}, v0)); }
+$('s0').addEventListener('click', e => {
+  const g = e.target.closest('[data-id]'); if(!g) return;
+  v0 = {sel:g.dataset.id}; $('i0').innerHTML = INFO[g.dataset.id];
+  $('b0').querySelectorAll('button').forEach((x, i) => x.classList.toggle('on', i === 0));
+  draw0();
+});
+$('b0').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  $('b0').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  const k = b.dataset.k;
+  v0 = k === 'all' ? {} : {hl:k};
+  $('i0').innerHTML = k === 'all' ? '点一个符号试试。' : HL[k];
+  draw0();
+});
+
+/* ================= ② 通电 ================= */
+const S1 = fresh();
+function say1(st){
+  const ld = loads(st);
+  if(!st.qf1) return {cls:'info', t:'先合总开关 QF1', b:'考场合闸<b>从左到右</b>：QF1 → QF2 → QF3。现在只有电能表前后带电（红虚线）—— 电能表一直接着电源，<b>表上永远有电</b>。'};
+  const on = [ld.el && '白炽灯亮', ld.fl && '日光灯亮', ld.xs && '插座有电'].filter(Boolean);
+  if(ld.el && !ld.fl) return {cls:'ok', t:on.join(' · '), b:'S1、S2 拨在<b>同一边</b>（都在 L' + (st.s1 + 1) + '），相线经 L' + (st.s1 + 1) + ' 那根联络线走到灯。现在扳<b>任意一个</b>双控开关，灯都会灭 —— 这就是两地控制。电能表在转。'};
+  if(ld.fl && !ld.el) return {cls:'ok', t:on.join(' · '), b:'S3 接通，相线经 S3 → 镇流器 → 灯管 → 零线。扳 S3 断开后，镇流器那头就没有红虚线了：<b>开关断的是相线</b>。'};
+  if(on.length) return {cls:'ok', t:on.join(' · '), b:'有电器在用电，电能表就转。'};
+  if(st.qf3) return {cls:'info', t:'照明有电，灯都灭着', b:'S1 拨在 L' + (st.s1 + 1) + '、S2 拨在 L' + (st.s2 + 1) + '，<b>不在同一边</b>，联络线走不通，白炽灯不亮。看红虚线：相线停在开关那儿，<b>灯座不带电</b>。扳一下 S1 试试。'};
+  return {cls:'info', t:'总开关合上了', b:'红虚线到 QF2、QF3 上口为止。合 QF2 插座有电，合 QF3 照明那路才有电。'};
+}
+function upd1(){
+  const m = say1(S1);
+  $('say1').className = 'say ' + m.cls; $('say1T').textContent = m.t; $('say1B').innerHTML = m.b;
+  $('s1').innerHTML = schem(S1, {cur:true, volt:true});
+  $('b1').innerHTML = togHTML(S1);
+}
+bindTog($('b1'), S1, upd1);
+$('tasks1').innerHTML = [
+  ['灯亮着时扳一下 S2，再扳一下 S1，灯怎么变？为什么？', '扳 S2：两个开关错开了，联络线走不通，灯灭；再扳 S1：又拨到同一边，灯又亮。<b>任意一个开关都能开、能关</b>，所以叫双控（两地控制）。'],
+  ['只合 QF1、QF2，插座有电吗？灯呢？', '插座有电（右上角亮红点），灯不亮：照明那路的 QF3 没合，红虚线停在 QF3 上口。'],
+  ['关着灯的时候，灯座那头带电吗？', '不带电（图上灯座没有红虚线）：开关串在相线上，断开后相线到不了灯。要是开关错接在零线上，关了灯灯座照样带电，换灯泡会触电。']
+].map(t => '<li>' + t[0] + '<details><summary>看答案</summary><div>' + t[1] + '</div></details></li>').join('');
+
+/* ================= ③ 接线 =================
+   板 360×312：上排 电能表 / 进线端子排 / 日光灯；中排 QF1 QF2 QF3 / 灯座；下排 接地排 / 插座 / S1 S2 S3。
+   线槽：两条横槽 + 右边竖槽。上排端子往下出、中排上桩往上下桩往下、下排往上 */
+const DUCTS = {h:[[8,354,100,118], [8,354,204,226]], v:[336,354,100,226]};
+const T = {
+  'src-l':{x:150, y:78, nm:'进线 L', n:1, e:'d', sx:12, sy:76},
+  'src-n':{x:175, y:78, nm:'进线 N', n:3, e:'d', sx:12, sy:84},
+  'src-pe':{x:200, y:78, nm:'进线 PE', n:9, e:'d', sx:12, sy:194},
+  'mt-1':{x:28, y:82, nm:'电能表 1（进火）', n:1, e:'d', sx:32, sy:64},
+  'mt-2':{x:52, y:82, nm:'电能表 2（出火）', n:2, e:'d', sx:64, sy:64},
+  'mt-3':{x:76, y:82, nm:'电能表 3（进零）', n:3, e:'d', sx:96, sy:64},
+  'mt-4':{x:100, y:82, nm:'电能表 4（出零）', n:4, e:'d', sx:128, sy:64},
+  'bal-l':{x:246, y:78, nm:'镇流器 L', n:15, e:'d', sx:280, sy:216},
+  'bal-n':{x:272, y:78, nm:'镇流器 N', n:14, e:'d', sx:280, sy:284},
+  'qf1-li':{x:28, y:136, nm:'QF1 上口 L', n:2, e:'u', sx:64, sy:92},
+  'qf1-ni':{x:52, y:136, nm:'QF1 上口 N', n:4, e:'u', sx:128, sy:92},
+  'qf1-lo':{x:28, y:192, nm:'QF1 下口 L', n:5, e:'d', sx:64, sy:110},
+  'qf1-no':{x:52, y:192, nm:'QF1 下口 N', n:6, e:'d', sx:128, sy:110},
+  'qf2-li':{x:90, y:136, nm:'QF2 上口 L', n:5, e:'u', sx:30, sy:140},
+  'qf2-ni':{x:114, y:136, nm:'QF2 上口 N', n:6, e:'u', sx:50, sy:140},
+  'qf2-lo':{x:90, y:192, nm:'QF2 下口 L', n:7, e:'d', sx:30, sy:158},
+  'qf2-no':{x:114, y:192, nm:'QF2 下口 N', n:8, e:'d', sx:50, sy:158},
+  'qf3-li':{x:164, y:136, nm:'QF3 上口 L', n:5, e:'u', sx:170, sy:140},
+  'qf3-ni':{x:188, y:136, nm:'QF3 上口 N', n:6, e:'u', sx:200, sy:140},
+  'qf3-lo':{x:164, y:192, nm:'QF3 下口 L', n:10, e:'d', sx:170, sy:158},
+  'qf3-no':{x:188, y:192, nm:'QF3 下口 N', n:14, e:'d', sx:200, sy:158},
+  'el-l':{x:252, y:192, nm:'灯座 L', n:13, e:'d', sx:170, sy:267},
+  'el-n':{x:300, y:192, nm:'灯座 N', n:14, e:'d', sx:170, sy:285},
+  'pe-1':{x:24, y:246, nm:'接地排', n:9, e:'u', sx:30, sy:194},
+  'pe-2':{x:42, y:246, nm:'接地排', n:9, e:'u', sx:30, sy:194},
+  'pe-3':{x:60, y:246, nm:'接地排', n:9, e:'u', sx:30, sy:194},
+  'xs-n':{x:92, y:246, nm:'插座 N（左孔）', n:8, e:'u', sx:24, sy:206},
+  'xs-pe':{x:110, y:246, nm:'插座 PE（上孔）', n:9, e:'u', sx:46, sy:200},
+  'xs-l':{x:128, y:246, nm:'插座 L（右孔）', n:7, e:'u', sx:68, sy:206},
+  's1-l1':{x:162, y:246, nm:'S1 L1', n:11, e:'u', sx:160, sy:204},
+  's1-l':{x:176, y:246, nm:'S1 公共端 L', n:10, e:'u', sx:170, sy:188},
+  's1-l2':{x:190, y:246, nm:'S1 L2', n:12, e:'u', sx:180, sy:204},
+  's2-l1':{x:220, y:246, nm:'S2 L1', n:11, e:'u', sx:160, sy:236},
+  's2-l':{x:234, y:246, nm:'S2 公共端 L', n:13, e:'u', sx:170, sy:252},
+  's2-l2':{x:248, y:246, nm:'S2 L2', n:12, e:'u', sx:180, sy:236},
+  's3-l':{x:284, y:246, nm:'S3 L（进）', n:10, e:'u', sx:280, sy:188},
+  's3-l1':{x:304, y:246, nm:'S3 L1（出）', n:15, e:'u', sx:280, sy:206}
+};
+const FIXED = [['pe-1','pe-2'], ['pe-2','pe-3']];          // 接地排是一整根铜排
+const NEED = {};
+for(const id in T){ (NEED[T[id].n] = NEED[T[id].n] || []).push(id); }
+const TOTAL = Object.keys(NEED).reduce((s, n) => s + NEED[n].length - 1, 0) - FIXED.length;
+const colorOf = n => N_OF.L.indexOf(n) >= 0 ? 'L' : N_OF.N.indexOf(n) >= 0 ? 'N' : 'P';
+/* 接线顺序照练习页 K33 的 5 组（考试软件那张图），每组接完提示试一下 */
+const ORDER = [
+  {t:'① 电能表进线', d:'电源 L → 表 1，表 2 → QF1 上口 L；电源 N → 表 3，表 4 → QF1 上口 N',
+   w:[['src-l','mt-1'], ['mt-2','qf1-li'], ['src-n','mt-3'], ['mt-4','qf1-ni']]},
+  {t:'② 分路', d:'QF1 下口 L、N 各引两根：一路去 QF2（插座），一路去 QF3（照明）',
+   w:[['qf1-lo','qf2-li'], ['qf1-no','qf2-ni'], ['qf1-lo','qf3-li'], ['qf1-no','qf3-ni']]},
+  {t:'③ 插座回路', d:'QF2 下口 → 插座 L、N（左零右火）；电源 PE → 接地排 → 插座 PE',
+   w:[['qf2-lo','xs-l'], ['qf2-no','xs-n'], ['src-pe','pe-1'], ['pe-2','xs-pe']],
+   test:'试：合 QF1、QF2，插座右上角亮红点 = 有电。'},
+  {t:'④ 双控白炽灯', d:'QF3 L → S1 公共端；S1 L1—S2 L1、S1 L2—S2 L2；S2 公共端 → 灯座 L；QF3 N → 灯座 N',
+   w:[['qf3-lo','s1-l'], ['s1-l1','s2-l1'], ['s1-l2','s2-l2'], ['s2-l','el-l'], ['qf3-no','el-n']],
+   test:'试：合 QF3，按考场顺序<b>左 S1 开 → 右 S2 关 → 右 S2 开 → 左 S1 关</b>，每扳一下灯都要变。'},
+  {t:'⑤ 日光灯', d:'QF3 L → S3 L，S3 L1 → 镇流器 L；QF3 N → 镇流器 N',
+   w:[['qf3-lo','s3-l'], ['s3-l1','bal-l'], ['qf3-no','bal-n']],
+   test:'全部接完。试车：从左到右合 QF1、QF2、QF3 → 白炽灯「左开、右关、右开、左关」→ 开关 S3 日光灯 → 插座有电 → 从右到左分闸。'}
+];
+const S2 = fresh();
+let wires = [], pick = null, rings = [], msg = null, guide = true, lid = false, lastOk = 0;
+const edgesW = () => wires.map(w => [w.a, w.b]).concat(FIXED);
+function connected(a, b){ const f = finder(edgesW()); return f(a) === f(b); }
+/* 板上：线 + 此刻闭合的空开/开关 + 电能表内部（1-2、3-4 一直通）连成网，负载两头分别通到电源 L、N 才亮 */
+function boardLoads(st){
+  const e = edgesW().concat([['mt-1','mt-2'], ['mt-3','mt-4']]);
+  ['qf1','qf2','qf3'].forEach(k => { if(st[k]){ e.push([k + '-li', k + '-lo']); e.push([k + '-ni', k + '-no']); } });
+  e.push(['s1-l', st.s1 === 0 ? 's1-l1' : 's1-l2']); e.push(['s2-l', st.s2 === 0 ? 's2-l1' : 's2-l2']);
+  if(st.s3) e.push(['s3-l', 's3-l1']);
+  const f = finder(e), L = f('src-l'), N = f('src-n');
+  const on = (a, b) => f(a) === L && f(b) === N;
+  return {el:on('el-l','el-n'), fl:on('bal-l','bal-n'), xs:on('xs-l','xs-n'), pe:f('xs-pe') === f('src-pe')};
+}
+function missingN(){ return Object.keys(NEED).filter(n => NEED[n].some(t => !connected(t, NEED[n][0]))).map(Number); }
+function nextWire(){
+  for(let g = 0; g < ORDER.length; g++) for(let i = 0; i < ORDER[g].w.length; i++){
+    const [a, b] = ORDER[g].w[i]; if(!connected(a, b)) return {g:g, i:i, a:a, b:b};
+  }
+  return null;
+}
+const groupDone = g => ORDER[g].w.every(([a, b]) => connected(a, b));
+const count = t => wires.filter(w => w.a === t || w.b === t).length;
+function tapTerm(id){
+  const A0 = T[id];
+  lastOk = 0;
+  if(!pick){
+    if(count(id) >= 2){ msg = {cls:'bad', t:A0.nm + ' 已经压了两根线', b:'一个端子最多压两根。'}; rings = [[A0.sx, A0.sy, 'bad']]; return; }
+    pick = id; rings = [[A0.sx, A0.sy]];
+    msg = {cls:'info', t:'选中 ' + A0.nm, b:'上面图里圈出来的就是它。顺着图上这根线找另一头，再点板上对应的端子。点它自己取消。'};
+    return;
+  }
+  if(pick === id){ pick = null; rings = []; msg = null; return; }
+  const A = T[pick], B = A0;
+  if(A.n !== B.n){
+    rings = [[A.sx, A.sy, 'bad'], [B.sx, B.sy, 'bad']];
+    const ca = colorOf(A.n), cb = colorOf(B.n);
+    const why = ca !== cb ? (ca === 'P' || cb === 'P' ? '一头是<b>地线 PE</b>：地线只接接地排和插座上孔，跟相线、零线都不能碰。' : '一头是<b>相线</b>、一头是<b>零线</b> —— 接上就是<b>短路</b>（合闸就跳）。')
+      : '看图上两个红圈：它们不在同一根线上，中间隔着' + (ca === 'L' ? '开关或空开' : '空开') + '。接上就把它短接掉了。';
+    msg = {cls:'bad', t:'✗ 不能接', b:A.nm + ' 和 ' + B.nm + '：' + why + '<br>已选的 ' + A.nm + ' 还选着。'};
+    return;
+  }
+  rings = [[A.sx, A.sy], [B.sx, B.sy]];
+  if(count(id) >= 2){ msg = {cls:'bad', t:B.nm + ' 已经压了两根线', b:'一个端子最多两根，换同一根线上的别的端子。'}; return; }
+  if(connected(pick, id)){ msg = {cls:'bad', t:'这两个已经通了', b:'它们已经经过别的线（或接地排）连在一起。'}; pick = null; return; }
+  const before = ORDER.map((G, g) => groupDone(g));
+  wires.push({a:pick, b:id, n:A.n});
+  pick = null; rings = [];
+  const fin = ORDER.findIndex((G, g) => !before[g] && groupDone(g));
+  if(fin >= 0 && ORDER[fin].test){ msg = {cls:'ok', t:'✓ ' + ORDER[fin].t + ' 接完', b:ORDER[fin].test}; return; }
+  if(guide && nextWire()){ msg = null; lastOk = 1; return; }
+  msg = {cls:'ok', t:'✓ 接上了', b:'还剩 ' + (TOTAL - wires.length) + ' 根。'};
+}
+
+/* ---- 走线：同一条槽直走，跨槽经右边竖槽；每根分一道 ---- */
+const LANES = [0, -3, 3, -6, 6, -9, 9];
+function ductOf(id){
+  const t = T[id], up = t.e === 'u';
+  let best = null;
+  DUCTS.h.forEach(r => { if(up ? r[3] <= t.y && (!best || r[3] > best[3]) : r[2] >= t.y && (!best || r[2] < best[2])) best = r; });
+  return best;
+}
+function paths(){
+  const used = [], vx = (DUCTS.v[0] + DUCTS.v[1]) / 2;
+  return wires.map(w => {
+    const A = T[w.a], B = T[w.b], da = ductOf(w.a), db = ductOf(w.b), ka = DUCTS.h.indexOf(da), kb = DUCTS.h.indexOf(db);
+    const ya0 = (da[2] + da[3]) / 2, yb0 = (db[2] + db[3]) / 2;
+    const u = da === db ? [[ka, Math.min(A.x, B.x), Math.max(A.x, B.x)]] : [[ka, Math.min(A.x, vx), vx], [kb, Math.min(B.x, vx), vx], ['v', Math.min(ya0, yb0), Math.max(ya0, yb0)]];
+    let lane = 0;
+    while(lane < LANES.length && used.some(q => q[3] === lane && u.some(r => r[0] === q[0] && r[1] < q[2] + 4 && q[1] < r[2] + 4))) lane++;
+    if(lane === LANES.length) lane = 0;
+    u.forEach(r => used.push([r[0], r[1], r[2], lane]));
+    const o = LANES[lane], ya = ya0 + o, yb = yb0 + o;
+    if(da === db) return [[A.x,A.y],[A.x,ya],[B.x,ya],[B.x,B.y]];
+    return [[A.x,A.y],[A.x,ya],[vx+o,ya],[vx+o,yb],[B.x,yb],[B.x,B.y]];
+  });
+}
+function ductB(x, y, w, h, isLid){
+  let s = '<rect class="duct' + (isLid ? ' lid' : '') + '" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"/>';
+  if(w > h) for(let t = x + 4; t < x + w; t += 6) s += '<line class="duct-t" x1="' + t + '" y1="' + y + '" x2="' + t + '" y2="' + (y+3) + '"/><line class="duct-t" x1="' + t + '" y1="' + (y+h-3) + '" x2="' + t + '" y2="' + (y+h) + '"/>';
+  else for(let t = y + 4; t < y + h; t += 6) s += '<line class="duct-t" x1="' + x + '" y1="' + t + '" x2="' + (x+3) + '" y2="' + t + '"/><line class="duct-t" x1="' + (x+w-3) + '" y1="' + t + '" x2="' + (x+w) + '" y2="' + t + '"/>';
+  return s;
+}
+const ducts = isLid => ductB(DUCTS.v[0], DUCTS.v[2], DUCTS.v[1] - DUCTS.v[0], DUCTS.v[3] - DUCTS.v[2], isLid) + DUCTS.h.map(r => ductB(r[0], r[2], r[1] - r[0], r[3] - r[2], isLid)).join('');
+function dev(x, y, w, h, nm, sub, al){
+  return '<rect class="dev" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="4"/>' +
+    '<text class="dlab" x="' + (x + w/2) + '" y="' + (y + h/2 + (sub ? -1 : 3)) + '" text-anchor="middle">' + nm + '</text>' +
+    (sub ? '<text class="dlab2" x="' + (x + w/2) + '" y="' + (y + h/2 + 9) + '" text-anchor="middle">' + sub + '</text>' : '');
+}
+function brkB(x, nm, sub, on, rcd){
+  let h = '<rect class="dev" x="' + x + '" y="128" width="' + (rcd ? 64 : 48) + '" height="72" rx="4"/>';
+  h += '<rect class="dev2" x="' + (x+12) + '" y="151" width="24" height="16" rx="2"/>';
+  h += '<rect x="' + (x+14) + '" y="' + (on ? 153 : 159) + '" width="20" height="6" rx="1.5" fill="#1971c2"/>';
+  if(rcd) h += '<rect x="' + (x+46) + '" y="152" width="12" height="10" rx="2" fill="#ffd43b" stroke="#a8851c" stroke-width=".7"/><text class="dlab2" x="' + (x+52) + '" y="172" text-anchor="middle">试验</text>';
+  [[x+14, 147, 'L'], [x+38, 147, 'N'], [x+14, 187, 'L'], [x+38, 187, 'N']].forEach(t => { h += '<text class="tlab" x="' + t[0] + '" y="' + t[1] + '" text-anchor="middle" style="font-size:6px">' + t[2] + '</text>'; });
+  return h + '<text class="dlab" x="' + (x+26) + '" y="179" text-anchor="middle" style="font-size:7.5px">' + nm + '</text>' +
+    '<text class="dlab2" x="' + (x + (rcd ? 32 : 24)) + '" y="125" text-anchor="middle">' + sub + ' · ' + (on ? '合闸' : '分闸') + '</text>';
+}
+function swB(x, nm, two, pos){
+  let h = '<rect class="dev" x="' + x + '" y="236" width="48" height="62" rx="5"/>';
+  h += '<rect x="' + (x+14) + '" y="262" width="20" height="26" rx="3" fill="#f8f9fa" stroke="#868e96"/>';
+  h += '<rect x="' + (x+16) + '" y="' + (pos ? 264 : 276) + '" width="16" height="10" rx="2" fill="#adb5bd"/>';
+  return h + '<text class="dlab" x="' + (x+24) + '" y="306" text-anchor="middle" style="font-size:7px">' + nm + '</text>';
+}
+function drawBoard(){
+  const ld = boardLoads(S2), any = ld.el || ld.fl;
+  let h = '<rect class="plate" x="4" y="4" width="352" height="304" rx="8"/>' + ducts(false);
+  h += '<text class="dlab2" x="300" y="108">线槽</text>';
+  /* 上排 */
+  h += dev(14, 12, 112, 80, '', '') + '<rect x="30" y="20" width="80" height="22" rx="3" fill="#212529"/><text x="70" y="35" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#b7d3a8;font-family:monospace">00' + (any ? '42.7' : '42.6') + '</text>';
+  h += '<circle cx="70" cy="56" r="7" fill="#dee2e6" stroke="#868e96"/>' + (any ? '<g class="rot" style="transform-origin:70px 56px"><line x1="70" y1="50" x2="70" y2="53" stroke="#d62828" stroke-width="2"/></g>' : '');
+  h += '<text class="dlab2" x="112" y="60" text-anchor="end">电能表</text>';
+  [['1',28],['2',52],['3',76],['4',100]].forEach(t => { h += '<text class="tlab" x="' + t[1] + '" y="72" text-anchor="middle">' + t[0] + '</text>'; });
+  h += dev(136, 50, 80, 38, '', '') + '<text class="dlab2" x="176" y="60" text-anchor="middle">电源进线（已接好）</text>';
+  [['L',150],['N',175],['PE',200]].forEach(t => { h += '<text class="tlab" x="' + t[1] + '" y="70" text-anchor="middle">' + t[0] + '</text>'; });
+  h += '<polyline class="pw" points="150,4 150,50"/><polyline class="pw" points="175,4 175,50"/><polyline class="pw" points="200,4 200,50"/>';
+  h += dev(228, 12, 104, 76, '', '');
+  h += '<rect x="236" y="18" width="88" height="12" rx="6" class="tube' + (ld.fl ? ' lit' : '') + '"/><text class="dlab2" x="280" y="40" text-anchor="middle">日光灯（灯管 + 镇流器）</text>';
+  h += '<rect x="236" y="46" width="48" height="16" rx="2" fill="#dee2e6" stroke="#868e96"/><text class="dlab2" x="260" y="57" text-anchor="middle">镇流器</text>';
+  [['L',246],['N',272]].forEach(t => { h += '<text class="tlab" x="' + t[1] + '" y="72" text-anchor="middle">' + t[0] + '</text>'; });
+  /* 中排 */
+  h += brkB(14, 'QF1', '总开关', S2.qf1) + brkB(76, 'QF2', '插座（漏保）', S2.qf2, true) + brkB(152, 'QF3', '照明', S2.qf3);
+  h += dev(228, 128, 104, 72, '', '');
+  h += '<circle cx="280" cy="156" r="16" class="lamp' + (ld.el ? ' lit' : '') + '"/>' + (ld.el ? '<circle cx="280" cy="156" r="24" fill="#ffe066" opacity=".25"/>' : '');
+  h += '<text class="dlab2" x="280" y="182" text-anchor="middle">白炽灯 EL（灯座）</text>';
+  [['L',252],['N',300]].forEach(t => { h += '<text class="tlab" x="' + t[1] + '" y="186" text-anchor="middle">' + t[0] + '</text>'; });
+  /* 下排 */
+  h += '<rect x="14" y="240" width="58" height="12" rx="2" fill="#9ccc3d" stroke="#6b8e23" stroke-width=".8"/><text class="dlab2" x="43" y="266" text-anchor="middle">接地排</text>';
+  h += dev(80, 236, 60, 62, '', '');
+  h += '<text class="tlab" x="92" y="262" text-anchor="middle">N</text><text class="tlab" x="110" y="262" text-anchor="middle">PE</text><text class="tlab" x="128" y="262" text-anchor="middle">L</text>';
+  h += '<rect x="94" y="268" width="32" height="20" rx="3" fill="#f8f9fa" stroke="#868e96"/>' + (ld.xs ? '<circle cx="132" cy="292" r="2.6" fill="#d62828"/>' : '');
+  h += '<text class="dlab" x="110" y="306" text-anchor="middle" style="font-size:7px">插座 XS</text>';
+  h += swB(152, 'S1 双控', true, S2.s1) + swB(210, 'S2 双控', true, S2.s2) + swB(270, 'S3 单控', false, S2.s3);
+  [[162,'L1'],[176,'L'],[190,'L2'],[220,'L1'],[234,'L'],[248,'L2'],[284,'L'],[304,'L1']].forEach(t => { h += '<text class="tlab" x="' + t[0] + '" y="258" text-anchor="middle" style="font-size:6px">' + t[1] + '</text>'; });
+  /* 接的线：按线色 */
+  const ps = paths();
+  wires.forEach((w, i) => { const c = colorOf(w.n); h += '<polyline class="uw w' + c + '" points="' + pl(ps[i]) + '"' + (c === 'P' ? ' style="stroke-dasharray:5 3"' : '') + '/>'; });
+  if(lid) h += ducts(true);
+  if(pick) wires.forEach((w, i) => { if(w.a === pick || w.b === pick) h += '<polyline class="uw hi" points="' + pl(ps[i]) + '"/>'; });
+  for(const id in T){
+    const t = T[id];
+    h += '<g data-t="' + id + '" style="cursor:pointer"><circle class="hit" cx="' + t.x + '" cy="' + t.y + '" r="9"/><circle class="term' + (pick === id ? ' selt' : count(id) ? ' ok' : '') + '" cx="' + t.x + '" cy="' + t.y + '" r="4.2"/></g>';
+  }
+  const nx = guide && !pick ? nextWire() : null;
+  if(nx) [nx.a, nx.b].forEach(id => { h += '<circle class="hint" cx="' + T[id].x + '" cy="' + T[id].y + '" r="8"/>'; });
+  $('board').innerHTML = h;
+  $('p2').textContent = wires.length + ' / ' + TOTAL + ' 根';
+}
+function orderList(){
+  const nx = nextWire();
+  let k = 0;
+  return ORDER.map((G, g) => {
+    const done = groupDone(g);
+    let h = '<div class="og' + (done ? ' done' : '') + '"><b>' + (done ? '✓ ' : '') + G.t + '</b><span>' + G.d + '</span><ol start="' + (k + 1) + '">';
+    G.w.forEach(([a, b], i) => {
+      const cls = nx && nx.g === g && nx.i === i ? 'cur' : connected(a, b) ? 'ok' : '';
+      h += '<li class="' + cls + '">' + T[a].nm + ' → ' + T[b].nm + '</li>';
+    });
+    k += G.w.length;
+    return h + '</ol></div>';
+  }).join('');
+}
+function upd2(){
+  const ld = boardLoads(S2), left = missingN();
+  const nx = guide ? nextWire() : null;
+  let m = msg;
+  if(!m && nx){
+    const G = ORDER[nx.g];
+    m = {cls:lastOk ? 'ok' : 'info', t:(lastOk ? '✓ 接上了 · ' : '') + G.t + ' · 第 ' + (nx.i + 1) + '/' + G.w.length + ' 根',
+      b:'下一根：<b>' + T[nx.a].nm + ' → ' + T[nx.b].nm + '</b>。板上闪的两个端子就是，图上亮的那段线就是这一根。'};
+  }
+  if(!m && !left.length) m = {cls:'ok', t:'线接完了', b:'按考场顺序试车：从左到右合 QF1、QF2、QF3 → 白炽灯「左开、右关、右开、左关」→ S3 日光灯 → 插座 → 从右到左分闸。'};
+  if(!m) m = {cls:'info', t:'照图接线', b:'点板上一个端子，上面图里圈出它；顺着图上那根线找另一头，再点板上对应的端子。'};
+  const on = [ld.el && '白炽灯亮', ld.fl && '日光灯亮', ld.xs && '插座有电'].filter(Boolean);
+  if(on.length && msg === null) m = {cls:'ok', t:on.join(' · '), b:(ld.xs && !ld.pe ? '插座有电，但<b>上孔 PE 还没接到接地排</b>。' : '') + '接着按试车顺序扳开关。'};
+  $('say2').className = 'say ' + m.cls; $('say2T').textContent = m.t; $('say2B').innerHTML = m.b;
+  $('s2').innerHTML = schem(Object.assign({}, S2, {s1:S2.s1, s2:S2.s2}), {rings:rings, hln:nx && !rings.length ? T[nx.a].n : null, color:true});
+  $('b2').innerHTML = togHTML(S2);
+  $('order2').innerHTML = orderList();
+  drawBoard();
+}
+$('board').addEventListener('click', e => { const g = e.target.closest('[data-t]'); if(!g) return; tapTerm(g.dataset.t); upd2(); });
+bindTog($('b2'), S2, () => { msg = null; lastOk = 0; upd2(); });
+$('undoBtn').addEventListener('click', () => {
+  pick = null; rings = []; lastOk = 0;
+  const w = wires.pop();
+  msg = w ? {cls:'info', t:'撤销了一根', b:'拆掉的是 <b>' + T[w.a].nm + ' ↔ ' + T[w.b].nm + '</b>。'} : {cls:'info', t:'没有可撤销的线', b:'板上还一根线都没接。'};
+  upd2();
+});
+$('hintBtn').addEventListener('click', () => { guide = !guide; msg = null; $('hintBtn').classList.toggle('on', guide); $('hintBtn').innerHTML = '引导<span>' + (guide ? '开' : '关') + '</span>'; upd2(); });
+$('lidBtn').addEventListener('click', () => { lid = !lid; $('lidBtn').classList.toggle('on', lid); $('lidBtn').innerHTML = lid ? '开线槽<span>看清走线</span>' : '盖线槽<span>真板子样</span>'; upd2(); });
+$('resetBtn').addEventListener('click', () => { wires = []; pick = null; rings = []; msg = null; lastOk = 0; upd2(); });
+
+draw0(); upd1(); upd2();
+</script>
+</body>
+</html>
