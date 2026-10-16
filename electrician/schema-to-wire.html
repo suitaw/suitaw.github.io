@@ -55,7 +55,8 @@ svg text{font-family:inherit}
 .btns button span{display:block;font-size:.62rem;font-weight:400;color:var(--tx3)}
 .btns button.on{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
 .btns button.on span{color:inherit}
-.btns .g{border-color:#9bd3a8} .btns .r{border-color:#e7a39b}
+.btns .g{border-color:#9bd3a8} .btns .r{border-color:#e7a39b} .btns .y{border-color:#e8cf7a}
+.btns .y.down{background:#d4a017;color:#fff}
 .btns .g.down{background:var(--green);color:#fff}
 .btns .r.down{background:var(--red);color:#fff}
 .btns button.down span{color:rgba(255,255,255,.85)}
@@ -116,10 +117,10 @@ svg text{font-family:inherit}
 .sleeve text{font-size:6px;font-weight:700;fill:var(--tx)}
 .flash{animation:flash .15s linear 4 alternate}
 @keyframes flash{to{opacity:.3}}
-.cir{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 4px}
+.cir{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 4px}
 .cir button{border:1px solid var(--line);background:var(--card);color:var(--tx2);border-radius:10px;
   padding:8px 4px;font-size:.84rem;font-weight:700;touch-action:manipulation}
-.cir button span{font-weight:400;font-size:.68rem;color:var(--tx3);margin-left:4px}
+.cir button span{display:block;font-weight:400;font-size:.66rem;color:var(--tx3)}
 .cir button.on{background:var(--tx);border-color:var(--tx);color:#fff}
 .cir button.on span{color:rgba(255,255,255,.7)}
 .btns.five{grid-template-columns:repeat(5,1fr);gap:4px}
@@ -169,8 +170,9 @@ body.lock3{padding-bottom:0}
     <a href="index.html">课程首页</a>
   </div>
   <div class="cir" id="cir">
-    <button data-c="zs">自锁起停<span>先学这个</span></button>
-    <button data-c="zf">正反转<span>加互锁</span></button>
+    <button data-c="zs">K34 自锁起停<span>先学这个</span></button>
+    <button data-c="zd">K31 点动+连续<span>复合按钮</span></button>
+    <button data-c="zf">K32 正反转<span>加互锁</span></button>
   </div>
   <div class="tabs" id="tabs">
     <button class="on" data-i="0">① 看图<span>规矩</span></button>
@@ -360,8 +362,8 @@ function gang(x0, x1, y){ return '<line class="gang" x1="' + x0 + '" y1="' + y +
 /* ================= 电路一：自锁起停 =================
    原理图坐标 360×262。主电路三相 x=40/65/90，控制主干 x=190、KM 自锁支路 x=250、回线 x=330。
    每段导线：g = 什么时候有电流，n = 属于哪个线号（第③屏编号用）。 */
-const XT_NOTE = '<b>原理图上没有端子排</b>：按钮装在柜门上，板上的线先接到端子排上桩，按钮的线接下桩。端子排同一节的上下两头里面是通的，<b>是同一个号</b>。';
-const ZS = {id:'zs', vb:'0 0 360 262', vb3:'140 44 200 208', bvb:'0 0 360 478', MX:[40,65,90]};
+const NOTE_HEAD = '图上元件旁边的<b>灰色小字</b>是<b>端子号</b>：印在元件身上的，每个元件都有自己的一套。规律：<b>个位 1、2 ＝ 常闭，3、4 ＝ 常开；十位是这个元件上的第几副</b>（13-14 第一副常开，21-22 第二副常闭）。<br>下面要编的<b>蓝色小标签</b>是<b>线号</b>，是我们自己给导线编的。<b>线号一样的端子才接在一起，端子号一样不算数。</b>';
+const ZS = {id:'zs', vb:'0 0 360 262', vb3:'140 44 200 208', bvb:'0 0 360 620', MX:[40,65,90]};
 ZS.segs = [];
 ZS.MX.forEach(x => {
   ZS.segs.push({p:[[x,16],[x,28]], g:'m', n:'L'});
@@ -419,10 +421,10 @@ ZS.els = function(st){
   el.FU2 = {h:fuse(190, 70, 88, st.km) + fuse(330, 70, 88, st.km) + label(164, 80, 'FU2', null, 'end') + label(322, 80, 'FU2', null, 'end'),
     box:[[150,68,46,22],[304,68,32,22]]};
   el.FRc = {h:contact(190, 100, 118, 'nc', !st.fr, st.km, {therm:true}) + label(164, 107, 'FR', '过载', 'end') + tn(195, 102, '95') + tn(195, 119, '96'), box:[146,97,58,24]};
-  el.SB1 = {h:contact(190, 128, 146, 'nc', !st.sb1, st.km, {push:true}) + label(164, 135, 'SB1', '停止', 'end') + tn(195, 130, '11') + tn(195, 147, '12'), box:[146,125,58,24]};
-  el.SB2 = {h:contact(190, 164, 184, 'no', st.sb2, st.km && st.sb2, {push:true}) + label(164, 172, 'SB2', '启动', 'end') + tn(195, 167, '13') + tn(195, 185, '14'), box:[146,161,58,26]};
+  el.SB1 = {h:contact(190, 128, 146, 'nc', !st.sb1, st.km, {push:true}) + label(164, 135, 'SB1', '停止', 'end') + tn(195, 130, '8') + tn(195, 147, '7'), box:[146,125,58,24]};
+  el.SB2 = {h:contact(190, 164, 184, 'no', st.sb2, st.km && st.sb2, {push:true}) + label(164, 172, 'SB2', '启动', 'end') + tn(195, 167, '1') + tn(195, 185, '2'), box:[146,161,58,26]};
   el.KMa = {h:contact(250, 164, 184, 'no', st.km, st.km) + label(258, 172, 'KM', '自锁') + tn(245, 167, '13', 'end') + tn(245, 185, '14', 'end'), box:[226,161,52,26]};
-  el.KMc = {h:coil(190, 206, st.km) + label(164, 214, 'KM', '线圈', 'end') + tn(204, 205, 'A1') + tn(204, 231, 'A2'), box:[146,203,70,26]};
+  el.KMc = {h:coil(190, 206, st.km) + label(164, 214, 'KM', '线圈', 'end') + tn(204, 205, 'A2') + tn(204, 231, 'A1'), box:[146,203,70,26]};
   return el;
 };
 ZS.steps = [
@@ -433,9 +435,9 @@ ZS.steps = [
   {n:'c3', t:'3 号', from:[190,146], tags:[[176,151,'3']],
    b:'穿过 SB1，换成 3 号。走到黑点处<b>分了岔</b>：一路往下到 SB2，一路往右到 KM 的 13。分岔的每一头都还是 3 号，直到各自碰到元件。'},
   {n:'c4', t:'4 号', from:[190,184], tags:[[176,200,'4']],
-   b:'穿过 SB2（或者右边的 KM 13-14），换成 4 号。两路在下面的黑点汇合，往下碰到线圈 KM 的 A1 停。'},
+   b:'穿过 SB2（或者右边的 KM 13-14），换成 4 号。两路在下面的黑点汇合，往下碰到线圈 KM 的 A2 停。'},
   {n:'c5', t:'5 号', from:[190,226], tags:[[268,233,'5']],
-   b:'穿过线圈，换成 5 号：从 A2 出来绕到右边，往上一直走到右边那只 FU2 的下面。<b>控制电路编完了，一共 5 个号。</b>'},
+   b:'穿过线圈，换成 5 号：从 A1 出来绕到右边，往上一直走到右边那只 FU2（5 号熔断器）的下面。<b>控制电路编完了，一共 5 个号。</b>'},
   {n:'m11', t:'主电路：U11 / V11 / W11', tags:[[46,67,'U11'],[71,67,'V11'],[96,67,'W11']],
    b:'主电路三根线一起编，每一层同时出三个号。<b>字母说是哪一根</b>：U＝L1 那根、V＝L2、W＝L3；<b>数字从 11 开始，每穿过一个元件加 1</b>。QF 下面到 FU1 上面这一层是 U11、V11、W11。往右拐去 FU2 的两根跟它直接连着（拐角有黑点），所以也是 U11、V11 —— FU2 就是从这里取电的。'},
   {n:'m12', t:'主电路：U12 / V12 / W12', tags:[[46,97,'U12'],[71,97,'V12'],[96,97,'W12']],
@@ -453,13 +455,13 @@ ZS.info = {
   FRh:'<b>FR 热继电器的发热元件</b>，串在主电路里感受电机电流。过载时它发热弯曲，推动控制电路里的 FR 95-96 断开。',
   M:'<b>M 三相异步电动机</b>。「3~」＝三相交流。',
   FRc:'<b>FR 常闭触点 95-96</b>（书上叫「动断」）。平时闭合；电机过载时断开，切断线圈，电机停。和主电路里的发热元件是同一个 FR。',
-  SB1:'<b>SB1 停止按钮</b>，<b>常闭</b>（书上叫「动断」）：平时通，按下断。端子号 11-12 —— <b>个位 1、2 ＝ 常闭</b>。左边的「⊏」加虚线是「用手按」的记号。',
-  SB2:'<b>SB2 起动按钮</b>，<b>常开</b>（书上叫「动合」）：平时断，按下通。端子号 13-14 —— <b>个位 3、4 ＝ 常开</b>。',
+  SB1:'<b>SB1 停止按钮</b>，<b>常闭</b>（书上叫「动断」）：平时通，按下断。左边的「⊏」加虚线是「用手按」的记号。旁边的 8、7 是它在<b>考板端子排</b>上的位置（5~8 是停止按钮，用 7-8 这对常闭 —— <b>位置是推测的</b>，考场用万用表量一下）。',
+  SB2:'<b>SB2 起动按钮</b>，<b>常开</b>（书上叫「动合」）：平时断，按下通。旁边的 1、2 是考板端子排的位置（1~4 是启动按钮，用 1-2 这对常开，同样是推测）。',
   KMa:'<b>KM 辅助常开触点 13-14</b>（常开＝平时断开，书上叫「动合」），跟 SB2 并联。线圈一吸合它就合上，替 SB2「按住」—— 这叫<b>自锁</b>。',
   KMc:'<b>KM 线圈 A1-A2</b>。通电吸合，带动所有叫 KM 的触点一起动作：主触点合上（电机转）、13-14 合上（自锁）。'
 };
-ZS.intro = {t:'一张最常见的图：电动机自锁起停',
-  b:'按一下「启动」电机一直转，按「停止」才停。正反转、星三角这些控制图都是在它上面加东西，先把它读透。<b>点图上任何一个符号</b>看它是什么。'};
+ZS.intro = {t:'K34：电动机自锁起停（带电流互感器）',
+  b:'按一下「启动」电机一直转，按「停止」才停。正反转、星三角这些控制图都是在它上面加东西，先把它读透。K34 考板主电路上还套了三只电流互感器接电流表（这张图没画，接线在第④屏最下面）。<b>点图上任何一个符号</b>看它是什么。'};
 ZS.view = {
   main:'<b>主电路</b>：L1/L2/L3 → QF → FU1 → KM 主触点 → FR 发热元件 → 电动机。电动机的大电流只走这里。',
   ctrl:'<b>控制电路</b>：从 L1 取电（QF 下面）→ FU2 → FR 95-96 → SB1 → SB2（并着 KM 13-14）→ KM 线圈 → FU2 → 回到 L2。它只决定线圈有没有电。',
@@ -489,63 +491,77 @@ ZS.say = function(st, was){
   if(st.sb1) return {cls:'bad', t:'按着停止', b:'SB1 断开，线圈断电，所有 KM 触点弹回 —— 自锁那条路也断了。所以<b>松开 SB1 后电机不会自己再转</b>，要重新按 SB2。' + (st.sb2 ? '两个一起按：停止优先，SB1 在 SB2 上游。' : '')};
   return {cls:'info', t:'有电，等你按启动', b:(was ? '电机停了。' : '') + '红虚线的地方<b>已经带电</b>（有电压，碰了会触电），只是线圈这条路在 SB2 处断着（常开），没有电流流过，电机不转。<b>不流动 ≠ 没电</b>。按住 SB2 试试。'};
 };
-ZS.sumH = '5 个号，10 根线（含端子排）';
+ZS.sumH = '5 个号 7 根控制线 + 互感器 9 根（照考板 K34）';
 ZS.sum = [
-  '<b>1 号</b>：FU2 下桩 ↔ FR 95（1 根）',
-  '<b>2 号</b>：FR 96 ↔ XT2 上桩；XT2 下桩 ↔ SB1 11（2 根）',
-  '<b>3 号</b>：KM 13 ↔ XT3 上桩；XT3 下桩 ↔ SB1 12 ↔ SB2 13（3 根）',
-  '<b>4 号</b>：KM A1 ↔ KM 14 ↔ XT4 上桩；XT4 下桩 ↔ SB2 14（3 根）',
-  '<b>5 号</b>：KM A2 ↔ 另一只 FU2 的下桩（1 根）'];
-ZS.sumX = XT_NOTE;
-ZS.numNote = '图上元件旁边的<b>灰色小字</b>（95、96、11、12、13、14、21、22、A1、A2）是<b>端子号</b>：印在元件身上的，每个元件都有自己的一套。规律：<b>个位 1、2 ＝ 常闭，3、4 ＝ 常开；十位是这个元件上的第几副</b>（13-14 第一副常开，21-22 第二副常闭）。所以光说「13」分不清，要连名字说「SB2 的 13」。<br>下面要编的<b>蓝色小标签</b>是<b>线号</b>，是我们自己给导线编的。<b>线号一样的端子才接在一起，端子号一样不算数。</b>例：SB2 和 KM 都有 13、14，这张图里它们正好都在 3 号、4 号线上；到了正反转那张，同样叫 14，却分在两根不同的线上。';
-/* 板上的端子：线号 n、原理图上的位置 sx/sy、端子字的位置 l=[dx,dy,对齐]。
-   xt2t/xt2b 是端子排 2 号那一节的上桩/下桩（C.fixed 里登记它俩本来就通） */
+  '<b>1 号</b>：4 号熔断器 ↔ FR 95（1 根）',
+  '<b>2 号</b>：FR 96 ↔ 端子排 8（1 根）',
+  '<b>3 号</b>：端子排 7 ↔ 端子排 1 ↔ KM 13（2 根，7-1 是端子排上的跳线）',
+  '<b>4 号</b>：端子排 2 ↔ KM 14 ↔ KM A2（2 根）',
+  '<b>5 号</b>：KM A1 ↔ 5 号熔断器（1 根）',
+  '<b>互感器二次侧</b>：每相 S1 ↔ 电流表 1，电流表 2 ↔ S2 ↔ 接地排（每相 3 根，三相 9 根）'];
+ZS.sumX = '端子排 1~8 背后是按钮盒的线（已经接好）：1~4 启动、5~8 停止，这题用 1-2 常开和 7-8 常闭。<b>按钮在端子排上的位置是推测的</b>（你 Notion 里也标了待核查），考场先用万用表量一下。';
+ZS.numNote = NOTE_HEAD + '例：KM 13 在 <b>3 号线</b>上，KM 14 在 <b>4 号线</b>上 —— 同一副触点的两头，线号不一样。按钮旁边的 1、2、7、8 是考板端子排的位置。';
+/* 板上的端子：线号 n、原理图上的位置 sx/sy、端子字的位置 l=[dx,dy,对齐]、号码管位置 sl=[dx,dy]。
+   互感器那几个的线号是字符串（a1＝A 相 S1 那头、a2＝A 相 S2 那头，本页自己起的名），原理图上没有，不圈 */
 ZS.terms = {
-  fu2a:{x:162, y:112, nm:'FU2 下桩（左）', n:1, sx:190, sy:88},
-  fu2b:{x:184, y:112, nm:'FU2 下桩（右）', n:5, sx:330, sy:88},
+  fu2a:{x:162, y:112, nm:'4 号熔断器', n:1, sx:190, sy:88},
+  fu2b:{x:184, y:112, nm:'5 号熔断器', n:5, sx:330, sy:88},
   k13:{x:32, y:158, nm:'KM 13', n:3, sx:250, sy:164, l:[0,13]},
-  a1:{x:108, y:158, nm:'KM A1', n:4, sx:190, sy:206, l:[0,13]},
+  a1:{x:108, y:158, nm:'KM A1', n:5, sx:190, sy:226, l:[0,13]},
   k14:{x:32, y:212, nm:'KM 14', n:4, sx:250, sy:184, l:[0,-8]},
-  a2:{x:108, y:212, nm:'KM A2', n:5, sx:190, sy:226, l:[0,-8]},
+  a2:{x:108, y:212, nm:'KM A2', n:4, sx:190, sy:206, l:[0,-8]},
   fr95:{x:108, y:256, nm:'FR 95', n:1, sx:190, sy:100, l:[0,13]},
   fr96:{x:122, y:256, nm:'FR 96', n:2, sx:190, sy:118, l:[0,13]},
-  xt2t:{x:165, y:328, nm:'XT2 上桩', n:2, sx:190, sy:123},
-  xt3t:{x:185, y:328, nm:'XT3 上桩', n:3, sx:190, sy:151},
-  xt4t:{x:205, y:328, nm:'XT4 上桩', n:4, sx:190, sy:200},
-  xt2b:{x:165, y:352, nm:'XT2 下桩', n:2, sx:190, sy:123},
-  xt3b:{x:185, y:352, nm:'XT3 下桩', n:3, sx:190, sy:151},
-  xt4b:{x:205, y:352, nm:'XT4 下桩', n:4, sx:190, sy:200},
-  s111:{x:165, y:410, nm:'SB1 11', n:2, sx:190, sy:128, l:[0,11]},
-  s112:{x:185, y:410, nm:'SB1 12', n:3, sx:190, sy:146, l:[0,11]},
-  s213:{x:235, y:410, nm:'SB2 13', n:3, sx:190, sy:164, l:[0,11]},
-  s214:{x:255, y:410, nm:'SB2 14', n:4, sx:190, sy:184, l:[0,11]}
+  t1:{x:136, y:328, nm:'端子排 1', n:3, sx:190, sy:164},
+  t2:{x:152, y:328, nm:'端子排 2', n:4, sx:190, sy:184},
+  t7:{x:232, y:328, nm:'端子排 7', n:3, sx:190, sy:146},
+  t8:{x:248, y:328, nm:'端子排 8', n:2, sx:190, sy:128}
 };
-ZS.need = {1:['fu2a','fr95'], 2:['fr96','xt2t','xt2b','s111'], 3:['k13','xt3t','xt3b','s112','s213'],
-  4:['a1','k14','xt4t','xt4b','s214'], 5:['a2','fu2b']};
-ZS.fixed = [['xt2t','xt2b'], ['xt3t','xt3b'], ['xt4t','xt4b']];
+const CT_X = [70, 180, 290];
+CT_X.forEach((cx, i) => {
+  const ph = 'abc'[i], PH = 'ABC'[i];
+  ZS.terms['ta' + i + 's1'] = {x:cx-14, y:501, nm:PH + ' 相互感器 S1', n:ph + '1', l:[0,-6.5], sl:[0,12]};
+  ZS.terms['ta' + i + 's2'] = {x:cx+14, y:501, nm:PH + ' 相互感器 S2', n:ph + '2', l:[0,-6.5], sl:[0,12]};
+  ZS.terms['am' + i + 'a'] = {x:cx-14, y:566, nm:PH + ' 相电流表 1', n:ph + '1', l:[-7,2.5,'end'], sl:[0,-12]};
+  ZS.terms['am' + i + 'b'] = {x:cx+14, y:566, nm:PH + ' 相电流表 2', n:ph + '2', l:[7,2.5,'start'], sl:[0,-12]};
+  ZS.terms['pe' + i] = {x:cx+30, y:594, nm:PH + ' 相接地', n:ph + '2', sl:[0,-12]};
+});
+ZS.need = {1:['fu2a','fr95'], 2:['fr96','t8'], 3:['t7','t1','k13'], 4:['t2','k14','a2'], 5:['fu2b','a1']};
+CT_X.forEach((cx, i) => { const ph = 'abc'[i]; ZS.need[ph + '1'] = ['ta' + i + 's1', 'am' + i + 'a']; ZS.need[ph + '2'] = ['am' + i + 'b', 'ta' + i + 's2', 'pe' + i]; });
+ZS.fixed = [];
 ZS.coils = [{k:'km', a:'a1', b:'a2'}];
+/* 按钮盒的触点就在端子排两位之间：1-2 启动常开、7-8 停止常闭（推测） */
 ZS.edges = st => {
   const e = [];
   if(!st.fr) e.push(['fr95','fr96']);
-  if(!st.sb1) e.push(['s111','s112']);
-  if(st.sb2) e.push(['s213','s214']);
+  if(!st.sb1) e.push(['t7','t8']);
+  if(st.sb2) e.push(['t1','t2']);
   if(st.km) e.push(['k13','k14']);
   return e;
 };
-/* 接线顺序（先串后并）：先把从 FU2 到线圈再回 FU2 的一条直路串通 → 试点动 → 再并自锁 → 试自锁 */
-ZS.order = [
-  {t:'① 串主干', d:'从左边 FU2 出发，经 FR、SB1、SB2 到线圈，再回右边 FU2，串成一条直路',
-   w:[['fu2a','fr95'], ['fr96','xt2t'], ['xt2b','s111'], ['s112','s213'], ['s214','xt4b'], ['xt4t','a1'], ['a2','fu2b']],
+const CT_W = [].concat.apply([], CT_X.map((cx, i) => [['ta' + i + 's1','am' + i + 'a'], ['am' + i + 'b','ta' + i + 's2'], ['ta' + i + 's2','pe' + i]]));
+const CT_TEST = '合上 QF、按 SB2 启动：<b>三只电流表都该有读数</b>（考场要口述三相电流）。哪只没读数，就是那一相互感器的线没接好。';
+ZS.orderA = [
+  {t:'① 串主干', d:'4 号熔断器 → FR → 停止 8-7 → 跳到 1 → 启动 1-2 → KM 14 → 线圈 → 5 号熔断器',
+   w:[['fu2a','fr95'], ['fr96','t8'], ['t7','t1'], ['t2','k14'], ['k14','a2'], ['fu2b','a1']],
    test:'主干串通了，先试<b>点动</b>：合上 QF，按住 SB2 电机转、松手就停。对了再并自锁。'},
-  {t:'② 并自锁', d:'把 KM 13-14 并到 SB2 两头（3 号、4 号上）',
-   w:[['s213','xt3b'], ['xt3t','k13'], ['k14','a1']],
-   test:'自锁并好了，试车：按一下 SB2 松手，电机应该<b>一直转</b>；按 SB1 停。'}
+  {t:'② 并自锁', d:'KM 13 接到端子排 1（KM 14 在上一步已经接到端子排 2）',
+   w:[['k13','t1']],
+   test:'自锁并好了，试车：按一下 SB2 松手，电机应该<b>一直转</b>；按 SB1 停。'},
+  {t:'③ 互感器二次侧', d:'每相：S1 → 电流表 1，电流表 2 → S2，S2 → 接地排', w:CT_W, test:CT_TEST}
 ];
-ZS.orderA = ZS.order;
-ZS.intro3 = '<b>点板上一个端子</b> → 左边图里圈出它 → 看它是几号 → 再点<b>同号</b>的另一个端子。不会就按「提示」。';
-ZS.howto3 = '<b>接线顺序：先串后并。</b>先把一条直路串通、试一下点动，再并自锁。手上没笔编号时也照这个顺序：手指停在图上哪段，就只接哪段。<br>主电路已经接好（细灰线）。你要接控制电路：板上的线都走<b>线槽</b>（宽灰条，盖着盖子），按钮装在柜门上，跟板子之间要经过底下的<b>端子排 XT</b>。<b>点一个端子</b>，顶上钉着的原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。线两头会套上号码管 —— 线槽一盖，认线全靠它。不会就按「提示」。';
+ZS.orderB = [
+  {t:'① 热继电器支路', d:'4 号熔断器 → FR 95，FR 96 → 端子排倒数第 1 位（8）', w:[['fu2a','fr95'], ['fr96','t8']]},
+  {t:'② 线圈支路', d:'5 号熔断器 → KM A1，A2 → 14，14 → 端子排第 2 位', w:[['fu2b','a1'], ['a2','k14'], ['k14','t2']]},
+  {t:'③ 自锁与跳线', d:'13 → 端子排第 1 位，跳线 第 1 位 — 倒数第 2 位（7）', w:[['k13','t1'], ['t1','t7']]},
+  {t:'④ 互感器二次侧', d:'每相：S1 → 电流表 1，电流表 2 → S2，S2 → 接地排', w:CT_W, test:CT_TEST}
+];
+ZS.order = ZS.orderA;
+ZS.intro3 = '<b>点板上一个端子</b> → 左边图里圈出它 → 看它是几号 → 再点<b>同号</b>的另一个端子。';
+ZS.howto3 = '<b>照考板 K34 接。</b>主电路、按钮盒到端子排的线已经接好，你接板上 7 根控制线，再接最下面互感器到电流表的 9 根。端子排 1~4 启动、5~8 停止（这题用 1-2、7-8，<b>位置是推测的</b>）。<br>注意跟 K32 反过来：<b>4 号熔断器接 FR 95</b>，5 号熔断器串线圈。原理图里的两只 FU2 就是它俩。<br>互感器那几根的线号（a1、a2……）是本页自己起的名：字母是哪一相，1 是 S1 那头、2 是 S2 那头。';
 ZS.gap = {1:'FR 95-96', 2:'停止按钮 SB1', 3:'启动按钮 SB2（连同 KM 13-14）', 4:'KM 线圈'};
 ZS.shortWhy = function(x, y){
+  if(typeof x === 'string' || typeof y === 'string') return '互感器二次侧是每相单独的小回路：S1 接电流表 1、电流表 2 接 S2 再接地。跟控制线、跟别的相都不能混接。';
   const lo = Math.min(x, y), hi = Math.max(x, y);
   const skip = []; for(let i = lo; i < hi; i++) skip.push(this.gap[i]);
   if(hi === 5) return '这根线跳过了 <b>' + skip.join('、') + '</b> —— 线圈被绕开，电从左边 FU2 直接回到右边 FU2：<b>相间短路，现场会炸熔断器</b>。';
@@ -556,15 +572,27 @@ ZS.shortWhy = function(x, y){
   return '这根线把 <b>' + skip.join('、') + '</b> 短接掉了：' + res.join('，') + '。';
 };
 ZS.boardMsg = function(st, left){
-  if(st.km) return {cls:'ok', t:st.sb2 ? '吸合了，电机转' : '松手还在转 —— 自锁接对了',
-    b:st.sb2 ? '板上和图上一起亮：电流从左边 FU2 出发，经 1→2→3→4 号线到线圈，再经 5 号线回右边 FU2。松手试试。' : '电流改走 KM 13-14（3 号和 4 号之间那副触点）。按 SB1 停车。'};
+  if(st.km){
+    const r = [0, 1, 2].filter(ctRead).map(i => 'ABC'[i] + ' 相');
+    const ct = r.length === 3 ? '三只电流表都有读数。' : r.length ? r.join('、') + '电流表有读数，其他相互感器的线还没接好。' : '电流表都没读数：互感器二次侧还没接。';
+    return {cls:'ok', t:st.sb2 ? '吸合了，电机转' : '松手还在转 —— 自锁接对了', b:(st.sb2 ? '松手试试。' : '按 SB1 停车。') + ct};
+  }
   if(st.sb2) return noPull(st, left, 'SB2');
   return null;
 };
-/* 线槽：h 横槽 [x0,x1,y0,y1]，v 竖槽；横槽都在右头接进竖槽 */
 ZS.ducts = {h:[[12,320,124,146], [12,320,224,246], [12,320,294,316]], v:[298,320,124,316]};
 ZS.board = function(st){
-  const on = st.km, P = on ? ' on' : '', X = [52, 70, 88];
+  const on = st.km;
+  let h = boardOneKM(st, on);
+  /* 互感器套在去电机的三根线上 */
+  [52, 70, 88].forEach(x => { h += '<ellipse cx="' + x + '" cy="378" rx="7" ry="3.5" fill="none" stroke="#495057" stroke-width="2"/>'; });
+  h += '<text class="dlab2" x="98" y="381">TA×3</text>';
+  h += bStrip(st, 8, [1, 2, 7, 8], [[2.5, 'SB2 启动', 'g', st.sb2], [6.5, 'SB1 停止', 'r', st.sb1]]);
+  return h + bCT(st);
+};
+/* 单个接触器那种板（K34、K31 共用）：主电路预接线 + QF/FU1/FU2/KM/FR/出线端子排/电动机 */
+function boardOneKM(st, on){
+  const P = on ? ' on' : '', X = [52, 70, 88];
   let h = plateB();
   X.forEach((x, i) => {
     h += pw([[x,4],[x,18]], P) + pw([[x,62],[x,80]], P) + pw([[x,120],[x,158]], P) + pw([[x,212],[x,256]], P) +
@@ -575,10 +603,200 @@ ZS.board = function(st){
   h += bQF(36, 18, st) + bFuse(40, 80, X, 'FU1', 22, 104) + bFU2(150, 80);
   h += bKM(22, 150, X, '', on, [32,108]);
   h += bFR(40, 250, 92, X, st);
-  h += bXT(322, [['U',52],['V',70],['W',88],['2',165],['3',185],['4',205]]);
-  h += bMotor(70, 412, on, false);
-  h += bButtons(150, 402, 150, [['SB1 停',175,'r',st.sb1],['SB2 启',245,'g',st.sb2]]);
-  return h;
+  h += bXT(322, [['U',52],['V',70],['W',88]], '出线');
+  return h + bMotor(70, 412, on, false);
+}
+
+/* ================= 电路三：K31 点动与连续 =================
+   主电路跟 K34 一样；控制电路照他 K31 实做的 10 根：5 号熔断器 → FR → 停止 → 分三路
+   （SB2 常开 / SB3 常开 / SB3 常闭串 KM 13-14）→ 线圈 → 4 号熔断器。图上从上往下画，电是从右边 FU2 往上走的 */
+const ZD = {id:'zd', vb:'0 0 360 262', vb3:'140 44 200 214', bvb:'0 0 360 478', MX:[40,65,90]};
+ZD.segs = ZS.segs.filter(g => g.g === 'm').concat([
+  {p:[[40,52],[330,52],[330,70]], g:'cc', n:'m11'},
+  {p:[[190,70],[190,60],[65,60]], g:'cc', n:'m11'},
+  {p:[[330,88],[330,250],[190,250],[190,240]], g:'cc', n:'c6'},
+  {p:[[190,220],[190,210]], g:'cc', n:'c5'},
+  {p:[[190,210],[190,180]], g:'b2', n:'c5'},
+  {p:[[190,210],[240,210]], g:'h', n:'c5'},
+  {p:[[240,210],[240,180]], g:'b3', n:'c5'},
+  {p:[[240,210],[290,210],[290,204]], g:'bk', n:'c5'},
+  {p:[[290,186],[290,176]], g:'bk', n:'c4'},
+  {p:[[290,158],[290,154],[240,154]], g:'bk', n:'c3'},
+  {p:[[240,160],[240,154]], g:'b3', n:'c3'},
+  {p:[[240,154],[190,154]], g:'h', n:'c3'},
+  {p:[[190,160],[190,154]], g:'b2', n:'c3'},
+  {p:[[190,154],[190,146]], g:'cc', n:'c3'},
+  {p:[[190,128],[190,118]], g:'cc', n:'c2'},
+  {p:[[190,100],[190,88]], g:'cc', n:'c1'}]);
+ZD.dots = [[40,52,1],[65,60,1],[190,154],[240,154],[190,210],[240,210]];
+ZD.live = st => ({m:st.km, cc:st.km, h:st.km, b2:st.km && st.sb2, b3:st.km && st.sb3, bk:st.km && !st.sb3});
+/* 松开 SB3 那一下：常开先断、常闭后合（复合按钮先断后合），线圈先没电，自锁接不回来 */
+ZD.logic = st => {
+  const rel = st._p3 && !st.sb3;
+  st.km = st.qf && !st.fr && !st.sb1 && (st.sb2 || st.sb3 || (st.km && !st.sb3 && !rel));
+  st._p3 = st.sb3;
+};
+ZD.running = st => st.km;
+ZD.volt = st => {
+  const v = {L:true};
+  if(!st.qf) return v;
+  v.m11 = v.m12 = true;
+  if(st.km) v.m13 = v.mM = true;
+  const e = [['L2','c1'], ['c5','c6'], ['c6','L1']];
+  if(!st.fr) e.push(['c1','c2']);
+  if(!st.sb1) e.push(['c2','c3']);
+  if(st.sb2 || st.sb3) e.push(['c3','c5']);
+  if(!st.sb3) e.push(['c3','c4']);
+  if(st.km) e.push(['c4','c5']);
+  const f = finder(e);
+  for(let i = 1; i <= 6; i++){ const n = 'c' + i; if(f(n) === f('L1') || f(n) === f('L2')) v[n] = true; }
+  return v;
+};
+ZD.mainIds = ZS.mainIds;
+ZD.els = function(st){
+  const el = ZS.els.call(this, st), k = st.km;
+  el.FRc = {h:contact(190, 100, 118, 'nc', !st.fr, k, {therm:true}) + label(164, 107, 'FR', '过载', 'end') + tn(195, 102, '95') + tn(195, 119, '96'), box:[146,97,58,24]};
+  el.SB1 = {h:contact(190, 128, 146, 'nc', !st.sb1, k, {push:true}) + label(164, 135, 'SB1', '停止', 'end') + tn(195, 130, '12') + tn(195, 147, '11'), box:[146,125,58,24]};
+  el.SB2 = {h:contact(190, 160, 180, 'no', st.sb2, k && st.sb2, {push:true}) + label(164, 168, 'SB2', '连续', 'end') + tn(195, 163, '2') + tn(195, 181, '1'), box:[146,157,52,26]};
+  el.SB3 = {h:contact(240, 160, 180, 'no', st.sb3, k && st.sb3, {push:true}) + label(222, 168, 'SB3', '点动', 'end') + tn(245, 163, '6') + tn(245, 181, '5'), box:[204,157,48,26]};
+  el.SB3b = {h:contact(290, 158, 176, 'nc', !st.sb3, k && !st.sb3, {push:true}) + label(272, 166, 'SB3', '常闭', 'end') + tn(299, 160, '8') + tn(299, 177, '7'), box:[254,155,52,24]};
+  el.KMa = {h:contact(290, 186, 204, 'no', k, k && !st.sb3) + label(306, 196, 'KM', '自锁') + tn(295, 189, '14') + tn(295, 205, '13'), box:[262,183,62,24]};
+  el.KMc = {h:coil(190, 220, k) + label(164, 228, 'KM', '线圈', 'end') + tn(204, 219, 'A2') + tn(204, 245, 'A1'), box:[146,217,70,26]};
+  return el;
+};
+ZD.steps = [
+  {n:'c1', t:'1 号', from:[190,88], tags:[[176,94,'1']],
+   b:'从左边 FU2 下面出发（考板上是 <b>5 号熔断器</b>），往下碰到 FR 的触点停 —— 1 号。'},
+  {n:'c2', t:'2 号', from:[190,118], tags:[[176,123,'2']],
+   b:'穿过 FR，换成 2 号，往下碰到停止按钮 SB1 停。'},
+  {n:'c3', t:'3 号', from:[190,146], tags:[[176,151,'3']],
+   b:'穿过 SB1，换成 3 号。往右分成<b>三个岔</b>：SB2 常开（连续）、SB3 常开（点动）、SB3 常闭。三个岔都还是 3 号。'},
+  {n:'c4', t:'4 号', from:[290,176], tags:[[276,181,'4']],
+   b:'最右那岔穿过 SB3 的常闭，换成 4 号，往下到 KM 的 14 停 —— 这一小段只连两个端子。'},
+  {n:'c5', t:'5 号', from:[190,220], tags:[[176,200,'5']],
+   b:'三个岔在下面汇合：SB2 的 1、SB3 的 5、KM 的 13，再往下到线圈 A2 —— 全是 5 号。'},
+  {n:'c6', t:'6 号', from:[190,240], tags:[[268,244,'6']],
+   b:'穿过线圈，从 A1 出来绕到右边，往上到右边那只 FU2（<b>4 号熔断器</b>）—— 6 号。<b>控制电路编完了，一共 6 个号。</b>'}
+].concat(ZS.steps.filter(x => x.n[0] === 'm'));
+ZD.info = {
+  QF:ZS.info.QF, FU1:ZS.info.FU1, FU2:ZS.info.FU2, M:ZS.info.M, KMm:ZS.info.KMm, FRh:ZS.info.FRh, KMc:ZS.info.KMc,
+  FRc:'<b>FR 常闭触点 95-96</b>（书上叫「动断」）。平时闭合，过载时断开。考板上 5 号熔断器接 95，96 去端子排 12。',
+  SB1:'<b>SB1 停止按钮</b>，常闭。旁边的 12、11 是考板端子排的位置（9~12 是停止按钮，用 11-12 这对常闭）。',
+  SB2:'<b>SB2 连续启动按钮</b>，常开。旁边的 2、1 是端子排位置（1~4 是连续按钮，用 1-2 常开）。按一下松手，靠 KM 13-14 自锁一直转。',
+  SB3:'<b>SB3 点动按钮的常开</b>（端子排 5-6），并在 SB2 旁边：按住就通电。SB3 一个按钮带两副触点，另一副常闭画在右边。',
+  SB3b:'<b>SB3 点动按钮的常闭</b>（端子排 7-8），串在 KM 13-14 自锁那条路上。按住 SB3 时它断开，自锁接不上，所以<b>松手就停</b>。',
+  KMa:'<b>KM 13-14 自锁触点</b>，跟 SB3 的常闭串在一起，再并在 SB2 旁边。'
+};
+ZD.intro = {t:'K31：点动与连续',
+  b:'一台电机两种开法：按一下 <b>SB2</b> 松手一直转（连续），按住 <b>SB3</b> 才转、松手就停（点动）。关键是 SB3 一个按钮带两副触点，图上拆成两处画。<b>点图上任何一个符号</b>看它是什么。'};
+ZD.view = {
+  main:ZS.view.main,
+  ctrl:'<b>控制电路</b>：FU2 → FR → SB1 → 分成三条并联的路 → KM 线圈 → FU2。三条路：SB2 常开（连续）、SB3 常开（点动）、SB3 常闭串 KM 13-14（自锁）。',
+  spec:{btn:'SB3 在哪<span>拆成两处</span>', sel:['SB3','SB3b'],
+    t:'蓝框这两处<b>都叫 SB3，是同一个按钮</b>：按下时常开合上、常闭断开。常开让线圈得电，常闭断开把自锁那条路切了 —— 所以按住转、松手停。'}
+};
+ZD.rulesH = '读这张图的四步';
+ZD.rules = [
+  '<b>先认出它是自锁起停的变形。</b>SB2 加 KM 13-14 就是 K34 那张的自锁；多出来的是 SB3。',
+  '<b>一个按钮拆成两处画。</b>SB3 有一副常开（并在 SB2 旁边）和一副常闭（串在自锁那条路上），名字都叫 SB3，按的是同一个钮。',
+  '<b>点动为什么松手就停：</b>按住 SB3，常开让线圈得电；同时常闭断开，自锁那条路不通。松手时按钮先断常开、再合常闭，线圈先没电，KM 13-14 跟着断开，自锁就接不回来了（这个先后，书上叫「触点竞争」）。',
+  ZS.rules[3]];
+ZD.tasks = [
+  ['按住 SB3 时，KM 13-14 也合上了，为什么还是不能自锁？', 'KM 13-14 那条路上串着 SB3 的常闭，按住 SB3 时它是断开的，所以自锁那条路不通。'],
+  ['按一下 SB2 松手，电机为什么一直转？', 'SB2 松开后，电流走 SB3 常闭（平时闭合）→ KM 13-14 这条路，线圈自己撑住自己。'],
+  ['连续转着时点「FR 过载」，效果和按哪个按钮一样？', '跟按 SB1 一样：FR 95-96 和 SB1 串在总路上，哪个断开都停。']];
+ZD.btns = [['qf','QF','合闸/拉闸',''],['sb2','SB2','连续','g'],['sb3','SB3','点动','y'],['sb1','SB1','停止','r'],['fr','FR','过载','w']];
+ZD.say = function(st, was){
+  if(!st.qf) return ZS.say(st, was);
+  if(st.km && st.sb3) return {cls:'ok', t:'点动：按住 SB3', b:'SB3 的常开合上，线圈得电电机转；同时它的<b>常闭断开</b>，KM 13-14 那条自锁路不通。松手就停。'};
+  if(st.km && st.sb2) return {cls:'ok', t:'连续：按下 SB2', b:'电流经 SB2 到线圈，KM 吸合，13-14 合上。松手试试。'};
+  if(st.km) return {cls:'ok', t:'松手还在转 —— 连续', b:'电流改走 <b>SB3 常闭 → KM 13-14</b> 这条路。按 SB1 停；再试按住 SB3 点动。'};
+  if(st.fr || st.sb1) return ZS.say(st, was);
+  return {cls:'info', t:'有电，等你按', b:(was ? '电机停了。' : '') + '红虚线的地方已经带电。按一下 <b>SB2</b> 连续转；或者<b>按住 SB3</b> 点动。'};
+};
+ZD.sumH = '6 个号，10 根线（照考板 K31）';
+ZD.sum = [
+  '<b>1 号</b>：5 号熔断器 ↔ FR 95（1 根）',
+  '<b>2 号</b>：FR 96 ↔ 端子排 12（1 根）',
+  '<b>3 号</b>：端子排 11 ↔ 8 ↔ 6 ↔ 2（3 根，都是端子排上的跳线）',
+  '<b>4 号</b>：KM 14 ↔ 端子排 7（1 根）',
+  '<b>5 号</b>：KM A2 ↔ KM 13 ↔ 端子排 1 ↔ 端子排 5（3 根）',
+  '<b>6 号</b>：4 号熔断器 ↔ KM A1（1 根）'];
+ZD.sumX = '端子排 1~12 背后是按钮盒的线（已经接好）：1~4 连续、5~8 点动、9~12 停止。这题用 1-2（连续常开）、5-6（点动常开）、7-8（点动常闭）、11-12（停止常闭）。';
+ZD.numNote = NOTE_HEAD + '例：KM 13 在 <b>5 号线</b>、KM 14 在 <b>4 号线</b> —— 同一副触点的两头，线号不一样。按钮旁边的 1、2、5~8、11、12 是考板端子排的位置。';
+ZD.terms = {
+  fu2a:{x:162, y:112, nm:'4 号熔断器', n:6, sx:330, sy:88},
+  fu2b:{x:184, y:112, nm:'5 号熔断器', n:1, sx:190, sy:88},
+  k13:{x:32, y:158, nm:'KM 13', n:5, sx:290, sy:204, l:[0,13]},
+  a1:{x:108, y:158, nm:'KM A1', n:6, sx:190, sy:240, l:[0,13]},
+  k14:{x:32, y:212, nm:'KM 14', n:4, sx:290, sy:186, l:[0,-8]},
+  a2:{x:108, y:212, nm:'KM A2', n:5, sx:190, sy:220, l:[0,-8]},
+  fr95:{x:108, y:256, nm:'FR 95', n:1, sx:190, sy:100, l:[0,13]},
+  fr96:{x:122, y:256, nm:'FR 96', n:2, sx:190, sy:118, l:[0,13]},
+  t1:{x:136, y:328, nm:'端子排 1', n:5, sx:190, sy:180},
+  t2:{x:152, y:328, nm:'端子排 2', n:3, sx:190, sy:160},
+  t5:{x:200, y:328, nm:'端子排 5', n:5, sx:240, sy:180},
+  t6:{x:216, y:328, nm:'端子排 6', n:3, sx:240, sy:160},
+  t7:{x:232, y:328, nm:'端子排 7', n:4, sx:290, sy:176},
+  t8:{x:248, y:328, nm:'端子排 8', n:3, sx:290, sy:158},
+  t11:{x:296, y:328, nm:'端子排 11', n:3, sx:190, sy:146},
+  t12:{x:312, y:328, nm:'端子排 12', n:2, sx:190, sy:128}
+};
+ZD.need = {1:['fu2b','fr95'], 2:['fr96','t12'], 3:['t11','t8','t6','t2'], 4:['k14','t7'], 5:['a2','k13','t1','t5'], 6:['fu2a','a1']};
+ZD.fixed = [];
+ZD.coils = [{k:'km', a:'a1', b:'a2'}];
+/* 1-2 连续常开、5-6 点动常开、7-8 点动常闭（松开那一下 rel3 时先别合）、11-12 停止常闭 */
+ZD.edges = st => {
+  const e = [];
+  if(!st.fr) e.push(['fr95','fr96']);
+  if(!st.sb1) e.push(['t11','t12']);
+  if(st.sb2) e.push(['t1','t2']);
+  if(st.sb3) e.push(['t5','t6']);
+  if(!st.sb3 && !st.rel3) e.push(['t7','t8']);
+  if(st.km) e.push(['k13','k14']);
+  return e;
+};
+ZD.orderA = [
+  {t:'① 串主干（连续）', d:'5 号熔断器 → FR → 停止 12-11 → 跳到 8、6、2 → 连续 2-1 → KM 13 → 线圈 → 4 号熔断器',
+   w:[['fu2b','fr95'], ['fr96','t12'], ['t11','t8'], ['t8','t6'], ['t6','t2'], ['t1','k13'], ['k13','a2'], ['fu2a','a1']],
+   test:'主干通了，先试：合 QF，<b>按住 SB2</b> 电机转、松手停（还没接自锁）。'},
+  {t:'② 并点动常开', d:'端子排 1 跳到 5：SB3 的常开并到 SB2 旁边', w:[['t1','t5']],
+   test:'试：<b>按住 SB3</b> 也能转、松手停。'},
+  {t:'③ 接自锁（串 SB3 常闭）', d:'KM 14 → 端子排 7：KM 13-14 经 SB3 常闭并到 SB2 旁边', w:[['k14','t7']],
+   test:'全部接完，试车：按一下 SB2 松手<b>一直转</b>（连续）；按 SB1 停；按住 SB3 转、<b>松手就停</b>（点动）。'}
+];
+ZD.orderB = [
+  {t:'① 线圈与自锁', d:'4 号熔断器 → KM A1；A2 → 13；13 → 端子排 1；14 → 端子排 7',
+   w:[['fu2a','a1'], ['a2','k13'], ['k13','t1'], ['k14','t7']]},
+  {t:'② 热继电器', d:'5 号熔断器 → FR 95，96 → 端子排 12', w:[['fu2b','fr95'], ['fr96','t12']]},
+  {t:'③ 端子排跳线', d:'1-5、2-6、6-8、8-11', w:[['t1','t5'], ['t2','t6'], ['t6','t8'], ['t8','t11']],
+   test:'全部接完，试车：按一下 SB2 松手<b>一直转</b>（连续）；按 SB1 停；按住 SB3 转、<b>松手就停</b>（点动）。'}
+];
+ZD.order = ZD.orderA;
+ZD.intro3 = '<b>点板上一个端子</b> → 左边图里圈出它 → 看它是几号 → 再点<b>同号</b>的另一个端子。';
+ZD.howto3 = '<b>照考板 K31 接。</b>主电路、按钮盒到端子排的线已经接好，你只接板上的 10 根控制线。端子排 1~4 连续、5~8 点动、9~12 停止。<br>注意这块板的方向：<b>4 号熔断器直接进线圈 A1</b>，5 号熔断器走 FR。原理图上的两只 FU2 就是它俩。';
+ZD.shortWhy = function(x, y){
+  const lo = Math.min(x, y), hi = Math.max(x, y), k = lo + '-' + hi;
+  if(hi === 6) return '这根线绕开了线圈 KM，两只熔断器直接连通：<b>相间短路，现场会炸熔断器</b>。';
+  const M = {
+    '1-2':'这根线把 <b>FR 95-96</b> 短接了：过载保护失效。',
+    '2-3':'这根线把 <b>停止按钮 SB1</b> 短接了：按了停不下来。',
+    '1-3':'这根线把 <b>FR 和 SB1</b> 一起短接了：过载保护和停止都失效。',
+    '3-5':'这根线把 <b>SB2、SB3 的常开</b>短接了：一合 QF 电机就自己转。',
+    '3-4':'这根线把 <b>SB3 的常闭</b>短接了：点动变成了连续，按住 SB3 再松手也不停。',
+    '4-5':'这根线把 <b>KM 13-14</b> 短接了：SB3 常闭平时是通的，一合 QF 电机就自己转。'};
+  return M[k] || '这根线跨过了好几个元件，把它们全短接了，控制就乱了。';
+};
+ZD.boardMsg = function(st, left){
+  if(st.km) return {cls:'ok', t:st.sb3 ? '点动：按住在转' : st.sb2 ? '连续：吸合了' : '松手还在转 —— 连续接对了',
+    b:st.sb3 ? 'SB3 常开让线圈得电，常闭断开切了自锁。松手应该马上停。' : st.sb2 ? '松手试试，应该一直转。' : '电流走 SB3 常闭 → KM 13-14 自锁。按 SB1 停；再试按住 SB3 点动。'};
+  if(st.sb2) return noPull(st, left, 'SB2');
+  if(st.sb3) return noPull(st, left, 'SB3');
+  return null;
+};
+ZD.ducts = ZS.ducts;
+ZD.board = function(st){
+  return boardOneKM(st, st.km) + bStrip(st, 12, [1, 2, 5, 6, 7, 8, 11, 12], [[2.5, 'SB2 连续', 'g', st.sb2], [6.5, 'SB3 点动', 'y', st.sb3], [10.5, 'SB1 停止', 'r', st.sb1]]);
 };
 
 /* ================= 电路二：正反转（接触器互锁） =================
@@ -952,12 +1170,13 @@ function bXT(y0, list, nm){
   });
   return h + '<text class="dlab" x="24" y="' + (y0+17) + '" text-anchor="middle">XT</text><text class="dlab2" x="24" y="' + (y0+27) + '" text-anchor="middle">' + (nm || '端子排') + '</text>';
 }
-/* 考板 K32 的端子排 1~12（x=120+16·位）：上桩接板上的线，下桩是按钮盒过来的线（已接好）。
-   1~4 正转（绿）、5~8 反转（黄）、9~12 停止（红）；这题只用 1-2、5-6、11-12，其他位画成空着 */
-function bStrip12(st){
-  const X = i => 120 + 16 * i, y0 = 322, used = [1, 2, 5, 6, 11, 12];
-  let h = '<rect x="' + (X(1)-10) + '" y="' + (y0+15) + '" width="' + (X(12)-X(1)+20) + '" height="6" fill="#495057"/>';
-  for(let i = 1; i <= 12; i++){
+/* 考板端子排（x=120+16·位）：上桩接板上的线，下桩是按钮盒过来的线（已接好）。used 之外的位画淡、不能点。
+   groups：[居中在第几位, 名字, 颜色 g/y/r, 是否按着] */
+const BTN_C = {g:['#37b24d','#2b6a35','#1f7a33'], y:['#f2c12e','#a8851c','#c79a12'], r:['#e03131','#862e2e','#a61e1e']};
+function bStrip(st, cnt, used, groups){
+  const X = i => 120 + 16 * i, y0 = 322;
+  let h = '<rect x="' + (X(1)-10) + '" y="' + (y0+15) + '" width="' + (X(cnt)-X(1)+20) + '" height="6" fill="#495057"/>';
+  for(let i = 1; i <= cnt; i++){
     const x = X(i), u = used.indexOf(i) >= 0;
     h += '<rect class="xtb" x="' + (x-7) + '" y="' + y0 + '" width="14" height="36" rx="2"' + (u ? '' : ' style="opacity:.55"') + '/>';
     h += '<text class="xtn" x="' + x + '" y="' + (y0+21) + '" text-anchor="middle">' + i + '</text>';
@@ -965,14 +1184,37 @@ function bStrip12(st){
     h += '<circle cx="' + x + '" cy="' + (y0+30) + '" r="3" fill="#adb5bd"/>';
     h += pw([[x, y0+30], [x, 402]]);
   }
-  /* 按钮盒（柜门），线已经接到端子排下桩 */
-  h += '<rect class="dev" x="' + (X(1)-12) + '" y="402" width="' + (X(12)-X(1)+24) + '" height="62" rx="6"/>';
-  [[2.5,'SB2 正转','#37b24d','#2b6a35',st.sb2,'#1f7a33'], [6.5,'SB3 反转','#f2c12e','#a8851c',st.sb3,'#c79a12'], [10.5,'SB1 停止','#e03131','#862e2e',st.sb1,'#a61e1e']].forEach(b => {
-    const x = 120 + 16 * b[0];
-    h += '<circle cx="' + x + '" cy="428" r="12" fill="' + (b[4] ? b[5] : b[2]) + '" stroke="' + b[3] + '"/>';
-    h += '<text class="dlab" x="' + x + '" y="456" text-anchor="middle">' + b[1] + '</text>';
+  h += '<rect class="dev" x="' + (X(1)-12) + '" y="402" width="' + (X(cnt)-X(1)+24) + '" height="62" rx="6"/>';
+  groups.forEach(g => {
+    const x = X(g[0]), c = BTN_C[g[2]];
+    h += '<circle cx="' + x + '" cy="428" r="12" fill="' + (g[3] ? c[2] : c[0]) + '" stroke="' + c[1] + '"/>';
+    h += '<text class="dlab" x="' + x + '" y="456" text-anchor="middle">' + g[1] + '</text>';
   });
-  return h + '<text class="dlab2" x="' + X(12) + '" y="' + (y0-4) + '" text-anchor="end">考板端子排 1~12</text>';
+  return h + '<text class="dlab2" x="' + X(cnt) + '" y="' + (y0-4) + '" text-anchor="end">考板端子排 1~' + cnt + '</text>';
+}
+function bStrip12(st){
+  return bStrip(st, 12, [1, 2, 5, 6, 11, 12], [[2.5, 'SB2 正转', 'g', st.sb2], [6.5, 'SB3 反转', 'y', st.sb3], [10.5, 'SB1 停止', 'r', st.sb1]]);
+}
+/* K34 互感器二次回路面板：每相 互感器 S1/S2、电流表 1/2、接地排；回路接通 + 电机在转，表针才摆 */
+function ctRead(i){
+  const f = finder(wireEdges());
+  return f('ta' + i + 's1') === f('am' + i + 'a') && f('am' + i + 'b') === f('ta' + i + 's2');
+}
+function bCT(st){
+  let h = '<text class="dlab2" x="14" y="474">电流互感器二次回路（每相一组）</text>';
+  h += '<rect x="20" y="590" width="320" height="8" rx="2" fill="#9ccc3d" stroke="#6b8e23" stroke-width=".8"/>';
+  h += '<text class="dlab2" x="22" y="610">接地排 PE</text>';
+  CT_X.forEach((cx, i) => {
+    const on = st.km && ctRead(i), PH = 'ABC'[i];
+    h += '<rect class="dev" x="' + (cx-26) + '" y="490" width="52" height="22" rx="4"/>';
+    h += '<text class="dlab2" x="' + cx + '" y="488" text-anchor="middle" dy="-2">' + PH + ' 相互感器</text>';
+    h += '<circle cx="' + cx + '" cy="536" r="13" fill="#f8f9fa" stroke="#495057"/>';
+    h += '<text class="dlab" x="' + cx + '" y="547" text-anchor="middle" style="font-size:6px">A</text>';
+    const ang = on ? 25 : -45;
+    h += '<line x1="' + cx + '" y1="540" x2="' + (cx + 10 * Math.sin(ang * Math.PI / 180)).toFixed(1) + '" y2="' + (540 - 10 * Math.cos(ang * Math.PI / 180)).toFixed(1) + '" stroke="' + (on ? '#d62828' : '#495057') + '" stroke-width="1.4"/>';
+    h += '<rect class="dev2" x="' + (cx-24) + '" y="558" width="48" height="16" rx="3"/>';
+  });
+  return h;
 }
 function bMotor(cx, cy, on, rev){
   return '<circle cx="' + cx + '" cy="' + cy + '" r="22" fill="#dee2e6" stroke="#868e96"/>' +
@@ -1002,7 +1244,7 @@ function ductB(x, y, w, h, lid){
 
 /* ================= 原理图（四屏共用） =================
    st = 当前状态；ov = {fade, sel:[], step, rings:[[x,y,cls]]} */
-const CIRS = {zs:ZS, zf:ZF};
+const CIRS = {zs:ZS, zd:ZD, zf:ZF};
 let C = ZS;
 function schem(st, ov){
   ov = ov || {};
@@ -1034,7 +1276,7 @@ function schem(st, ov){
             '<g' + (ov.fade === 'ctrl' ? ' class="faded"' : '') + '>' + ctrlG.join('') + '</g>';
   out += ov.under || '';   // ③屏的蓝点和端子圈：画在线号标签下面，标签不被挡
   if(numOn) C.steps.forEach((s, i) => { if(i <= ov.step) s.tags.forEach(t => { out += pill(t[0], t[1], t[2], i < ov.step); }); });
-  (ov.rings || []).forEach(r => {
+  (ov.rings || []).filter(r => r[0] != null).forEach(r => {
     out += '<circle class="ring pulse' + (r[2] ? ' ' + r[2] : '') + '" cx="' + r[0] + '" cy="' + r[1] + '" r="5"/>';
   });
   return out;
@@ -1202,14 +1444,15 @@ function finder(edges){
   edges.forEach(e => { P[e[0]] = P[e[0]] || e[0]; P[e[1]] = P[e[1]] || e[1]; const a = f(e[0]), b = f(e[1]); if(a !== b) P[a] = b; });
   return f;
 }
-const zoneOf = id => (id[0] === 's' || /^xt\d+b$/.test(id)) ? 'out' : 'in';
+const zoneOf = id => /^(ta|am|pe)\d/.test(id) ? 'ct' : (id[0] === 's' || /^xt\d+b$/.test(id)) ? 'out' : 'in';
 const total = () => Object.keys(C.need).reduce((s, n) => s + C.need[n].length - 1, 0) - C.fixed.length;
 function wireEdges(){ return wires.map(w => [w.a, w.b]).concat(C.fixed); }
 function missing(){
   const f = finder(wireEdges());
-  return Object.keys(C.need).filter(n => C.need[n].some(t => f(t) !== f(C.need[n][0]))).map(Number);
+  return Object.keys(C.need).filter(n => C.need[n].some(t => f(t) !== f(C.need[n][0]))).map(n => isNaN(n) ? n : Number(n));
 }
 function noPull(st, left, btn){
+  left = left.filter(n => typeof n === 'number');   // 互感器那几根不影响线圈
   if(left.length) return {cls:'bad', t:'按了 ' + btn + '，没吸合', b:'线圈的路没通：还缺 <b>' + left.join('、') + ' 号</b>线。这就是现场排故的思路 —— 照号一段段找哪里断了。'};
   if(st.fr) return {cls:'bad', t:'按了 ' + btn + '，没吸合', b:'FR 跳着，95-96 断开。点「FR 过载」复位。'};
   if(st.sb1) return {cls:'bad', t:'按了 ' + btn + '，没吸合', b:'SB1 也按着，停止优先。'};
@@ -1218,13 +1461,17 @@ function noPull(st, left, btn){
 }
 /* 板上的线 + 端子排 + 此刻闭合的触点连成网，线圈两头分别通到两只 FU2 下桩才吸合；多个线圈依次算到稳定 */
 function solve3(){
-  for(let i = 0; i < 4; i++){
+  const run = () => { for(let i = 0; i < 4; i++){
     C.coils.forEach(c => {
       const f = finder(wireEdges().concat(C.edges(S3)));
       const A = f(c.a), B = f(c.b), L = f('fu2a'), R = f('fu2b');
       S3[c.k] = S3.qf && ((A === L && B === R) || (A === R && B === L));
     });
-  }
+  } };
+  /* 刚松开 SB3：复合按钮先断常开、再合常闭 —— 先按「两副都断开」算一遍，线圈掉电后再合常闭 */
+  if(S3._p3 && !S3.sb3){ S3.rel3 = true; run(); S3.rel3 = false; }
+  run();
+  S3._p3 = S3.sb3;
 }
 function count(t){ return wires.filter(w => w.a === t || w.b === t).length; }
 const isXT = id => /^xt\d+[tb]$/.test(id);
@@ -1310,6 +1557,7 @@ function laneAssign(){
   const used = [];
   let ko = 0;
   return wires.map(w => {
+    if(zoneOf(w.a) === 'ct') return {};
     if(zoneOf(w.a) === 'out') return {k:ko++};
     const u = ductUse(w);
     let lane = 0;
@@ -1321,6 +1569,8 @@ function laneAssign(){
 }
 function wirePath(w, ln){
   const A = C.terms[w.a], B = C.terms[w.b];
+  /* 互感器那几根：从上面那头先横后竖 */
+  if(zoneOf(w.a) === 'ct'){ const [P, Q] = A.y <= B.y ? [A, B] : [B, A]; return [[P.x,P.y],[Q.x,P.y],[Q.x,Q.y]]; }
   if(zoneOf(w.a) === 'out'){
     const y = 374 + (ln.k % 6) * 4;
     return [[A.x,A.y],[A.x,y],[B.x,y],[B.x,B.y]];
@@ -1334,6 +1584,7 @@ function wirePath(w, ln){
 /* 号码管：套在每根线露出来的那一截上，紧挨端子 */
 function sleevePos(id){
   const T = C.terms[id], up = exitOf(id) === 'u';
+  if(T.sl) return [T.x + T.sl[0], T.y + T.sl[1]];
   if(zoneOf(id) === 'out') return [T.x, T.y + (up ? -9 : 11)];
   const d = ductOf(id);
   return [T.x, (T.y + (up ? d[3] : d[2])) / 2];
