@@ -69,6 +69,7 @@ svg text{font-family:inherit}
 .w{fill:none;stroke:var(--wire);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
 .w.on{stroke:var(--live);stroke-width:1.9}
 .w.nb{stroke:var(--acc);stroke-width:2.6}
+.w.hlw{stroke-width:2.8} .w.dim{opacity:.22}
 .ant{fill:none;stroke:#fff;stroke-width:1;stroke-dasharray:1.6 5;stroke-linecap:round;animation:ant .55s linear infinite}
 @keyframes ant{to{stroke-dashoffset:-6.6}}
 .arm{stroke:var(--wire);stroke-width:1.5;stroke-linecap:round;fill:none}
@@ -398,8 +399,8 @@ function schem(st, ov){
   SEGS.forEach(g => {
     const on = live[g.g], hv = !on && volt[g.n];
     let cls = 'w' + (on ? ' on' : hv ? ' hv' : '') + (ov.color && !on && !hv ? ' w' + g.c : '');
-    if(ov.hl && N_OF[ov.hl].indexOf(g.n) >= 0) cls = 'w nb';
-    if(ov.hln != null && g.n === ov.hln) cls = 'w nb';
+    if(ov.hl) cls = 'w w' + g.c + (N_OF[ov.hl].indexOf(g.n) >= 0 ? ' hlw' : ' dim');
+    if(ov.hln != null) cls = 'w w' + g.c + (g.n === ov.hln ? ' hlw' : ' dim');
     h += '<polyline class="' + cls + '" points="' + pl(g.p) + '"/>';
     if(on) h += '<polyline class="ant" points="' + pl(g.p) + '"/>';
   });
