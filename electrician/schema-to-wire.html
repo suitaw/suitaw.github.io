@@ -125,6 +125,11 @@ svg text{font-family:inherit}
 .btns.five{grid-template-columns:repeat(5,1fr);gap:4px}
 .btns.five button{font-size:.7rem;padding:8px 1px}
 .rot.rev{animation-direction:reverse}
+/* 第④屏：页面不动，只有下面的实训板那块自己上下滑（overscroll-behavior 防止滑到头带着整页一起动） */
+#sc3.on{display:flex;flex-direction:column;height:calc(100vh - var(--tabsH,58px));height:calc(100dvh - var(--tabsH,58px))}
+#sc3 .pin{position:static;flex:none}
+.pane3{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border-radius:12px}
+body.lock3{padding-bottom:0}
 .pin{position:sticky;top:var(--tabsH,58px);z-index:4;display:grid;grid-template-columns:58% 1fr;gap:6px;
   background:var(--bg);padding:0 0 6px;margin-bottom:4px}
 .pin-l{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px}
@@ -223,14 +228,16 @@ svg text{font-family:inherit}
       <div class="pin-l"><svg id="s3"></svg></div>
       <div class="say pin-r" id="say3"><div class="st" id="say3T"></div><div class="why" id="say3B"></div></div>
     </div>
+    <div class="pane3" id="pane3">
     <div class="card">
       <h2>实物板 <small>浅色宽条＝线槽</small><span class="prog" id="p3"></span><button class="zbtn">放大</button></h2>
       <div class="zw"><svg id="board"></svg></div>
       <div class="btns" id="b3"></div>
-      <div class="btns">
-        <button data-k="hint" id="hintBtn">提示<span>下一根接哪</span></button>
-        <button data-k="num" id="numBtn">显示线号<span>端子旁标号</span></button>
-        <button data-k="lid" id="lidBtn">盖线槽盖<span>真板子的样子</span></button>
+      <div class="btns five">
+        <button data-k="undo" id="undoBtn">撤销<span>上一根</span></button>
+        <button data-k="hint" id="hintBtn">提示<span>下一根</span></button>
+        <button data-k="num" id="numBtn">线号<span>端子旁标</span></button>
+        <button data-k="lid" id="lidBtn">盖线槽<span>真板子样</span></button>
         <button data-k="reset" id="resetBtn">拆光<span>重接</span></button>
       </div>
       <div class="info" id="howto3"></div>
@@ -267,6 +274,7 @@ svg text{font-family:inherit}
         为什么要绕这一下：按钮装在柜门上、电机在柜子外面，不能从板子直接拉线过去。都先接到端子排，检修、换按钮时只拆下桩那头，板子上的线不用动。<br>
         所以原理图上的一根线（比如 2 号：FR 96 → SB1 11），实际要接<b>两根</b>：<b>FR 96 → XT2 上桩</b>，<b>XT2 下桩 → SB1 11</b>。端子排每一节印的号，就是它中转的那根线的线号。电机的 U、V、W 也一样，已经替你接好了。
       </div>
+    </div>
     </div>
   </section>
 </div>
@@ -957,7 +965,12 @@ $('tabs').addEventListener('click', e => {
   cur = +b.dataset.i;
   document.querySelectorAll('#tabs button').forEach(t => t.classList.toggle('on', +t.dataset.i === cur));
   document.querySelectorAll('.scene').forEach((s, i) => s.classList.toggle('on', i === cur));
-  window.scrollTo(0, 0);
+  document.body.classList.toggle('lock3', cur === 3);
+  if(cur === 3){
+    /* 把页面滚到页签条贴顶：标题那几行藏上去，下面正好一屏是钉住的图 + 实训板 */
+    window.scrollTo(0, $('sc3').getBoundingClientRect().top + window.scrollY - $('tabs').offsetHeight);
+    $('pane3').scrollTop = 0;
+  } else window.scrollTo(0, 0);
 });
 
 /* ================= 按钮（QF/FR 点一下切换，SB 按住才通） ================= */
@@ -1262,10 +1275,17 @@ $('hintBtn').addEventListener('click', () => {
   upd3();
 });
 $('numBtn').addEventListener('click', () => { showNum = !showNum; $('numBtn').classList.toggle('on', showNum); upd3(); });
+$('undoBtn').addEventListener('click', () => {
+  pick = null; rings3 = []; hint3 = null;
+  const w = wires.pop();
+  msg3 = w ? {cls:'info', t:'撤销了一根 ' + w.n + ' 号线', b:'拆掉的是 <b>' + C.terms[w.a].nm + ' ↔ ' + C.terms[w.b].nm + '</b>。还剩 ' + (total() - wires.length) + ' 根没接。'}
+           : {cls:'info', t:'没有可撤销的线', b:'板上还一根线都没接。'};
+  upd3();
+});
 $('lidBtn').addEventListener('click', () => {
   lid = !lid;
   $('lidBtn').classList.toggle('on', lid);
-  $('lidBtn').innerHTML = lid ? '打开线槽盖<span>看清线怎么走</span>' : '盖线槽盖<span>真板子的样子</span>';
+  $('lidBtn').innerHTML = lid ? '开线槽<span>看清走线</span>' : '盖线槽<span>真板子样</span>';
   upd3();
 });
 $('resetBtn').addEventListener('click', () => { wires = []; pick = null; rings3 = []; hint3 = null; msg3 = null; upd3(); });
@@ -1293,6 +1313,7 @@ function setCircuit(id){
   Object.assign(S1, fresh()); Object.assign(S3, fresh());
   v0 = {fade:null, sel:[]}; step2 = -1;
   wires = []; pick = null; rings3 = []; hint3 = null; msg3 = null;
+  $('pane3').scrollTop = 0;
   try{ history.replaceState(null, '', C.id === 'zs' ? location.pathname : '#' + C.id); }catch(e){}
   draw0(); upd1(); draw2(); upd3();
 }
