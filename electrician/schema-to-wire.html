@@ -124,6 +124,12 @@ svg text{font-family:inherit}
 .btns.five{grid-template-columns:repeat(5,1fr);gap:4px}
 .btns.five button{font-size:.7rem;padding:8px 1px}
 .rot.rev{animation-direction:reverse}
+.pin{position:sticky;top:var(--tabsH,58px);z-index:4;display:grid;grid-template-columns:58% 1fr;gap:6px;
+  background:var(--bg);padding:0 0 6px;margin-bottom:4px}
+.pin-l{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px}
+.pin-r{margin:0;padding:8px;overflow-y:auto;contain:size;-webkit-overflow-scrolling:touch}
+.pin-r .st{font-size:.8rem;line-height:1.35}
+.pin-r .why{font-size:.72rem;line-height:1.55}
 .zw{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .zw.zoom svg{width:200%;max-width:none}
 .zbtn{margin-left:auto;border:1px solid var(--line);background:var(--card);border-radius:7px;padding:3px 9px;
@@ -191,6 +197,7 @@ svg text{font-family:inherit}
   <section class="scene" id="sc2">
     <div class="say info"><div class="st">接线的诀窍：先给图编号，再照号接</div>
       <div class="why">用导线直接连着、中间<b>没隔着任何元件</b>的那一片，算一个「点」，编一个号。碰到元件（触点、线圈、熔断器）号就要换。<b>同一个号的所有端子，最后要用导线接到一起</b> —— 这就是接线的全部规则。</div></div>
+    <div class="say"><div class="st">两种数字别搞混：端子号 ≠ 线号</div><div class="why" id="numNote"></div></div>
     <div class="card">
       <h2>标线号 <span class="prog" id="p2"></span><button class="zbtn">放大</button></h2>
       <div class="zw"><svg id="s2"></svg></div>
@@ -210,13 +217,13 @@ svg text{font-family:inherit}
 
   <!-- ④ 接线 -->
   <section class="scene" id="sc3">
-    <div class="say" id="say3"><div class="st" id="say3T"></div><div class="why" id="say3B"></div></div>
-    <div class="card">
-      <h2>原理图 <small>点板上的端子，这里圈出它在图上的位置</small><button class="zbtn">放大</button></h2>
-      <div class="zw"><svg id="s3"></svg></div>
+    <!-- 钉在顶上：左边只放控制电路那块原理图（主电路已接好用不上），右边是提示；下面的接线板滑动时它不动 -->
+    <div class="pin">
+      <div class="pin-l"><svg id="s3"></svg></div>
+      <div class="say pin-r" id="say3"><div class="st" id="say3T"></div><div class="why" id="say3B"></div></div>
     </div>
     <div class="card">
-      <h2>实物板 <small>细灰线＝主电路已接好 · 宽灰条＝线槽</small><span class="prog" id="p3"></span><button class="zbtn">放大</button></h2>
+      <h2>实物板 <small>宽灰条＝线槽</small><span class="prog" id="p3"></span><button class="zbtn">放大</button></h2>
       <div class="zw"><svg id="board"></svg></div>
       <div class="btns" id="b3"></div>
       <div class="btns three">
@@ -224,6 +231,7 @@ svg text{font-family:inherit}
         <button data-k="num" id="numBtn">显示线号<span>端子旁标号</span></button>
         <button data-k="reset" id="resetBtn">拆光重接</button>
       </div>
+      <div class="info" id="howto3"></div>
     </div>
   </section>
 </div>
@@ -295,7 +303,7 @@ function gang(x0, x1, y){ return '<line class="gang" x1="' + x0 + '" y1="' + y +
    原理图坐标 360×262。主电路三相 x=40/65/90，控制主干 x=190、KM 自锁支路 x=250、回线 x=330。
    每段导线：g = 什么时候有电流，n = 属于哪个线号（第③屏编号用）。 */
 const XT_NOTE = '<b>原理图上没有端子排</b>：按钮装在柜门上，板上的线先接到端子排上桩，按钮的线接下桩。端子排同一节的上下两头里面是通的，<b>是同一个号</b>。';
-const ZS = {id:'zs', vb:'0 0 360 262', bvb:'0 0 360 478', MX:[40,65,90]};
+const ZS = {id:'zs', vb:'0 0 360 262', vb3:'140 44 200 208', bvb:'0 0 360 478', MX:[40,65,90]};
 ZS.segs = [];
 ZS.MX.forEach(x => {
   ZS.segs.push({p:[[x,16],[x,28]], g:'m', n:'L'});
@@ -426,6 +434,7 @@ ZS.sum = [
   '<b>4 号</b>：KM A1 ↔ KM 14 ↔ XT4 上桩；XT4 下桩 ↔ SB2 14（3 根）',
   '<b>5 号</b>：KM A2 ↔ 另一只 FU2 的下桩（1 根）'];
 ZS.sumX = XT_NOTE;
+ZS.numNote = '图上元件旁边的<b>灰色小字</b>（95、96、11、12、13、14、21、22、A1、A2）是<b>端子号</b>：印在元件身上的，每个元件都有自己的一套。规律：<b>个位 1、2 ＝ 常闭，3、4 ＝ 常开；十位是这个元件上的第几副</b>（13-14 第一副常开，21-22 第二副常闭）。所以光说「13」分不清，要连名字说「SB2 的 13」。<br>下面要编的<b>蓝色小标签</b>是<b>线号</b>，是我们自己给导线编的。<b>线号一样的端子才接在一起，端子号一样不算数。</b>例：SB2 和 KM 都有 13、14，这张图里它们正好都在 3 号、4 号线上；到了正反转那张，同样叫 14，却分在两根不同的线上。';
 /* 板上的端子：线号 n、原理图上的位置 sx/sy、端子字的位置 l=[dx,dy,对齐]。
    xt2t/xt2b 是端子排 2 号那一节的上桩/下桩（C.fixed 里登记它俩本来就通） */
 ZS.terms = {
@@ -460,7 +469,8 @@ ZS.edges = st => {
   if(st.km) e.push(['k13','k14']);
   return e;
 };
-ZS.intro3 = '主电路已经接好（细灰线）。你要接控制电路：板上的线都走<b>线槽</b>（宽灰条，盖着盖子），按钮装在柜门上，跟板子之间要经过底下的<b>端子排 XT</b>。<b>点一个端子</b>，上面原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。线两头会套上号码管 —— 线槽一盖，认线全靠它。不会就按「提示」。';
+ZS.intro3 = '<b>点板上一个端子</b> → 左边图里圈出它 → 看它是几号 → 再点<b>同号</b>的另一个端子。不会就按「提示」。';
+ZS.howto3 = '主电路已经接好（细灰线）。你要接控制电路：板上的线都走<b>线槽</b>（宽灰条，盖着盖子），按钮装在柜门上，跟板子之间要经过底下的<b>端子排 XT</b>。<b>点一个端子</b>，顶上钉着的原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。线两头会套上号码管 —— 线槽一盖，认线全靠它。不会就按「提示」。';
 ZS.gap = {1:'FR 95-96', 2:'停止按钮 SB1', 3:'启动按钮 SB2（连同 KM 13-14）', 4:'KM 线圈'};
 ZS.shortWhy = function(x, y){
   const lo = Math.min(x, y), hi = Math.max(x, y);
@@ -502,7 +512,7 @@ ZS.board = function(st){
    主电路：KM1 三相 x=30/50/70，KM2 在右边 x=95/115/135，出线 L1、L3 对调后并回去。
    控制电路：主干 x=180；SB1 下面在 y=152 分岔 —— 正转 SB2 x=200 / KM1 自锁 x=232，反转 SB3 x=290 / KM2 自锁 x=322；
    线圈前各串对方的 21-22（互锁）；回线 x=354。 */
-const ZF = {id:'zf', vb:'0 0 360 268', bvb:'0 0 360 478', MX:[30,50,70], X2:[95,115,135]};
+const ZF = {id:'zf', vb:'0 0 360 268', vb3:'138 44 222 222', bvb:'0 0 360 478', MX:[30,50,70], X2:[95,115,135]};
 ZF.segs = [];
 ZF.MX.forEach((x, i) => {
   const by = 96 + 4*i, cy = [146,150,154][i];
@@ -678,6 +688,7 @@ ZF.sum = [
   '<b>7 号</b>：KM1 22 ↔ KM2 A1（1 根）',
   '<b>8 号</b>：KM1 A2 ↔ KM2 A2 ↔ 另一只 FU2 的下桩（2 根）'];
 ZF.sumX = '<b>最容易错的是 4~7 号：正转那条要绕到 KM2 身上走一下再回 KM1 线圈</b>，反转同理 —— 照号接就不会接成「自己的常闭锁自己」。' + XT_NOTE;
+ZF.numNote = '图上元件旁边的<b>灰色小字</b>（95、96、11、12、13、14、21、22、A1、A2）是<b>端子号</b>：印在元件身上的，每个元件都有自己的一套。规律：<b>个位 1、2 ＝ 常闭，3、4 ＝ 常开；十位是这个元件上的第几副</b>（13-14 第一副常开，21-22 第二副常闭）。所以光说「13」分不清，要连名字说「SB2 的 13」。<br>下面要编的<b>蓝色小标签</b>是<b>线号</b>，是我们自己给导线编的。<b>线号一样的端子才接在一起，端子号一样不算数。</b>例：SB2、KM1、SB3、KM2 都有 13-14。四个 13 正好都在 <b>3 号线</b>上，要接在一起；可 SB2 14、KM1 14 是 <b>4 号线</b>，SB3 14、KM2 14 是 <b>6 号线</b> —— 端子号一样，线号不一样，不能连。';
 ZF.terms = {
   fu2a:{x:162, y:112, nm:'FU2 下桩（左）', n:1, sx:180, sy:88},
   fu2b:{x:184, y:112, nm:'FU2 下桩（右）', n:8, sx:356, sy:88},
@@ -725,7 +736,8 @@ ZF.edges = st => {
   if(st.km2) e.push(['k213','k214']); else e.push(['k221','k222']);
   return e;
 };
-ZF.intro3 = '主电路（含 KM2 的换相线）已经接好。你要接控制电路：板上的线走<b>线槽</b>，按钮在柜门上，要经<b>端子排 XT</b> 转接。<b>点一个端子</b>，上面原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。先接 1~3 号，再分正转（4、5）、反转（6、7），最后 8 号。';
+ZF.intro3 = '<b>点板上一个端子</b> → 左边图里圈出它 → 看它是几号 → 再点<b>同号</b>的另一个端子。先接 1~3 号，再正转 4、5，反转 6、7，最后 8 号。';
+ZF.howto3 = '主电路（含 KM2 的换相线）已经接好。你要接控制电路：板上的线走<b>线槽</b>，按钮在柜门上，要经<b>端子排 XT</b> 转接。<b>点一个端子</b>，顶上钉着的原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。先接 1~3 号，再分正转（4、5）、反转（6、7），最后 8 号。';
 ZF.shortWhy = function(x, y){
   const lo = Math.min(x, y), hi = Math.max(x, y), k = lo + '-' + hi;
   if(hi === 8) return '这根线绕开了线圈，电从左边 FU2 直通右边 FU2（有的要等按下按钮才通）：<b>相间短路，现场会炸熔断器</b>。';
@@ -1042,7 +1054,7 @@ function tapTerm(id){
     pick = id; rings3 = [[T.sx, T.sy]];
     msg3 = {cls:'info', t:'选中 ' + T.nm,
       b:(isXT(id) ? '端子排是板子和柜门之间的<b>中转站，原理图上不画它</b>；它接在哪个号的线上，图上就圈在那根线上。'
-                  : '上面原理图里圈出来的就是它。') +
+                  : '左边图里圈出来的就是它。') +
         '看它是几号' + (showNum ? '（' + T.n + ' 号）' : '') + '，再点<b>同一号</b>的另一个端子。点它自己取消。'};
     return;
   }
@@ -1069,7 +1081,7 @@ function tapTerm(id){
   wires.push({a:pick, b:id, n:A.n});
   pick = null; rings3 = [];
   const left = missing();
-  if(!left.length) msg3 = {cls:'ok', t:'✓ ' + total() + ' 根线全部接完', b:'现在试车：合上 QF，按一下启动按钮再松开，看电机是不是一直转；再按 SB1 停。上面原理图会跟着亮。'};
+  if(!left.length) msg3 = {cls:'ok', t:'✓ ' + total() + ' 根线全部接完', b:'现在试车：合上 QF，按一下启动按钮再松开，看电机是不是一直转；再按 SB1 停。左边原理图会跟着亮。'};
   else {
     const f = finder(wireEdges());
     const rest = C.need[A.n].filter(t => f(t) !== f(C.need[A.n][0])).length;
@@ -1157,7 +1169,7 @@ function upd3(){
   let m = C.boardMsg(S3, left) || msg3;
   if(!m && !left.length) m = {cls:'ok', t:'线接完了', b:'合上 QF，按住启动按钮试车。'};
   if(!m) m = {cls:'info', t:'照原理图把控制电路接起来', b:C.intro3};
-  $('say3').className = 'say ' + m.cls; $('say3T').textContent = m.t; $('say3B').innerHTML = m.b;
+  $('say3').className = 'say pin-r ' + m.cls; $('say3T').textContent = m.t; $('say3B').innerHTML = m.b;
   $('s3').innerHTML = schem(S3, {rings:rings3, volt:true});
   drawBoard();
 }
@@ -1191,7 +1203,7 @@ $('resetBtn').addEventListener('click', () => { wires = []; pick = null; rings3 
 function setCircuit(id){
   C = CIRS[id] || ZS;
   document.querySelectorAll('#cir button').forEach(b => b.classList.toggle('on', b.dataset.c === C.id));
-  ['s0','s1','s2','s3'].forEach(s => $(s).setAttribute('viewBox', C.vb));
+  ['s0','s1','s2'].forEach(s => $(s).setAttribute('viewBox', C.vb));
   $('board').setAttribute('viewBox', C.bvb);
   $('intro0T').textContent = C.intro.t; $('intro0B').innerHTML = C.intro.b;
   $('b0spec').innerHTML = C.view.spec.btn;
@@ -1203,6 +1215,9 @@ function setCircuit(id){
   $('sum2H').textContent = C.sumH;
   $('sum2L').innerHTML = C.sum.map(r => '<li>' + r + '</li>').join('');
   $('sum2X').innerHTML = C.sumX;
+  $('numNote').innerHTML = C.numNote;
+  $('howto3').innerHTML = C.howto3;
+  $('s3').setAttribute('viewBox', C.vb3);
   [$('b1'), $('b3')].forEach(b => { b.innerHTML = ctlHTML(); b.classList.toggle('five', C.btns.length === 5); });
   Object.assign(S1, fresh()); Object.assign(S3, fresh());
   v0 = {fade:null, sel:[]}; step2 = -1;
@@ -1216,6 +1231,8 @@ $('cir').addEventListener('click', e => {
   setCircuit(b.dataset.c);
 });
 setCircuit(location.hash.slice(1));
+function tabsH(){ document.documentElement.style.setProperty('--tabsH', $('tabs').offsetHeight + 'px'); }
+tabsH(); window.addEventListener('resize', tabsH);
 </script>
 </body>
 </html>
