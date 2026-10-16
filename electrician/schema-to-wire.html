@@ -97,8 +97,14 @@ svg text{font-family:inherit}
 .dev2{fill:#dee2e6;stroke:#868e96;stroke-width:.8}
 .pw{fill:none;stroke:var(--pre);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .pw.on{stroke:#e57373}
-.uw{fill:none;stroke:var(--wire);stroke-width:2.4;stroke-linecap:round}
+.uw{fill:none;stroke:var(--wire);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .uw.on{stroke:var(--live)}
+.uw.hi{stroke:var(--acc);stroke-width:2.4}
+.duct{fill:#ced4da;fill-opacity:.85;stroke:#adb5bd;stroke-width:.8}
+.duct-t{stroke:#adb5bd;stroke-width:.8}
+.xtb{fill:#f8f9fa;stroke:#868e96;stroke-width:.8}
+.xtn{font-size:7px;font-weight:700;fill:var(--tx)}
+.hint{fill:none;stroke:var(--acc);stroke-width:1.6;animation:pulse .9s ease-in-out infinite}
 .term{fill:#ced4da;stroke:#495057;stroke-width:1}
 .term.ok{fill:#c3e6cb}
 .term.selt{fill:var(--accbg);stroke:var(--acc);stroke-width:2}
@@ -200,7 +206,7 @@ svg text{font-family:inherit}
       <svg id="s3"></svg>
     </div>
     <div class="card">
-      <h2>实物板 <small>灰线＝主电路已接好</small><span class="prog" id="p3"></span></h2>
+      <h2>实物板 <small>细灰线＝主电路已接好 · 宽灰条＝线槽</small><span class="prog" id="p3"></span></h2>
       <svg id="board"></svg>
       <div class="btns" id="b3"></div>
       <div class="btns three">
@@ -278,7 +284,8 @@ function gang(x0, x1, y){ return '<line class="gang" x1="' + x0 + '" y1="' + y +
 /* ================= 电路一：自锁起停 =================
    原理图坐标 360×262。主电路三相 x=40/65/90，控制主干 x=190、KM 自锁支路 x=250、回线 x=330。
    每段导线：g = 什么时候有电流，n = 属于哪个线号（第③屏编号用）。 */
-const ZS = {id:'zs', vb:'0 0 360 262', bvb:'0 0 360 372', MX:[40,65,90]};
+const XT_NOTE = '<b>原理图上没有端子排</b>：按钮装在柜门上，板上的线先接到端子排上桩，按钮的线接下桩。端子排同一节的上下两头里面是通的，<b>是同一个号</b>。';
+const ZS = {id:'zs', vb:'0 0 360 262', bvb:'0 0 360 478', MX:[40,65,90]};
 ZS.segs = [];
 ZS.MX.forEach(x => {
   ZS.segs.push({p:[[x,16],[x,28]], g:'m', n:'L'});
@@ -291,7 +298,7 @@ ZS.segs.push(
   {p:[[65,152],[65,177]], g:'m', n:'mM'},
   {p:[[90,152],[90,166],[75,181]], g:'m', n:'mM'},
   {p:[[40,60],[190,60],[190,70]], g:'cc', n:'m11'},
-  {p:[[65,52],[330,52],[330,70]], g:'cc', n:'m11'},
+  {p:[[330,70],[330,52],[65,52]], g:'cc', n:'m11'},   // 回线：从 FU2 流回 L2
   {p:[[190,88],[190,100]], g:'cc', n:'c1'},
   {p:[[190,118],[190,128]], g:'cc', n:'c2'},
   {p:[[190,146],[190,156]], g:'cc', n:'c3'},
@@ -337,7 +344,7 @@ ZS.steps = [
   {n:'mM', t:'U / V / W', tags:[[46,160,'U'],[71,160,'V'],[96,160,'W']],
    b:'FR 下面到电动机接线盒。进电机的三根就叫 U、V、W，跟电机接线盒里印的字母对上。<b>主电路编完了，下面编控制电路。</b>'},
   {n:'c1', t:'1 号', tags:[[176,94,'1']], b:'FU2 下桩到 FR 的 95。中间只有导线，所以是一个号：<b>FU2 下桩 ↔ FR 95</b>，一根线。'},
-  {n:'c2', t:'2 号', tags:[[176,123,'2']], b:'FR 的 96 到停止按钮 SB1 的 11。<b>FR 96 ↔ SB1 11</b>，一根线。'},
+  {n:'c2', t:'2 号', tags:[[176,123,'2']], b:'FR 的 96 到停止按钮 SB1 的 11。<b>FR 96 ↔ SB1 11</b>。按钮装在柜门上，实际接线要经端子排转一下，见第④屏。'},
   {n:'c3', t:'3 号', tags:[[176,151,'3']], b:'SB1 下面这片分了岔：往下到 SB2 的 13，往右到 KM 的 13。<b>三个端子都是 3 号</b>：SB1 12、SB2 13、KM 13。'},
   {n:'c4', t:'4 号', tags:[[176,200,'4']], b:'SB2 下面和 KM 13-14 下面在黑点处汇合，再到线圈 A1。又是三个端子：<b>SB2 14、KM 14、KM A1</b>。'},
   {n:'c5', t:'5 号', tags:[[268,233,'5']], b:'线圈 A2 绕到右边，回到另一只 FU2 的下桩。<b>KM A2 ↔ FU2 下桩</b>。控制电路一共 5 个号。'}
@@ -356,7 +363,7 @@ ZS.info = {
   KMc:'<b>KM 线圈 A1-A2</b>。通电吸合，带动所有叫 KM 的触点一起动作：主触点合上（电机转）、13-14 合上（自锁）。'
 };
 ZS.intro = {t:'一张最常见的图：电动机自锁起停',
-  b:'按一下「启动」电机一直转，按「停止」才停。现场 80% 的控制图都是在它上面加东西，先把它读透。<b>点图上任何一个符号</b>看它是什么。'};
+  b:'按一下「启动」电机一直转，按「停止」才停。正反转、星三角这些控制图都是在它上面加东西，先把它读透。<b>点图上任何一个符号</b>看它是什么。'};
 ZS.view = {
   main:'<b>主电路</b>：L1/L2/L3 → QF → FU1 → KM 主触点 → FR 发热元件 → 电动机。电动机的大电流只走这里。',
   ctrl:'<b>控制电路</b>：从 U11 取电 → FU2 → FR 95-96 → SB1 → SB2（并着 KM 13-14）→ KM 线圈 → FU2 → 回到 V11。它只决定线圈有没有电。',
@@ -383,30 +390,39 @@ ZS.say = function(st, was){
   if(st.sb1) return {cls:'bad', t:'按着停止', b:'SB1 断开，线圈断电，所有 KM 触点弹回 —— 自锁那条路也断了。所以<b>松开 SB1 后电机不会自己再转</b>，要重新按 SB2。' + (st.sb2 ? '两个一起按：停止优先，SB1 在 SB2 上游。' : '')};
   return {cls:'info', t:'有电，等你按启动', b:(was ? '电机停了。' : '') + '线圈这条路在 SB2 处断着（常开），所以线圈没电、电机不转。<b>按住 SB2</b>。'};
 };
-ZS.sumH = '5 个号，7 根线';
+ZS.sumH = '5 个号，10 根线（含端子排）';
 ZS.sum = [
   '<b>1 号</b>：FU2 下桩 ↔ FR 95（1 根）',
-  '<b>2 号</b>：FR 96 ↔ SB1 11（1 根）',
-  '<b>3 号</b>：SB1 12 ↔ SB2 13 ↔ KM 13（3 个端子，2 根）',
-  '<b>4 号</b>：SB2 14 ↔ KM 14 ↔ KM A1（3 个端子，2 根）',
+  '<b>2 号</b>：FR 96 ↔ XT2 上桩；XT2 下桩 ↔ SB1 11（2 根）',
+  '<b>3 号</b>：KM 13 ↔ XT3 上桩；XT3 下桩 ↔ SB1 12 ↔ SB2 13（3 根）',
+  '<b>4 号</b>：KM A1 ↔ KM 14 ↔ XT4 上桩；XT4 下桩 ↔ SB2 14（3 根）',
   '<b>5 号</b>：KM A2 ↔ 另一只 FU2 的下桩（1 根）'];
-ZS.sumX = '';
-/* 板上的端子：线号 n、原理图上的位置 sx/sy、端子字的位置 l=[dx,dy,对齐] */
+ZS.sumX = XT_NOTE;
+/* 板上的端子：线号 n、原理图上的位置 sx/sy、端子字的位置 l=[dx,dy,对齐]。
+   xt2t/xt2b 是端子排 2 号那一节的上桩/下桩（C.fixed 里登记它俩本来就通） */
 ZS.terms = {
-  fu2a:{x:162, y:132, nm:'FU2 下桩（左）', n:1, sx:190, sy:88},
-  fu2b:{x:184, y:132, nm:'FU2 下桩（右）', n:5, sx:330, sy:88},
-  fr95:{x:116, y:244, nm:'FR 95', n:1, sx:190, sy:100, l:[-8,2.5,'end']},
-  fr96:{x:116, y:264, nm:'FR 96', n:2, sx:190, sy:118, l:[-8,2.5,'end']},
-  k13:{x:32, y:164, nm:'KM 13', n:3, sx:250, sy:164, l:[0,13]},
-  k14:{x:32, y:218, nm:'KM 14', n:4, sx:250, sy:184, l:[0,-8]},
-  a1:{x:108, y:164, nm:'KM A1', n:4, sx:190, sy:206, l:[0,13]},
-  a2:{x:108, y:218, nm:'KM A2', n:5, sx:190, sy:226, l:[0,-8]},
-  s111:{x:240, y:276, nm:'SB1 11', n:2, sx:190, sy:128, l:[0,13]},
-  s112:{x:262, y:276, nm:'SB1 12', n:3, sx:190, sy:146, l:[0,13]},
-  s213:{x:300, y:276, nm:'SB2 13', n:3, sx:190, sy:164, l:[0,13]},
-  s214:{x:322, y:276, nm:'SB2 14', n:4, sx:190, sy:184, l:[0,13]}
+  fu2a:{x:162, y:112, nm:'FU2 下桩（左）', n:1, sx:190, sy:88},
+  fu2b:{x:184, y:112, nm:'FU2 下桩（右）', n:5, sx:330, sy:88},
+  k13:{x:32, y:158, nm:'KM 13', n:3, sx:250, sy:164, l:[0,13]},
+  a1:{x:108, y:158, nm:'KM A1', n:4, sx:190, sy:206, l:[0,13]},
+  k14:{x:32, y:212, nm:'KM 14', n:4, sx:250, sy:184, l:[0,-8]},
+  a2:{x:108, y:212, nm:'KM A2', n:5, sx:190, sy:226, l:[0,-8]},
+  fr95:{x:108, y:256, nm:'FR 95', n:1, sx:190, sy:100, l:[0,13]},
+  fr96:{x:122, y:256, nm:'FR 96', n:2, sx:190, sy:118, l:[0,13]},
+  xt2t:{x:165, y:328, nm:'XT2 上桩', n:2, sx:190, sy:123},
+  xt3t:{x:185, y:328, nm:'XT3 上桩', n:3, sx:190, sy:151},
+  xt4t:{x:205, y:328, nm:'XT4 上桩', n:4, sx:190, sy:200},
+  xt2b:{x:165, y:352, nm:'XT2 下桩', n:2, sx:190, sy:123},
+  xt3b:{x:185, y:352, nm:'XT3 下桩', n:3, sx:190, sy:151},
+  xt4b:{x:205, y:352, nm:'XT4 下桩', n:4, sx:190, sy:200},
+  s111:{x:165, y:410, nm:'SB1 11', n:2, sx:190, sy:128, l:[0,11]},
+  s112:{x:185, y:410, nm:'SB1 12', n:3, sx:190, sy:146, l:[0,11]},
+  s213:{x:235, y:410, nm:'SB2 13', n:3, sx:190, sy:164, l:[0,11]},
+  s214:{x:255, y:410, nm:'SB2 14', n:4, sx:190, sy:184, l:[0,11]}
 };
-ZS.need = {1:['fu2a','fr95'], 2:['fr96','s111'], 3:['s112','s213','k13'], 4:['s214','k14','a1'], 5:['a2','fu2b']};
+ZS.need = {1:['fu2a','fr95'], 2:['fr96','xt2t','xt2b','s111'], 3:['k13','xt3t','xt3b','s112','s213'],
+  4:['a1','k14','xt4t','xt4b','s214'], 5:['a2','fu2b']};
+ZS.fixed = [['xt2t','xt2b'], ['xt3t','xt3b'], ['xt4t','xt4b']];
 ZS.coils = [{k:'km', a:'a1', b:'a2'}];
 ZS.edges = st => {
   const e = [];
@@ -416,8 +432,7 @@ ZS.edges = st => {
   if(st.km) e.push(['k13','k14']);
   return e;
 };
-ZS.avoid = [[70,191]];
-ZS.intro3 = '主电路已经接好（灰线）。你要接控制电路那 7 根：<b>点板上一个端子</b>，上面原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子，一根线就连上了。不会就按「提示」。';
+ZS.intro3 = '主电路已经接好（细灰线）。你要接控制电路：板上的线都走<b>线槽</b>（宽灰条，盖着盖子），按钮装在柜门上，跟板子之间要经过底下的<b>端子排 XT</b>。<b>点一个端子</b>，上面原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。线两头会套上号码管 —— 线槽一盖，认线全靠它。不会就按「提示」。';
 ZS.gap = {1:'FR 95-96', 2:'停止按钮 SB1', 3:'启动按钮 SB2（连同 KM 13-14）', 4:'KM 线圈'};
 ZS.shortWhy = function(x, y){
   const lo = Math.min(x, y), hi = Math.max(x, y);
@@ -435,22 +450,23 @@ ZS.boardMsg = function(st, left){
   if(st.sb2) return noPull(st, left, 'SB2');
   return null;
 };
+/* 线槽：h 横槽 [x0,x1,y0,y1]，v 竖槽；横槽都在右头接进竖槽 */
+ZS.ducts = {h:[[12,314,128,142], [12,314,228,242], [12,314,300,314]], v:[300,314,128,314]};
 ZS.board = function(st){
-  const on = st.km, P = on ? ' on' : '';
-  let h = '<rect class="plate" x="4" y="4" width="352" height="364" rx="8"/>';
-  const X = [52, 70, 88];
+  const on = st.km, P = on ? ' on' : '', X = [52, 70, 88];
+  let h = plateB();
   X.forEach((x, i) => {
-    h += pw([[x,6],[x,18]], P) + pw([[x,62],[x,94]], P) + pw([[x,134],[x,156]], P) + pw([[x,226],[x,236]], P) +
-      pw([[x,276],[x,296],[70 + (x-70)*0.4, 314]], P);
+    h += pw([[x,4],[x,18]], P) + pw([[x,62],[x,80]], P) + pw([[x,120],[x,158]], P) + pw([[x,212],[x,256]], P) +
+      pw([[x,290],[x,328]], P) + pw([[x,352],[x,372],[70 + (x-70)*0.4, 390]], P);
     h += '<text class="dlab2" x="' + x + '" y="13" text-anchor="middle" dx="7">' + ['L1','L2','L3'][i] + '</text>';
   });
-  h += pw([[52,80],[162,80],[162,92]], P) + pw([[70,72],[184,72],[184,92]], P);
-  h += '<circle cx="52" cy="80" r="2" fill="#868e96"/><circle cx="70" cy="72" r="2" fill="#868e96"/>';
-  h += bQF(36, st) + bFuse(40, 94, X, 'FU1', 20, 117, 'middle') + bFU2(150);
-  h += bKM(20, 156, X, '', on, [32,108]);
-  h += bFR(40, 236, 88, st);
-  h += bMotor(70, 334, on, false);
-  h += bButtons(226, 214, 112, [['SB1 停',251,'r',st.sb1],['SB2 启',311,'g',st.sb2]]);
+  h += pw([[70,68],[184,68],[184,80]], P) + pw([[52,73],[162,73],[162,80]], P) + dotB(52,73) + dotB(70,68);
+  h += bQF(36, 18, st) + bFuse(40, 80, X, 'FU1', 22, 104) + bFU2(150, 80);
+  h += bKM(22, 150, X, '', on, [32,108]);
+  h += bFR(40, 250, 92, X, st);
+  h += bXT(322, [['U',52],['V',70],['W',88],['2',165],['3',185],['4',205]]);
+  h += bMotor(70, 412, on, false);
+  h += bButtons(150, 402, 150, [['SB1 停',175,'r',st.sb1],['SB2 启',245,'g',st.sb2]]);
   return h;
 };
 
@@ -458,7 +474,7 @@ ZS.board = function(st){
    主电路：KM1 三相 x=30/50/70，KM2 在右边 x=95/115/135，出线 L1、L3 对调后并回去。
    控制电路：主干 x=180；SB1 下面在 y=152 分岔 —— 正转 SB2 x=200 / KM1 自锁 x=232，反转 SB3 x=290 / KM2 自锁 x=322；
    线圈前各串对方的 21-22（互锁）；回线 x=354。 */
-const ZF = {id:'zf', vb:'0 0 360 268', bvb:'0 0 360 412', MX:[30,50,70], X2:[95,115,135]};
+const ZF = {id:'zf', vb:'0 0 360 268', bvb:'0 0 360 478', MX:[30,50,70], X2:[95,115,135]};
 ZF.segs = [];
 ZF.MX.forEach((x, i) => {
   const by = 96 + 4*i, cy = [146,150,154][i];
@@ -477,7 +493,7 @@ ZF.segs.push(
   {p:[[50,180],[50,204]], g:'ma', n:'mM'},
   {p:[[70,180],[70,194],[60,208]], g:'ma', n:'mM'},
   {p:[[30,60],[180,60],[180,70]], g:'cc', n:'m11'},
-  {p:[[50,52],[356,52],[356,70]], g:'cc', n:'m11'},
+  {p:[[356,70],[356,52],[50,52]], g:'cc', n:'m11'},   // 回线：从 FU2 流回 L2
   {p:[[180,88],[180,98]], g:'cc', n:'c1'},
   {p:[[180,116],[180,126]], g:'cc', n:'c2'},
   {p:[[180,144],[180,152],[200,152]], g:'cc', n:'c3'},
@@ -550,8 +566,8 @@ ZF.steps = [
   {n:'mM', t:'U / V / W', tags:[[30,187,'U'],[50,187,'V'],[70,187,'W']],
    b:'FR 下面到电动机。<b>主电路编完了，下面编控制电路。</b>'},
   {n:'c1', t:'1 号', tags:[[166,93,'1']], b:'FU2 下桩到 FR 95。<b>FU2 下桩 ↔ FR 95</b>，一根线。'},
-  {n:'c2', t:'2 号', tags:[[166,121,'2']], b:'FR 96 到停止按钮 SB1 的 11。<b>FR 96 ↔ SB1 11</b>，一根线。'},
-  {n:'c3', t:'3 号', tags:[[261,152,'3']], b:'SB1 下面这片分了<b>四个岔</b>：SB2 13、KM1 13（正转那对）、SB3 13、KM2 13（反转那对）。连 SB1 12 在内，<b>五个端子都是 3 号</b>，要 4 根线串起来。'},
+  {n:'c2', t:'2 号', tags:[[166,121,'2']], b:'FR 96 到停止按钮 SB1 的 11。<b>FR 96 ↔ SB1 11</b>。按钮装在柜门上，实际接线要经端子排转一下，见第④屏。'},
+  {n:'c3', t:'3 号', tags:[[261,152,'3']], b:'SB1 下面这片分了<b>四个岔</b>：SB2 13、KM1 13（正转那对）、SB3 13、KM2 13（反转那对）。连 SB1 12 在内，<b>五个端子都是 3 号</b>。'},
   {n:'c4', t:'4 号', tags:[[216,190,'4']], b:'SB2 14 和 KM1 14 汇合，往下到 <b>KM2</b> 的 21 —— 注意是 KM2 的常闭，不是 KM1 的。三个端子：<b>SB2 14、KM1 14、KM2 21</b>。'},
   {n:'c5', t:'5 号', tags:[[200,223,'5']], b:'KM2 22 到 KM1 线圈 A1。<b>正转线圈前面串的是反转接触器的常闭</b>：KM2 一吸合这里就断，KM1 吸不上。'},
   {n:'c6', t:'6 号', tags:[[315,190,'6']], b:'反转这边一模一样：<b>SB3 14、KM2 14、KM1 21</b>。'},
@@ -604,43 +620,53 @@ ZF.say = function(st, was){
   if(st.sb1) return {cls:'bad', t:'按着停止', b:'SB1 在分岔上面，正反转一起断。松开后两个接触器都在释放状态，这时才能换方向。'};
   return {cls:'info', t:'有电，等你选方向', b:(was ? '停了。' : '') + '两条支路都在启动按钮处断着。按 <b>SB2 正转</b> 或 <b>SB3 反转</b>。'};
 };
-ZF.sumH = '8 个号，14 根线';
+ZF.sumH = '8 个号，18 根线（含端子排）';
 ZF.sum = [
   '<b>1 号</b>：FU2 下桩 ↔ FR 95（1 根）',
-  '<b>2 号</b>：FR 96 ↔ SB1 11（1 根）',
-  '<b>3 号</b>：SB1 12 ↔ SB2 13 ↔ KM1 13 ↔ SB3 13 ↔ KM2 13（5 个端子，4 根）',
-  '<b>4 号</b>：SB2 14 ↔ KM1 14 ↔ <b>KM2 21</b>（2 根）',
+  '<b>2 号</b>：FR 96 ↔ XT2 上桩；XT2 下桩 ↔ SB1 11（2 根）',
+  '<b>3 号</b>：KM1 13 ↔ KM2 13 ↔ XT3 上桩；XT3 下桩 ↔ SB1 12 ↔ SB2 13 ↔ SB3 13（5 根）',
+  '<b>4 号</b>：KM1 14 ↔ <b>KM2 21</b> ↔ XT4 上桩；XT4 下桩 ↔ SB2 14（3 根）',
   '<b>5 号</b>：KM2 22 ↔ KM1 A1（1 根）',
-  '<b>6 号</b>：SB3 14 ↔ KM2 14 ↔ <b>KM1 21</b>（2 根）',
+  '<b>6 号</b>：KM2 14 ↔ <b>KM1 21</b> ↔ XT6 上桩；XT6 下桩 ↔ SB3 14（3 根）',
   '<b>7 号</b>：KM1 22 ↔ KM2 A1（1 根）',
   '<b>8 号</b>：KM1 A2 ↔ KM2 A2 ↔ 另一只 FU2 的下桩（2 根）'];
-ZF.sumX = '<b>最容易错的是 4~7 号：正转那条要绕到 KM2 身上走一下再回 KM1 线圈</b>，反转同理 —— 照号接就不会接成「自己的常闭锁自己」。';
+ZF.sumX = '<b>最容易错的是 4~7 号：正转那条要绕到 KM2 身上走一下再回 KM1 线圈</b>，反转同理 —— 照号接就不会接成「自己的常闭锁自己」。' + XT_NOTE;
 ZF.terms = {
-  fu2a:{x:162, y:132, nm:'FU2 下桩（左）', n:1, sx:180, sy:88},
-  fu2b:{x:184, y:132, nm:'FU2 下桩（右）', n:8, sx:356, sy:88},
-  fr95:{x:128, y:250, nm:'FR 95', n:1, sx:180, sy:98, l:[-8,2.5,'end']},
-  fr96:{x:128, y:270, nm:'FR 96', n:2, sx:180, sy:116, l:[-8,2.5,'end']},
-  k113:{x:26, y:164, nm:'KM1 13', n:3, sx:232, sy:160, l:[0,13]},
-  k121:{x:42, y:164, nm:'KM1 21', n:6, sx:300, sy:200, l:[0,13]},
-  k1a1:{x:118, y:164, nm:'KM1 A1', n:5, sx:200, sy:228, l:[0,13]},
-  k114:{x:26, y:218, nm:'KM1 14', n:4, sx:232, sy:180, l:[0,-8]},
-  k122:{x:42, y:218, nm:'KM1 22', n:7, sx:300, sy:218, l:[0,-8]},
-  k1a2:{x:118, y:218, nm:'KM1 A2', n:8, sx:200, sy:248, l:[0,-8]},
-  k213:{x:156, y:164, nm:'KM2 13', n:3, sx:330, sy:160, l:[0,13]},
-  k221:{x:172, y:164, nm:'KM2 21', n:4, sx:200, sy:200, l:[0,13]},
-  k2a1:{x:248, y:164, nm:'KM2 A1', n:7, sx:300, sy:228, l:[0,13]},
-  k214:{x:156, y:218, nm:'KM2 14', n:6, sx:330, sy:180, l:[0,-8]},
-  k222:{x:172, y:218, nm:'KM2 22', n:5, sx:200, sy:218, l:[0,-8]},
-  k2a2:{x:248, y:218, nm:'KM2 A2', n:8, sx:300, sy:248, l:[0,-8]},
-  s111:{x:189, y:368, nm:'SB1 11', n:2, sx:180, sy:126, l:[0,13]},
-  s112:{x:211, y:368, nm:'SB1 12', n:3, sx:180, sy:144, l:[0,13]},
-  s213:{x:249, y:368, nm:'SB2 13', n:3, sx:200, sy:160, l:[0,13]},
-  s214:{x:271, y:368, nm:'SB2 14', n:4, sx:200, sy:180, l:[0,13]},
-  s313:{x:309, y:368, nm:'SB3 13', n:3, sx:300, sy:160, l:[0,13]},
-  s314:{x:331, y:368, nm:'SB3 14', n:6, sx:300, sy:180, l:[0,13]}
+  fu2a:{x:162, y:112, nm:'FU2 下桩（左）', n:1, sx:180, sy:88},
+  fu2b:{x:184, y:112, nm:'FU2 下桩（右）', n:8, sx:356, sy:88},
+  k113:{x:24, y:158, nm:'KM1 13', n:3, sx:232, sy:160, l:[0,13]},
+  k121:{x:38, y:158, nm:'KM1 21', n:6, sx:300, sy:200, l:[0,13]},
+  k1a1:{x:104, y:158, nm:'KM1 A1', n:5, sx:200, sy:228, l:[0,13]},
+  k114:{x:24, y:212, nm:'KM1 14', n:4, sx:232, sy:180, l:[0,-8]},
+  k122:{x:38, y:212, nm:'KM1 22', n:7, sx:300, sy:218, l:[0,-8]},
+  k1a2:{x:104, y:212, nm:'KM1 A2', n:8, sx:200, sy:248, l:[0,-8]},
+  k213:{x:134, y:158, nm:'KM2 13', n:3, sx:330, sy:160, l:[0,13]},
+  k221:{x:148, y:158, nm:'KM2 21', n:4, sx:200, sy:200, l:[0,13]},
+  k2a1:{x:214, y:158, nm:'KM2 A1', n:7, sx:300, sy:228, l:[0,13]},
+  k214:{x:134, y:212, nm:'KM2 14', n:6, sx:330, sy:180, l:[0,-8]},
+  k222:{x:148, y:212, nm:'KM2 22', n:5, sx:200, sy:218, l:[0,-8]},
+  k2a2:{x:214, y:212, nm:'KM2 A2', n:8, sx:300, sy:248, l:[0,-8]},
+  fr95:{x:108, y:256, nm:'FR 95', n:1, sx:180, sy:98, l:[0,13]},
+  fr96:{x:122, y:256, nm:'FR 96', n:2, sx:180, sy:116, l:[0,13]},
+  xt2t:{x:150, y:328, nm:'XT2 上桩', n:2, sx:180, sy:121},
+  xt3t:{x:170, y:328, nm:'XT3 上桩', n:3, sx:180, sy:148},
+  xt4t:{x:190, y:328, nm:'XT4 上桩', n:4, sx:200, sy:195},
+  xt6t:{x:210, y:328, nm:'XT6 上桩', n:6, sx:300, sy:195},
+  xt2b:{x:150, y:352, nm:'XT2 下桩', n:2, sx:180, sy:121},
+  xt3b:{x:170, y:352, nm:'XT3 下桩', n:3, sx:180, sy:148},
+  xt4b:{x:190, y:352, nm:'XT4 下桩', n:4, sx:200, sy:195},
+  xt6b:{x:210, y:352, nm:'XT6 下桩', n:6, sx:300, sy:195},
+  s111:{x:150, y:410, nm:'SB1 11', n:2, sx:180, sy:126, l:[0,11]},
+  s112:{x:170, y:410, nm:'SB1 12', n:3, sx:180, sy:144, l:[0,11]},
+  s213:{x:218, y:410, nm:'SB2 13', n:3, sx:200, sy:160, l:[0,11]},
+  s214:{x:238, y:410, nm:'SB2 14', n:4, sx:200, sy:180, l:[0,11]},
+  s313:{x:286, y:410, nm:'SB3 13', n:3, sx:300, sy:160, l:[0,11]},
+  s314:{x:306, y:410, nm:'SB3 14', n:6, sx:300, sy:180, l:[0,11]}
 };
-ZF.need = {1:['fu2a','fr95'], 2:['fr96','s111'], 3:['s112','s213','k113','s313','k213'], 4:['s214','k114','k221'],
-  5:['k222','k1a1'], 6:['s314','k214','k121'], 7:['k122','k2a1'], 8:['k1a2','k2a2','fu2b']};
+ZF.need = {1:['fu2a','fr95'], 2:['fr96','xt2t','xt2b','s111'], 3:['k113','k213','xt3t','xt3b','s112','s213','s313'],
+  4:['k114','k221','xt4t','xt4b','s214'], 5:['k222','k1a1'], 6:['k214','k121','xt6t','xt6b','s314'],
+  7:['k122','k2a1'], 8:['k1a2','k2a2','fu2b']};
+ZF.fixed = [['xt2t','xt2b'], ['xt3t','xt3b'], ['xt4t','xt4b'], ['xt6t','xt6b']];
 ZF.coils = [{k:'km1', a:'k1a1', b:'k1a2'}, {k:'km2', a:'k2a1', b:'k2a2'}];
 ZF.edges = st => {
   const e = [];
@@ -652,8 +678,7 @@ ZF.edges = st => {
   if(st.km2) e.push(['k213','k214']); else e.push(['k221','k222']);
   return e;
 };
-ZF.avoid = [[73,191],[203,191]];
-ZF.intro3 = '主电路（含 KM2 的换相线）已经接好。你要接控制电路那 14 根：<b>点板上一个端子</b>，上面原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。先把 1~3 号接完，再分正转（4、5）、反转（6、7），最后 8 号。';
+ZF.intro3 = '主电路（含 KM2 的换相线）已经接好。你要接控制电路：板上的线走<b>线槽</b>，按钮在柜门上，要经<b>端子排 XT</b> 转接。<b>点一个端子</b>，上面原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。先接 1~3 号，再分正转（4、5）、反转（6、7），最后 8 号。';
 ZF.shortWhy = function(x, y){
   const lo = Math.min(x, y), hi = Math.max(x, y), k = lo + '-' + hi;
   if(hi === 8) return '这根线绕开了线圈，电从左边 FU2 直通右边 FU2（有的要等按下按钮才通）：<b>相间短路，现场会炸熔断器</b>。';
@@ -680,53 +705,55 @@ ZF.boardMsg = function(st, left){
   if(st.sb3) return noPull(st, left, 'SB3');
   return null;
 };
+ZF.ducts = {h:[[12,326,128,142], [12,326,228,242], [12,326,300,314]], v:[312,326,128,314]};
 ZF.board = function(st){
   const k1 = st.km1, k2 = st.km2, a = k1 || k2;
   const PA = a ? ' on' : '', P1 = k1 ? ' on' : '', P2 = k2 ? ' on' : '';
-  let h = '<rect class="plate" x="4" y="4" width="352" height="404" rx="8"/>';
-  const X = [60, 78, 96], Y = [190, 208, 226];
+  const X = [52, 70, 88], Y = [162, 180, 198], JY = [239, 235, 231];
+  let h = plateB();
   X.forEach((x, i) => {
-    const by = 140 + 5*i, jy = [228,232,236][i];   /* 往 KM2 分岔的高度 / KM2 出线汇入的高度 */
-    h += pw([[x,6],[x,18]], PA) + pw([[x,62],[x,94]], PA) +
-      pw([[x,134],[x,by]], PA) + pw([[x,by],[x,160]], P1) + pw([[x,by],[Y[i],by],[Y[i],160]], P2) +
-      pw([[x,222],[x,jy]], P1) + pw([[x,jy],[x,240]], PA) +
-      pw([[x,280],[x,300],[78 + (x-78)*0.4, 318]], PA);
+    const by = 131 + 4*i;     // 往 KM2 分岔的高度（在上面那条线槽里）
+    h += pw([[x,4],[x,18]], PA) + pw([[x,62],[x,80]], PA) +
+      pw([[x,120],[x,by]], PA) + pw([[x,by],[x,158]], P1) + pw([[x,by],[Y[i],by],[Y[i],158]], P2) +
+      pw([[x,212],[x,JY[i]]], P1) + pw([[x,JY[i]],[x,256]], PA) +
+      pw([[x,290],[x,328]], PA) + pw([[x,352],[x,372],[70 + (x-70)*0.4, 390]], PA);
     h += '<text class="dlab2" x="' + x + '" y="13" text-anchor="middle" dx="7">' + ['L1','L2','L3'][i] + '</text>';
   });
-  /* KM2 出线：第 j 列接到第 2-j 相（L1、L3 对调），在 KM1 下面汇入 */
-  Y.forEach((x, j) => { const y = [236,232,228][j]; h += pw([[x,222],[x,y],[X[2-j],y]], P2) + '<circle cx="' + X[2-j] + '" cy="' + y + '" r="2" fill="#868e96"/>'; });
-  X.forEach((x, i) => { h += '<circle cx="' + x + '" cy="' + (140 + 5*i) + '" r="2" fill="#868e96"/>'; });
-  h += pw([[60,80],[162,80],[162,92]], PA) + pw([[78,72],[184,72],[184,92]], PA);
-  h += '<circle cx="60" cy="80" r="2" fill="#868e96"/><circle cx="78" cy="72" r="2" fill="#868e96"/>';
-  h += bQF(44, st) + bFuse(48, 94, X, 'FU1', 28, 117, 'middle') + bFU2(150);
-  h += bKM(16, 156, X, '1', k1, [26,118], 42);
-  h += bKM(146, 156, Y, '2', k2, [156,248], 172);
-  h += bFR(44, 240, 96, st);
-  h += bMotor(78, 342, a, k2);
-  h += bButtons(170, 304, 180, [['SB1 停',200,'r',st.sb1],['SB2 正',260,'g',st.sb2],['SB3 反',320,'g',st.sb3]]);
+  /* KM2 出线：第 j 列接到第 2-j 相（L1、L3 对调），在中间那条线槽里并进去 */
+  Y.forEach((y, j) => { h += pw([[y,212],[y,JY[2-j]],[X[2-j],JY[2-j]]], P2); });
+  h += pw([[70,68],[184,68],[184,80]], PA) + pw([[52,73],[162,73],[162,80]], PA) + dotB(52,73) + dotB(70,68);
+  h += bQF(36, 18, st) + bFuse(40, 80, X, 'FU1', 22, 104) + bFU2(150, 80);
+  h += bKM(14, 150, X, '1', k1, [24,104]);
+  h += bKM(124, 150, Y, '2', k2, [134,214]);
+  h += bFR(40, 250, 92, X, st);
+  h += bXT(322, [['U',52],['V',70],['W',88],['2',150],['3',170],['4',190],['6',210]]);
+  h += bMotor(70, 412, a, k2);
+  h += bButtons(140, 402, 204, [['SB1 停',160,'r',st.sb1],['SB2 正',228,'g',st.sb2],['SB3 反',296,'g',st.sb3]]);
   return h;
 };
 
 /* ================= 实物板上的零件（两块板共用） ================= */
 function pw(p, cls){ return '<polyline class="pw' + (cls || '') + '" points="' + pl(p) + '"/>'; }
-function bQF(x, st){
-  return '<rect class="dev" x="' + x + '" y="18" width="68" height="44" rx="4"/>' +
-    '<rect class="dev2" x="' + (x+20) + '" y="32" width="28" height="12" rx="2"/>' +
-    '<rect x="' + (x + (st.qf ? 26 : 36)) + '" y="33" width="10" height="10" rx="1.5" fill="#1971c2"/>' +
-    '<text class="dlab" x="' + (x+76) + '" y="38">QF</text><text class="dlab2" x="' + (x+76) + '" y="48">' + (st.qf ? '已合闸' : '断开') + '</text>';
+function dotB(x, y){ return '<circle cx="' + x + '" cy="' + y + '" r="2" fill="#868e96"/>'; }
+function plateB(){ return '<rect class="plate" x="4" y="4" width="352" height="362" rx="8"/>'; }
+function bQF(x, y0, st){
+  return '<rect class="dev" x="' + x + '" y="' + y0 + '" width="68" height="44" rx="4"/>' +
+    '<rect class="dev2" x="' + (x+20) + '" y="' + (y0+14) + '" width="28" height="12" rx="2"/>' +
+    '<rect x="' + (x + (st.qf ? 26 : 36)) + '" y="' + (y0+15) + '" width="10" height="10" rx="1.5" fill="#1971c2"/>' +
+    '<text class="dlab" x="' + (x+76) + '" y="' + (y0+20) + '">QF</text><text class="dlab2" x="' + (x+76) + '" y="' + (y0+30) + '">' + (st.qf ? '已合闸' : '断开') + '</text>';
 }
-function bFuse(x0, y0, X, nm, lx, ly, al){
+function bFuse(x0, y0, X, nm, lx, ly){
   let h = '<rect class="dev" x="' + x0 + '" y="' + y0 + '" width="60" height="40" rx="3"/>';
   X.forEach(x => { h += '<rect class="dev2" x="' + (x-6) + '" y="' + (y0+6) + '" width="12" height="28" rx="2"/>'; });
-  return h + '<text class="dlab" x="' + lx + '" y="' + ly + '" text-anchor="' + al + '">' + nm + '</text>';
+  return h + '<text class="dlab" x="' + lx + '" y="' + ly + '" text-anchor="middle">' + nm + '</text>';
 }
-function bFU2(x){
-  let h = '<rect class="dev" x="' + x + '" y="92" width="46" height="34" rx="3"/>';
-  [x+12, x+34].forEach(c => { h += '<rect class="dev2" x="' + (c-6) + '" y="96" width="12" height="26" rx="2"/>'; });
-  return h + '<text class="dlab" x="' + (x+56) + '" y="108">FU2</text><text class="dlab2" x="' + (x+56) + '" y="118">控制熔断器</text>';
+function bFU2(x, y0){
+  let h = '<rect class="dev" x="' + x + '" y="' + y0 + '" width="46" height="26" rx="3"/>';
+  [x+12, x+34].forEach(c => { h += '<rect class="dev2" x="' + (c-6) + '" y="' + (y0+4) + '" width="12" height="18" rx="2"/>'; });
+  return h + '<text class="dlab" x="' + (x+54) + '" y="' + (y0+14) + '">FU2</text><text class="dlab2" x="' + (x+54) + '" y="' + (y0+24) + '">控制熔断器</text>';
 }
-/* 接触器：X 三相端子，aux=[13 的 x, A1 的 x]，nc=21 的 x（没有就不画） */
-function bKM(x0, y0, X, idx, on, aux, nc){
+/* 接触器：X 三相端子，aux=[13 的 x, A1 的 x] 定宽度；辅助端子由 terms 画 */
+function bKM(x0, y0, X, idx, on, aux){
   const w = (aux[1] - aux[0]) + 24;
   let h = '<rect class="dev" x="' + x0 + '" y="' + y0 + '" width="' + w + '" height="70" rx="5"/>';
   const cx = (X[0] + X[2]) / 2;
@@ -739,10 +766,24 @@ function bKM(x0, y0, X, idx, on, aux, nc){
   });
   return h;
 }
-function bFR(x0, y0, tx, st){
-  return '<rect class="dev" x="' + x0 + '" y="' + y0 + '" width="' + (tx - x0 + 44) + '" height="40" rx="4"/>' +
-    '<text class="dlab" x="' + (x0+30) + '" y="' + (y0+20) + '" text-anchor="middle">FR</text>' +
-    '<text class="dlab2" x="' + (x0+30) + '" y="' + (y0+31) + '" text-anchor="middle"' + (st.fr ? ' style="fill:var(--red)">已跳开' : '>热继电器') + '</text>';
+/* 热继电器：上面一排是主触点进线（灰）和 95/96（terms 画），下面出线去端子排 */
+function bFR(x0, y0, w, X, st){
+  let h = '<rect class="dev" x="' + x0 + '" y="' + y0 + '" width="' + w + '" height="40" rx="4"/>';
+  X.forEach(x => { h += '<circle cx="' + x + '" cy="' + (y0+6) + '" r="3.4" fill="#adb5bd"/><circle cx="' + x + '" cy="' + (y0+34) + '" r="3.4" fill="#adb5bd"/>'; });
+  return h + '<text class="dlab" x="' + (x0+30) + '" y="' + (y0+23) + '" text-anchor="middle">FR</text>' +
+    '<text class="dlab2" x="' + (x0+64) + '" y="' + (y0+34) + '" text-anchor="middle"' + (st.fr ? ' style="fill:var(--red)">已跳开' : '>热继电器') + '</text>';
+}
+/* 端子排：每节上桩 y0+6、下桩 y0+30，中间印号。U/V/W 是电机线（已接好），控制那几节的桩由 terms 画 */
+function bXT(y0, list){
+  const x0 = list[0][1] - 10, x1 = list[list.length-1][1] + 10;
+  let h = '<rect x="' + x0 + '" y="' + (y0+15) + '" width="' + (x1-x0) + '" height="6" fill="#adb5bd"/>';
+  list.forEach(t => {
+    const x = t[1];
+    h += '<rect class="xtb" x="' + (x-8) + '" y="' + y0 + '" width="16" height="36" rx="2"/>';
+    h += '<text class="xtn" x="' + x + '" y="' + (y0+21) + '" text-anchor="middle">' + t[0] + '</text>';
+    if(/[UVW]/.test(t[0])) h += '<circle cx="' + x + '" cy="' + (y0+6) + '" r="3.4" fill="#adb5bd"/><circle cx="' + x + '" cy="' + (y0+30) + '" r="3.4" fill="#adb5bd"/>';
+  });
+  return h + '<text class="dlab" x="24" y="' + (y0+17) + '" text-anchor="middle">XT</text><text class="dlab2" x="24" y="' + (y0+27) + '" text-anchor="middle">端子排</text>';
 }
 function bMotor(cx, cy, on, rev){
   return '<circle cx="' + cx + '" cy="' + cy + '" r="22" fill="#dee2e6" stroke="#868e96"/>' +
@@ -752,14 +793,22 @@ function bMotor(cx, cy, on, rev){
     '<path d="M' + (cx+9) + ',' + (cy-13) + ' l5,-1 l-1,5" fill="none" stroke="#495057" stroke-width="1.6"/></g>' +
     '<text class="dlab" x="' + (cx+30) + '" y="' + (cy+4) + '">M</text><text class="dlab2" x="' + (cx+30) + '" y="' + (cy+14) + '">' + (on ? (rev ? '反转' : '正转') : '停') + '</text>';
 }
+/* 柜门上的按钮盒：端子在上沿（背面），按钮在下面 */
 function bButtons(x0, y0, w, list){
-  let h = '<rect class="dev" x="' + x0 + '" y="' + y0 + '" width="' + w + '" height="' + (list.length > 2 ? 86 : 76) + '" rx="6"/>';
+  let h = '<rect class="dev" x="' + x0 + '" y="' + y0 + '" width="' + w + '" height="68" rx="6"/>';
   list.forEach(b => {
     const red = b[2] === 'r';
-    h += '<circle cx="' + b[1] + '" cy="' + (y0+24) + '" r="12" fill="' + (red ? (b[3] ? '#a61e1e' : '#e03131') : (b[3] ? '#1f7a33' : '#37b24d')) + '" stroke="' + (red ? '#862e2e' : '#2b6a35') + '"/>';
-    h += '<text class="dlab" x="' + b[1] + '" y="' + (y0-4) + '" text-anchor="middle">' + b[0] + '</text>';
+    h += '<circle cx="' + b[1] + '" cy="' + (y0+38) + '" r="11" fill="' + (red ? (b[3] ? '#a61e1e' : '#e03131') : (b[3] ? '#1f7a33' : '#37b24d')) + '" stroke="' + (red ? '#862e2e' : '#2b6a35') + '"/>';
+    h += '<text class="dlab" x="' + b[1] + '" y="' + (y0+62) + '" text-anchor="middle">' + b[0] + '</text>';
   });
   return h;
+}
+function ductB(x, y, w, h){
+  let s = '<rect class="duct" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"/>';
+  /* 线槽两边的齿 */
+  if(w > h) for(let t = x + 4; t < x + w; t += 6) s += '<line class="duct-t" x1="' + t + '" y1="' + y + '" x2="' + t + '" y2="' + (y+3) + '"/><line class="duct-t" x1="' + t + '" y1="' + (y+h-3) + '" x2="' + t + '" y2="' + (y+h) + '"/>';
+  else for(let t = y + 4; t < y + h; t += 6) s += '<line class="duct-t" x1="' + x + '" y1="' + t + '" x2="' + (x+3) + '" y2="' + t + '"/><line class="duct-t" x1="' + (x+w-3) + '" y1="' + t + '" x2="' + (x+w) + '" y2="' + t + '"/>';
+  return s;
 }
 
 /* ================= 原理图（四屏共用） =================
@@ -790,8 +839,9 @@ function schem(st, ov){
     });
     (C.mainIds.indexOf(id) >= 0 ? mainG : ctrlG).push(s + '</g>');
   }
-  let out = '<g' + (ov.fade === 'ctrl' ? ' class="faded"' : '') + '>' + mainG.join('') + '</g>' +
-            '<g' + (ov.fade === 'main' ? ' class="faded"' : '') + '>' + ctrlG.join('') + '</g>';
+  /* ov.fade 是「要调暗的那一块」：点「主电路」传 'ctrl'，调暗控制电路 */
+  let out = '<g' + (ov.fade === 'main' ? ' class="faded"' : '') + '>' + mainG.join('') + '</g>' +
+            '<g' + (ov.fade === 'ctrl' ? ' class="faded"' : '') + '>' + ctrlG.join('') + '</g>';
   if(numOn) C.steps.forEach((s, i) => { if(i <= ov.step) s.tags.forEach(t => { out += pill(t[0], t[1], t[2], i < ov.step); }); });
   (ov.rings || []).forEach(r => {
     out += '<circle class="ring pulse' + (r[2] ? ' ' + r[2] : '') + '" cx="' + r[0] + '" cy="' + r[1] + '" r="5"/>';
@@ -881,11 +931,14 @@ $('b2').addEventListener('click', e => {
   draw2();
 });
 
-/* ================= ④ 照号接线 ================= */
+/* ================= ④ 照号接线 =================
+   板上的线一律走线槽（盖着盖子，只露出两头）；按钮在柜门上，跟板子之间经端子排 XT 转接。
+   zone：in＝板上，out＝柜门那一侧（按钮、端子排下桩）。端子排同一节的上下桩记在 C.fixed，本来就通。 */
 const S3 = fresh();
 let wires = [];          // [{a,b,n}]
 let pick = null;         // 选中的第一个端子
 let rings3 = [];
+let hint3 = null;        // 提示的那对端子，板上也圈出来
 let msg3 = null;         // {cls,t,b}
 let showNum = false;
 
@@ -895,8 +948,9 @@ function finder(edges){
   edges.forEach(e => { P[e[0]] = P[e[0]] || e[0]; P[e[1]] = P[e[1]] || e[1]; const a = f(e[0]), b = f(e[1]); if(a !== b) P[a] = b; });
   return f;
 }
-const total = () => Object.keys(C.need).reduce((s, n) => s + C.need[n].length - 1, 0);
-function wireEdges(){ return wires.map(w => [w.a, w.b]); }
+const zoneOf = id => (id[0] === 's' || /^xt\d+b$/.test(id)) ? 'out' : 'in';
+const total = () => Object.keys(C.need).reduce((s, n) => s + C.need[n].length - 1, 0) - C.fixed.length;
+function wireEdges(){ return wires.map(w => [w.a, w.b]).concat(C.fixed); }
 function missing(){
   const f = finder(wireEdges());
   return Object.keys(C.need).filter(n => C.need[n].some(t => f(t) !== f(C.need[n][0]))).map(Number);
@@ -908,7 +962,7 @@ function noPull(st, left, btn){
   if(!st.qf) return {cls:'bad', t:'按了 ' + btn + '，没吸合', b:'QF 还没合闸，整块板没电。'};
   return null;
 }
-/* 板上的线 + 此刻闭合的触点连成网，线圈两头分别通到两只 FU2 下桩才吸合；多个线圈依次算到稳定 */
+/* 板上的线 + 端子排 + 此刻闭合的触点连成网，线圈两头分别通到两只 FU2 下桩才吸合；多个线圈依次算到稳定 */
 function solve3(){
   for(let i = 0; i < 4; i++){
     C.coils.forEach(c => {
@@ -919,13 +973,18 @@ function solve3(){
   }
 }
 function count(t){ return wires.filter(w => w.a === t || w.b === t).length; }
+const isXT = id => /^xt\d+[tb]$/.test(id);
 
 function tapTerm(id){
   const T = C.terms[id];
+  hint3 = null;
   if(!pick){
     if(count(id) >= 2){ msg3 = {cls:'bad', t:T.nm + ' 已经压了两根线', b:'规范上一个端子最多压两根，再多拧不紧。这个号还要接的话，从同号的别的端子上走。'}; rings3 = [[T.sx, T.sy, 'bad']]; return; }
     pick = id; rings3 = [[T.sx, T.sy]];
-    msg3 = {cls:'info', t:'选中 ' + T.nm, b:'上面原理图里圈出来的就是它。看它在图上连着哪段线、是几号' + (showNum ? '（' + T.n + ' 号）' : '') + '，再点板上<b>同一号</b>的另一个端子。点它自己取消。'};
+    msg3 = {cls:'info', t:'选中 ' + T.nm,
+      b:(isXT(id) ? '端子排是板子和柜门之间的<b>中转站，原理图上不画它</b>；它接在哪个号的线上，图上就圈在那根线上。'
+                  : '上面原理图里圈出来的就是它。') +
+        '看它是几号' + (showNum ? '（' + T.n + ' 号）' : '') + '，再点<b>同一号</b>的另一个端子。点它自己取消。'};
     return;
   }
   if(pick === id){ pick = null; rings3 = []; msg3 = null; return; }
@@ -936,9 +995,18 @@ function tapTerm(id){
     $('board').classList.remove('flash'); void $('board').getBoundingClientRect(); $('board').classList.add('flash');
     return;
   }
+  if(isXT(pick) && isXT(id) && pick.slice(0, -1) === id.slice(0, -1)){
+    msg3 = {cls:'bad', t:'不用接：端子排同一节上下本来就通', b:'端子排每一节里面有铜片连着，上桩和下桩是通的。上桩接板上的线，下桩接柜门上按钮的线。'};
+    pick = null; rings3 = []; return;
+  }
+  if(zoneOf(pick) !== zoneOf(id)){
+    rings3 = [[A.sx, A.sy], [T.sx, T.sy]];
+    msg3 = {cls:'bad', t:'✗ 板上和柜门之间不能直接拉线', b:'按钮装在柜门上，跟板子之间要经<b>端子排</b>转一下（检修、拆装都方便）：板上的线接端子排<b>上桩</b>，按钮的线接<b>下桩</b>。' + A.n + ' 号用的是 <b>XT' + A.n + '</b>。<br>已选的 ' + A.nm + ' 还选着。'};
+    return;
+  }
   rings3 = [[A.sx, A.sy], [T.sx, T.sy]];
   if(count(id) >= 2){ msg3 = {cls:'bad', t:T.nm + ' 已经压了两根线', b:'一个端子最多两根。同号还有别的端子，从那儿接。'}; return; }
-  if(finder(wireEdges())(pick) === finder(wireEdges())(id)){ msg3 = {cls:'bad', t:'这两个已经通了', b:'它们已经经过别的线连在一起，再接一根是多余的。'}; pick = null; return; }
+  if(finder(wireEdges())(pick) === finder(wireEdges())(id)){ msg3 = {cls:'bad', t:'这两个已经通了', b:'它们已经经过别的线（或端子排）连在一起，再接一根是多余的。'}; pick = null; return; }
   wires.push({a:pick, b:id, n:A.n});
   pick = null; rings3 = [];
   const left = missing();
@@ -951,19 +1019,42 @@ function tapTerm(id){
   }
 }
 
-const qb = (a, c, b, t) => (1-t)*(1-t)*a + 2*t*(1-t)*c + t*t*b;
-function wirePath(a, b, i){
-  const A = C.terms[a], B = C.terms[b];
-  const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
-  const dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1;
-  /* 弯向离接触器本体远的那一侧，免得线斜穿接触器正面 */
-  const k = Math.min(34, L * 0.22);
-  const c1 = [mx - dy / L * k, my + dx / L * k], c2 = [mx + dy / L * k, my - dx / L * k];
-  const far = q => Math.min.apply(null, C.avoid.map(p => Math.hypot(q[0] - p[0], q[1] - p[1])));
-  const cc = far(c1) >= far(c2) ? c1 : c2, cx = cc[0], cy = cc[1];
-  /* 号码管位置在线上错开放，几根线交汇处才不会叠在一起 */
-  const t = 0.3 + 0.13 * (i % 4);
-  return {d:'M' + A.x + ',' + A.y + ' Q' + cx + ',' + cy + ' ' + B.x + ',' + B.y, lx:qb(A.x, cx, B.x, t), ly:qb(A.y, cy, B.y, t)};
+/* ---------- 走线：板上的线 = 两头短短一截 + 线槽里一段；柜门的线在板子和柜门之间并排走 ---------- */
+const LANES = [-4.5, -1.5, 1.5, 4.5];
+function exitOf(id){
+  const T = C.terms[id];
+  if(id.startsWith('fu2')) return 'd';
+  if(id.startsWith('fr') || /^xt\d+t$/.test(id) || id[0] === 's') return 'u';
+  if(/^xt\d+b$/.test(id)) return 'd';
+  return T.l && T.l[1] > 0 ? 'u' : 'd';
+}
+/* 端子往出线方向最近的那条横槽 */
+function ductOf(id){
+  const T = C.terms[id], up = exitOf(id) === 'u';
+  let best = null;
+  C.ducts.h.forEach(r => {
+    if(up ? r[3] <= T.y && (!best || r[3] > best[3]) : r[2] >= T.y && (!best || r[2] < best[2])) best = r;
+  });
+  return best;
+}
+function wirePath(w, k){
+  const A = C.terms[w.a], B = C.terms[w.b];
+  if(zoneOf(w.a) === 'out'){
+    const y = 374 + (k % 6) * 4;
+    return [[A.x,A.y],[A.x,y],[B.x,y],[B.x,B.y]];
+  }
+  const o = LANES[k % LANES.length], da = ductOf(w.a), db = ductOf(w.b);
+  const ya = (da[2] + da[3]) / 2 + o, yb = (db[2] + db[3]) / 2 + o;
+  if(da === db) return [[A.x,A.y],[A.x,ya],[B.x,ya],[B.x,B.y]];
+  const vx = (C.ducts.v[0] + C.ducts.v[1]) / 2 + o;
+  return [[A.x,A.y],[A.x,ya],[vx,ya],[vx,yb],[B.x,yb],[B.x,B.y]];
+}
+/* 号码管：套在每根线露出来的那一截上，紧挨端子 */
+function sleevePos(id){
+  const T = C.terms[id], up = exitOf(id) === 'u';
+  if(zoneOf(id) === 'out') return [T.x, T.y + (up ? -9 : 11)];
+  const d = ductOf(id);
+  return [T.x, (T.y + (up ? d[3] : d[2])) / 2];
 }
 function pillB(x, y, n){
   return '<g class="pill"><circle cx="' + x + '" cy="' + y + '" r="5" fill="var(--acc)"/><text x="' + x + '" y="' + (y+2.1) + '" text-anchor="middle">' + n + '</text></g>';
@@ -972,19 +1063,31 @@ function pillB(x, y, n){
 function drawBoard(){
   let h = C.board(S3);
   const live = C.running(S3);
-  wires.forEach((w, i) => {
-    const p = wirePath(w.a, w.b, i);
-    h += '<path class="uw' + (live ? ' on' : '') + '" d="' + p.d + '"/>';
-    h += '<g class="sleeve"><rect x="' + (p.lx-4.5) + '" y="' + (p.ly-4.5) + '" width="9" height="9" rx="2"/><text x="' + p.lx + '" y="' + (p.ly+2.1) + '" text-anchor="middle">' + w.n + '</text></g>';
-  });
+  let ki = 0, ko = 0;
+  const paths = wires.map(w => wirePath(w, zoneOf(w.a) === 'out' ? ko++ : ki++));
+  paths.forEach(p => { h += '<polyline class="uw' + (live ? ' on' : '') + '" points="' + pl(p) + '"/>'; });
+  /* 线槽盖在线上面：线槽里那段只隐约看得见，跟真板子一样 */
+  const v = C.ducts.v;
+  h += ductB(v[0], v[2], v[1] - v[0], v[3] - v[2]);
+  C.ducts.h.forEach(r => { h += ductB(r[0], r[2], r[1] - r[0], r[3] - r[2]); });
+  h += '<text class="dlab2" x="' + (v[0] - 40) + '" y="' + (C.ducts.h[0][2] + 9.5) + '">线槽</text>';
+  /* 选中的端子：它身上的线整条亮出来，看得见在线槽里怎么走 */
+  if(pick) wires.forEach((w, i) => { if(w.a === pick || w.b === pick) h += '<polyline class="uw hi" points="' + pl(paths[i]) + '"/>'; });
+  const done = {};
+  wires.forEach(w => [w.a, w.b].forEach(id => {
+    if(done[id]) return; done[id] = 1;
+    const q = sleevePos(id);
+    h += '<g class="sleeve"><rect x="' + (q[0]-4) + '" y="' + (q[1]-4) + '" width="8" height="8" rx="1.5"/><text x="' + q[0] + '" y="' + (q[1]+2.1) + '" text-anchor="middle">' + w.n + '</text></g>';
+  }));
   for(const id in C.terms){
     const T = C.terms[id];
     const cls = 'term' + (pick === id ? ' selt' : (count(id) ? ' ok' : ''));
-    h += '<g data-t="' + id + '" style="cursor:pointer"><circle class="hit" cx="' + T.x + '" cy="' + T.y + '" r="11"/>' +
-      '<circle class="' + cls + '" cx="' + T.x + '" cy="' + T.y + '" r="4.6"/></g>';
+    h += '<g data-t="' + id + '" style="cursor:pointer"><circle class="hit" cx="' + T.x + '" cy="' + T.y + '" r="10"/>' +
+      '<circle class="' + cls + '" cx="' + T.x + '" cy="' + T.y + '" r="4.4"/></g>';
     if(T.l) h += '<text class="tlab" x="' + (T.x + T.l[0]) + '" y="' + (T.y + T.l[1]) + '" text-anchor="' + (T.l[2] || 'middle') + '">' + T.nm.split(' ').pop() + '</text>';
     if(showNum) h += pillB(T.x + 8, T.y - 8, T.n);
   }
+  if(hint3) hint3.forEach(id => { h += '<circle class="hint" cx="' + C.terms[id].x + '" cy="' + C.terms[id].y + '" r="8"/>'; });
   $('board').innerHTML = h;
   $('p3').textContent = wires.length + ' / ' + total() + ' 根';
 }
@@ -1007,18 +1110,23 @@ $('board').addEventListener('click', e => {
 bindCtl($('b3'), S3, () => { msg3 = null; upd3(); });
 $('hintBtn').addEventListener('click', () => {
   const left = missing();
+  hint3 = null;
   if(!left.length){ msg3 = {cls:'ok', t:'已经全接完了', b:'合上 QF 试车。'}; upd3(); return; }
   const n = left[0], f = finder(wireEdges()), ts = C.need[n];
-  /* 已连好的那一坨里挑一个还有空位的端子，接到还没连进来的那个 */
-  const b = ts.find(t => f(t) !== f(ts[0]));
-  const a = ts.find(t => f(t) === f(ts[0]) && count(t) < 2) || ts[0];
+  /* 找一对还没通、在同一侧（板上 / 柜门）、都还有空位的端子 */
+  let a = null, b = null;
+  ts.forEach(x => ts.forEach(y => {
+    if(!a && x !== y && f(x) !== f(y) && zoneOf(x) === zoneOf(y) && count(x) < 2 && count(y) < 2) { a = x; b = y; }
+  }));
+  if(!a){ msg3 = {cls:'bad', t:'提示不出来', b:n + ' 号的端子都压满两根了，按「拆光重接」重来。'}; upd3(); return; }
   pick = null;
+  hint3 = [a, b];
   rings3 = [[C.terms[a].sx, C.terms[a].sy], [C.terms[b].sx, C.terms[b].sy]];
-  msg3 = {cls:'info', t:'提示：接 ' + n + ' 号', b:'原理图上两个蓝圈是同一个 ' + n + ' 号：<b>' + C.terms[a].nm + '</b> ↔ <b>' + C.terms[b].nm + '</b>。在板上依次点这两个端子。'};
+  msg3 = {cls:'info', t:'提示：接 ' + n + ' 号', b:'板上闪的两个端子都是 ' + n + ' 号：<b>' + C.terms[a].nm + '</b> ↔ <b>' + C.terms[b].nm + '</b>，原理图上蓝圈是它们在图上的位置。依次点这两个端子。'};
   upd3();
 });
 $('numBtn').addEventListener('click', () => { showNum = !showNum; $('numBtn').classList.toggle('on', showNum); upd3(); });
-$('resetBtn').addEventListener('click', () => { wires = []; pick = null; rings3 = []; msg3 = null; upd3(); });
+$('resetBtn').addEventListener('click', () => { wires = []; pick = null; rings3 = []; hint3 = null; msg3 = null; upd3(); });
 
 /* ================= 换电路 ================= */
 function setCircuit(id){
@@ -1039,7 +1147,7 @@ function setCircuit(id){
   [$('b1'), $('b3')].forEach(b => { b.innerHTML = ctlHTML(); b.classList.toggle('five', C.btns.length === 5); });
   Object.assign(S1, fresh()); Object.assign(S3, fresh());
   v0 = {fade:null, sel:[]}; step2 = -1;
-  wires = []; pick = null; rings3 = []; msg3 = null;
+  wires = []; pick = null; rings3 = []; hint3 = null; msg3 = null;
   try{ history.replaceState(null, '', C.id === 'zs' ? location.pathname : '#' + C.id); }catch(e){}
   draw0(); upd1(); draw2(); upd3();
 }
