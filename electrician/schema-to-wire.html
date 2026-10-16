@@ -125,6 +125,15 @@ svg text{font-family:inherit}
 .btns.five{grid-template-columns:repeat(5,1fr);gap:4px}
 .btns.five button{font-size:.7rem;padding:8px 1px}
 .rot.rev{animation-direction:reverse}
+.order3{margin:8px 4px 2px;font-size:.78rem;color:var(--tx2);line-height:1.55}
+.og{border-left:3px solid var(--line);padding:2px 0 4px 8px;margin-bottom:6px}
+.og.done{border-color:var(--green)}
+.og b{color:var(--tx);display:block}
+.og span{font-size:.7rem;color:var(--tx3)}
+.og ol{margin:2px 0 0;padding-left:20px}
+.og li.ok{color:var(--tx3);text-decoration:line-through}
+.og li.cur{color:var(--acc);font-weight:700}
+.og li i{font-style:normal;font-size:.68rem;color:var(--tx3)}
 .step2{min-height:7.6em;padding:2px 6px 8px}
 .tracer{fill:#fff;stroke:var(--acc);stroke-width:2.2}
 /* 第④屏：页面不动，只有下面的实训板那块自己上下滑（overscroll-behavior 防止滑到头带着整页一起动） */
@@ -237,11 +246,12 @@ body.lock3{padding-bottom:0}
       <div class="btns" id="b3"></div>
       <div class="btns five">
         <button data-k="undo" id="undoBtn">撤销<span>上一根</span></button>
-        <button data-k="hint" id="hintBtn">提示<span>下一根</span></button>
+        <button data-k="hint" id="hintBtn" class="on">引导<span>开</span></button>
         <button data-k="num" id="numBtn">线号<span>端子旁标</span></button>
         <button data-k="lid" id="lidBtn">盖线槽<span>真板子样</span></button>
         <button data-k="reset" id="resetBtn">拆光<span>重接</span></button>
       </div>
+      <div class="order3" id="order3"></div>
       <div class="info" id="howto3"></div>
     </div>
     <div class="card">
@@ -519,8 +529,17 @@ ZS.edges = st => {
   if(st.km) e.push(['k13','k14']);
   return e;
 };
+/* 接线顺序（先串后并）：先把从 FU2 到线圈再回 FU2 的一条直路串通 → 试点动 → 再并自锁 → 试自锁 */
+ZS.order = [
+  {t:'① 串主干', d:'从左边 FU2 出发，经 FR、SB1、SB2 到线圈，再回右边 FU2，串成一条直路',
+   w:[['fu2a','fr95'], ['fr96','xt2t'], ['xt2b','s111'], ['s112','s213'], ['s214','xt4b'], ['xt4t','a1'], ['a2','fu2b']],
+   test:'主干串通了，先试<b>点动</b>：合上 QF，按住 SB2 电机转、松手就停。对了再并自锁。'},
+  {t:'② 并自锁', d:'把 KM 13-14 并到 SB2 两头（3 号、4 号上）',
+   w:[['s213','xt3b'], ['xt3t','k13'], ['k14','a1']],
+   test:'自锁并好了，试车：按一下 SB2 松手，电机应该<b>一直转</b>；按 SB1 停。'}
+];
 ZS.intro3 = '<b>点板上一个端子</b> → 左边图里圈出它 → 看它是几号 → 再点<b>同号</b>的另一个端子。不会就按「提示」。';
-ZS.howto3 = '主电路已经接好（细灰线）。你要接控制电路：板上的线都走<b>线槽</b>（宽灰条，盖着盖子），按钮装在柜门上，跟板子之间要经过底下的<b>端子排 XT</b>。<b>点一个端子</b>，顶上钉着的原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。线两头会套上号码管 —— 线槽一盖，认线全靠它。不会就按「提示」。';
+ZS.howto3 = '<b>接线顺序：先串后并。</b>先把一条直路串通、试一下点动，再并自锁。手上没笔编号时也照这个顺序：手指停在图上哪段，就只接哪段。<br>主电路已经接好（细灰线）。你要接控制电路：板上的线都走<b>线槽</b>（宽灰条，盖着盖子），按钮装在柜门上，跟板子之间要经过底下的<b>端子排 XT</b>。<b>点一个端子</b>，顶上钉着的原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。线两头会套上号码管 —— 线槽一盖，认线全靠它。不会就按「提示」。';
 ZS.gap = {1:'FR 95-96', 2:'停止按钮 SB1', 3:'启动按钮 SB2（连同 KM 13-14）', 4:'KM 线圈'};
 ZS.shortWhy = function(x, y){
   const lo = Math.min(x, y), hi = Math.max(x, y);
@@ -794,8 +813,19 @@ ZF.edges = st => {
   if(st.km2) e.push(['k213','k214']); else e.push(['k221','k222']);
   return e;
 };
+ZF.order = [
+  {t:'① 串正转主干', d:'FU2 → FR → SB1 → SB2 → KM2 的常闭 21-22 → KM1 线圈 → 回右边 FU2',
+   w:[['fu2a','fr95'], ['fr96','xt2t'], ['xt2b','s111'], ['s112','s213'], ['s214','xt4b'], ['xt4t','k221'], ['k222','k1a1'], ['k1a2','fu2b']],
+   test:'正转主干通了，试<b>正转点动</b>：合 QF，按住 SB2 电机转、松手停。'},
+  {t:'② 串反转主干', d:'从 SB2 的 13 接到 SB3 的 13，再经 KM1 的常闭 21-22 → KM2 线圈 → 并到 KM1 的 A2',
+   w:[['s213','s313'], ['s314','xt6b'], ['xt6t','k121'], ['k122','k2a1'], ['k2a2','k1a2']],
+   test:'反转主干通了，试<b>反转点动</b>：按住 SB3 电机反着转、松手停。'},
+  {t:'③ 并自锁', d:'KM1 13-14 并到 SB2 两头，KM2 13-14 并到 SB3 两头',
+   w:[['s112','xt3b'], ['xt3t','k113'], ['k113','k213'], ['k114','k221'], ['k214','k121']],
+   test:'全部接完，试车：按一下 SB2 松手一直正转；这时按 SB3 没反应（互锁）；按 SB1 停了再按 SB3 反转。'}
+];
 ZF.intro3 = '<b>点板上一个端子</b> → 左边图里圈出它 → 看它是几号 → 再点<b>同号</b>的另一个端子。先接 1~3 号，再正转 4、5，反转 6、7，最后 8 号。';
-ZF.howto3 = '主电路（含 KM2 的换相线）已经接好。你要接控制电路：板上的线走<b>线槽</b>，按钮在柜门上，要经<b>端子排 XT</b> 转接。<b>点一个端子</b>，顶上钉着的原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。先接 1~3 号，再分正转（4、5）、反转（6、7），最后 8 号。';
+ZF.howto3 = '<b>接线顺序：先串后并。</b>先串正转、试点动；再串反转、试点动；最后并两个自锁。<br>主电路（含 KM2 的换相线）已经接好。你要接控制电路：板上的线走<b>线槽</b>，按钮在柜门上，要经<b>端子排 XT</b> 转接。<b>点一个端子</b>，顶上钉着的原理图会圈出它的位置；看它是几号，再点<b>同号</b>的另一个端子。先接 1~3 号，再分正转（4、5）、反转（6、7），最后 8 号。';
 ZF.shortWhy = function(x, y){
   const lo = Math.min(x, y), hi = Math.max(x, y), k = lo + '-' + hi;
   if(hi === 8) return '这根线绕开了线圈，电从左边 FU2 直通右边 FU2（有的要等按下按钮才通）：<b>相间短路，现场会炸熔断器</b>。';
@@ -943,7 +973,7 @@ function schem(st, ov){
   const live = C.live(st);
   const volt = ov.volt ? C.volt(st) : {};
   const numOn = ov.step !== undefined && ov.step >= 0;
-  const curN = numOn ? C.steps[ov.step].n : null;
+  const curN = numOn ? C.steps[ov.step].n : (ov.hl || null);
   const mainG = [], ctrlG = [];
   C.segs.forEach(s => {
     const on = live[s.g] && !(curN && s.n === curN);
@@ -1164,6 +1194,7 @@ function count(t){ return wires.filter(w => w.a === t || w.b === t).length; }
 const isXT = id => /^xt\d+[tb]$/.test(id);
 
 function tapTerm(id){
+  lastOk = 0;
   const T = C.terms[id];
   hint3 = null;
   if(!pick){
@@ -1195,13 +1226,18 @@ function tapTerm(id){
   rings3 = [[A.sx, A.sy], [T.sx, T.sy]];
   if(count(id) >= 2){ msg3 = {cls:'bad', t:T.nm + ' 已经压了两根线', b:'一个端子最多两根。同号还有别的端子，从那儿接。'}; return; }
   if(finder(wireEdges())(pick) === finder(wireEdges())(id)){ msg3 = {cls:'bad', t:'这两个已经通了', b:'它们已经经过别的线（或端子排）连在一起，再接一根是多余的。'}; pick = null; return; }
+  const before = C.order.map((G, g) => groupDone(g));
   wires.push({a:pick, b:id, n:A.n});
+  const fin = C.order.findIndex((G, g) => !before[g] && groupDone(g));
   pick = null; rings3 = [];
   const left = missing();
+  if(fin >= 0 && C.order[fin].test){ pick = null; rings3 = []; msg3 = {cls:'ok', t:'✓ ' + C.order[fin].t + ' 接完', b:C.order[fin].test}; return; }
   if(!left.length) msg3 = {cls:'ok', t:'✓ ' + total() + ' 根线全部接完', b:'现在试车：合上 QF，按一下启动按钮再松开，看电机是不是一直转；再按 SB1 停。左边原理图会跟着亮。'};
   else {
     const f = finder(wireEdges());
     const rest = C.need[A.n].filter(t => f(t) !== f(C.need[A.n][0])).length;
+    /* 有引导时直接说下一根接哪，接上的反馈并进去 */
+    if(guide && nextWire()){ msg3 = null; lastOk = A.n; return; }
     msg3 = {cls:'ok', t:'✓ 接上了，' + A.n + ' 号' + (rest ? '还没接完' : '接完'),
       b:'线两头套上「' + A.n + '」的号码管。' + (rest ? A.n + ' 号还有端子没连进来。' : '') + '还剩 ' + (total() - wires.length) + ' 根。'};
   }
@@ -1298,19 +1334,53 @@ function drawBoard(){
     if(T.l) h += '<text class="tlab" x="' + (T.x + T.l[0]) + '" y="' + (T.y + T.l[1]) + '" text-anchor="' + (T.l[2] || 'middle') + '">' + T.nm.split(' ').pop() + '</text>';
     if(showNum) h += pillB(T.x + 8, T.y - 8, T.n);
   }
+  if(guide3 && !hint3) guide3.forEach(id => { h += '<circle class="hint" cx="' + C.terms[id].x + '" cy="' + C.terms[id].y + '" r="8"/>'; });
   if(hint3) hint3.forEach(id => { h += '<circle class="hint" cx="' + C.terms[id].x + '" cy="' + C.terms[id].y + '" r="8"/>'; });
   $('board').innerHTML = h;
   $('p3').textContent = wires.length + ' / ' + total() + ' 根';
 }
 
+let guide = true, guide3 = null, lastOk = 0;   // lastOk：刚接上的那根是几号          // 按顺序引导：板上闪下一根的两头，图上亮那一段
+/* 按 C.order 找第一根还没通的线（顺序乱接也行：已经通了的跳过） */
+function nextWire(){
+  const f = finder(wireEdges());
+  for(let g = 0; g < C.order.length; g++) for(let i = 0; i < C.order[g].w.length; i++){
+    const [a, b] = C.order[g].w[i];
+    if(f(a) !== f(b)) return {g:g, i:i, a:a, b:b};
+  }
+  return null;
+}
+function groupDone(g){ const f = finder(wireEdges()); return C.order[g].w.every(([a, b]) => f(a) === f(b)); }
+function orderList(){
+  const nx = nextWire();
+  let k = 0;
+  return C.order.map((G, g) => {
+    const done = groupDone(g);
+    let h = '<div class="og' + (done ? ' done' : '') + '"><b>' + (done ? '✓ ' : '') + G.t + '</b><span>' + G.d + '</span><ol start="' + (k + 1) + '">';
+    G.w.forEach(([a, b], i) => {
+      const cur = nx && nx.g === g && nx.i === i, ok = finder(wireEdges())(a) === finder(wireEdges())(b);
+      h += '<li class="' + (cur ? 'cur' : ok ? 'ok' : '') + '">' + C.terms[a].nm + ' → ' + C.terms[b].nm + ' <i>' + C.terms[a].n + ' 号</i></li>';
+    });
+    k += G.w.length;
+    return h + '</ol></div>';
+  }).join('');
+}
 function upd3(){
   solve3();
   const left = missing();
   let m = C.boardMsg(S3, left) || msg3;
   if(!m && !left.length) m = {cls:'ok', t:'线接完了', b:'合上 QF，按住启动按钮试车。'};
+  const nx = guide ? nextWire() : null;
+  if(!m && nx){
+    const G = C.order[nx.g], A = C.terms[nx.a], B = C.terms[nx.b];
+    m = {cls:lastOk ? 'ok' : 'info', t:(lastOk ? '✓ 接上了 · ' : '') + G.t + ' · 第 ' + (nx.i + 1) + '/' + G.w.length + ' 根',
+      b:'下一根：<b>' + A.nm + ' → ' + B.nm + '</b>（' + A.n + ' 号）。板上闪的两个端子就是；左边图里亮的那段线就是这一根。'};
+  }
   if(!m) m = {cls:'info', t:'照原理图把控制电路接起来', b:C.intro3};
+  guide3 = nx && !pick ? [nx.a, nx.b] : null;
+  $('order3').innerHTML = orderList();
   $('say3').className = 'say pin-r ' + m.cls; $('say3T').textContent = m.t; $('say3B').innerHTML = m.b;
-  $('s3').innerHTML = schem(S3, {rings:rings3, volt:true});
+  $('s3').innerHTML = schem(S3, {rings:rings3, volt:true, hl:guide3 && !rings3.length ? 'c' + C.terms[guide3[0]].n : null});
   drawBoard();
 }
 $('board').addEventListener('click', e => {
@@ -1320,20 +1390,9 @@ $('board').addEventListener('click', e => {
 });
 bindCtl($('b3'), S3, () => { msg3 = null; upd3(); });
 $('hintBtn').addEventListener('click', () => {
-  const left = missing();
-  hint3 = null;
-  if(!left.length){ msg3 = {cls:'ok', t:'已经全接完了', b:'合上 QF 试车。'}; upd3(); return; }
-  const n = left[0], f = finder(wireEdges()), ts = C.need[n];
-  /* 找一对还没通、在同一侧（板上 / 柜门）、都还有空位的端子 */
-  let a = null, b = null;
-  ts.forEach(x => ts.forEach(y => {
-    if(!a && x !== y && f(x) !== f(y) && zoneOf(x) === zoneOf(y) && count(x) < 2 && count(y) < 2) { a = x; b = y; }
-  }));
-  if(!a){ msg3 = {cls:'bad', t:'提示不出来', b:n + ' 号的端子都压满两根了，按「拆光重接」重来。'}; upd3(); return; }
-  pick = null;
-  hint3 = [a, b];
-  rings3 = [[C.terms[a].sx, C.terms[a].sy], [C.terms[b].sx, C.terms[b].sy]];
-  msg3 = {cls:'info', t:'提示：接 ' + n + ' 号', b:'板上闪的两个端子都是 ' + n + ' 号：<b>' + C.terms[a].nm + '</b> ↔ <b>' + C.terms[b].nm + '</b>，原理图上蓝圈是它们在图上的位置。依次点这两个端子。'};
+  guide = !guide; hint3 = null; msg3 = null;
+  $('hintBtn').classList.toggle('on', guide);
+  $('hintBtn').innerHTML = '引导<span>' + (guide ? '开' : '关') + '</span>';
   upd3();
 });
 $('numBtn').addEventListener('click', () => { showNum = !showNum; $('numBtn').classList.toggle('on', showNum); upd3(); });
