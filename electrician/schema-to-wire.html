@@ -95,13 +95,14 @@ svg text{font-family:inherit}
 .plate{fill:var(--plate);stroke:#ced4da}
 .dev{fill:#f8f9fa;stroke:#868e96;stroke-width:1}
 .dev2{fill:#dee2e6;stroke:#868e96;stroke-width:.8}
-.pw{fill:none;stroke:var(--pre);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pw{fill:none;stroke:#6c757d;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .pw.on{stroke:#e57373}
 .uw{fill:none;stroke:var(--wire);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .uw.on{stroke:var(--live)}
 .uw.hi{stroke:var(--acc);stroke-width:2.4}
-.duct{fill:#ced4da;fill-opacity:.85;stroke:#adb5bd;stroke-width:.8}
-.duct-t{stroke:#adb5bd;stroke-width:.8}
+.duct{fill:#f8f9fa;stroke:#ced4da;stroke-width:.8}
+.duct-t{stroke:#ced4da;stroke-width:.8}
+.duct.lid{fill:#ced4da;fill-opacity:.93;stroke:#adb5bd}
 .xtb{fill:#f8f9fa;stroke:#868e96;stroke-width:.8}
 .xtn{font-size:7px;font-weight:700;fill:var(--tx)}
 .hint{fill:none;stroke:var(--acc);stroke-width:1.6;animation:pulse .9s ease-in-out infinite}
@@ -223,15 +224,49 @@ svg text{font-family:inherit}
       <div class="say pin-r" id="say3"><div class="st" id="say3T"></div><div class="why" id="say3B"></div></div>
     </div>
     <div class="card">
-      <h2>实物板 <small>宽灰条＝线槽</small><span class="prog" id="p3"></span><button class="zbtn">放大</button></h2>
+      <h2>实物板 <small>浅色宽条＝线槽</small><span class="prog" id="p3"></span><button class="zbtn">放大</button></h2>
       <div class="zw"><svg id="board"></svg></div>
       <div class="btns" id="b3"></div>
-      <div class="btns three">
+      <div class="btns">
         <button data-k="hint" id="hintBtn">提示<span>下一根接哪</span></button>
         <button data-k="num" id="numBtn">显示线号<span>端子旁标号</span></button>
-        <button data-k="reset" id="resetBtn">拆光重接</button>
+        <button data-k="lid" id="lidBtn">盖线槽盖<span>真板子的样子</span></button>
+        <button data-k="reset" id="resetBtn">拆光<span>重接</span></button>
       </div>
       <div class="info" id="howto3"></div>
+    </div>
+    <div class="card">
+      <h2>端子排怎么用</h2>
+      <svg viewBox="0 0 360 178" aria-label="端子排一节的上桩、下桩和里面连通的铜片">
+        <rect x="0" y="0" width="360" height="178" rx="8" fill="var(--plate)"/>
+        <text class="dlab2" x="14" y="16">板子这边</text>
+        <text class="dlab2" x="346" y="170" text-anchor="end">柜门 / 外面</text>
+        <!-- 一节端子：上桩、下桩、中间铜片 -->
+        <rect x="150" y="18" width="60" height="140" rx="5" fill="#f8f9fa" stroke="#868e96"/>
+        <rect x="176" y="44" width="8" height="88" fill="#c98a4b" stroke="#a5682e" stroke-width=".8"/>
+        <circle cx="180" cy="44" r="9" fill="#ced4da" stroke="#495057"/>
+        <path d="M174,44 h12" stroke="#495057" stroke-width="1.6"/>
+        <circle cx="180" cy="132" r="9" fill="#ced4da" stroke="#495057"/>
+        <path d="M174,132 h12" stroke="#495057" stroke-width="1.6"/>
+        <text x="163" y="94" text-anchor="middle" style="font-size:15px;font-weight:700;fill:var(--tx)">2</text>
+        <!-- 上桩接板上的线、下桩接柜门的线 -->
+        <polyline points="40,44 171,44" fill="none" stroke="var(--wire)" stroke-width="2.4"/>
+        <circle cx="40" cy="44" r="4" fill="#c3e6cb" stroke="#495057"/>
+        <text class="tlab" x="40" y="62" text-anchor="middle">FR 96</text>
+        <g class="sleeve"><rect x="120" y="38" width="12" height="12" rx="2"/><text x="126" y="47" text-anchor="middle" style="font-size:8px">2</text></g>
+        <polyline points="189,132 320,132" fill="none" stroke="var(--wire)" stroke-width="2.4"/>
+        <circle cx="320" cy="132" r="4" fill="#c3e6cb" stroke="#495057"/>
+        <text class="tlab" x="320" y="122" text-anchor="middle">SB1 11</text>
+        <g class="sleeve"><rect x="228" y="126" width="12" height="12" rx="2"/><text x="234" y="135" text-anchor="middle" style="font-size:8px">2</text></g>
+        <text class="dlab" x="216" y="40">上桩</text><text class="dlab2" x="216" y="51">接板上的线</text>
+        <text class="dlab" x="144" y="128" text-anchor="end">下桩</text><text class="dlab2" x="144" y="139" text-anchor="end">接柜门的线</text>
+        <text class="dlab2" x="216" y="84">← 铜片</text><text class="dlab2" x="216" y="94">　 上下连通</text>
+      </svg>
+      <div class="info">
+        端子排每一节有<b>上下两个螺丝</b>（上桩、下桩），里面用铜片连着，<b>上下是通的</b>。<b>板子上的线接上桩，板子外面的线（柜门上的按钮、电动机、进线电源）接下桩。</b><br>
+        为什么要绕这一下：按钮装在柜门上、电机在柜子外面，不能从板子直接拉线过去。都先接到端子排，检修、换按钮时只拆下桩那头，板子上的线不用动。<br>
+        所以原理图上的一根线（比如 2 号：FR 96 → SB1 11），实际要接<b>两根</b>：<b>FR 96 → XT2 上桩</b>，<b>XT2 下桩 → SB1 11</b>。端子排每一节印的号，就是它中转的那根线的线号。电机的 U、V、W 也一样，已经替你接好了。
+      </div>
     </div>
   </section>
 </div>
@@ -489,7 +524,7 @@ ZS.boardMsg = function(st, left){
   return null;
 };
 /* 线槽：h 横槽 [x0,x1,y0,y1]，v 竖槽；横槽都在右头接进竖槽 */
-ZS.ducts = {h:[[12,314,128,142], [12,314,228,242], [12,314,300,314]], v:[300,314,128,314]};
+ZS.ducts = {h:[[12,320,124,146], [12,320,224,246], [12,320,294,316]], v:[298,320,124,316]};
 ZS.board = function(st){
   const on = st.km, P = on ? ' on' : '', X = [52, 70, 88];
   let h = plateB();
@@ -764,7 +799,7 @@ ZF.boardMsg = function(st, left){
   if(st.sb3) return noPull(st, left, 'SB3');
   return null;
 };
-ZF.ducts = {h:[[12,326,128,142], [12,326,228,242], [12,326,300,314]], v:[312,326,128,314]};
+ZF.ducts = {h:[[12,334,124,146], [12,334,224,246], [12,334,294,316]], v:[312,334,124,316]};
 ZF.board = function(st){
   const k1 = st.km1, k2 = st.km2, a = k1 || k2;
   const PA = a ? ' on' : '', P1 = k1 ? ' on' : '', P2 = k2 ? ' on' : '';
@@ -794,7 +829,13 @@ ZF.board = function(st){
 /* ================= 实物板上的零件（两块板共用） ================= */
 function pw(p, cls){ return '<polyline class="pw' + (cls || '') + '" points="' + pl(p) + '"/>'; }
 function dotB(x, y){ return '<circle cx="' + x + '" cy="' + y + '" r="2" fill="#868e96"/>'; }
-function plateB(){ return '<rect class="plate" x="4" y="4" width="352" height="362" rx="8"/>'; }
+function plateB(){
+  let h = '<rect class="plate" x="4" y="4" width="352" height="362" rx="8"/>';
+  const v = C.ducts.v;
+  h += ductB(v[0], v[2], v[1] - v[0], v[3] - v[2]);
+  C.ducts.h.forEach(r => { h += ductB(r[0], r[2], r[1] - r[0], r[3] - r[2]); });
+  return h + '<text class="dlab2" x="' + (v[0] - 32) + '" y="' + (C.ducts.h[0][2] + 8) + '">线槽</text>';
+}
 function bQF(x, y0, st){
   return '<rect class="dev" x="' + x + '" y="' + y0 + '" width="68" height="44" rx="4"/>' +
     '<rect class="dev2" x="' + (x+20) + '" y="' + (y0+14) + '" width="28" height="12" rx="2"/>' +
@@ -862,8 +903,8 @@ function bButtons(x0, y0, w, list){
   });
   return h;
 }
-function ductB(x, y, w, h){
-  let s = '<rect class="duct" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"/>';
+function ductB(x, y, w, h, lid){
+  let s = '<rect class="duct' + (lid ? ' lid' : '') + '" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"/>';
   /* 线槽两边的齿 */
   if(w > h) for(let t = x + 4; t < x + w; t += 6) s += '<line class="duct-t" x1="' + t + '" y1="' + y + '" x2="' + t + '" y2="' + (y+3) + '"/><line class="duct-t" x1="' + t + '" y1="' + (y+h-3) + '" x2="' + t + '" y2="' + (y+h) + '"/>';
   else for(let t = y + 4; t < y + h; t += 6) s += '<line class="duct-t" x1="' + x + '" y1="' + t + '" x2="' + (x+3) + '" y2="' + t + '"/><line class="duct-t" x1="' + (x+w-3) + '" y1="' + t + '" x2="' + (x+w) + '" y2="' + t + '"/>';
@@ -1012,6 +1053,7 @@ let rings3 = [];
 let hint3 = null;        // 提示的那对端子，板上也圈出来
 let msg3 = null;         // {cls,t,b}
 let showNum = false;
+let lid = false;         // 线槽盖：默认打开，线全看得见
 
 function finder(edges){
   const P = {};
@@ -1091,7 +1133,7 @@ function tapTerm(id){
 }
 
 /* ---------- 走线：板上的线 = 两头短短一截 + 线槽里一段；柜门的线在板子和柜门之间并排走 ---------- */
-const LANES = [-4.5, -1.5, 1.5, 4.5];
+const LANE_OFS = [0, -3, 3, -6, 6, -9, 9];   // 线槽里的 7 道，先用中间的
 function exitOf(id){
   const T = C.terms[id];
   if(id.startsWith('fu2')) return 'd';
@@ -1108,13 +1150,35 @@ function ductOf(id){
   });
   return best;
 }
-function wirePath(w, k){
+/* 一根板上线占用了哪几段线槽：[横槽序号或 'v', 起, 止] */
+function ductUse(w){
+  const A = C.terms[w.a], B = C.terms[w.b], da = ductOf(w.a), db = ductOf(w.b);
+  const ka = C.ducts.h.indexOf(da), kb = C.ducts.h.indexOf(db), vx = (C.ducts.v[0] + C.ducts.v[1]) / 2;
+  if(da === db) return [[ka, Math.min(A.x, B.x), Math.max(A.x, B.x)]];
+  const ya = (da[2] + da[3]) / 2, yb = (db[2] + db[3]) / 2;
+  return [[ka, Math.min(A.x, vx), vx], [kb, Math.min(B.x, vx), vx], ['v', Math.min(ya, yb), Math.max(ya, yb)]];
+}
+/* 按接线先后给每根线分道：跟已经在同一段槽里、区间重叠的线错开；柜门那边的线各占一条横道 */
+function laneAssign(){
+  const used = [];
+  let ko = 0;
+  return wires.map(w => {
+    if(zoneOf(w.a) === 'out') return {k:ko++};
+    const u = ductUse(w);
+    let lane = 0;
+    while(lane < LANE_OFS.length && used.some(q => q[3] === lane && u.some(r => r[0] === q[0] && r[1] < q[2] + 4 && q[1] < r[2] + 4))) lane++;
+    if(lane === LANE_OFS.length) lane = 0;
+    u.forEach(r => used.push([r[0], r[1], r[2], lane]));
+    return {o:LANE_OFS[lane]};
+  });
+}
+function wirePath(w, ln){
   const A = C.terms[w.a], B = C.terms[w.b];
   if(zoneOf(w.a) === 'out'){
-    const y = 374 + (k % 6) * 4;
+    const y = 374 + (ln.k % 6) * 4;
     return [[A.x,A.y],[A.x,y],[B.x,y],[B.x,B.y]];
   }
-  const o = LANES[k % LANES.length], da = ductOf(w.a), db = ductOf(w.b);
+  const o = ln.o, da = ductOf(w.a), db = ductOf(w.b);
   const ya = (da[2] + da[3]) / 2 + o, yb = (db[2] + db[3]) / 2 + o;
   if(da === db) return [[A.x,A.y],[A.x,ya],[B.x,ya],[B.x,B.y]];
   const vx = (C.ducts.v[0] + C.ducts.v[1]) / 2 + o;
@@ -1134,14 +1198,15 @@ function pillB(x, y, n){
 function drawBoard(){
   let h = C.board(S3);
   const live = C.running(S3);
-  let ki = 0, ko = 0;
-  const paths = wires.map(w => wirePath(w, zoneOf(w.a) === 'out' ? ko++ : ki++));
+  const lanes = laneAssign();
+  const paths = wires.map((w, i) => wirePath(w, lanes[i]));
   paths.forEach(p => { h += '<polyline class="uw' + (live ? ' on' : '') + '" points="' + pl(p) + '"/>'; });
-  /* 线槽盖在线上面：线槽里那段只隐约看得见，跟真板子一样 */
-  const v = C.ducts.v;
-  h += ductB(v[0], v[2], v[1] - v[0], v[3] - v[2]);
-  C.ducts.h.forEach(r => { h += ductB(r[0], r[2], r[1] - r[0], r[3] - r[2]); });
-  h += '<text class="dlab2" x="' + (v[0] - 40) + '" y="' + (C.ducts.h[0][2] + 9.5) + '">线槽</text>';
+  /* 盖上线槽盖：跟真板子一样，槽里的线看不见，只剩两头和号码管 */
+  if(lid){
+    const v = C.ducts.v;
+    h += ductB(v[0], v[2], v[1] - v[0], v[3] - v[2], true);
+    C.ducts.h.forEach(r => { h += ductB(r[0], r[2], r[1] - r[0], r[3] - r[2], true); });
+  }
   /* 选中的端子：它身上的线整条亮出来，看得见在线槽里怎么走 */
   if(pick) wires.forEach((w, i) => { if(w.a === pick || w.b === pick) h += '<polyline class="uw hi" points="' + pl(paths[i]) + '"/>'; });
   const done = {};
@@ -1197,6 +1262,12 @@ $('hintBtn').addEventListener('click', () => {
   upd3();
 });
 $('numBtn').addEventListener('click', () => { showNum = !showNum; $('numBtn').classList.toggle('on', showNum); upd3(); });
+$('lidBtn').addEventListener('click', () => {
+  lid = !lid;
+  $('lidBtn').classList.toggle('on', lid);
+  $('lidBtn').innerHTML = lid ? '打开线槽盖<span>看清线怎么走</span>' : '盖线槽盖<span>真板子的样子</span>';
+  upd3();
+});
 $('resetBtn').addEventListener('click', () => { wires = []; pick = null; rings3 = []; hint3 = null; msg3 = null; upd3(); });
 
 /* ================= 换电路 ================= */
