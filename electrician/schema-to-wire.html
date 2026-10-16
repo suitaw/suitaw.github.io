@@ -117,7 +117,9 @@ svg text{font-family:inherit}
 .sleeve text{font-size:6px;font-weight:700;fill:var(--tx)}
 .flash{animation:flash .15s linear 4 alternate}
 @keyframes flash{to{opacity:.3}}
-.cir{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 4px}
+.cir{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:0 0 4px}
+.cir .cir-a{border:1px dashed var(--line);background:var(--card);color:var(--tx2);border-radius:10px;padding:8px 2px;font-size:.84rem;font-weight:700;text-align:center;text-decoration:none}
+.cir .cir-a span{display:block;font-weight:400;font-size:.66rem;color:var(--tx3)}
 .cir button{border:1px solid var(--line);background:var(--card);color:var(--tx2);border-radius:10px;
   padding:8px 4px;font-size:.84rem;font-weight:700;touch-action:manipulation}
 .cir button span{display:block;font-weight:400;font-size:.66rem;color:var(--tx3)}
@@ -170,9 +172,10 @@ body.lock3{padding-bottom:0}
     <a href="index.html">课程首页</a>
   </div>
   <div class="cir" id="cir">
-    <button data-c="zs">K34 自锁起停<span>先学这个</span></button>
-    <button data-c="zd">K31 点动+连续<span>复合按钮</span></button>
-    <button data-c="zf">K32 正反转<span>加互锁</span></button>
+    <button data-c="zs">K34<span>自锁起停</span></button>
+    <button data-c="zd">K31<span>点动+连续</span></button>
+    <button data-c="zf">K32<span>正反转</span></button>
+    <a class="cir-a" href="lighting-wire.html">K33 ›<span>照明电路</span></a>
   </div>
   <div class="tabs" id="tabs">
     <button class="on" data-i="0">① 看图<span>规矩</span></button>
