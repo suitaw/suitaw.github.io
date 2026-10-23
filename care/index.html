@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>家人病情记录</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --text: #1a1a18; --muted: #6b6b66;
+    --line: #e4e4e0; --accent: #b8562f; --soft: #f3ebe6;
+    --kid: #2f7fb8; --mnd: #7a5bb0; --ok: #3f8a4f; --warn: #c07a1a; --bad: #b83a3a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17171a; --card: #202024; --text: #ececea; --muted: #9a9a94;
+      --line: #32323a; --accent: #e08a5f; --soft: #2a2420;
+      --kid: #6fb2e6; --mnd: #b096e0; --ok: #6fc07f; --warn: #e0a54a; --bad: #e07070;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px 16px 64px; background: var(--bg); color: var(--text);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  a { color: var(--accent); }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+  .note { padding: 10px 12px; border-radius: 10px; background: var(--soft); font-size: 13px; color: var(--muted); }
+  .note b { color: var(--text); }
+
+  .people { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 12px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    padding: 7px 13px; border-radius: 999px; font: inherit; font-size: 15px; cursor: pointer;
+  }
+  .chip.on { border-color: var(--accent); background: var(--soft); font-weight: 600; }
+  .chip .tag { font-size: 12px; color: var(--muted); margin-left: 4px; font-weight: 400; }
+  .chip.add { color: var(--accent); }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 6px 0 16px; overflow-x: auto; }
+  .tab {
+    border: 0; background: none; color: var(--muted); font: inherit; font-size: 15px;
+    padding: 8px 12px; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap;
+  }
+  .tab.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  .card h3 { margin: 0 0 10px; font-size: 16px; }
+  .card h4 { margin: 14px 0 6px; font-size: 15px; }
+  label.f { display: block; margin-bottom: 10px; font-size: 14px; color: var(--muted); }
+  label.f span.u { font-size: 12px; }
+  input, select, textarea {
+    display: block; width: 100%; margin-top: 4px; padding: 9px 10px; font: inherit; font-size: 16px;
+    color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  }
+  textarea { min-height: 64px; resize: vertical; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  button.btn {
+    border: 1px solid var(--accent); background: var(--accent); color: #fff; font: inherit; font-size: 15px;
+    padding: 9px 16px; border-radius: 9px; cursor: pointer;
+  }
+  button.ghost { background: none; color: var(--accent); }
+  button.small { padding: 4px 10px; font-size: 13px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .calc { margin: 4px 0 12px; padding: 10px 12px; border-radius: 9px; background: var(--soft); font-size: 14px; }
+  .calc b { font-size: 18px; }
+  .muted { color: var(--muted); font-size: 13px; }
+
+  .q { padding: 10px 0; border-top: 1px dashed var(--line); }
+  .q:first-of-type { border-top: 0; }
+  .q .qt { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .q .qt small { color: var(--muted); font-weight: 400; }
+  .opt { display: flex; gap: 8px; align-items: flex-start; padding: 5px 2px; font-size: 14px; cursor: pointer; }
+  .opt input { width: auto; margin: 4px 0 0; flex: none; }
+  .opt .s { flex: none; width: 1.3em; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .domain { font-size: 13px; color: var(--mnd); font-weight: 600; margin-top: 10px; }
+
+  .rec { padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .rec:first-child { border-top: 0; }
+  .rec .d { font-weight: 600; }
+  .rec .vals { color: var(--muted); }
+  .rec .vals b { color: var(--text); font-weight: 600; }
+  .rec .acts { margin-top: 4px; display: flex; gap: 6px; }
+
+  .chart { width: 100%; height: auto; display: block; }
+  .chart text { font-size: 10px; fill: var(--muted); font-family: inherit; }
+  .lvl-ok { color: var(--ok); } .lvl-warn { color: var(--warn); } .lvl-bad { color: var(--bad); }
+
+  .fig { width: 100%; height: auto; display: block; margin: 6px 0; }
+  .fig text { font-family: inherit; }
+  .howto { font-size: 14px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--soft); border-radius: 0 8px 8px 0; margin: 4px 0 12px; }
+  .learn p, .learn li { font-size: 15px; }
+  .learn ul { padding-left: 20px; margin: 6px 0; }
+  .src { font-size: 12px; color: var(--muted); }
+  .src li { margin-bottom: 4px; }
+  .empty { text-align: center; color: var(--muted); padding: 24px 0; font-size: 14px; }
+  .hidden { display: none !important; }
+  .stage { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 12px; border: 1px solid currentColor; margin-left: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>家人病情记录</h1>
+<p class="sub">IgA 肾病 · 运动神经元病　记化验、算指标、看趋势、学看懂</p>
+<div class="note"><b>只帮你看懂和整理，不替代医生。</b>用药、复查、要不要做什么检查，都听主治医生的。数据只存在这台手机的浏览器里，不上传；记得定期在「备份」里导出。</div>
+
+<div class="people" id="people"></div>
+
+<div id="main"></div>
+
+</div>
+
+<script>
+// ---------- 数据 ----------
+const KEY = 'care.v1';
+const DEMO = location.hash === '#demo';
+let S = load();
+
+function load() {
+  if (DEMO) return demoData();
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && s.people) return s;
+  } catch (e) {}
+  return { people: [], records: {}, meds: {}, cur: null };
+}
+function save() {
+  if (DEMO) return;
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch (e) { alert('保存失败：浏览器存储不可用。请先在「备份」里导出数据。'); }
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const num = v => (v === '' || v == null || isNaN(+v)) ? null : +v;
+const fmt = (v, d = 1) => v == null ? '—' : (+v).toFixed(d).replace(/\.0+$/, '');
+
+let tab = 'rec';
+let editing = null;   // 正在编辑的记录 id
+
+// ---------- 计算 ----------
+const DAY = 864e5;
+function ageAt(birth, date) {
+  if (!birth || !date) return null;
+  return (new Date(date) - new Date(birth)) / (365.25 * DAY);
+}
+// 儿童床旁 Schwartz（2009）：eGFR = 0.413 × 身高(cm) / 肌酐(mg/dL)；肌酐 μmol/L ÷ 88.4 = mg/dL
+function schwartz(heightCm, scrUmol) {
+  if (!heightCm || !scrUmol) return null;
+  return 0.413 * heightCm / (scrUmol / 88.4);
+}
+function egfrOf(p, r) {
+  const age = ageAt(p.birth, r.date);
+  if (age == null) return { v: null, why: '先在档案里填出生日期' };
+  if (age < 1 || age >= 18) return { v: null, why: age < 1 ? '1 岁以下不适用这个公式' : '已满 18 岁，儿童公式不再适用，请看化验单或问医生' };
+  if (!r.height) return { v: null, why: '要填身高才能算' };
+  if (!r.scr) return { v: null, why: '要填肌酐才能算' };
+  return { v: schwartz(r.height, r.scr), why: '' };
+}
+// KDIGO 慢性肾病 G 分期
+function gStage(e) {
+  if (e == null) return null;
+  if (e >= 90) return ['G1', 'ok']; if (e >= 60) return ['G2', 'ok'];
+  if (e >= 45) return ['G3a', 'warn']; if (e >= 30) return ['G3b', 'warn'];
+  if (e >= 15) return ['G4', 'bad']; return ['G5', 'bad'];
+}
+// 尿蛋白/肌酐比统一换成 mg/g（1 mg/mmol = 8.84 mg/g）
+function upcrMgG(r) {
+  if (r.upcr == null) return null;
+  return r.upcrUnit === 'mg/mmol' ? r.upcr * 8.84 : r.upcr;
+}
+
+// ALSFRS-R：12 题，每题 0~4 分，选项从 4 分写到 0 分
+const ALS = [
+  ['言语', '延髓', ['正常', '能听出说话有点异常', '要重复说才能听懂', '说话要配合手势、写字等其他方式', '已经说不出有用的话']],
+  ['流口水', '延髓', ['正常', '嘴里口水稍多，夜里可能流口水', '口水中度增多，可能少量流出', '口水明显多，有时会流出来', '明显流口水，要一直拿纸巾或手帕']],
+  ['吞咽', '延髓', ['正常进食', '开始有进食问题，偶尔呛咳', '要改变食物性状（软食、糊状）', '要靠鼻饲/管饲补充营养', '完全不能经口进食，只靠管饲或静脉营养']],
+  ['写字', '精细动作', ['正常', '慢或潦草，但每个字都认得出', '不是每个字都认得出', '能握笔但写不了字', '握不住笔']],
+  ['切食物、用餐具', '精细动作', ['正常', '有点慢、笨拙，但不用帮忙', '大部分食物能切，但笨拙缓慢，要一点帮忙', '食物要别人切好，但还能慢慢自己吃', '要别人喂']],
+  ['穿衣和洗漱', '精细动作', ['正常', '能自己完成，但费力或变慢', '有时要人帮或换用别的办法', '要照护者帮忙', '完全靠别人']],
+  ['床上翻身、整理被子', '粗大动作', ['正常', '有点慢、笨拙，但不用帮忙', '能自己翻身或整理被子，但非常吃力', '能起个头，但自己翻不过来、整理不了', '完全不能']],
+  ['走路', '粗大动作', ['正常', '开始有点走不稳、走不快', '要人扶或用助行器才能走', '不能走，只能做些原地的动作', '腿不能做有意识的动作']],
+  ['爬楼梯', '粗大动作', ['正常', '变慢', '有点不稳或容易累', '要人帮', '爬不了']],
+  ['喘不上气', '呼吸', ['没有', '走路时会', '吃饭、洗澡、穿衣时会', '休息时也会，坐着或躺着都喘', '很严重，在考虑用呼吸机']],
+  ['躺下就喘', '呼吸', ['没有', '夜里因气短有点睡不好，但不用超过两个枕头', '要垫两个以上枕头才能睡', '只能坐着睡', '完全睡不了']],
+  ['用呼吸机的情况', '呼吸', ['不用', '间断用无创呼吸机（BiPAP）', '夜里一直用无创呼吸机', '白天黑夜都一直用无创呼吸机', '气管插管或气管切开，用有创呼吸机']],
+];
+// 第 5 题：做了胃造瘘的人换成 5b
+const ALS5B = ['用手处理胃造瘘管饲', '精细动作', ['正常', '笨拙，但所有操作都能自己完成', '盖子、开关之类要一点帮忙', '只能给照护者帮一点小忙', '完全做不了']];
+
+function alsTotal(r) {
+  if (!r.als || r.als.some(v => v == null)) return null;
+  return r.als.reduce((a, b) => a + b, 0);
+}
+function alsDomains(r) {
+  const out = { 延髓: 0, 精细动作: 0, 粗大动作: 0, 呼吸: 0 };
+  r.als.forEach((v, i) => out[ALS[i][1]] += v);
+  return out;
+}
+// ΔFS = (48 − 当前总分) ÷ 从起病到这次的月数（Kimura 2006）；分档用 Labra 2016
+function deltaFS(p, r) {
+  const t = alsTotal(r);
+  if (t == null || !p.onset) return null;
+  const months = (new Date(r.date) - new Date(p.onset)) / (30.44 * DAY);
+  if (months <= 0) return null;
+  return (48 - t) / months;
+}
+function dfsLevel(d) {
+  if (d == null) return null;
+  if (d < 0.47) return ['较慢', 'ok']; if (d < 1.11) return ['中等', 'warn']; return ['较快', 'bad'];
+}
+
+// ---------- 渲染：人员 ----------
+const DIS = { igan: 'IgA 肾病', mnd: '运动神经元病' };
+function cur() { return S.people.find(p => p.id === S.cur) || null; }
+function recs(p) { return (S.records[p.id] || []).slice().sort((a, b) => a.date < b.date ? -1 : 1); }
+
+function renderPeople() {
+  const el = document.getElementById('people');
+  el.innerHTML = S.people.map(p =>
+    `<button class="chip ${p.id === S.cur ? 'on' : ''}" data-p="${p.id}">${esc(p.name)}<span class="tag">${DIS[p.disease]}</span></button>`
+  ).join('') + `<button class="chip add" data-p="+">＋ 添加家人</button>`;
+  el.querySelectorAll('.chip').forEach(b => b.onclick = () => {
+    if (b.dataset.p === '+') { S.cur = null; tab = 'profile'; }
+    else { S.cur = b.dataset.p; if (tab === 'profile' && !cur()) tab = 'rec'; }
+    editing = null; save(); render();
+  });
+}
+
+function render() {
+  renderPeople();
+  const m = document.getElementById('main');
+  const p = cur();
+  if (!p) { m.innerHTML = profileForm(null); bindProfile(null); return; }
+  const tabs = [['rec', '记一次'], ['trend', '趋势'], ['meds', '用药'], ['learn', '看懂'], ['profile', '档案'], ['backup', '备份']];
+  m.innerHTML = `<div class="tabs">${tabs.map(([k, t]) => `<button class="tab ${tab === k ? 'on' : ''}" data-t="${k}">${t}</button>`).join('')}</div><div id="pane"></div>`;
+  m.querySelectorAll('.tab').forEach(b => b.onclick = () => { tab = b.dataset.t; editing = null; render(); });
+  const pane = document.getElementById('pane');
+  if (tab === 'rec') { pane.innerHTML = p.disease === 'igan' ? kidneyForm(p) : mndForm(p); p.disease === 'igan' ? bindKidney(p) : bindMnd(p); pane.insertAdjacentHTML('beforeend', recList(p)); bindRecList(p); }
+  if (tab === 'trend') pane.innerHTML = trends(p);
+  if (tab === 'meds') { pane.innerHTML = medsView(p); bindMeds(p); }
+  if (tab === 'learn') pane.innerHTML = p.disease === 'igan' ? learnKidney() : learnMnd();
+  if (tab === 'profile') { pane.innerHTML = profileForm(p); bindProfile(p); }
+  if (tab === 'backup') { pane.innerHTML = backupView(); bindBackup(); }
+}
+
+// ---------- 档案 ----------
+function profileForm(p) {
+  const v = p || { name: '', rel: '', birth: '', sex: '', disease: 'igan', onset: '', gastro: false };
+  return `<div class="card"><h3>${p ? '修改档案' : '添加家人'}</h3>
+    <div class="row">
+      <label class="f">称呼<input id="pf-name" value="${esc(v.name)}" placeholder="比如：外公、小宝"></label>
+      <label class="f">关系 <span class="u">(选填)</span><input id="pf-rel" value="${esc(v.rel)}"></label>
+    </div>
+    <div class="row">
+      <label class="f">出生日期<input id="pf-birth" type="date" value="${v.birth}"></label>
+      <label class="f">性别<select id="pf-sex"><option value="">—</option><option value="m" ${v.sex === 'm' ? 'selected' : ''}>男</option><option value="f" ${v.sex === 'f' ? 'selected' : ''}>女</option></select></label>
+    </div>
+    <label class="f">病<select id="pf-dis"><option value="igan" ${v.disease === 'igan' ? 'selected' : ''}>IgA 肾病</option><option value="mnd" ${v.disease === 'mnd' ? 'selected' : ''}>运动神经元病（ALS 等）</option></select></label>
+    <div id="pf-mnd" class="${v.disease === 'mnd' ? '' : 'hidden'}">
+      <label class="f">最早出现症状的时间 <span class="u">（大概到月份就行，用来算进展速度）</span><input id="pf-onset" type="date" value="${v.onset || ''}"></label>
+      <label class="opt"><input type="checkbox" id="pf-gastro" ${v.gastro ? 'checked' : ''}><span>已做胃造瘘（评分第 5 题会换成对应的版本）</span></label>
+    </div>
+    <p class="muted">出生日期用来算年龄：小孩的肾功能公式和正常范围都跟年龄有关。</p>
+    <div class="btns"><button class="btn" id="pf-save">保存</button>${p ? '<button class="btn ghost" id="pf-del">删除这个人和全部记录</button>' : ''}</div>
+  </div>`;
+}
+function bindProfile(p) {
+  const $ = id => document.getElementById(id);
+  $('pf-dis').onchange = () => $('pf-mnd').classList.toggle('hidden', $('pf-dis').value !== 'mnd');
+  $('pf-save').onclick = () => {
+    const name = $('pf-name').value.trim();
+    if (!name) { alert('填个称呼'); return; }
+    const v = { name, rel: $('pf-rel').value.trim(), birth: $('pf-birth').value, sex: $('pf-sex').value,
+      disease: $('pf-dis').value, onset: $('pf-onset').value, gastro: $('pf-gastro').checked };
+    if (p) {
+      if (p.disease !== v.disease && (S.records[p.id] || []).length && !confirm('改了病种，之前的记录格式对不上，会在趋势里显示不全。继续？')) return;
+      Object.assign(p, v);
+    } else {
+      const np = { id: uid(), ...v }; S.people.push(np); S.cur = np.id; S.records[np.id] = []; S.meds[np.id] = [];
+    }
+    tab = 'rec'; save(); render();
+  };
+  if (p) $('pf-del').onclick = () => {
+    if (!confirm(`删除「${p.name}」和他/她的全部记录？删了找不回来（除非你导出过备份）。`)) return;
+    S.people = S.people.filter(x => x.id !== p.id); delete S.records[p.id]; delete S.meds[p.id];
+    S.cur = S.people[0]?.id || null; tab = 'rec'; save(); render();
+  };
+}
+
+// ---------- 记录：IgA 肾病 ----------
+const QUAL = ['', '−', '±', '1+', '2+', '3+', '4+'];
+function kidneyForm(p) {
+  const r = (editing && (S.records[p.id] || []).find(x => x.id === editing)) || { date: today(), upcrUnit: 'mg/g' };
+  const last = recs(p).slice(-1)[0];
+  const qsel = (id, v) => `<select id="${id}">${QUAL.map(q => `<option ${q === (v || '') ? 'selected' : ''}>${q}</option>`).join('')}</select>`;
+  return `<div class="card"><h3>${editing ? '修改记录' : '记一次化验'}</h3>
+    <p class="muted">照着化验单填，没有的项空着就行。</p>
+    <div class="row">
+      <label class="f">化验日期<input id="k-date" type="date" value="${r.date}"></label>
+      <label class="f">身高 <span class="u">cm</span><input id="k-h" type="number" inputmode="decimal" value="${r.height ?? (editing ? '' : last?.height ?? '')}"></label>
+    </div>
+    <div class="row">
+      <label class="f">血肌酐 <span class="u">μmol/L</span><input id="k-scr" type="number" inputmode="decimal" value="${r.scr ?? ''}"></label>
+      <label class="f">体重 <span class="u">kg</span><input id="k-w" type="number" inputmode="decimal" value="${r.weight ?? ''}"></label>
+    </div>
+    <div class="calc" id="k-egfr"></div>
+    <h4>尿蛋白（漏出来多少）</h4>
+    <div class="row">
+      <label class="f">尿蛋白定性<span class="u">（尿常规）</span>${qsel('k-pq', r.proQ)}</label>
+      <label class="f">24 小时尿蛋白 <span class="u">g/24h</span><input id="k-24" type="number" inputmode="decimal" value="${r.pro24 ?? ''}"></label>
+    </div>
+    <div class="row">
+      <label class="f">尿蛋白/肌酐比<input id="k-upcr" type="number" inputmode="decimal" value="${r.upcr ?? ''}"></label>
+      <label class="f">单位<select id="k-uu"><option ${r.upcrUnit === 'mg/g' ? 'selected' : ''}>mg/g</option><option ${r.upcrUnit === 'mg/mmol' ? 'selected' : ''}>mg/mmol</option></select></label>
+    </div>
+    <h4>血尿</h4>
+    <div class="row">
+      <label class="f">尿潜血<span class="u">（尿常规）</span>${qsel('k-bq', r.bldQ)}</label>
+      <label class="f">尿红细胞 <span class="u">个/μL</span><input id="k-rbc" type="number" inputmode="decimal" value="${r.rbc ?? ''}"></label>
+    </div>
+    <h4>血压</h4>
+    <div class="row">
+      <label class="f">高压 <span class="u">mmHg</span><input id="k-sbp" type="number" inputmode="numeric" value="${r.sbp ?? ''}"></label>
+      <label class="f">低压 <span class="u">mmHg</span><input id="k-dbp" type="number" inputmode="numeric" value="${r.dbp ?? ''}"></label>
+    </div>
+    <label class="f">备注<span class="u">（感冒了、尿色变深、换了药……）</span><textarea id="k-note">${esc(r.note)}</textarea></label>
+    <div class="btns"><button class="btn" id="k-save">${editing ? '保存修改' : '保存这次'}</button>${editing ? '<button class="btn ghost" id="k-cancel">取消</button>' : ''}</div>
+  </div>`;
+}
+function bindKidney(p) {
+  const $ = id => document.getElementById(id);
+  const live = () => {
+    const r = { date: $('k-date').value, height: num($('k-h').value), scr: num($('k-scr').value) };
+    const e = egfrOf(p, r), g = gStage(e.v);
+    $('k-egfr').innerHTML = e.v == null
+      ? `估算肾功能 eGFR：— <span class="muted">（${e.why}）</span>`
+      : `估算肾功能 eGFR：<b>${fmt(e.v)}</b> mL/min/1.73m² <span class="stage lvl-${g[1]}">${g[0]}</span><div class="muted">儿童床旁公式算的，跟医院用的方法可能有出入，以化验单为准。数值越高越好。</div>`;
+  };
+  ['k-date', 'k-h', 'k-scr'].forEach(id => $(id).oninput = live); live();
+  $('k-save').onclick = () => {
+    const r = { date: $('k-date').value || today(), height: num($('k-h').value), weight: num($('k-w').value), scr: num($('k-scr').value),
+      proQ: $('k-pq').value, pro24: num($('k-24').value), upcr: num($('k-upcr').value), upcrUnit: $('k-uu').value,
+      bldQ: $('k-bq').value, rbc: num($('k-rbc').value), sbp: num($('k-sbp').value), dbp: num($('k-dbp').value), note: $('k-note').value.trim() };
+    const has = ['scr', 'proQ', 'pro24', 'upcr', 'bldQ', 'rbc', 'sbp', 'note'].some(k => r[k] != null && r[k] !== '');
+    if (!has) { alert('至少填一项化验结果'); return; }
+    putRec(p, r);
+  };
+  if (editing) $('k-cancel').onclick = () => { editing = null; render(); };
+}
+
+// ---------- 记录：运动神经元病 ----------
+function mndForm(p) {
+  const r = (editing && (S.records[p.id] || []).find(x => x.id === editing)) || { date: today() };
+  const als = r.als || Array(12).fill(null);
+  let lastDomain = '';
+  const qs = ALS.map((q, i) => {
+    const [title, domain, opts] = (i === 4 && p.gastro) ? ALS5B : q;
+    const head = domain !== lastDomain ? `<div class="domain">${domain}</div>` : ''; lastDomain = domain;
+    return head + `<div class="q"><div class="qt">${i + 1}. ${title}</div>` + opts.map((o, j) => {
+      const score = 4 - j;
+      return `<label class="opt"><input type="radio" name="als${i}" value="${score}" ${als[i] === score ? 'checked' : ''}><span class="s">${score}</span><span>${o}</span></label>`;
+    }).join('') + `</div>`;
+  }).join('');
+  return `<div class="card"><h3>${editing ? '修改记录' : '记一次功能评分'}</h3>
+    <p class="muted">用的是医生常用的 ALSFRS-R 量表：12 道题，每题选<b>最近一周</b>最符合的一项，满分 48，分数越低说明功能丢得越多。建议固定间隔记，比如每月一次。</p>
+    <label class="f">日期<input id="m-date" type="date" value="${r.date}"></label>
+    ${qs}
+    <div class="calc" id="m-total"></div>
+    <h4>其他</h4>
+    <div class="row">
+      <label class="f">体重 <span class="u">kg</span><input id="m-w" type="number" inputmode="decimal" value="${r.weight ?? ''}"></label>
+      <label class="f">用力肺活量 FVC <span class="u">% 预计值</span><input id="m-fvc" type="number" inputmode="decimal" value="${r.fvc ?? ''}"></label>
+    </div>
+    <label class="f">备注<span class="u">（新出现的症状、摔倒、换了药……）</span><textarea id="m-note">${esc(r.note)}</textarea></label>
+    <div class="btns"><button class="btn" id="m-save">${editing ? '保存修改' : '保存这次'}</button>${editing ? '<button class="btn ghost" id="m-cancel">取消</button>' : ''}</div>
+  </div>`;
+}
+function readAls() {
+  return ALS.map((_, i) => { const c = document.querySelector(`input[name=als${i}]:checked`); return c ? +c.value : null; });
+}
+function bindMnd(p) {
+  const $ = id => document.getElementById(id);
+  const live = () => {
+    const r = { date: $('m-date').value, als: readAls() };
+    const done = r.als.filter(v => v != null).length;
+    if (done < 12) { $('m-total').innerHTML = `已答 ${done} / 12 题`; return; }
+    const t = alsTotal(r), d = deltaFS(p, r), lv = dfsLevel(d), dm = alsDomains(r);
+    $('m-total').innerHTML = `总分：<b>${t}</b> / 48`
+      + `<div class="muted">延髓 ${dm.延髓}/12 · 精细动作 ${dm.精细动作}/12 · 粗大动作 ${dm.粗大动作}/12 · 呼吸 ${dm.呼吸}/12</div>`
+      + (d == null ? `<div class="muted">在「档案」里填上起病时间，就能算进展速度。</div>`
+        : `<div>从起病算，平均每月掉 <b>${fmt(d, 2)}</b> 分 <span class="stage lvl-${lv[1]}">${lv[0]}</span></div>`);
+  };
+  document.querySelectorAll('input[type=radio]').forEach(x => x.onchange = live);
+  $('m-date').oninput = live; live();
+  $('m-save').onclick = () => {
+    const als = readAls();
+    const miss = als.map((v, i) => v == null ? i + 1 : 0).filter(Boolean);
+    const r = { date: $('m-date').value || today(), als, weight: num($('m-w').value), fvc: num($('m-fvc').value), note: $('m-note').value.trim() };
+    if (miss.length && !(miss.length === 12 && (r.weight != null || r.fvc != null || r.note))) {
+      alert(`还有第 ${miss.join('、')} 题没选`); return;
+    }
+    if (miss.length === 12) r.als = null;
+    putRec(p, r);
+  };
+  if (editing) $('m-cancel').onclick = () => { editing = null; render(); };
+}
+
+function putRec(p, r) {
+  const list = S.records[p.id] || (S.records[p.id] = []);
+  if (editing) { const i = list.findIndex(x => x.id === editing); list[i] = { ...r, id: editing }; editing = null; }
+  else list.push({ ...r, id: uid() });
+  save(); render();
+  document.getElementById('reclist')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ---------- 记录列表 ----------
+function recSummary(p, r) {
+  if (p.disease === 'igan') {
+    const e = egfrOf(p, r).v, u = upcrMgG(r), parts = [];
+    if (r.scr != null) parts.push(`肌酐 <b>${fmt(r.scr)}</b>`);
+    if (e != null) parts.push(`eGFR <b>${fmt(e)}</b>`);
+    if (r.proQ) parts.push(`尿蛋白 <b>${r.proQ}</b>`);
+    if (r.pro24 != null) parts.push(`24h 尿蛋白 <b>${fmt(r.pro24, 2)}</b> g`);
+    if (u != null) parts.push(`蛋白/肌酐 <b>${fmt(u, 0)}</b> mg/g`);
+    if (r.bldQ) parts.push(`潜血 <b>${r.bldQ}</b>`);
+    if (r.rbc != null) parts.push(`红细胞 <b>${fmt(r.rbc)}</b>/μL`);
+    if (r.sbp != null) parts.push(`血压 <b>${fmt(r.sbp, 0)}/${fmt(r.dbp, 0)}</b>`);
+    return parts.join(' · ');
+  }
+  const t = r.als ? alsTotal(r) : null, parts = [];
+  if (t != null) parts.push(`ALSFRS-R <b>${t}</b>/48`);
+  if (r.weight != null) parts.push(`体重 <b>${fmt(r.weight)}</b> kg`);
+  if (r.fvc != null) parts.push(`FVC <b>${fmt(r.fvc, 0)}</b>%`);
+  return parts.join(' · ');
+}
+function recList(p) {
+  const list = recs(p).reverse();
+  if (!list.length) return `<div class="card" id="reclist"><h3>历史记录</h3><div class="empty">还没有记录</div></div>`;
+  return `<div class="card" id="reclist"><h3>历史记录（${list.length} 次）</h3>` + list.map(r =>
+    `<div class="rec"><div class="d">${r.date}</div><div class="vals">${recSummary(p, r) || '—'}</div>`
+    + (r.note ? `<div class="muted">📝 ${esc(r.note)}</div>` : '')
+    + `<div class="acts"><button class="btn ghost small" data-ed="${r.id}">修改</button><button class="btn ghost small" data-del="${r.id}">删除</button></div></div>`
+  ).join('') + `</div>`;
+}
+function bindRecList(p) {
+  document.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { editing = b.dataset.ed; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    if (!confirm('删除这条记录？')) return;
+    S.records[p.id] = S.records[p.id].filter(x => x.id !== b.dataset.del); save(); render();
+  });
+}
+
+// ---------- 趋势图 ----------
+function chart(points, o = {}) {
+  // points: [{date, v}]
+  const pts = points.filter(x => x.v != null);
+  if (pts.length < 2) return `<div class="empty">${pts.length ? '再记一次就能看到趋势' : '还没有这一项的数据'}</div>`;
+  const W = 340, H = 170, L = 38, R = 10, T = 12, B = 26;
+  const xs = pts.map(x => +new Date(x.date)), x0 = Math.min(...xs), x1 = Math.max(...xs) || x0 + 1;
+  let lo = Math.min(...pts.map(x => x.v), ...(o.bands || []).map(b => b.y)), hi = Math.max(...pts.map(x => x.v), ...(o.bands || []).map(b => b.y));
+  if (o.min != null) lo = Math.min(lo, o.min); if (o.max != null) hi = Math.max(hi, o.max);
+  if (hi === lo) { hi += 1; lo -= 1; }
+  // 取整齐的刻度间隔：1/2/2.5/5 × 10^n
+  const raw = (hi - lo) / 3, mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(x => x >= raw);
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  if (o.min != null) lo = Math.max(o.min, lo); if (o.max != null) hi = Math.min(o.max, hi);
+  const dec = (String(+step.toFixed(10)).split('.')[1] || '').length;
+  const X = t => L + (x1 === x0 ? (W - L - R) / 2 : (t - x0) / (x1 - x0) * (W - L - R));
+  const Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  const color = o.color || 'var(--accent)';
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.title || '')}">`;
+  for (let v = lo; v <= hi + step / 1e6; v += step) {
+    const y = Y(v);
+    s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`
+      + `<text x="${L - 4}" y="${y + 3}" text-anchor="end">${(+v.toFixed(6)).toFixed(dec)}</text>`;
+  }
+  (o.bands || []).forEach(b => {
+    if (b.y < lo || b.y > hi) return;
+    s += `<line x1="${L}" x2="${W - R}" y1="${Y(b.y)}" y2="${Y(b.y)}" stroke="${b.c}" stroke-dasharray="4 3" stroke-width="1.2"/>`
+      + `<text x="${W - R}" y="${Y(b.y) - 3}" text-anchor="end" style="fill:${b.c}">${b.t}</text>`;
+  });
+  s += `<polyline fill="none" stroke="${color}" stroke-width="2" points="${pts.map(x => `${X(+new Date(x.date))},${Y(x.v)}`).join(' ')}"/>`;
+  pts.forEach(x => s += `<circle cx="${X(+new Date(x.date))}" cy="${Y(x.v)}" r="3.2" fill="${color}"/>`);
+  s += `<text x="${L}" y="${H - 8}">${pts[0].date}</text><text x="${W - R}" y="${H - 8}" text-anchor="end">${pts[pts.length - 1].date}</text>`;
+  return s + `</svg>`;
+}
+function chg(points, unit, d = 1) {
+  const pts = points.filter(x => x.v != null);
+  if (pts.length < 2) return '';
+  const a = pts[pts.length - 2], b = pts[pts.length - 1], diff = b.v - a.v;
+  return `<p class="muted">最近一次 <b>${fmt(b.v, d)}</b> ${unit}，比上次（${a.date}）${diff === 0 ? '持平' : (diff > 0 ? '升高 ' : '降低 ') + fmt(Math.abs(diff), d)}</p>`;
+}
+function trends(p) {
+  const rs = recs(p);
+  if (!rs.length) return `<div class="card"><div class="empty">先在「记一次」里记几次，这里就会画出变化曲线</div></div>`;
+  const box = (title, pts, unit, o, d, tip) => `<div class="card"><h3>${title}</h3>${chart(pts, o)}${chg(pts, unit, d)}${tip ? `<p class="muted">${tip}</p>` : ''}</div>`;
+  if (p.disease === 'igan') {
+    const P = f => rs.map(r => ({ date: r.date, v: f(r) }));
+    const kc = 'var(--kid)';
+    return box('估算肾功能 eGFR', P(r => egfrOf(p, r).v), 'mL/min/1.73m²', { color: kc, min: 0, bands: [{ y: 90, t: '90', c: 'var(--ok)' }, { y: 60, t: '60', c: 'var(--warn)' }] }, 0, '越高越好。看的是长期走势，单次波动（比如没喝够水）不用慌。')
+      + box('尿蛋白/肌酐比', P(upcrMgG), 'mg/g', { color: kc, min: 0 }, 0, '漏出来的蛋白越少越好。这是 IgA 肾病最重要的观察指标之一，目标值请问主治医生。')
+      + box('24 小时尿蛋白', P(r => r.pro24), 'g', { color: kc, min: 0 }, 2)
+      + box('血肌酐', P(r => r.scr), 'μmol/L', { color: kc }, 0, '小孩长个子肌肉变多，肌酐会自然慢慢升高，所以要结合身高看 eGFR。')
+      + box('尿红细胞', P(r => r.rbc), '个/μL', { color: kc, min: 0 }, 0)
+      + box('血压（高压）', P(r => r.sbp), 'mmHg', { color: kc }, 0, '儿童血压正常范围跟年龄、身高有关，要问医生怎么算。');
+  }
+  const P = f => rs.map(r => ({ date: r.date, v: f(r) }));
+  const mc = 'var(--mnd)';
+  const t = rs.filter(r => r.als && alsTotal(r) != null);
+  let slope = '';
+  if (t.length >= 2) {
+    const a = t[0], b = t[t.length - 1];
+    const m = (new Date(b.date) - new Date(a.date)) / (30.44 * DAY);
+    if (m > 0) slope = `<p class="muted">从 ${a.date} 到 ${b.date}，平均每月变化 <b>${fmt((alsTotal(b) - alsTotal(a)) / m, 2)}</b> 分。</p>`;
+  }
+  const last = t[t.length - 1], d = last ? deltaFS(p, last) : null, lv = dfsLevel(d);
+  const dfs = d == null ? '' : `<p class="muted">从起病算平均每月掉 <b>${fmt(d, 2)}</b> 分 <span class="stage lvl-${lv[1]}">${lv[0]}</span>（研究里的分法：&lt;0.47 较慢，0.47~1.11 中等，≥1.11 较快。只是统计上的分组，不能预测某一个人。）</p>`;
+  const dom = k => P(r => r.als && alsTotal(r) != null ? alsDomains(r)[k] : null);
+  return `<div class="card"><h3>ALSFRS-R 总分</h3>${chart(P(r => r.als ? alsTotal(r) : null), { color: mc, min: 0, max: 48 })}${chg(P(r => r.als ? alsTotal(r) : null), '分', 0)}${slope}${dfs}</div>`
+    + `<div class="card"><h3>分四块看</h3><p class="muted">哪块掉得快，就是哪方面要早做准备（比如延髓掉得快要注意吞咽和营养，呼吸掉得快要尽早评估呼吸支持）。每块满分 12。</p>`
+    + ['延髓', '精细动作', '粗大动作', '呼吸'].map(k => `<h4>${k}</h4>${chart(dom(k), { color: mc, min: 0, max: 12 })}`).join('') + `</div>`
+    + box('体重', P(r => r.weight), 'kg', { color: mc }, 1, '体重掉得快是需要告诉医生的信号，营养跟得上很重要。')
+    + box('用力肺活量 FVC', P(r => r.fvc), '%', { color: mc, min: 0 }, 0, '反映呼吸肌力量，下降时要找医生评估。');
+}
+
+// ---------- 用药 ----------
+function medsView(p) {
+  const list = (S.meds[p.id] || []).slice().sort((a, b) => (a.stop ? 1 : 0) - (b.stop ? 1 : 0) || (a.start < b.start ? 1 : -1));
+  return `<div class="card"><h3>加一条用药</h3>
+    <div class="row"><label class="f">药名<input id="md-name"></label><label class="f">剂量和用法<input id="md-dose" placeholder="比如：5mg 一天一次"></label></div>
+    <div class="row"><label class="f">开始日期<input id="md-start" type="date" value="${today()}"></label><label class="f">停药日期 <span class="u">(还在吃就空着)</span><input id="md-stop" type="date"></label></div>
+    <label class="f">备注<input id="md-note" placeholder="谁开的、为什么换、有什么反应"></label>
+    <div class="btns"><button class="btn" id="md-save">保存</button></div></div>
+    <div class="card"><h3>用药清单</h3>${list.length ? list.map(m => `<div class="rec"><div class="d">${esc(m.name)} ${m.stop ? '<span class="stage" style="color:var(--muted)">已停</span>' : '<span class="stage lvl-ok">在用</span>'}</div>
+      <div class="vals">${esc(m.dose)}　${m.start || ''} → ${m.stop || '至今'}</div>${m.note ? `<div class="muted">${esc(m.note)}</div>` : ''}
+      <div class="acts">${m.stop ? '' : `<button class="btn ghost small" data-stop="${m.id}">今天停了</button>`}<button class="btn ghost small" data-mdel="${m.id}">删除</button></div></div>`).join('') : '<div class="empty">还没有</div>'}</div>
+    <p class="muted">看病时可以直接把这页给医生看，省得记不清吃过什么。</p>`;
+}
+function bindMeds(p) {
+  const $ = id => document.getElementById(id);
+  $('md-save').onclick = () => {
+    const name = $('md-name').value.trim(); if (!name) { alert('填药名'); return; }
+    (S.meds[p.id] || (S.meds[p.id] = [])).push({ id: uid(), name, dose: $('md-dose').value.trim(), start: $('md-start').value, stop: $('md-stop').value, note: $('md-note').value.trim() });
+    save(); render();
+  };
+  document.querySelectorAll('[data-stop]').forEach(b => b.onclick = () => { S.meds[p.id].find(m => m.id === b.dataset.stop).stop = today(); save(); render(); });
+  document.querySelectorAll('[data-mdel]').forEach(b => b.onclick = () => { if (confirm('删除这条用药记录？')) { S.meds[p.id] = S.meds[p.id].filter(m => m.id !== b.dataset.mdel); save(); render(); } });
+}
+
+// ---------- 备份 ----------
+function backupView() {
+  return `<div class="card"><h3>导出备份</h3><p class="muted">数据只在这台手机的这个浏览器里。清浏览器数据、换手机、换浏览器都会丢，所以隔一阵导出一次，存到网盘或发给自己。</p>
+    <div class="btns"><button class="btn" id="bk-exp">导出成文件</button></div></div>
+    <div class="card"><h3>导入备份</h3><p class="muted">会<b>覆盖</b>当前全部数据。</p>
+    <input type="file" id="bk-file" accept=".json,application/json"></div>`;
+}
+function bindBackup() {
+  document.getElementById('bk-exp').onclick = () => {
+    const blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `care-backup-${today()}.json`;   // 中文文件名在部分 Chromium 里会变成 "download"
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  document.getElementById('bk-file').onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    f.text().then(t => {
+      const d = JSON.parse(t);
+      if (!d.people || !d.records) throw 0;
+      if (!confirm(`备份里有 ${d.people.length} 个人。覆盖当前数据？`)) return;
+      S = d; save(); tab = 'rec'; render();
+    }).catch(() => alert('这个文件不是本页导出的备份'));
+  };
+}
+
+// ---------- 看懂：IgA 肾病 ----------
+function learnKidney() {
+  return `<div class="learn">
+  <div class="card"><h3>IgA 肾病是怎么回事</h3>
+  <p>肾里有大约一百万个叫「肾小球」的小筛子，血流过去，筛子把废物和多余的水筛进尿里，把<b>蛋白</b>和<b>红细胞</b>这些有用的大东西留在血里。</p>
+  <p>IgA 是身体里的一种抗体。IgA 肾病就是有一种结构异常的 IgA 粘成团、卡在筛子上，引起发炎，筛孔被撑坏，于是蛋白和红细胞漏进了尿里。</p>
+  ${figFilter()}
+  <div class="howto"><b>怎么看这张图：</b>左边是正常的筛子，红细胞和蛋白（大圆）都留在上面，只有水和废物（小点）掉下去。右边是 IgA 肾病：橙色块是卡住的 IgA，周围筛孔变大，红细胞和蛋白也漏到了下面的尿里。<b>尿里出现的东西</b>就是化验单上的「血尿」和「蛋白尿」。</div>
+  <p>小孩比较典型的表现是：<b>感冒、扁桃体发炎后一两天</b>，尿突然变成茶色或洗肉水样（肉眼血尿）。平时也可能只有化验能查出的镜下血尿。</p>
+  </div>
+
+  <div class="card"><h3>化验单上看什么</h3>
+  <h4>① 尿蛋白：最要紧的一项</h4>
+  <p>漏出来的蛋白越多、持续越久，肾受伤越重。医生判断病情和疗效，最看重的就是蛋白尿降没降下来。化验单上有三种写法：</p>
+  <ul>
+    <li><b>尿常规里的「尿蛋白」</b>：−、±、1+ 到 4+，粗略看有没有、多不多</li>
+    <li><b>24 小时尿蛋白定量</b>：一整天的尿攒起来测，最准，单位 g/24h</li>
+    <li><b>尿蛋白/肌酐比</b>：随便一次尿就能测，跟 24 小时定量大致对得上，方便常查</li>
+  </ul>
+  <h4>② 血尿</h4>
+  <p>尿常规里的「潜血」（−到 4+）和「红细胞」计数。IgA 肾病几乎都有血尿，它反映炎症还在不在，但对长期预后的分量不如蛋白尿。</p>
+  <h4>③ 肌酐和 eGFR：筛子还剩多少能力</h4>
+  <p>肌酐是肌肉产生的废物，靠肾排出去。肾功能下降，排不干净，血肌酐就升高。eGFR 是用肌酐算出来的「肾每分钟能过滤多少血」，<b>越高越好</b>。</p>
+  <p>小孩不能直接比肌酐：个子长高、肌肉变多，肌酐本来就会慢慢升高。所以本页用<b>儿童床旁 Schwartz 公式</b>，把身高带进去算 eGFR（适用于 1~18 岁）：</p>
+  <div class="calc">eGFR = 0.413 × 身高(cm) ÷ 肌酐(mg/dL)<div class="muted">国内化验单肌酐单位是 μmol/L，除以 88.4 就是 mg/dL，本页自动换算。</div></div>
+  <p>按 eGFR 分期（国际肾脏病组织 KDIGO 的标准）：</p>
+  <ul>
+    <li><b class="lvl-ok">G1</b> ≥90：正常或偏高</li>
+    <li><b class="lvl-ok">G2</b> 60~89：轻度下降</li>
+    <li><b class="lvl-warn">G3a</b> 45~59 · <b class="lvl-warn">G3b</b> 30~44：中度下降</li>
+    <li><b class="lvl-bad">G4</b> 15~29：重度下降</li>
+    <li><b class="lvl-bad">G5</b> &lt;15：肾衰竭</li>
+  </ul>
+  <p class="muted">2 岁以下的孩子肾还在发育，eGFR 本来就偏低，不能直接套这个分期。</p>
+  <h4>④ 血压</h4>
+  <p>血压高会加重肾的损伤，控制血压是治疗的一部分。儿童的正常血压要按年龄、性别、身高查表，问医生要孩子的目标值。</p>
+  </div>
+
+  <div class="card"><h3>肾穿刺报告上的 MEST-C</h3>
+  <p>确诊 IgA 肾病要做肾穿刺，病理报告上常见一串「M1 E0 S1 T0 C0」，这是牛津分类，每个字母是一种病变，数字越大越重：</p>
+  <ul>
+    <li><b>M</b> 系膜细胞增多（0/1）</li>
+    <li><b>E</b> 毛细血管内细胞增多（0/1）</li>
+    <li><b>S</b> 节段性硬化，筛子局部变成疤（0/1）</li>
+    <li><b>T</b> 肾小管萎缩/间质纤维化，比例越高越重（0/1/2）</li>
+    <li><b>C</b> 新月体，急性的严重炎症（0/1/2）</li>
+  </ul>
+  <p>其中 <b>T</b> 和 <b>S</b> 代表已经变成疤、回不去的部分；<b>E</b> 和 <b>C</b> 是正在进行的炎症，往往是医生决定要不要加强治疗的依据。具体怎么治，要看医生综合判断。</p>
+  </div>
+
+  <div class="card"><h3>日常能做的</h3>
+  <ul>
+    <li>按时复查，每次化验单都记下来，复诊时把「趋势」页给医生看</li>
+    <li>感冒、扁桃体发炎后注意看尿色，变深就记在备注里，及时告诉医生</li>
+    <li>饮食、运动、疫苗这些问题，按医生给的具体建议来</li>
+  </ul>
+  </div>
+  ${sources([
+    'Schwartz GJ, et al. New equations to estimate GFR in children with CKD. J Am Soc Nephrol 2009;20:629–637（儿童床旁公式 0.413）',
+    'KDIGO 2012 Clinical Practice Guideline for the Evaluation and Management of CKD（G1~G5 分期）',
+    'KDIGO 2021 Clinical Practice Guideline for the Management of Glomerular Diseases（IgA 肾病章节）',
+    'Trimarchi H, et al. Oxford Classification of IgA nephropathy 2016. Kidney Int 2017;91:1014–1021（MEST-C）',
+  ])}
+  </div>`;
+}
+
+// ---------- 看懂：运动神经元病 ----------
+function learnMnd() {
+  return `<div class="learn">
+  <div class="card"><h3>运动神经元病是怎么回事</h3>
+  <p>人想动一下，命令要经过两段「电线」：第一段从<b>大脑</b>传到<b>脊髓</b>（上运动神经元），第二段从脊髓接力传到<b>肌肉</b>（下运动神经元）。</p>
+  <p>运动神经元病就是这些「电线」一点点坏掉。命令传不到肌肉，肌肉就慢慢没力气、变瘦。感觉、大小便控制一般不受影响，大多数人的思维也保持清楚。</p>
+  ${figNeuron()}
+  <div class="howto"><b>怎么看这张图：</b>命令从上往下走。<b>紫色</b>是上运动神经元（大脑→脊髓），<b>橙色</b>是下运动神经元（脊髓→肌肉）。不同类型坏的位置不同：ALS 上下两段都坏；原发性侧索硬化（PLS）主要坏上段；进行性肌萎缩（PMA）主要坏下段；从管说话、吞咽的脑干开始坏的叫进行性延髓麻痹（PBP）。</div>
+  <p>ALS（肌萎缩侧索硬化，俗称渐冻症）是最常见的一种。不同类型、不同人，进展速度差别很大。</p>
+  </div>
+
+  <div class="card"><h3>为什么要记 ALSFRS-R 评分</h3>
+  <p>ALSFRS-R 是全世界医生和临床试验都在用的功能量表：12 道题，问的都是日常能不能做到，每题 0~4 分，满分 48。分成四块：</p>
+  <ul>
+    <li><b>延髓</b>（第 1~3 题）：说话、口水、吞咽</li>
+    <li><b>精细动作</b>（第 4~6 题）：写字、用餐具、穿衣洗漱</li>
+    <li><b>粗大动作</b>（第 7~9 题）：翻身、走路、爬楼</li>
+    <li><b>呼吸</b>（第 10~12 题）：喘不喘、能不能躺平、用不用呼吸机</li>
+  </ul>
+  <p>单看一次分数意义不大，<b>看变化快慢</b>才有用：</p>
+  <ul>
+    <li><b>进展速度 ΔFS</b> = (48 − 现在的分) ÷ 从起病到现在的月数。意思是「从起病到现在，平均每月丢了几分」。研究里常按 &lt;0.47、0.47~1.11、≥1.11 分成较慢、中等、较快三组</li>
+    <li><b>两次之间的变化</b>：本页「趋势」里会算从第一次到最近一次的平均每月变化</li>
+  </ul>
+  <p>参加临床试验时，入组条件里经常写 ALSFRS-R 分数、进展速度和 FVC 要在某个范围内。平时记好了，看试验时一对就知道够不够条件。</p>
+  </div>
+
+  <div class="card"><h3>另外两项</h3>
+  <h4>体重</h4>
+  <p>吞咽变难、吃得少，加上肌肉在流失，体重容易往下掉。体重掉得快和预后差有关，所以营养很重要。体重明显下降要告诉医生，可能需要调整饮食或评估是否做胃造瘘。</p>
+  <h4>用力肺活量 FVC</h4>
+  <p>深吸一口气再用力吹出来的量，跟同龄同身高的人比的百分比。它反映呼吸肌还有多少力气，医院肺功能检查会测。下降时医生会评估要不要用无创呼吸机。</p>
+  </div>
+
+  <div class="card"><h3>药物</h3>
+  <p>国内已上市用于 ALS 的有<b>利鲁唑</b>和<b>依达拉奉</b>，作用是延缓进展，不能逆转。另外针对特定基因突变的新药、各种临床试验也在进行中。能不能用、用哪种，都要由神经内科医生决定。</p>
+  </div>
+  ${sources([
+    'Cedarbaum JM, et al. The ALSFRS-R: a revised ALS functional rating scale that incorporates assessments of respiratory function. J Neurol Sci 1999;169:13–21',
+    'Kimura F, et al. Progression rate of ALSFRS-R at time of diagnosis predicts survival time in ALS. Neurology 2006;66:265–267（ΔFS）',
+    'Labra J, et al. Rate of disease progression: a prognostic biomarker in ALS. J Neurol Neurosurg Psychiatry 2016;87:628–632（ΔFS 分组）',
+  ])}
+  <p class="muted">本页的 ALSFRS-R 中文选项是按英文原版意译的，正式评估以医院用的版本为准。</p>
+  </div>`;
+}
+function sources(list) {
+  return `<div class="card"><h3>出处</h3><ol class="src">${list.map(s => `<li>${s}</li>`).join('')}</ol></div>`;
+}
+
+// ---------- 图 ----------
+function figFilter() {
+  const sieve = (x, sick) => {
+    let s = `<g transform="translate(${x},0)">`;
+    s += `<text x="80" y="16" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)">${sick ? 'IgA 肾病' : '正常'}</text>`;
+    s += `<text x="80" y="34" text-anchor="middle" font-size="11" fill="var(--muted)">血液</text>`;
+    // 筛网
+    for (let i = 0; i < 8; i++) {
+      const gx = 12 + i * 19, wide = sick && (i === 2 || i === 3 || i === 5);
+      s += `<rect x="${gx}" y="96" width="${wide ? 7 : 13}" height="8" rx="2" fill="var(--muted)" opacity=".7"/>`;
+    }
+    s += `<line x1="8" x2="152" y1="100" y2="100" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 4"/>`;
+    // 上面：红细胞 + 蛋白 + 小点
+    s += `<circle cx="34" cy="62" r="9" fill="#d94a4a"/><circle cx="110" cy="58" r="9" fill="#d94a4a"/>`;
+    s += `<circle cx="72" cy="70" r="7" fill="#e0b84a"/><circle cx="138" cy="74" r="7" fill="#e0b84a"/>`;
+    for (let i = 0; i < 6; i++) s += `<circle cx="${20 + i * 24}" cy="${82 - (i % 2) * 8}" r="2" fill="var(--kid)"/>`;
+    if (sick) {
+      s += `<rect x="44" y="89" width="20" height="9" rx="3" fill="#e0782f"/><rect x="98" y="89" width="18" height="9" rx="3" fill="#e0782f"/>`;
+      s += `<text x="80" y="119" text-anchor="middle" font-size="10" fill="#e0782f">↑ IgA 卡住</text>`;
+    }
+    // 下面：尿
+    s += `<text x="80" y="196" text-anchor="middle" font-size="11" fill="var(--muted)">尿</text>`;
+    for (let i = 0; i < 6; i++) s += `<circle cx="${22 + i * 24}" cy="${134 + (i % 2) * 10}" r="2" fill="var(--kid)"/>`;
+    if (sick) {
+      s += `<circle cx="56" cy="160" r="9" fill="#d94a4a"/><circle cx="104" cy="162" r="7" fill="#e0b84a"/>`;
+      s += `<text x="80" y="182" text-anchor="middle" font-size="10" fill="#d94a4a">蛋白、红细胞漏下来了</text>`;
+    }
+    return s + `</g>`;
+  };
+  const legend = `<g transform="translate(14,216)" font-size="11" fill="var(--muted)">
+    <circle cx="6" cy="0" r="6" fill="#d94a4a"/><text x="16" y="4">红细胞</text>
+    <circle cx="78" cy="0" r="5" fill="#e0b84a"/><text x="88" y="4">蛋白</text>
+    <circle cx="140" cy="0" r="2.5" fill="var(--kid)"/><text x="148" y="4">水和废物</text>
+    <rect x="216" y="-5" width="14" height="9" rx="3" fill="#e0782f"/><text x="236" y="4">IgA</text></g>`;
+  return `<svg class="fig" viewBox="0 0 340 228" role="img" aria-label="正常肾小球和 IgA 肾病的筛子对比">
+    ${sieve(0, false)}<line x1="170" x2="170" y1="8" y2="200" stroke="var(--line)"/>${sieve(180, true)}${legend}</svg>`;
+}
+function figNeuron() {
+  return `<svg class="fig" viewBox="0 0 340 250" role="img" aria-label="上下运动神经元示意">
+    <ellipse cx="90" cy="48" rx="62" ry="38" fill="var(--soft)" stroke="var(--muted)"/>
+    <text x="90" y="30" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)">大脑</text>
+    <circle cx="90" cy="54" r="7" fill="var(--mnd)"/>
+    <rect x="80" y="112" width="20" height="96" rx="9" fill="var(--soft)" stroke="var(--muted)"/>
+    <text x="70" y="140" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)">脊髓</text>
+    <path d="M90 61 L90 150" stroke="var(--mnd)" stroke-width="4" fill="none"/>
+    <circle cx="90" cy="160" r="7" fill="#e0782f"/>
+    <path d="M97 160 C150 160 180 170 232 170" stroke="#e0782f" stroke-width="4" fill="none"/>
+    <path d="M232 152 q38 -12 76 0 q10 18 0 36 q-38 12 -76 0 q-10 -18 0 -36z" fill="#d98a8a" opacity=".55" stroke="var(--muted)"/>
+    <text x="270" y="210" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)">肌肉</text>
+    <text x="106" y="104" font-size="11" fill="var(--mnd)">上运动神经元</text>
+    <text x="106" y="118" font-size="10" fill="var(--muted)">大脑 → 脊髓</text>
+    <text x="140" y="152" font-size="11" fill="#e0782f">下运动神经元</text>
+    <text x="140" y="190" font-size="10" fill="var(--muted)">脊髓 → 肌肉</text>
+    <g font-size="11" fill="var(--muted)" transform="translate(186,40)">
+      <text x="0" y="0" font-weight="600" fill="var(--text)">坏在哪</text>
+      <text x="0" y="18">ALS：上、下两段都坏</text>
+      <text x="0" y="34">PLS：主要坏上段</text>
+      <text x="0" y="50">PMA：主要坏下段</text>
+      <text x="0" y="66">PBP：先坏管说话吞咽的</text>
+    </g>
+    <text x="170" y="240" text-anchor="middle" font-size="11" fill="var(--muted)">命令：大脑 → 脊髓 → 肌肉，任何一段断了，肌肉都会没力气</text>
+  </svg>`;
+}
+
+// ---------- 演示数据（地址后加 #demo 打开，不会存） ----------
+function demoData() {
+  const k = 'demo-kid', m = 'demo-mnd';
+  const kr = [['2025-11-02', 128, 38, '2+', 1.2, 980, '3+', 220, 112, 70], ['2026-01-10', 129.5, 40, '1+', 0.8, 620, '2+', 140, 108, 68],
+    ['2026-04-18', 131, 41, '1+', 0.5, 420, '2+', 90, 106, 66], ['2026-07-20', 132.5, 42, '±', 0.35, 300, '1+', 60, 104, 65], ['2026-10-12', 134, 44, '±', 0.3, 260, '1+', 45, 105, 66]]
+    .map(([date, height, scr, proQ, pro24, upcr, bldQ, rbc, sbp, dbp], i) => ({ id: 'k' + i, date, height, weight: 28 + i * 0.6, scr, proQ, pro24, upcr, upcrUnit: 'mg/g', bldQ, rbc, sbp, dbp, note: i === 0 ? '感冒后尿色变深' : '' }));
+  const base = [4, 4, 4, 3, 3, 3, 4, 3, 3, 4, 4, 4];
+  const mr = ['2026-03-05', '2026-05-08', '2026-07-03', '2026-09-04'].map((date, i) => {
+    const als = base.map((v, j) => Math.max(0, v - ((j === 7 || j === 8) && i > 1 ? 1 : 0) - (j === 3 && i > 2 ? 1 : 0) - (j === 0 && i > 2 ? 1 : 0)));
+    return { id: 'm' + i, date, als, weight: 66 - i * 0.8, fvc: 88 - i * 3, note: '' };
+  });
+  return {
+    people: [{ id: k, name: '小宝', rel: '', birth: '2018-06-15', sex: 'm', disease: 'igan', onset: '', gastro: false },
+             { id: m, name: '外公', rel: '', birth: '1956-02-01', sex: 'm', disease: 'mnd', onset: '2025-08-01', gastro: false }],
+    records: { [k]: kr, [m]: mr },
+    meds: { [k]: [{ id: 'd1', name: '（示例）某降蛋白药', dose: '按医嘱', start: '2025-11-10', stop: '', note: '演示数据' }], [m]: [] },
+    cur: k,
+  };
+}
+
+if (!S.cur && S.people.length) S.cur = S.people[0].id;
+render();
+if (DEMO) document.querySelector('.note').insertAdjacentHTML('beforebegin', '<div class="note" style="margin-bottom:8px;color:var(--warn)"><b>演示模式：</b>下面是假数据，改动不会保存。去掉地址里的 #demo 就是你自己的记录。</div>');
+</script>
+</body>
+</html>
