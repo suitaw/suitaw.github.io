@@ -32,7 +32,17 @@ for y in (2018,2019,2020,2021):
 q,ans,bl,res=A.run(); m={n:res[n][0]['no'] for n in res}; m[49]=49
 jans={m[n]:ans[n] for n in m}
 jq=pj.parse(g('x_209*'))
-exams.append({'year':2022,'src':'即刻题面 + 扫描解析OCR答案','hasAns':True,'qs':[item(2022,x,jans.get(x['no']) if x['type']!='essay' else None) for x in jq]})
+Y22=os.environ.get('Y22PARSED','')
+y22e={}
+if Y22 and os.path.exists(Y22):
+    PP=json.load(open(Y22)); cjx=lambda z: re.sub(r'(?<=[\u4e00-\u9fff，。、；：？！”“（）]) +(?=[\u4e00-\u9fff，。、；：？！”“（）])','',z)
+    for n,bl in PP['blocks'].items():
+        t=re.sub(r'\s*\n\s*','',bl.strip()); t=re.sub(r'(?<=.)(?=[A-E]\s?项(?:正确|错误)|故(?:本题)?正确答案)','\n',t); t=re.sub(r'（备注.*$','',t,flags=re.S).strip()
+        y22e[PP['map'][n]]=cjx(t)[:1800]
+    jans2={PP['map'][n]:PP['ans'][n] for n in PP['blocks']}
+    jans.update(jans2)
+q22=[item(2022,x,jans.get(x['no']) if x['type']!='essay' else None,y22e.get(x['no'],'')) for x in jq]
+exams.append({'year':2022,'src':'即刻题面 + 扫描解析（豆包识别，与旧 OCR 答案核对一致）','hasAns':True,'qs':q22})
 # 2024：只有题
 jq=pj.parse(g('x_206*'))
 exams.append({'year':2024,'src':'即刻题面（无答案）','hasAns':False,'qs':[item(2024,x,None) for x in jq]})
