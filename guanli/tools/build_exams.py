@@ -76,6 +76,33 @@ if os.path.isdir(QDIR):
                 it={'id':f'q{p}-{pf}{q["no"]}','no':q['no'],'t':t,'q':cj(re.sub(r'\s+',' ',st).strip()),'a':a,'o':[cj(x[1]) for x in o]}
                 if e: it['e']=cj(e)[:1800]
                 qs.append(it)
+        # 案例分析 / 公文写作（主观题）：每个案例/公文题一条，q=材料+问题，e=参考答案（逐问题）
+        import parse_cases as C
+        if (p,'case') in up and (p,'case') in dn:
+            if p<=5:
+                for c in C.cases(up[(p,'case')],dn[(p,'case')]):
+                    e='\n\n'.join(f'【问题{n}】'+(f'（{kp}）' if kp else '')+'\n'+a for n,kp,a in c['answers'])
+                    qs.append({'id':f'q{p}-c{c["no"]}','no':c['no'],'t':'essay','q':f'【{c["name"]}】\n'+c['material']+'\n\n问题：\n'+c['questions'],'a':None,'e':e[:6000]})
+            else:
+                for g in C.gongwen(up[(p,'case')],dn[(p,'case')]):
+                    qs.append({'id':f'q{p}-g{g["no"]}','no':g['no'],'t':'essay','q':f'【{g["name"]}】\n'+g['stem'],'a':None,'e':g['demo'][:9000]})
+        # d-114 的面试评分表：原文是表格，读取时分值被当页码滤掉、整表被拼成一行。这里照原页整理成逐行文字
+        TBL=("面试评分表\n"
+             "姓名 / 性别 / 年龄 / 应聘职位 / 籍贯 / 毕业院校 / 学历 / 专业 / 工作年限（应聘者信息栏）\n"
+             "评分要素｜分值｜评分要点｜得分\n"
+             "仪态举止｜5｜仪表端庄自然，服饰得体大方，举止稳重朴实，精神面貌良好\n"
+             "沟通表达能力｜10｜言语清晰、标准，表达准确、流畅，以及良好的条理性、感染力与说服力\n"
+             "诚实和忠诚度｜10｜对企业或个人真实无欺、遵守承诺，并且愿意为企业的发展贡献自己的一份力量\n"
+             "逻辑思维能力｜10｜思维的敏捷性、条理性与广度、深度；逻辑性和严密性；判断分析问题是否全面、准确、辩证、深刻，有理有据\n"
+             "协调与应变能力｜10｜反应的机敏程度；人际沟通、合作的意识、能力与技巧；面对压力的心理承受力和自制力\n"
+             "专业素养｜20｜对销售理论及相关知识的了解、掌握程度，专业素养的高低\n"
+             "解决实际问题的能力｜25｜能否理论联系实际；分析、处理问题的原则性、灵活性、有效性；适应岗位需求的实际工作能力与业务能力\n"
+             "发展潜力｜10｜个人对本行业发展前瞻性的认识和创造能力、研究能力、完成能力；有无新观点、新思路、新办法\n"
+             "合计｜100｜总分、评语及录用建议、考评者签名、日期\n")
+        for it in qs:
+            if it['id']=='q3-c3' and '面试评分表姓名性别' in it.get('e',''):
+                e0=it['e']; i=e0.index('面试评分表姓名性别'); j=e0.index('日期：',i)+len('日期：')
+                it['e']=e0[:i]+'\n'+TBL+e0[j:]
         if qs: exams.append({'year':f'q{p}','name':f'第{"一二三四五六"[p-1]}篇','title':f'500题 · {NAMES[p]}','group':'q500','ocr':True,'src':'500题 扫描件 OCR','hasAns':True,'qs':qs})
 exams.sort(key=lambda e:(e.get('group')=='q500',str(e['year'])))
 out=sys.argv[2] if len(sys.argv)>2 else '../exams-data.js'
