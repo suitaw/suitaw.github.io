@@ -186,7 +186,7 @@ function viewExamList(){
     return '<div class="ycard" data-y="'+e.year+'"><div class="yr">'+(e.group?e.name:e.year)+'</div><div class="info"><b>'+(e.group?esc(e.title.replace('500题 · ',''))+' · '+n+' 题':n+' 道客观题'+(e.qs.length>n?' + '+(e.qs.length-n)+' 道主观':''))+'</b><br>'+(e.hasAns?'已做 '+s.d+'，对 '+s.r:'<span class="badge">无官方答案</span> 只能看题')+'</div><span>›</span></div>';
   };
   h+=[...EXAMS].filter(e=>!e.group).reverse().map(card).join('');
-  h+='<div class="zhang" style="margin-top:18px">500 题（按篇）</div><div class="note" style="margin-top:0">来自扫描件，OCR 识别，个别字可能有误，以答案为准。</div>'+EXAMS.filter(e=>e.group).map(card).join('');
+  h+='<div class="zhang" style="margin-top:18px">500 题（按篇）</div><div class="note" style="margin-top:0">来自扫描件，经三路 OCR 交叉核对，仍可能有个别错字，以答案为准。</div>'+EXAMS.filter(e=>e.group).map(card).join('');
   main.innerHTML=h;
   main.querySelectorAll('.ycard').forEach(c=>c.onclick=()=>{const e=EXAMS.find(x=>x.year==c.dataset.y);sess={list:e.qs.map(q=>q.id),i:0,label:exLabel(e),mode:'exam'};
     const first=e.qs.findIndex(q=>q.t!=='essay'&&!(ans[q.id]&&ans[q.id].ok!=null));sess.i=first<0?0:first;go('q/'+sess.list[sess.i])});
@@ -200,7 +200,7 @@ function viewQ(id){
   sess.i=sess.list.indexOf(id); pick=new Set(); const e=exOf(id), hasAns=e.hasAns&&q.a;
   $('#ttl').textContent=sess.label;$('#sub').textContent=(sess.i+1)+'/'+sess.list.length;
   const st=ans[id], done=st&&st.ok!=null&&!(sess.mode==='wrong'&&!sess.redone.has(id));
-  let h='<div class="q"><div class="qhd"><span>第 '+q.no+' 题 · '+TYPE[q.t]+'</span><a id="back">← 返回</a></div><div class="stem">'+esc(q.q)+'</div>'+(e.ocr?'<div class="note" style="margin:-6px 0 10px">OCR 识别，个别字可能有误，以答案为准。</div>':'');
+  let h='<div class="q"><div class="qhd"><span>第 '+q.no+' 题 · '+TYPE[q.t]+'</span><a id="back">← 返回</a></div><div class="stem">'+esc(q.q)+'</div>'+(e.ocr?'<div class="note" style="margin:-6px 0 10px">扫描件识别，已交叉核对，仍可能有个别错字，以答案为准。</div>':'');
   if(!e.hasAns)h+='<div class="alt" style="margin-top:0">这一年资料里没有答案，选了不判对错，仅供自己对照。</div>';
   if(q.t==='essay'){
     h+=(q.e?'<div id="ex"></div><button class="btn ghost" id="seeE">看参考解析</button>':'<div class="note">这道主观题没有参考解析。</div>');
@@ -211,7 +211,11 @@ function viewQ(id){
     h+='<div id="fb"></div>';
   }
   h+='<div class="row"><button class="btn ghost" id="pv"'+(sess.i<=0?' disabled':'')+'>上一题</button><button class="btn" id="nx"'+(sess.i>=sess.list.length-1?' disabled':'')+'>下一题</button></div>';
-  h+='<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--sub);font-size:14px">题号一览</summary><div class="grid">'+sess.list.map((x,i)=>{const a=ans[x];return'<button data-i="'+i+'" class="'+(a&&a.ok!=null?(a.ok?'ok':'no'):'')+(i===sess.i?' cur':'')+'">'+QS.get(x).no+'</button>'}).join('')+'</div></details></div>';
+  const gb=(i)=>{const x=sess.list[i],a=ans[x],qq=QS.get(x);return'<button data-i="'+i+'" class="'+(a&&a.ok!=null?(a.ok?'ok':'no'):'')+(i===sess.i?' cur':'')+'">'+qq.no+'</button>'};
+  let gh='';
+  if(e.group){const T=[['single','单选'],['multi','多选']];gh=T.map(([t,n])=>{const ix=sess.list.map((x,i)=>i).filter(i=>QS.get(sess.list[i]).t===t);return ix.length?'<div class="note" style="margin:8px 0 0">'+n+'（共 '+ix.length+' 题，题号有跳号是没识别全的）</div><div class="grid">'+ix.map(gb).join('')+'</div>':''}).join('')}
+  else gh='<div class="grid">'+sess.list.map((x,i)=>gb(i)).join('')+'</div>';
+  h+='<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--sub);font-size:14px">题号一览</summary>'+gh+'</details></div>';
   main.innerHTML=h;
   $('#back').onclick=()=>go(sess.mode==='wrong'?'wrong':'exam');
   $('#pv').onclick=()=>go('q/'+sess.list[sess.i-1]);$('#nx').onclick=()=>go('q/'+sess.list[sess.i+1]);
