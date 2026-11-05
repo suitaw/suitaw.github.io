@@ -62,8 +62,9 @@ if os.path.isdir(QDIR):
                 if (t=='single' and len(a)!=1) or (t=='multi' and len(a)<2): continue
                 e=re.sub(r'^[\s\[【]*解\s*析\s*[\]】]\s*','',an[q['no']]['e']); e=re.sub(r'[ \t]+',' ',e); e=re.sub(r'\s*\n\s*','',e)
                 e=re.sub(r'(?<=.)(?=[A-E]\s?项(?:正确|错误))','\n',e).strip()
-                it={'id':f'q{p}-{pf}{q["no"]}','no':q['no'],'t':t,'q':re.sub(r'\s+',' ',st).strip(),'a':a,'o':[x[1] for x in o]}
-                if e: it['e']=e[:1500]
+                cj=lambda z: re.sub(r'(?<=[\u4e00-\u9fff，。、；：？！”“（）]) +(?=[\u4e00-\u9fff，。、；：？！”“（）])','',z)
+                it={'id':f'q{p}-{pf}{q["no"]}','no':q['no'],'t':t,'q':cj(re.sub(r'\s+',' ',st).strip()),'a':a,'o':[cj(x[1]) for x in o]}
+                if e: it['e']=cj(e)[:1800]
                 qs.append(it)
         if qs: exams.append({'year':f'q{p}','name':f'第{"一二三四五六"[p-1]}篇','title':f'500题 · {NAMES[p]}','group':'q500','ocr':True,'src':'500题 扫描件 OCR','hasAns':True,'qs':qs})
 exams.sort(key=lambda e:(e.get('group')=='q500',str(e['year'])))
