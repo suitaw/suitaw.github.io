@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS50P 复习 · 第5讲 单元测试</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#e8a84c;--accent-dim:rgba(232,168,76,.12);
+  --text:#e8e9f0;--dim:#8890a8;
+  --ok:#4caf82;--ok-bg:rgba(76,175,130,.12);
+  --no:#e85c5c;--no-bg:rgba(232,92,92,.12);
+  --dock-h:76px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);min-height:100vh;
+  font-family:system-ui,-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.75;padding-bottom:calc(var(--dock-h) + 20px);}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px;}
+
+/* 顶栏 */
+.top{position:sticky;top:0;z-index:10;background:var(--bg);padding:14px 16px 10px;}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.top h1{font-size:16px;font-weight:600;}
+.top .sub{font-size:12px;color:var(--dim);white-space:nowrap;}
+.bar{height:3px;background:var(--surface2);border-radius:2px;margin-top:9px;overflow:hidden;}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .35s;}
+.back{display:inline-flex;align-items:center;min-height:44px;font-size:13px;
+  color:var(--dim);text-decoration:none;}
+.back:active{color:var(--accent);}
+
+/* 卡片 */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:20px 18px;margin-top:6px;}
+.kicker{font-size:12px;letter-spacing:.1em;color:var(--accent);font-weight:600;margin-bottom:10px;}
+.card h2{font-size:18px;font-weight:600;line-height:1.5;margin-bottom:12px;}
+.body{font-size:15px;color:var(--text);}
+.body p{margin:10px 0;}
+.body p:first-child{margin-top:0;}
+.body b{color:var(--accent);font-weight:600;}
+.body .ic{font-family:var(--mono);font-size:13px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:#e8e9f0;}
+.body ul{margin:10px 0;padding-left:0;list-style:none;}
+.body li{margin:8px 0;padding-left:16px;position:relative;}
+.body li:before{content:"·";position:absolute;left:4px;color:var(--accent);font-weight:700;}
+.golink{display:flex;align-items:center;justify-content:center;min-height:48px;
+  margin-top:14px;border-radius:11px;background:var(--accent-dim);
+  border:1px solid var(--accent);color:var(--accent);font-weight:600;
+  font-size:15px;text-decoration:none;}
+
+/* 代码块 */
+pre{white-space:pre-wrap;word-break:break-word;background:#0b0d13;border:1px solid var(--border);border-radius:10px;
+  padding:14px 14px;margin:14px 0;overflow-x:auto;
+  font-family:var(--mono);font-size:14px;line-height:1.9;}
+pre .k{color:#c792ea;}
+pre .s{color:#7ec98f;}
+pre .n{color:#f0a35e;}
+pre .b{color:#82aaff;}
+pre .cm{color:#5c6482;font-style:italic;}
+
+/* 屏幕输出 */
+.out{margin:-6px 0 14px;padding:10px 13px;border-radius:0 0 10px 10px;
+  background:#141821;border:1px solid var(--border);border-top:none;
+  font-family:var(--mono);font-size:13.5px;color:#9aa4c0;line-height:1.7;}
+.out .lb{font-family:inherit;font-size:11px;letter-spacing:.08em;color:#5c6482;
+  display:block;margin-bottom:3px;}
+.out .v{display:block;color:#e8e9f0;white-space:pre-wrap;}
+.out .v.none{color:#5c6482;font-style:italic;}
+
+/* 选项 */
+.q{font-size:16px;font-weight:600;margin:4px 0 14px;line-height:1.6;}
+.opts{display:flex;flex-direction:column;gap:10px;}
+.opt{display:flex;align-items:flex-start;gap:11px;width:100%;min-height:52px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:left;color:var(--text);cursor:pointer;
+  font-family:inherit;font-size:15px;line-height:1.6;transition:border-color .15s,background .15s;}
+.opt .ltr{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--border);
+  color:var(--dim);font-size:12px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;margin-top:2px;}
+.opt .txt{flex:1;}
+.opt .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.opt:disabled{cursor:default;}
+.opt.ok{border-color:var(--ok);background:var(--ok-bg);}
+.opt.ok .ltr{background:var(--ok);color:#fff;}
+.opt.no{border-color:var(--no);background:var(--no-bg);}
+.opt.no .ltr{background:var(--no);color:#fff;}
+.opt.fade{opacity:.45;}
+
+/* 讲解 */
+.exp{margin-top:14px;padding:14px 15px;border-radius:11px;background:var(--surface2);
+  border-left:3px solid var(--border);font-size:14px;line-height:1.8;color:#c9cee0;}
+.exp.g{border-left-color:var(--ok);}
+.exp.r{border-left-color:var(--no);}
+.exp .hd{font-size:13px;font-weight:700;margin-bottom:7px;letter-spacing:.03em;}
+.exp.g .hd{color:var(--ok);}
+.exp.r .hd{color:var(--no);}
+.exp b{color:var(--accent);font-weight:600;}
+.exp .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.exp .more{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.exp .ic.blk{display:block;padding:9px 11px;margin:7px 0;line-height:1.6;
+  white-space:pre-wrap;word-break:break-word;color:#e88a8a;}
+
+/* 吸底 */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:linear-gradient(to top,var(--bg) 65%,rgba(15,17,23,0));
+  padding:14px 16px 18px;}
+.dock-in{max-width:560px;margin:0 auto;display:flex;gap:10px;}
+.btn{flex:1;min-height:48px;border:none;border-radius:11px;background:var(--accent);
+  color:#1a1206;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn:disabled{opacity:.35;cursor:default;}
+.btn.ghost{flex:0 0 auto;padding:0 18px;background:var(--surface2);
+  color:var(--dim);border:1px solid var(--border);font-weight:500;font-size:14px;}
+
+/* 结算 */
+.fin{text-align:center;padding:16px 4px 4px;}
+.fin .big{font-size:44px;}
+.fin h2{margin:10px 0 6px;}
+.fin .score{font-size:15px;color:var(--dim);margin-bottom:6px;}
+.fin .score em{color:var(--accent);font-style:normal;font-weight:700;font-size:22px;}
+</style>
+</head>
+<body>
+
+<div class="top wrap">
+  <div class="top-row">
+    <h1 id="chTitle">CS50P · 第5讲 单元测试</h1>
+    <div class="sub" id="prog">1 / 1</div>
+  </div>
+  <div class="bar"><i id="barFill" style="width:0%"></i></div>
+</div>
+
+<div class="wrap"><a class="back" href="cs50p-4.html">‹ 回第4讲 库</a></div>
+<div class="wrap" id="stage"></div>
+
+<div class="dock"><div class="dock-in" id="dock"></div></div>
+
+<script>
+/* ============ 题目数据 ============
+   卡片两种：
+     {t:'teach', kicker, h, body, code, out}           只讲，不问
+     {t:'quiz',  kicker, code, out, q, opts:[...], exp} 选择题
+   out  ：代码块下面接一条「屏幕上会出现什么」；写 '' 表示「什么都没有」
+   opts ：每一项 {a:'选项文字', ok:true/false, why:'选错时单独讲这一项错在哪'}
+   ★ 所有代码的输出和报错原文，都用本机 python3 3.14.6 实跑核对过，不是凭记忆写的
+==================================== */
+const CHAPTERS = [{
+name:'第5讲 单元测试',
+cards:[
+{t:'teach',kicker:'这一讲讲什么',h:'单元测试：用代码测代码',
+ body:`<p>以前测程序是手动跑、手动输几个数看看。这一讲教你<b>写代码来测自己的代码</b>，以后改一次代码，一条命令就能全部重测。</p>
+<ul>
+<li><span class="ic">assert</span> 关键字</li>
+<li><span class="ic">pytest</span> 测试框架</li>
+<li>怎么把函数写得<b>好测</b>：返回值，而不是只打印</li>
+</ul>`},
+
+{t:'teach',kicker:'第 1 步',h:'被测的函数：calculator.py',
+ code:`def square(n):
+    return n * n
+
+print(square(2))
+print(square(3))`,
+ out:'4\n9',
+ body:`<p>老师用第 0 讲的 square 函数当例子。要测它，先把它放进 calculator.py，<b>加上 if __name__ == "__main__"</b>，这样测试文件导入它时不会把 main 也跑起来。</p>
+<p>测试文件按惯例叫 <span class="ic">test_calculator.py</span>，里面的测试函数叫 <span class="ic">test_square</span>。</p>`},
+
+{t:'teach',kicker:'第 2 步',h:'assert：断言某事为真',
+ code:`def square(n):
+    return n + n   # 故意写错
+
+assert square(2) == 4
+assert square(3) == 9`,
+ out:'AssertionError',
+ body:`<p><span class="ic">assert 条件</span>：条件为真，什么都不发生；为假，就抛出 <span class="ic">AssertionError</span>。</p>
+<p>注意这个 bug 很狡猾：2 + 2 碰巧等于 2 × 2，所以第一个断言<b>通过了</b>，第二个才失败。这就是为什么要<b>多测几个值</b>，包括 0、负数这种边界情况。</p>`},
+
+{t:'quiz',kicker:'这题是个坎',
+ code:`def square(n):
+    return n + n
+
+for n in [0, 2, -2, 3]:
+    print(n, square(n) == n * n)`,
+ q:'哪几个值能「侥幸」通过这个错误的 square？',
+ opts:[
+  {a:'0 和 2',ok:true},
+  {a:'只有 2',why:'0 也能：0 + 0 = 0 × 0 = 0。'},
+  {a:'0、2 和 -2',why:'-2 + -2 = -4，但 -2 × -2 = 4，不相等，会被抓出来。'},
+  {a:'全都通过',why:'3 + 3 = 6 不等于 9。'}],
+ exp:'这就是老师要测正数、负数、0 好几种情况的原因：测得少，bug 可能刚好被漏掉。'},
+
+{t:'teach',kicker:'第 3 步',h:'pytest：只写断言，剩下的交给它',
+ code:`# test_calculator.py
+from calculator import square
+
+def test_positive():
+    assert square(2) == 4
+    assert square(3) == 9
+
+def test_negative():
+    assert square(-2) == 4
+
+def test_zero():
+    assert square(0) == 0`,
+ body:`<p>自己写 try/except 加 print 来测，代码比被测的函数还长。pytest 把这些都包了：你只写 assert。</p>
+<p>运行：<span class="ic">pytest test_calculator.py</span>。每个测试一个符号：<b>点 .</b> 是通过，<b>F</b> 是失败，失败时会显示是哪一行、实际算出了多少。</p>
+<p>老师的建议：<b>拆成多个测试函数</b>。一个函数里第一个 assert 失败，后面的就不跑了；拆开后每个都会跑，给你更多线索。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ q:'pytest 跑完显示 `.F.`，说明什么？',
+ code:`# pytest 的输出
+.F.`,
+ opts:[
+  {a:'3 个测试，第 2 个失败，另外两个通过',ok:true},
+  {a:'3 个测试全部失败',why:'点 `.` 表示通过，只有 `F` 表示失败。'},
+  {a:'第 1 和第 3 个失败',why:'反了。点是通过。'},
+  {a:'测试代码有语法错误',why:'语法错误时 pytest 会报错，根本跑不出这一行结果。'}],
+ exp:'每个测试函数一个符号，按顺序排：`.` 通过，`F` 失败。'},
+
+{t:'teach',kicker:'第 4 步',h:'测异常：pytest.raises',
+ code:`import pytest
+from calculator import square
+
+def test_str():
+    with pytest.raises(TypeError):
+        square("cat")`,
+ body:`<p>有时你<b>期望</b>函数报错，比如给 square 传字符串应该抛 TypeError。</p>
+<p>用 <span class="ic">with pytest.raises(异常类型):</span>，下面缩进的代码如果真的抛出了这个异常，测试就<b>通过</b>。</p>`},
+
+{t:'teach',kicker:'第 5 步',h:'只打印的函数没法测',
+ code:`def hello(to="world"):
+    return f"hello, {to}"
+
+assert hello() == "hello, world"
+assert hello("David") == "hello, David"
+print("all passed")`,
+ out:'all passed',
+ body:`<p>老师原来的 hello 是直接 <span class="ic">print</span>，返回值是 None，<span class="ic">assert hello() == "hello, world"</span> 永远失败。</p>
+<p>改成 <b>return 字符串</b>，让调用者自己决定打不打印，就能测了。</p>
+<p>结论：<b>尽量少写有副作用的函数</b>。函数返回值，打印交给 main。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`def hello(to):
+    print("hello,", to)
+
+print(hello("Ron") == "hello, Ron")`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'`hello, Ron` 然后 `False`',ok:true},
+  {a:'`True`',why:'hello 只 print 不 return，返回值是 None。None 不等于 "hello, Ron"。'},
+  {a:'只有 `False`',why:'调用 hello("Ron") 时函数里的 print 会先打出 hello, Ron。'},
+  {a:'只有 `hello, Ron`',why:'外面那个 print 也会执行，打出比较结果 False。'}],
+ exp:'这正是「只打印的函数没法测」的原因：返回值是 None，什么都比不上。'},
+
+{t:'teach',kicker:'第 6 步',h:'测试放进文件夹',
+ code:`test/
+    __init__.py
+    test_hello.py`,
+ body:`<p>测试多了可以放进一个叫 test 的文件夹，再放一个<b>空的</b> <span class="ic">__init__.py</span>，告诉 Python 把这个文件夹当成<b>包</b>。</p>
+<p>然后 <span class="ic">pytest test</span> 一次跑完整个文件夹的测试。</p>
+<p>老师的提醒：测试本身要<b>写得简单</b>，否则你还得给测试写测试，没完没了。</p>`},
+
+{t:'teach',kicker:'动手',h:'去 Termux 试试',
+ body:`<ul>
+<li><span class="ic">pip install pytest</span></li>
+<li>照着写 calculator.py 和 test_calculator.py，跑 pytest</li>
+<li>故意把 * 改成 +，再跑一次，看 F 和失败信息长什么样</li>
+</ul>`}
+]}];
+
+/* ============ 渲染 ============ */
+const KW=/^(if|else|elif|for|while|def|return|import|from|in|not|and|or|is|True|False|None|class|try|except|finally|with|as|pass|break|continue|lambda|global|yield|raise|assert|match|case)$/;
+const BI=/^(print|input|len|int|str|float|bool|list|dict|range|type|open|sum|min|max|abs|round)$/;
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hl(code){
+  let out='',i=0;
+  while(i<code.length){
+    const c=code[i];
+    if(c==='"'||c==="'"){let j=i+1;while(j<code.length&&code[j]!==c)j++;
+      out+='<span class="s">'+esc(code.slice(i,Math.min(j+1,code.length)))+'</span>';i=j+1;continue;}
+    if(c==='#'){let j=code.indexOf('\n',i);if(j<0)j=code.length;
+      out+='<span class="cm">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[0-9]/.test(c)&&!/[A-Za-z0-9_]/.test(code[i-1]||' ')){
+      let j=i;while(j<code.length&&/[0-9.]/.test(code[j]))j++;
+      out+='<span class="n">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[A-Za-z_]/.test(c)){
+      let j=i;while(j<code.length&&/[A-Za-z0-9_]/.test(code[j]))j++;
+      const w=code.slice(i,j);
+      out+=KW.test(w)?'<span class="k">'+esc(w)+'</span>'
+          :BI.test(w)?'<span class="b">'+esc(w)+'</span>':esc(w);i=j;continue;}
+    out+=esc(c);i++;
+  }
+  return out;
+}
+function rich(s){return (s||'').replace(/`([^`]+)`/g,(m,c)=>'<span class="ic">'+esc(c)+'</span>');}
+function codeBlock(c,out){
+  let h='<pre>'+hl(c)+'</pre>';
+  if(out!==undefined)h+='<div class="out"><span class="lb">屏幕上出现</span>'+
+    (out===''?'<span class="v none">（什么都没有）</span>':'<span class="v">'+esc(out)+'</span>')+'</div>';
+  return h;
+}
+
+const LTR=['A','B','C','D','E'];
+const KEY='cs50p_review_5';
+let cards=CHAPTERS[0].cards.slice();
+let idx=0, answered=false, wrongIdx=[], rightCnt=0, quizTotal=0, redo=false;
+cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+
+const stage=document.getElementById('stage');
+const dock=document.getElementById('dock');
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify({idx,wrongIdx,rightCnt}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(d&&d.idx>0&&d.idx<cards.length){idx=d.idx;wrongIdx=d.wrongIdx||[];rightCnt=d.rightCnt||0;}}catch(e){}}
+
+function render(){
+  const c=cards[idx];
+  if(!c){renderFin();return;}
+  answered=false;
+  document.getElementById('prog').textContent=(idx+1)+' / '+cards.length;
+  document.getElementById('barFill').style.width=(idx/cards.length*100)+'%';
+  document.getElementById('chTitle').textContent=redo?'重做错题 · 第5讲':'CS50P · '+CHAPTERS[0].name;
+
+  let h='<div class="card">';
+  if(c.kicker)h+='<div class="kicker">'+esc(c.kicker)+'</div>';
+  if(c.h)h+='<h2>'+esc(c.h)+'</h2>';
+  if(c.code)h+=codeBlock(c.code,c.out);
+  if(c.t==='teach'){
+    h+='<div class="body">'+c.body+'</div>';
+  }else{
+    h+='<div class="q">'+esc(c.q)+'</div><div class="opts" id="opts">';
+    c.opts.forEach((o,i)=>{
+      h+='<button class="opt" data-i="'+i+'"><span class="ltr">'+LTR[i]+'</span>'+
+         '<span class="txt">'+rich(o.a)+'</span></button>';
+    });
+    h+='</div><div id="expSlot"></div>';
+  }
+  h+='</div>';
+  stage.innerHTML=h;
+  window.scrollTo(0,0);
+
+  if(c.t==='quiz'){
+    document.getElementById('opts').querySelectorAll('.opt')
+      .forEach(b=>b.addEventListener('click',()=>pick(+b.dataset.i)));
+    dock.innerHTML='<button class="btn" id="next" disabled>先选一个</button>';
+  }else{
+    dock.innerHTML='<button class="btn" id="next">'+(idx===cards.length-1?'看结果':'懂了，继续')+'</button>';
+    document.getElementById('next').onclick=nextCard;
+  }
+  save();
+}
+
+function pick(i){
+  if(answered)return;
+  answered=true;
+  const c=cards[idx], right=c.opts.findIndex(o=>o.ok), good=(i===right);
+  const btns=document.getElementById('opts').querySelectorAll('.opt');
+  btns.forEach((b,k)=>{
+    b.disabled=true;
+    if(k===right)b.classList.add('ok');
+    else if(k===i)b.classList.add('no');
+    else b.classList.add('fade');
+  });
+  if(good){rightCnt++;}
+  else if(!wrongIdx.includes(idx)&&!redo){wrongIdx.push(idx);}
+
+  let e='<div class="exp '+(good?'g':'r')+'">';
+  e+='<div class="hd">'+(good?'✓ 对了':'✗ 选的是 '+LTR[i])+'</div>';
+  if(!good&&c.opts[i].why)e+='<p>'+rich(c.opts[i].why)+'</p><div class="more">'+rich(c.exp)+'</div>';
+  else e+=rich(c.exp);
+  e+='</div>';
+  document.getElementById('expSlot').innerHTML=e;
+
+  const n=document.getElementById('next');
+  n.disabled=false;
+  n.textContent=(idx===cards.length-1?'看结果':'下一题');
+  n.onclick=nextCard;
+  n.scrollIntoView({block:'nearest'});
+}
+
+function nextCard(){idx++;save();render();}
+
+function renderFin(){
+  document.getElementById('barFill').style.width='100%';
+  document.getElementById('prog').textContent='完成';
+  const w=wrongIdx.length;
+  stage.innerHTML='<div class="card fin">'+
+    '<div class="big">'+(w===0?'🎉':'📗')+'</div>'+
+    '<h2>'+(w===0?'一题没错':'第5讲复习完了')+'</h2>'+
+    '<div class="score"><em>'+rightCnt+'</em> / '+quizTotal+' 题答对</div>'+
+    '<div class="body" style="text-align:left;margin-top:14px">'+
+    (w>0?'<p>有 <b>'+w+'</b> 题答错。错的那几题正是没想通的地方，重做一遍比往下学新的更划算。</p>'
+        :'<p>全对。挑一两段代码去 Termux 里敲 <b>python</b> 亲手跑一遍，改改参数看结果怎么变。</p>')+'<a class="golink" href="cs50p-6.html">第6讲 · 文件读写 →</a>'+
+    '</div></div>';
+  let d='';
+  if(w>0)d+='<button class="btn" id="redo">重做那 '+w+' 题</button>';
+  d+='<button class="btn '+(w>0?'ghost':'')+'" id="again">'+(w>0?'从头':'从头再来一遍')+'</button>';
+  dock.innerHTML=d;
+  if(w>0)document.getElementById('redo').onclick=()=>{
+    const list=wrongIdx.slice();
+    cards=list.map(i=>CHAPTERS[0].cards[i]);
+    quizTotal=cards.length;rightCnt=0;wrongIdx=[];idx=0;redo=true;render();
+  };
+  document.getElementById('again').onclick=()=>{
+    cards=CHAPTERS[0].cards.slice();
+    quizTotal=0;cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+    rightCnt=0;wrongIdx=[];idx=0;redo=false;
+    try{localStorage.removeItem(KEY);}catch(e){}
+    render();
+  };
+  try{localStorage.removeItem(KEY);}catch(e){}
+}
+
+load();
+render();
+</script>
+</body>
+</html>

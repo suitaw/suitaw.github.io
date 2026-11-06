@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS50P 复习 · 第3讲 异常</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#e8a84c;--accent-dim:rgba(232,168,76,.12);
+  --text:#e8e9f0;--dim:#8890a8;
+  --ok:#4caf82;--ok-bg:rgba(76,175,130,.12);
+  --no:#e85c5c;--no-bg:rgba(232,92,92,.12);
+  --dock-h:76px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);min-height:100vh;
+  font-family:system-ui,-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.75;padding-bottom:calc(var(--dock-h) + 20px);}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px;}
+
+/* 顶栏 */
+.top{position:sticky;top:0;z-index:10;background:var(--bg);padding:14px 16px 10px;}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.top h1{font-size:16px;font-weight:600;}
+.top .sub{font-size:12px;color:var(--dim);white-space:nowrap;}
+.bar{height:3px;background:var(--surface2);border-radius:2px;margin-top:9px;overflow:hidden;}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .35s;}
+.back{display:inline-flex;align-items:center;min-height:44px;font-size:13px;
+  color:var(--dim);text-decoration:none;}
+.back:active{color:var(--accent);}
+
+/* 卡片 */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:20px 18px;margin-top:6px;}
+.kicker{font-size:12px;letter-spacing:.1em;color:var(--accent);font-weight:600;margin-bottom:10px;}
+.card h2{font-size:18px;font-weight:600;line-height:1.5;margin-bottom:12px;}
+.body{font-size:15px;color:var(--text);}
+.body p{margin:10px 0;}
+.body p:first-child{margin-top:0;}
+.body b{color:var(--accent);font-weight:600;}
+.body .ic{font-family:var(--mono);font-size:13px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:#e8e9f0;}
+.body ul{margin:10px 0;padding-left:0;list-style:none;}
+.body li{margin:8px 0;padding-left:16px;position:relative;}
+.body li:before{content:"·";position:absolute;left:4px;color:var(--accent);font-weight:700;}
+.golink{display:flex;align-items:center;justify-content:center;min-height:48px;
+  margin-top:14px;border-radius:11px;background:var(--accent-dim);
+  border:1px solid var(--accent);color:var(--accent);font-weight:600;
+  font-size:15px;text-decoration:none;}
+
+/* 代码块 */
+pre{white-space:pre-wrap;word-break:break-word;background:#0b0d13;border:1px solid var(--border);border-radius:10px;
+  padding:14px 14px;margin:14px 0;overflow-x:auto;
+  font-family:var(--mono);font-size:14px;line-height:1.9;}
+pre .k{color:#c792ea;}
+pre .s{color:#7ec98f;}
+pre .n{color:#f0a35e;}
+pre .b{color:#82aaff;}
+pre .cm{color:#5c6482;font-style:italic;}
+
+/* 屏幕输出 */
+.out{margin:-6px 0 14px;padding:10px 13px;border-radius:0 0 10px 10px;
+  background:#141821;border:1px solid var(--border);border-top:none;
+  font-family:var(--mono);font-size:13.5px;color:#9aa4c0;line-height:1.7;}
+.out .lb{font-family:inherit;font-size:11px;letter-spacing:.08em;color:#5c6482;
+  display:block;margin-bottom:3px;}
+.out .v{display:block;color:#e8e9f0;white-space:pre-wrap;}
+.out .v.none{color:#5c6482;font-style:italic;}
+
+/* 选项 */
+.q{font-size:16px;font-weight:600;margin:4px 0 14px;line-height:1.6;}
+.opts{display:flex;flex-direction:column;gap:10px;}
+.opt{display:flex;align-items:flex-start;gap:11px;width:100%;min-height:52px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:left;color:var(--text);cursor:pointer;
+  font-family:inherit;font-size:15px;line-height:1.6;transition:border-color .15s,background .15s;}
+.opt .ltr{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--border);
+  color:var(--dim);font-size:12px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;margin-top:2px;}
+.opt .txt{flex:1;}
+.opt .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.opt:disabled{cursor:default;}
+.opt.ok{border-color:var(--ok);background:var(--ok-bg);}
+.opt.ok .ltr{background:var(--ok);color:#fff;}
+.opt.no{border-color:var(--no);background:var(--no-bg);}
+.opt.no .ltr{background:var(--no);color:#fff;}
+.opt.fade{opacity:.45;}
+
+/* 讲解 */
+.exp{margin-top:14px;padding:14px 15px;border-radius:11px;background:var(--surface2);
+  border-left:3px solid var(--border);font-size:14px;line-height:1.8;color:#c9cee0;}
+.exp.g{border-left-color:var(--ok);}
+.exp.r{border-left-color:var(--no);}
+.exp .hd{font-size:13px;font-weight:700;margin-bottom:7px;letter-spacing:.03em;}
+.exp.g .hd{color:var(--ok);}
+.exp.r .hd{color:var(--no);}
+.exp b{color:var(--accent);font-weight:600;}
+.exp .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.exp .more{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.exp .ic.blk{display:block;padding:9px 11px;margin:7px 0;line-height:1.6;
+  white-space:pre-wrap;word-break:break-word;color:#e88a8a;}
+
+/* 吸底 */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:linear-gradient(to top,var(--bg) 65%,rgba(15,17,23,0));
+  padding:14px 16px 18px;}
+.dock-in{max-width:560px;margin:0 auto;display:flex;gap:10px;}
+.btn{flex:1;min-height:48px;border:none;border-radius:11px;background:var(--accent);
+  color:#1a1206;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn:disabled{opacity:.35;cursor:default;}
+.btn.ghost{flex:0 0 auto;padding:0 18px;background:var(--surface2);
+  color:var(--dim);border:1px solid var(--border);font-weight:500;font-size:14px;}
+
+/* 结算 */
+.fin{text-align:center;padding:16px 4px 4px;}
+.fin .big{font-size:44px;}
+.fin h2{margin:10px 0 6px;}
+.fin .score{font-size:15px;color:var(--dim);margin-bottom:6px;}
+.fin .score em{color:var(--accent);font-style:normal;font-weight:700;font-size:22px;}
+</style>
+</head>
+<body>
+
+<div class="top wrap">
+  <div class="top-row">
+    <h1 id="chTitle">CS50P · 第3讲 异常</h1>
+    <div class="sub" id="prog">1 / 1</div>
+  </div>
+  <div class="bar"><i id="barFill" style="width:0%"></i></div>
+</div>
+
+<div class="wrap"><a class="back" href="cs50p-2.html">‹ 回第2讲 循环</a></div>
+<div class="wrap" id="stage"></div>
+
+<div class="dock"><div class="dock-in" id="dock"></div></div>
+
+<script>
+/* ============ 题目数据 ============
+   卡片两种：
+     {t:'teach', kicker, h, body, code, out}           只讲，不问
+     {t:'quiz',  kicker, code, out, q, opts:[...], exp} 选择题
+   out  ：代码块下面接一条「屏幕上会出现什么」；写 '' 表示「什么都没有」
+   opts ：每一项 {a:'选项文字', ok:true/false, why:'选错时单独讲这一项错在哪'}
+   ★ 所有代码的输出和报错原文，都用本机 python3 3.14.6 实跑核对过，不是凭记忆写的
+==================================== */
+const CHAPTERS = [{
+name:'第3讲 异常',
+cards:[
+{t:'teach',kicker:'这一讲讲什么',h:'异常：程序出错了怎么办',
+ body:`<p>两类错误：</p>
+<ul>
+<li><b>语法错误</b> SyntaxError：代码本身写错了，必须你自己改，程序根本跑不起来</li>
+<li><b>运行时错误</b>：代码没错，但跑起来遇到意外，比如用户输入了 cat 而不是数字</li>
+</ul>
+<p>第二类可以用 <span class="ic">try</span> / <span class="ic">except</span> 提前接住。老师强调<b>防御性编程</b>：假设用户不配合，甚至故意捣乱。</p>`},
+
+{t:'teach',kicker:'第 1 步',h:'ValueError：int 接不住 "cat"',
+ code:`x = int("cat")`,
+ out:"ValueError: invalid literal for int() with base 10: 'cat'",
+ body:`<p>int 只能转换看起来像整数的字符串。给它 "cat"，就抛出 <span class="ic">ValueError</span>（值错误）。</p>
+<p>报错信息逐词拆：invalid literal（无效的字面量）for int()，base 10（十进制），后面是出问题的值 'cat'。</p>`},
+
+{t:'teach',kicker:'第 2 步',h:'try / except：接住异常',
+ code:`try:
+    x = int("cat")
+    print(f"x is {x}")
+except ValueError:
+    print("x is not an integer")`,
+ out:'x is not an integer',
+ body:`<p>try 下面缩进的是「尝试做的事」，一旦其中某行抛出 ValueError，就立刻跳到 except 下面执行。</p>
+<p>注意：<b>except 后面写明具体的异常类型</b>。老师说什么都接（只写 except:）是偷懒，会把别的 bug 也藏起来。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`try:
+    print("a")
+    x = int("cat")
+    print("b")
+except ValueError:
+    print("c")`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'`a` 然后 `c`',ok:true},
+  {a:'`a` `b` `c`',why:'第 3 行出错后，try 里<b>剩下的代码不再执行</b>，直接跳到 except。所以 b 不会打。'},
+  {a:'只有 `c`',why:'第 2 行 print("a") 在出错之前，已经执行了。'},
+  {a:'`a` 然后报错',why:'这个 ValueError 被 except 接住了，不会显示报错。'}],
+ exp:'try 里一出错就跳走：出错前的已经执行了，出错后的都跳过。'},
+
+{t:'teach',kicker:'第 3 步',h:'NameError：等号右边先炸了',
+ code:`try:
+    x = int("cat")
+except ValueError:
+    print("x is not an integer")
+print(f"x is {x}")`,
+ out:"x is not an integer\nNameError: name 'x' is not defined",
+ body:`<p>老师为了「try 里只放可能出错的那一行」，把 print 挪到了外面，结果出了新错：<b>NameError</b>。</p>
+<p>原因是执行顺序：<span class="ic">x = int("cat")</span> 要<b>先算右边</b>，右边就炸了，所以<b>根本没走到赋值给 x 那一步</b>，x 从来没被定义。</p>`},
+
+{t:'teach',kicker:'第 4 步',h:'else：没出错才执行',
+ code:`try:
+    x = int("50")
+except ValueError:
+    print("x is not an integer")
+else:
+    print(f"x is {x}")`,
+ out:'x is 50',
+ body:`<p>try 也可以带 <span class="ic">else</span>：<b>try 里没出任何异常时</b>才执行 else。</p>
+<p>这样 except 和 else 互斥，就修好了上一步的 NameError。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`try:
+    x = int("7")
+except ValueError:
+    print("bad")
+else:
+    print("good")`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'`good`',ok:true},
+  {a:'`bad`',why:'"7" 能转成整数，没出错，所以不会进 except。'},
+  {a:'`bad` 然后 `good`',why:'except 和 else 是二选一：出错走 except，没出错走 else。'},
+  {a:'什么都不打',why:'没出错时 else 会执行。'}],
+ exp:'try 的 else 跟 except 配对：没出异常才走 else。'},
+
+{t:'teach',kicker:'第 5 步',h:'循环 + try：一直问到给对',
+ code:`def get_int(prompt):
+    while True:
+        try:
+            return int(input(prompt))
+        except ValueError:
+            pass
+
+n = get_int("What's x? ")
+print(n)`,
+ inp:'cat\ndog\n5',
+ out:"What's x? cat\nWhat's x? dog\nWhat's x? 5\n5",
+ body:`<p>老师最后的 get_int 版本：</p>
+<ul>
+<li><span class="ic">while True</span> 一直问</li>
+<li>转换成功就 <span class="ic">return</span>：既跳出循环又交回结果</li>
+<li>失败就 <span class="ic">pass</span>：接住了但什么都不做，回去再问一次</li>
+<li>提示语做成参数 <span class="ic">prompt</span>，这样问 x 问 y 都能复用</li>
+</ul>`},
+
+{t:'quiz',kicker:'这题是个坎',
+ code:`for s in ["1", "x", "3"]:
+    try:
+        n = int(s)
+    except ValueError:
+        continue
+    print(n)`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'`1` `3`',ok:true},
+  {a:'`1` `x` `3`',why:'"x" 转换失败，进 except 后 continue，<b>直接跳到下一圈</b>，不会打印。'},
+  {a:'只有 `1`',why:'continue 只跳过当前这一圈，不是结束整个循环（那是 break）。'},
+  {a:'`1` 然后报错',why:'ValueError 被 except 接住了。'}],
+ exp:'失败的那个被 continue 跳过，循环接着处理下一个。'},
+
+{t:'teach',kicker:'第 6 步',h:'raise：自己抛异常（预告）',
+ code:`try:
+    raise ValueError("Missing name")
+except ValueError as e:
+    print(e)`,
+ out:'Missing name',
+ body:`<p>老师在本讲最后提了一句：你也能用 <span class="ic">raise</span> 自己抛异常。第 8 讲面向对象会正式用到它。</p>
+<p>老师的总结：错误在所难免，语法错误你得自己修；值错误、名字错误这类，现在你知道怎么处理了。</p>`},
+
+{t:'teach',kicker:'动手',h:'去 Termux 试试',
+ body:`<ul>
+<li>写 <span class="ic">try:</span> 后不缩进，看报错</li>
+<li>把 except ValueError 写成 except valueerror（小写），看会怎样</li>
+<li>故意先用一个变量再定义它，看 NameError</li>
+</ul>`}
+]}];
+
+/* ============ 渲染 ============ */
+const KW=/^(if|else|elif|for|while|def|return|import|from|in|not|and|or|is|True|False|None|class|try|except|finally|with|as|pass|break|continue|lambda|global|yield|raise|assert|match|case)$/;
+const BI=/^(print|input|len|int|str|float|bool|list|dict|range|type|open|sum|min|max|abs|round)$/;
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hl(code){
+  let out='',i=0;
+  while(i<code.length){
+    const c=code[i];
+    if(c==='"'||c==="'"){let j=i+1;while(j<code.length&&code[j]!==c)j++;
+      out+='<span class="s">'+esc(code.slice(i,Math.min(j+1,code.length)))+'</span>';i=j+1;continue;}
+    if(c==='#'){let j=code.indexOf('\n',i);if(j<0)j=code.length;
+      out+='<span class="cm">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[0-9]/.test(c)&&!/[A-Za-z0-9_]/.test(code[i-1]||' ')){
+      let j=i;while(j<code.length&&/[0-9.]/.test(code[j]))j++;
+      out+='<span class="n">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[A-Za-z_]/.test(c)){
+      let j=i;while(j<code.length&&/[A-Za-z0-9_]/.test(code[j]))j++;
+      const w=code.slice(i,j);
+      out+=KW.test(w)?'<span class="k">'+esc(w)+'</span>'
+          :BI.test(w)?'<span class="b">'+esc(w)+'</span>':esc(w);i=j;continue;}
+    out+=esc(c);i++;
+  }
+  return out;
+}
+function rich(s){return (s||'').replace(/`([^`]+)`/g,(m,c)=>'<span class="ic">'+esc(c)+'</span>');}
+function codeBlock(c,out){
+  let h='<pre>'+hl(c)+'</pre>';
+  if(out!==undefined)h+='<div class="out"><span class="lb">屏幕上出现</span>'+
+    (out===''?'<span class="v none">（什么都没有）</span>':'<span class="v">'+esc(out)+'</span>')+'</div>';
+  return h;
+}
+
+const LTR=['A','B','C','D','E'];
+const KEY='cs50p_review_3';
+let cards=CHAPTERS[0].cards.slice();
+let idx=0, answered=false, wrongIdx=[], rightCnt=0, quizTotal=0, redo=false;
+cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+
+const stage=document.getElementById('stage');
+const dock=document.getElementById('dock');
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify({idx,wrongIdx,rightCnt}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(d&&d.idx>0&&d.idx<cards.length){idx=d.idx;wrongIdx=d.wrongIdx||[];rightCnt=d.rightCnt||0;}}catch(e){}}
+
+function render(){
+  const c=cards[idx];
+  if(!c){renderFin();return;}
+  answered=false;
+  document.getElementById('prog').textContent=(idx+1)+' / '+cards.length;
+  document.getElementById('barFill').style.width=(idx/cards.length*100)+'%';
+  document.getElementById('chTitle').textContent=redo?'重做错题 · 第3讲':'CS50P · '+CHAPTERS[0].name;
+
+  let h='<div class="card">';
+  if(c.kicker)h+='<div class="kicker">'+esc(c.kicker)+'</div>';
+  if(c.h)h+='<h2>'+esc(c.h)+'</h2>';
+  if(c.code)h+=codeBlock(c.code,c.out);
+  if(c.t==='teach'){
+    h+='<div class="body">'+c.body+'</div>';
+  }else{
+    h+='<div class="q">'+esc(c.q)+'</div><div class="opts" id="opts">';
+    c.opts.forEach((o,i)=>{
+      h+='<button class="opt" data-i="'+i+'"><span class="ltr">'+LTR[i]+'</span>'+
+         '<span class="txt">'+rich(o.a)+'</span></button>';
+    });
+    h+='</div><div id="expSlot"></div>';
+  }
+  h+='</div>';
+  stage.innerHTML=h;
+  window.scrollTo(0,0);
+
+  if(c.t==='quiz'){
+    document.getElementById('opts').querySelectorAll('.opt')
+      .forEach(b=>b.addEventListener('click',()=>pick(+b.dataset.i)));
+    dock.innerHTML='<button class="btn" id="next" disabled>先选一个</button>';
+  }else{
+    dock.innerHTML='<button class="btn" id="next">'+(idx===cards.length-1?'看结果':'懂了，继续')+'</button>';
+    document.getElementById('next').onclick=nextCard;
+  }
+  save();
+}
+
+function pick(i){
+  if(answered)return;
+  answered=true;
+  const c=cards[idx], right=c.opts.findIndex(o=>o.ok), good=(i===right);
+  const btns=document.getElementById('opts').querySelectorAll('.opt');
+  btns.forEach((b,k)=>{
+    b.disabled=true;
+    if(k===right)b.classList.add('ok');
+    else if(k===i)b.classList.add('no');
+    else b.classList.add('fade');
+  });
+  if(good){rightCnt++;}
+  else if(!wrongIdx.includes(idx)&&!redo){wrongIdx.push(idx);}
+
+  let e='<div class="exp '+(good?'g':'r')+'">';
+  e+='<div class="hd">'+(good?'✓ 对了':'✗ 选的是 '+LTR[i])+'</div>';
+  if(!good&&c.opts[i].why)e+='<p>'+rich(c.opts[i].why)+'</p><div class="more">'+rich(c.exp)+'</div>';
+  else e+=rich(c.exp);
+  e+='</div>';
+  document.getElementById('expSlot').innerHTML=e;
+
+  const n=document.getElementById('next');
+  n.disabled=false;
+  n.textContent=(idx===cards.length-1?'看结果':'下一题');
+  n.onclick=nextCard;
+  n.scrollIntoView({block:'nearest'});
+}
+
+function nextCard(){idx++;save();render();}
+
+function renderFin(){
+  document.getElementById('barFill').style.width='100%';
+  document.getElementById('prog').textContent='完成';
+  const w=wrongIdx.length;
+  stage.innerHTML='<div class="card fin">'+
+    '<div class="big">'+(w===0?'🎉':'📗')+'</div>'+
+    '<h2>'+(w===0?'一题没错':'第3讲复习完了')+'</h2>'+
+    '<div class="score"><em>'+rightCnt+'</em> / '+quizTotal+' 题答对</div>'+
+    '<div class="body" style="text-align:left;margin-top:14px">'+
+    (w>0?'<p>有 <b>'+w+'</b> 题答错。错的那几题正是没想通的地方，重做一遍比往下学新的更划算。</p>'
+        :'<p>全对。挑一两段代码去 Termux 里敲 <b>python</b> 亲手跑一遍，改改参数看结果怎么变。</p>')+'<a class="golink" href="cs50p-4.html">第4讲 · 库 →</a>'+
+    '</div></div>';
+  let d='';
+  if(w>0)d+='<button class="btn" id="redo">重做那 '+w+' 题</button>';
+  d+='<button class="btn '+(w>0?'ghost':'')+'" id="again">'+(w>0?'从头':'从头再来一遍')+'</button>';
+  dock.innerHTML=d;
+  if(w>0)document.getElementById('redo').onclick=()=>{
+    const list=wrongIdx.slice();
+    cards=list.map(i=>CHAPTERS[0].cards[i]);
+    quizTotal=cards.length;rightCnt=0;wrongIdx=[];idx=0;redo=true;render();
+  };
+  document.getElementById('again').onclick=()=>{
+    cards=CHAPTERS[0].cards.slice();
+    quizTotal=0;cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+    rightCnt=0;wrongIdx=[];idx=0;redo=false;
+    try{localStorage.removeItem(KEY);}catch(e){}
+    render();
+  };
+  try{localStorage.removeItem(KEY);}catch(e){}
+}
+
+load();
+render();
+</script>
+</body>
+</html>
