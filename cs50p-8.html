@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS50P 复习 · 第8讲 面向对象</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#e8a84c;--accent-dim:rgba(232,168,76,.12);
+  --text:#e8e9f0;--dim:#8890a8;
+  --ok:#4caf82;--ok-bg:rgba(76,175,130,.12);
+  --no:#e85c5c;--no-bg:rgba(232,92,92,.12);
+  --dock-h:76px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);min-height:100vh;
+  font-family:system-ui,-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.75;padding-bottom:calc(var(--dock-h) + 20px);}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px;}
+
+/* 顶栏 */
+.top{position:sticky;top:0;z-index:10;background:var(--bg);padding:14px 16px 10px;}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.top h1{font-size:16px;font-weight:600;}
+.top .sub{font-size:12px;color:var(--dim);white-space:nowrap;}
+.bar{height:3px;background:var(--surface2);border-radius:2px;margin-top:9px;overflow:hidden;}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .35s;}
+.back{display:inline-flex;align-items:center;min-height:44px;font-size:13px;
+  color:var(--dim);text-decoration:none;}
+.back:active{color:var(--accent);}
+
+/* 卡片 */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:20px 18px;margin-top:6px;}
+.kicker{font-size:12px;letter-spacing:.1em;color:var(--accent);font-weight:600;margin-bottom:10px;}
+.card h2{font-size:18px;font-weight:600;line-height:1.5;margin-bottom:12px;}
+.body{font-size:15px;color:var(--text);}
+.body p{margin:10px 0;}
+.body p:first-child{margin-top:0;}
+.body b{color:var(--accent);font-weight:600;}
+.body .ic{font-family:var(--mono);font-size:13px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:#e8e9f0;}
+.body ul{margin:10px 0;padding-left:0;list-style:none;}
+.body li{margin:8px 0;padding-left:16px;position:relative;}
+.body li:before{content:"·";position:absolute;left:4px;color:var(--accent);font-weight:700;}
+.golink{display:flex;align-items:center;justify-content:center;min-height:48px;
+  margin-top:14px;border-radius:11px;background:var(--accent-dim);
+  border:1px solid var(--accent);color:var(--accent);font-weight:600;
+  font-size:15px;text-decoration:none;}
+
+/* 代码块 */
+pre{white-space:pre-wrap;word-break:break-word;background:#0b0d13;border:1px solid var(--border);border-radius:10px;
+  padding:14px 14px;margin:14px 0;overflow-x:auto;
+  font-family:var(--mono);font-size:14px;line-height:1.9;}
+pre .k{color:#c792ea;}
+pre .s{color:#7ec98f;}
+pre .n{color:#f0a35e;}
+pre .b{color:#82aaff;}
+pre .cm{color:#5c6482;font-style:italic;}
+
+/* 屏幕输出 */
+.out{margin:-6px 0 14px;padding:10px 13px;border-radius:0 0 10px 10px;
+  background:#141821;border:1px solid var(--border);border-top:none;
+  font-family:var(--mono);font-size:13.5px;color:#9aa4c0;line-height:1.7;}
+.out .lb{font-family:inherit;font-size:11px;letter-spacing:.08em;color:#5c6482;
+  display:block;margin-bottom:3px;}
+.out .v{display:block;color:#e8e9f0;white-space:pre-wrap;}
+.out .v.none{color:#5c6482;font-style:italic;}
+
+/* 选项 */
+.q{font-size:16px;font-weight:600;margin:4px 0 14px;line-height:1.6;}
+.opts{display:flex;flex-direction:column;gap:10px;}
+.opt{display:flex;align-items:flex-start;gap:11px;width:100%;min-height:52px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:left;color:var(--text);cursor:pointer;
+  font-family:inherit;font-size:15px;line-height:1.6;transition:border-color .15s,background .15s;}
+.opt .ltr{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--border);
+  color:var(--dim);font-size:12px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;margin-top:2px;}
+.opt .txt{flex:1;}
+.opt .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.opt:disabled{cursor:default;}
+.opt.ok{border-color:var(--ok);background:var(--ok-bg);}
+.opt.ok .ltr{background:var(--ok);color:#fff;}
+.opt.no{border-color:var(--no);background:var(--no-bg);}
+.opt.no .ltr{background:var(--no);color:#fff;}
+.opt.fade{opacity:.45;}
+
+/* 讲解 */
+.exp{margin-top:14px;padding:14px 15px;border-radius:11px;background:var(--surface2);
+  border-left:3px solid var(--border);font-size:14px;line-height:1.8;color:#c9cee0;}
+.exp.g{border-left-color:var(--ok);}
+.exp.r{border-left-color:var(--no);}
+.exp .hd{font-size:13px;font-weight:700;margin-bottom:7px;letter-spacing:.03em;}
+.exp.g .hd{color:var(--ok);}
+.exp.r .hd{color:var(--no);}
+.exp b{color:var(--accent);font-weight:600;}
+.exp .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.exp .more{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.exp .ic.blk{display:block;padding:9px 11px;margin:7px 0;line-height:1.6;
+  white-space:pre-wrap;word-break:break-word;color:#e88a8a;}
+
+/* 吸底 */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:linear-gradient(to top,var(--bg) 65%,rgba(15,17,23,0));
+  padding:14px 16px 18px;}
+.dock-in{max-width:560px;margin:0 auto;display:flex;gap:10px;}
+.btn{flex:1;min-height:48px;border:none;border-radius:11px;background:var(--accent);
+  color:#1a1206;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn:disabled{opacity:.35;cursor:default;}
+.btn.ghost{flex:0 0 auto;padding:0 18px;background:var(--surface2);
+  color:var(--dim);border:1px solid var(--border);font-weight:500;font-size:14px;}
+
+/* 结算 */
+.fin{text-align:center;padding:16px 4px 4px;}
+.fin .big{font-size:44px;}
+.fin h2{margin:10px 0 6px;}
+.fin .score{font-size:15px;color:var(--dim);margin-bottom:6px;}
+.fin .score em{color:var(--accent);font-style:normal;font-weight:700;font-size:22px;}
+</style>
+</head>
+<body>
+
+<div class="top wrap">
+  <div class="top-row">
+    <h1 id="chTitle">CS50P · 第8讲 面向对象</h1>
+    <div class="sub" id="prog">1 / 1</div>
+  </div>
+  <div class="bar"><i id="barFill" style="width:0%"></i></div>
+</div>
+
+<div class="wrap"><a class="back" href="cs50p-7.html">‹ 回第7讲 正则表达式</a></div>
+<div class="wrap" id="stage"></div>
+
+<div class="dock"><div class="dock-in" id="dock"></div></div>
+
+<script>
+/* ============ 题目数据 ============
+   卡片两种：
+     {t:'teach', kicker, h, body, code, out}           只讲，不问
+     {t:'quiz',  kicker, code, out, q, opts:[...], exp} 选择题
+   out  ：代码块下面接一条「屏幕上会出现什么」；写 '' 表示「什么都没有」
+   opts ：每一项 {a:'选项文字', ok:true/false, why:'选错时单独讲这一项错在哪'}
+   ★ 所有代码的输出和报错原文，都用本机 python3 3.14.6 实跑核对过，不是凭记忆写的
+==================================== */
+const CHAPTERS = [{
+name:'第8讲 面向对象',
+cards:[
+{t:'teach',kicker:'这一讲讲什么',h:'面向对象：发明你自己的数据类型',
+ body:`<p>用元组、列表、字典存一个学生都行，但都是「凑合」。如果 Python 有个 <b>Student</b> 类型就好了。</p>
+<p><span class="ic">class</span> 让你自己发明一个。这一讲依次讲：</p>
+<ul>
+<li>元组 vs 列表 vs 字典</li>
+<li>class、对象、<span class="ic">__init__</span>、<span class="ic">__str__</span>、自己的方法</li>
+<li>property（getter / setter）</li>
+<li>类方法 <span class="ic">@classmethod</span>、继承、运算符重载</li>
+</ul>`},
+
+{t:'teach',kicker:'第 1 步',h:'元组：不可变的一组值',
+ code:`def get_student():
+    return "Harry", "Gryffindor"
+
+name, house = get_student()
+print(f"{name} from {house}")`,
+ out:'Harry from Gryffindor',
+ body:`<p>函数看起来「返回了两个值」，其实返回的是<b>一个元组</b>：<span class="ic">("Harry", "Gryffindor")</span>，逗号就够了，括号可写可不写。</p>
+<p>元组和列表很像，也能用 [0]、[1] 取值，但它<b>不可变</b>：建好之后不能改里面的东西。</p>
+<p>什么时候用？当你知道这些值<b>不该被改</b>时，用元组能防止你自己或同事误改。</p>`},
+
+{t:'quiz',kicker:'这题是个坎',
+ code:`student = ("Padma", "Gryffindor")
+student[1] = "Ravenclaw"
+print(student)`,
+ q:'运行结果是什么？',
+ opts:[
+  {a:'报错 TypeError',ok:true},
+  {a:'`(\'Padma\', \'Ravenclaw\')`',why:'元组<b>不可变</b>，不能给某一项重新赋值。想改就得用列表（方括号）。'},
+  {a:'`(\'Padma\', \'Gryffindor\')`',why:'修改不会被悄悄忽略，Python 会直接报错。'},
+  {a:'`[\'Padma\', \'Ravenclaw\']`',why:'元组不会自己变成列表。'}],
+ exp:'报错原文：`TypeError: \'tuple\' object does not support item assignment`。'},
+
+{t:'teach',kicker:'第 2 步',h:'class：自己的数据类型',
+ code:`class Student:
+    def __init__(self, name, house):
+        self.name = name
+        self.house = house
+
+student = Student("Harry", "Gryffindor")
+print(student.name, student.house)`,
+ out:'Harry Gryffindor',
+ body:`<ul>
+<li><span class="ic">class Student:</span> 定义一个<b>类</b>，就像一张蓝图、一个模具。类名首字母按惯例大写</li>
+<li><span class="ic">Student(...)</span> 用蓝图造出一个<b>对象</b>（也叫实例）</li>
+<li>造的时候 Python 会自动调用 <span class="ic">__init__</span> 初始化它</li>
+<li><span class="ic">self</span> 就是正在造的这个对象本身；<span class="ic">self.name = name</span> 把值存进对象，叫<b>实例变量</b></li>
+<li>用<b>点</b>访问：<span class="ic">student.name</span></li>
+</ul>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`class Dog:
+    def __init__(self, name):
+        self.name = name
+
+a = Dog("Rex")
+b = Dog("Max")
+print(a.name, b.name)`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'`Rex Max`',ok:true},
+  {a:'`Max Max`',why:'a 和 b 是<b>两个独立的对象</b>，各有各的 name。造 b 不会影响 a。'},
+  {a:'`Rex Rex`',why:'b 造的时候传的是 Max。'},
+  {a:'报错：调用 Dog 时少传了 self',why:'self 是 Python <b>自动传的</b>，你只要传 self 后面那些参数。'}],
+ exp:'同一张蓝图造出来的对象，各自存各自的数据。'},
+
+{t:'teach',kicker:'第 3 步',h:'在 __init__ 里检查，用 raise 报错',
+ code:`class Student:
+    def __init__(self, name, house):
+        if not name:
+            raise ValueError("Missing name")
+        self.name = name
+        self.house = house
+
+try:
+    Student("", "Gryffindor")
+except ValueError as e:
+    print(e)`,
+ out:'Missing name',
+ body:`<p>类比字典强的地方：<b>你能控制什么值能放进去</b>。名字为空、学院不对，就不让造。</p>
+<p>到 __init__ 时对象已经造出来了，return None 来不及。正确做法是 <span class="ic">raise ValueError("...")</span> 抛出异常，交给调用者用 try/except 处理。</p>`},
+
+{t:'teach',kicker:'第 4 步',h:'__str__：决定 print 打出什么',
+ code:`class Student:
+    def __init__(self, name, house):
+        self.name = name
+        self.house = house
+
+    def __str__(self):
+        return f"{self.name} from {self.house}"
+
+print(Student("Draco", "Slytherin"))`,
+ out:'Draco from Slytherin',
+ body:`<p>不定义 __str__ 时，print 对象只会打出一串像 <span class="ic">&lt;__main__.Student object at 0x...&gt;</span> 的东西，那是它在内存里的地址。</p>
+<p>定义了 <span class="ic">__str__</span>，Python 在需要把对象当字符串时（比如 print）就会自动调用它。</p>
+<p>前后两个下划线的方法叫 <b>dunder 方法</b>（double underscore），是 Python 规定好名字的特殊方法。</p>`},
+
+{t:'teach',kicker:'第 5 步',h:'自己的方法',
+ code:`class Student:
+    def __init__(self, name, patronus):
+        self.name = name
+        self.patronus = patronus
+
+    def charm(self):
+        match self.patronus:
+            case "Stag":
+                return "🐴"
+            case _:
+                return "🪄"
+
+print(Student("Harry", "Stag").charm())`,
+ out:'🐴',
+ body:`<p>类里不光能存数据，还能有<b>方法</b>（类里的函数），代表这个东西能做的动作。</p>
+<p>方法的第一个参数永远是 self，这样它能访问这个对象自己的数据。调用时用点：<span class="ic">student.charm()</span>。</p>`},
+
+{t:'teach',kicker:'第 6 步',h:'property：用 setter 守住属性',
+ code:`class Student:
+    def __init__(self, house):
+        self.house = house
+
+    @property
+    def house(self):
+        return self._house
+
+    @house.setter
+    def house(self, house):
+        if house not in ["Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]:
+            raise ValueError("Invalid house")
+        self._house = house
+
+s = Student("Gryffindor")
+try:
+    s.house = "Number Four, Privet Drive"
+except ValueError as e:
+    print(e)`,
+ out:'Invalid house',
+ body:`<p>__init__ 只在造对象时检查一次，之后有人写 <span class="ic">s.house = "乱七八糟"</span> 就绕过去了。</p>
+<ul>
+<li><span class="ic">@property</span>：getter，读 s.house 时调用</li>
+<li><span class="ic">@house.setter</span>：setter，<b>每次给 s.house 赋值时</b>都调用，包括 __init__ 里那次</li>
+<li>真正的数据存在 <span class="ic">self._house</span>，加下划线避免和方法同名</li>
+</ul>
+<p>但 Python 靠<b>自觉</b>：硬写 s._house = ... 还是能改。下划线开头的意思是「请别碰」。</p>`},
+
+{t:'teach',kicker:'第 7 步',h:'你早就在用类了',
+ code:`print(type(50))
+print(type("hello"))
+print(type([]))
+print(type({}))`,
+ out:"<class 'int'>\n<class 'str'>\n<class 'list'>\n<class 'dict'>",
+ body:`<p>int、str、list、dict 全都是<b>类</b>。</p>
+<p><span class="ic">"hello".upper()</span>、<span class="ic">names.append(x)</span> 都是在调用这些类的方法。从第 0 讲开始你就一直在用对象。</p>
+<p>它们是小写开头，是 Python 自带类型的历史习惯；自己写的类按惯例首字母大写。</p>`},
+
+{t:'teach',kicker:'第 8 步',h:'类变量和 @classmethod',
+ code:`import random
+
+class Hat:
+    houses = ["Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
+
+    @classmethod
+    def sort(cls, name):
+        print(name, "is in", random.choice(cls.houses))
+
+Hat.sort("Harry")`,
+ body:`<p>分院帽全世界只有一顶，没必要造对象。</p>
+<ul>
+<li><b>类变量</b>：直接写在类里、不带 self，所有对象共享一份</li>
+<li><span class="ic">@classmethod</span>：类方法，第一个参数是 <span class="ic">cls</span>（类本身）而不是 self，不用造对象就能调用：<span class="ic">Hat.sort(...)</span></li>
+</ul>
+<p>老师还把原来零散的 get_student 函数改成了 <span class="ic">Student.get()</span> 类方法，让跟学生有关的代码都待在 Student 类里。</p>`},
+
+{t:'teach',kicker:'第 9 步',h:'继承：把共同的部分提出来',
+ code:`class Wizard:
+    def __init__(self, name):
+        if not name:
+            raise ValueError("Missing name")
+        self.name = name
+
+class Student(Wizard):
+    def __init__(self, name, house):
+        super().__init__(name)
+        self.house = house
+
+s = Student("Harry", "Gryffindor")
+print(s.name, s.house)`,
+ out:'Harry Gryffindor',
+ body:`<p>学生和教授都是巫师，都有名字、都要检查名字。与其复制粘贴，不如提一个父类 Wizard。</p>
+<ul>
+<li><span class="ic">class Student(Wizard)</span>：Student 继承 Wizard，Wizard 是它的<b>超类</b>（父类）</li>
+<li><span class="ic">super().__init__(name)</span>：调用父类的初始化，名字的赋值和检查交给父类</li>
+</ul>
+<p>Python 的异常就是一棵继承树：ValueError 的父类是 Exception，再往上是 BaseException。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`class A:
+    def hi(self):
+        return "A"
+
+class B(A):
+    pass
+
+print(B().hi())`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'`A`',ok:true},
+  {a:'报错：B 没有 hi 方法',why:'B 继承了 A，A 的方法 B 都有，不用再写一遍。'},
+  {a:'`B`',why:'hi 是在 A 里定义的，返回的是 "A"。B 没有改写它。'},
+  {a:'`None`',why:'hi 有 return "A"。'}],
+ exp:'子类自动拥有父类的方法。要不一样的行为，可以在子类里重新定义同名方法（覆盖）。'},
+
+{t:'teach',kicker:'第 10 步',h:'运算符重载：让 + 对你的类生效',
+ code:`class Vault:
+    def __init__(self, galleons=0, sickles=0, knuts=0):
+        self.galleons = galleons
+        self.sickles = sickles
+        self.knuts = knuts
+
+    def __add__(self, other):
+        return Vault(self.galleons + other.galleons,
+                     self.sickles + other.sickles,
+                     self.knuts + other.knuts)
+
+    def __str__(self):
+        return f"{self.galleons} Galleons, {self.sickles} Sickles, {self.knuts} Knuts"
+
+print(Vault(100, 50, 25) + Vault(25, 50, 100))`,
+ out:'125 Galleons, 100 Sickles, 125 Knuts',
+ body:`<p>定义了 <span class="ic">__add__(self, other)</span>，<span class="ic">a + b</span> 就会自动变成调用它：self 是加号左边，other 是右边。</p>
+<p>字符串能用 + 拼接、列表能用 + 合并，也是同样的道理：它们的类定义了 __add__。</p>`},
+
+{t:'teach',kicker:'动手',h:'去 Termux 试试',
+ body:`<ul>
+<li>写个类不加 __str__，print 一个对象，看那串内存地址</li>
+<li>改元组的一项，看 TypeError</li>
+<li>两个没定义 __add__ 的对象相加，看 unsupported operand type(s)</li>
+</ul>`}
+]}];
+
+/* ============ 渲染 ============ */
+const KW=/^(if|else|elif|for|while|def|return|import|from|in|not|and|or|is|True|False|None|class|try|except|finally|with|as|pass|break|continue|lambda|global|yield|raise|assert|match|case)$/;
+const BI=/^(print|input|len|int|str|float|bool|list|dict|range|type|open|sum|min|max|abs|round)$/;
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hl(code){
+  let out='',i=0;
+  while(i<code.length){
+    const c=code[i];
+    if(c==='"'||c==="'"){let j=i+1;while(j<code.length&&code[j]!==c)j++;
+      out+='<span class="s">'+esc(code.slice(i,Math.min(j+1,code.length)))+'</span>';i=j+1;continue;}
+    if(c==='#'){let j=code.indexOf('\n',i);if(j<0)j=code.length;
+      out+='<span class="cm">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[0-9]/.test(c)&&!/[A-Za-z0-9_]/.test(code[i-1]||' ')){
+      let j=i;while(j<code.length&&/[0-9.]/.test(code[j]))j++;
+      out+='<span class="n">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[A-Za-z_]/.test(c)){
+      let j=i;while(j<code.length&&/[A-Za-z0-9_]/.test(code[j]))j++;
+      const w=code.slice(i,j);
+      out+=KW.test(w)?'<span class="k">'+esc(w)+'</span>'
+          :BI.test(w)?'<span class="b">'+esc(w)+'</span>':esc(w);i=j;continue;}
+    out+=esc(c);i++;
+  }
+  return out;
+}
+function rich(s){return (s||'').replace(/`([^`]+)`/g,(m,c)=>'<span class="ic">'+esc(c)+'</span>');}
+function codeBlock(c,out){
+  let h='<pre>'+hl(c)+'</pre>';
+  if(out!==undefined)h+='<div class="out"><span class="lb">屏幕上出现</span>'+
+    (out===''?'<span class="v none">（什么都没有）</span>':'<span class="v">'+esc(out)+'</span>')+'</div>';
+  return h;
+}
+
+const LTR=['A','B','C','D','E'];
+const KEY='cs50p_review_8';
+let cards=CHAPTERS[0].cards.slice();
+let idx=0, answered=false, wrongIdx=[], rightCnt=0, quizTotal=0, redo=false;
+cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+
+const stage=document.getElementById('stage');
+const dock=document.getElementById('dock');
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify({idx,wrongIdx,rightCnt}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(d&&d.idx>0&&d.idx<cards.length){idx=d.idx;wrongIdx=d.wrongIdx||[];rightCnt=d.rightCnt||0;}}catch(e){}}
+
+function render(){
+  const c=cards[idx];
+  if(!c){renderFin();return;}
+  answered=false;
+  document.getElementById('prog').textContent=(idx+1)+' / '+cards.length;
+  document.getElementById('barFill').style.width=(idx/cards.length*100)+'%';
+  document.getElementById('chTitle').textContent=redo?'重做错题 · 第8讲':'CS50P · '+CHAPTERS[0].name;
+
+  let h='<div class="card">';
+  if(c.kicker)h+='<div class="kicker">'+esc(c.kicker)+'</div>';
+  if(c.h)h+='<h2>'+esc(c.h)+'</h2>';
+  if(c.code)h+=codeBlock(c.code,c.out);
+  if(c.t==='teach'){
+    h+='<div class="body">'+c.body+'</div>';
+  }else{
+    h+='<div class="q">'+esc(c.q)+'</div><div class="opts" id="opts">';
+    c.opts.forEach((o,i)=>{
+      h+='<button class="opt" data-i="'+i+'"><span class="ltr">'+LTR[i]+'</span>'+
+         '<span class="txt">'+rich(o.a)+'</span></button>';
+    });
+    h+='</div><div id="expSlot"></div>';
+  }
+  h+='</div>';
+  stage.innerHTML=h;
+  window.scrollTo(0,0);
+
+  if(c.t==='quiz'){
+    document.getElementById('opts').querySelectorAll('.opt')
+      .forEach(b=>b.addEventListener('click',()=>pick(+b.dataset.i)));
+    dock.innerHTML='<button class="btn" id="next" disabled>先选一个</button>';
+  }else{
+    dock.innerHTML='<button class="btn" id="next">'+(idx===cards.length-1?'看结果':'懂了，继续')+'</button>';
+    document.getElementById('next').onclick=nextCard;
+  }
+  save();
+}
+
+function pick(i){
+  if(answered)return;
+  answered=true;
+  const c=cards[idx], right=c.opts.findIndex(o=>o.ok), good=(i===right);
+  const btns=document.getElementById('opts').querySelectorAll('.opt');
+  btns.forEach((b,k)=>{
+    b.disabled=true;
+    if(k===right)b.classList.add('ok');
+    else if(k===i)b.classList.add('no');
+    else b.classList.add('fade');
+  });
+  if(good){rightCnt++;}
+  else if(!wrongIdx.includes(idx)&&!redo){wrongIdx.push(idx);}
+
+  let e='<div class="exp '+(good?'g':'r')+'">';
+  e+='<div class="hd">'+(good?'✓ 对了':'✗ 选的是 '+LTR[i])+'</div>';
+  if(!good&&c.opts[i].why)e+='<p>'+rich(c.opts[i].why)+'</p><div class="more">'+rich(c.exp)+'</div>';
+  else e+=rich(c.exp);
+  e+='</div>';
+  document.getElementById('expSlot').innerHTML=e;
+
+  const n=document.getElementById('next');
+  n.disabled=false;
+  n.textContent=(idx===cards.length-1?'看结果':'下一题');
+  n.onclick=nextCard;
+  n.scrollIntoView({block:'nearest'});
+}
+
+function nextCard(){idx++;save();render();}
+
+function renderFin(){
+  document.getElementById('barFill').style.width='100%';
+  document.getElementById('prog').textContent='完成';
+  const w=wrongIdx.length;
+  stage.innerHTML='<div class="card fin">'+
+    '<div class="big">'+(w===0?'🎉':'📗')+'</div>'+
+    '<h2>'+(w===0?'一题没错':'第8讲复习完了')+'</h2>'+
+    '<div class="score"><em>'+rightCnt+'</em> / '+quizTotal+' 题答对</div>'+
+    '<div class="body" style="text-align:left;margin-top:14px">'+
+    (w>0?'<p>有 <b>'+w+'</b> 题答错。错的那几题正是没想通的地方，重做一遍比往下学新的更划算。</p>'
+        :'<p>全对。挑一两段代码去 Termux 里敲 <b>python</b> 亲手跑一遍，改改参数看结果怎么变。</p>')+'<a class="golink" href="cs50p-9.html">第9讲 · 杂项 →</a>'+
+    '</div></div>';
+  let d='';
+  if(w>0)d+='<button class="btn" id="redo">重做那 '+w+' 题</button>';
+  d+='<button class="btn '+(w>0?'ghost':'')+'" id="again">'+(w>0?'从头':'从头再来一遍')+'</button>';
+  dock.innerHTML=d;
+  if(w>0)document.getElementById('redo').onclick=()=>{
+    const list=wrongIdx.slice();
+    cards=list.map(i=>CHAPTERS[0].cards[i]);
+    quizTotal=cards.length;rightCnt=0;wrongIdx=[];idx=0;redo=true;render();
+  };
+  document.getElementById('again').onclick=()=>{
+    cards=CHAPTERS[0].cards.slice();
+    quizTotal=0;cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+    rightCnt=0;wrongIdx=[];idx=0;redo=false;
+    try{localStorage.removeItem(KEY);}catch(e){}
+    render();
+  };
+  try{localStorage.removeItem(KEY);}catch(e){}
+}
+
+load();
+render();
+</script>
+</body>
+</html>

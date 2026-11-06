@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS50P 复习 · 第4讲 库</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#e8a84c;--accent-dim:rgba(232,168,76,.12);
+  --text:#e8e9f0;--dim:#8890a8;
+  --ok:#4caf82;--ok-bg:rgba(76,175,130,.12);
+  --no:#e85c5c;--no-bg:rgba(232,92,92,.12);
+  --dock-h:76px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);min-height:100vh;
+  font-family:system-ui,-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.75;padding-bottom:calc(var(--dock-h) + 20px);}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px;}
+
+/* 顶栏 */
+.top{position:sticky;top:0;z-index:10;background:var(--bg);padding:14px 16px 10px;}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.top h1{font-size:16px;font-weight:600;}
+.top .sub{font-size:12px;color:var(--dim);white-space:nowrap;}
+.bar{height:3px;background:var(--surface2);border-radius:2px;margin-top:9px;overflow:hidden;}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .35s;}
+.back{display:inline-flex;align-items:center;min-height:44px;font-size:13px;
+  color:var(--dim);text-decoration:none;}
+.back:active{color:var(--accent);}
+
+/* 卡片 */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:20px 18px;margin-top:6px;}
+.kicker{font-size:12px;letter-spacing:.1em;color:var(--accent);font-weight:600;margin-bottom:10px;}
+.card h2{font-size:18px;font-weight:600;line-height:1.5;margin-bottom:12px;}
+.body{font-size:15px;color:var(--text);}
+.body p{margin:10px 0;}
+.body p:first-child{margin-top:0;}
+.body b{color:var(--accent);font-weight:600;}
+.body .ic{font-family:var(--mono);font-size:13px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:#e8e9f0;}
+.body ul{margin:10px 0;padding-left:0;list-style:none;}
+.body li{margin:8px 0;padding-left:16px;position:relative;}
+.body li:before{content:"·";position:absolute;left:4px;color:var(--accent);font-weight:700;}
+.golink{display:flex;align-items:center;justify-content:center;min-height:48px;
+  margin-top:14px;border-radius:11px;background:var(--accent-dim);
+  border:1px solid var(--accent);color:var(--accent);font-weight:600;
+  font-size:15px;text-decoration:none;}
+
+/* 代码块 */
+pre{white-space:pre-wrap;word-break:break-word;background:#0b0d13;border:1px solid var(--border);border-radius:10px;
+  padding:14px 14px;margin:14px 0;overflow-x:auto;
+  font-family:var(--mono);font-size:14px;line-height:1.9;}
+pre .k{color:#c792ea;}
+pre .s{color:#7ec98f;}
+pre .n{color:#f0a35e;}
+pre .b{color:#82aaff;}
+pre .cm{color:#5c6482;font-style:italic;}
+
+/* 屏幕输出 */
+.out{margin:-6px 0 14px;padding:10px 13px;border-radius:0 0 10px 10px;
+  background:#141821;border:1px solid var(--border);border-top:none;
+  font-family:var(--mono);font-size:13.5px;color:#9aa4c0;line-height:1.7;}
+.out .lb{font-family:inherit;font-size:11px;letter-spacing:.08em;color:#5c6482;
+  display:block;margin-bottom:3px;}
+.out .v{display:block;color:#e8e9f0;white-space:pre-wrap;}
+.out .v.none{color:#5c6482;font-style:italic;}
+
+/* 选项 */
+.q{font-size:16px;font-weight:600;margin:4px 0 14px;line-height:1.6;}
+.opts{display:flex;flex-direction:column;gap:10px;}
+.opt{display:flex;align-items:flex-start;gap:11px;width:100%;min-height:52px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:left;color:var(--text);cursor:pointer;
+  font-family:inherit;font-size:15px;line-height:1.6;transition:border-color .15s,background .15s;}
+.opt .ltr{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--border);
+  color:var(--dim);font-size:12px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;margin-top:2px;}
+.opt .txt{flex:1;}
+.opt .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.opt:disabled{cursor:default;}
+.opt.ok{border-color:var(--ok);background:var(--ok-bg);}
+.opt.ok .ltr{background:var(--ok);color:#fff;}
+.opt.no{border-color:var(--no);background:var(--no-bg);}
+.opt.no .ltr{background:var(--no);color:#fff;}
+.opt.fade{opacity:.45;}
+
+/* 讲解 */
+.exp{margin-top:14px;padding:14px 15px;border-radius:11px;background:var(--surface2);
+  border-left:3px solid var(--border);font-size:14px;line-height:1.8;color:#c9cee0;}
+.exp.g{border-left-color:var(--ok);}
+.exp.r{border-left-color:var(--no);}
+.exp .hd{font-size:13px;font-weight:700;margin-bottom:7px;letter-spacing:.03em;}
+.exp.g .hd{color:var(--ok);}
+.exp.r .hd{color:var(--no);}
+.exp b{color:var(--accent);font-weight:600;}
+.exp .ic{font-family:var(--mono);font-size:13px;background:#0b0d13;
+  border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.exp .more{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.exp .ic.blk{display:block;padding:9px 11px;margin:7px 0;line-height:1.6;
+  white-space:pre-wrap;word-break:break-word;color:#e88a8a;}
+
+/* 吸底 */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:linear-gradient(to top,var(--bg) 65%,rgba(15,17,23,0));
+  padding:14px 16px 18px;}
+.dock-in{max-width:560px;margin:0 auto;display:flex;gap:10px;}
+.btn{flex:1;min-height:48px;border:none;border-radius:11px;background:var(--accent);
+  color:#1a1206;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn:disabled{opacity:.35;cursor:default;}
+.btn.ghost{flex:0 0 auto;padding:0 18px;background:var(--surface2);
+  color:var(--dim);border:1px solid var(--border);font-weight:500;font-size:14px;}
+
+/* 结算 */
+.fin{text-align:center;padding:16px 4px 4px;}
+.fin .big{font-size:44px;}
+.fin h2{margin:10px 0 6px;}
+.fin .score{font-size:15px;color:var(--dim);margin-bottom:6px;}
+.fin .score em{color:var(--accent);font-style:normal;font-weight:700;font-size:22px;}
+</style>
+</head>
+<body>
+
+<div class="top wrap">
+  <div class="top-row">
+    <h1 id="chTitle">CS50P · 第4讲 库</h1>
+    <div class="sub" id="prog">1 / 1</div>
+  </div>
+  <div class="bar"><i id="barFill" style="width:0%"></i></div>
+</div>
+
+<div class="wrap"><a class="back" href="cs50p-3.html">‹ 回第3讲 异常</a></div>
+<div class="wrap" id="stage"></div>
+
+<div class="dock"><div class="dock-in" id="dock"></div></div>
+
+<script>
+/* ============ 题目数据 ============
+   卡片两种：
+     {t:'teach', kicker, h, body, code, out}           只讲，不问
+     {t:'quiz',  kicker, code, out, q, opts:[...], exp} 选择题
+   out  ：代码块下面接一条「屏幕上会出现什么」；写 '' 表示「什么都没有」
+   opts ：每一项 {a:'选项文字', ok:true/false, why:'选错时单独讲这一项错在哪'}
+   ★ 所有代码的输出和报错原文，都用本机 python3 3.14.6 实跑核对过，不是凭记忆写的
+==================================== */
+const CHAPTERS = [{
+name:'第4讲 库',
+cards:[
+{t:'teach',kicker:'这一讲讲什么',h:'库：站在别人的肩膀上',
+ body:`<p>库（Python 里叫<b>模块</b>）就是别人或你自己写好的、可以复用的代码。</p>
+<ul>
+<li>Python 自带的：<span class="ic">random</span>、<span class="ic">statistics</span>、<span class="ic">sys</span>、<span class="ic">json</span></li>
+<li>第三方的：用 <span class="ic">pip install</span> 装，比如 cowsay、requests</li>
+<li>自己写的：一个 .py 文件就能当模块导入</li>
+</ul>`},
+
+{t:'teach',kicker:'第 1 步',h:'import 和 from ... import',
+ code:`import random
+coin = random.choice(["heads", "tails"])
+
+from random import choice
+coin = choice(["heads", "tails"])`,
+ body:`<ul>
+<li><span class="ic">import random</span>：导入整个模块，用的时候写 <span class="ic">random.choice</span></li>
+<li><span class="ic">from random import choice</span>：只把 choice 这个名字拿进来，直接写 <span class="ic">choice</span></li>
+</ul>
+<p>第一种更安全：如果你自己也有个叫 choice 的变量，不会撞名。第二种更短。老师说看情况选。</p>`},
+
+{t:'teach',kicker:'第 2 步',h:'random 的三个函数',
+ code:`import random
+print(random.choice(["heads", "tails"]))
+print(random.randint(1, 10))
+cards = ["jack", "queen", "king"]
+random.shuffle(cards)
+print(cards)`,
+ body:`<ul>
+<li><span class="ic">choice(列表)</span>：等概率随机挑一个</li>
+<li><span class="ic">randint(a, b)</span>：a 到 b 之间的随机整数，<b>两头都包含</b></li>
+<li><span class="ic">shuffle(列表)</span>：把列表<b>原地打乱</b>，不返回新列表</li>
+</ul>
+<p>每次运行结果都不同，所以这里不标「屏幕上出现」。</p>`},
+
+{t:'quiz',kicker:'这题是个坎',
+ code:`import random
+cards = ["A", "B", "C"]
+x = random.shuffle(cards)
+print(x)`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'`None`',ok:true},
+  {a:'打乱后的列表，比如 `[\'C\', \'A\', \'B\']`',why:'shuffle 是<b>原地打乱</b> cards 本身，它的返回值是 None。打乱的结果要看 cards，不是 x。'},
+  {a:'`[\'A\', \'B\', \'C\']`',why:'x 不是列表。shuffle 不返回任何东西。'},
+  {a:'报错',why:'代码合法，只是 x 拿到的是 None。'}],
+ exp:'shuffle 改的是传进去的列表本身。想看结果就 `print(cards)`。'},
+
+{t:'teach',kicker:'第 3 步',h:'statistics：算平均数',
+ code:`import statistics
+print(statistics.mean([100, 90]))`,
+ out:'95',
+ body:`<p>statistics 模块里有平均数 mean、中位数 median 等。老师用它算两次考试 100 和 90 的平均分。</p>`},
+
+{t:'teach',kicker:'第 4 步',h:'sys.argv：命令行参数',
+ code:`import sys
+# 运行：python name.py David
+print("hello, my name is", sys.argv[1])`,
+ body:`<p>运行程序时可以在文件名后面直接跟几个词，它们存在 <span class="ic">sys.argv</span> 这个<b>列表</b>里：</p>
+<ul>
+<li><span class="ic">sys.argv[0]</span> 是程序名 name.py</li>
+<li><span class="ic">sys.argv[1]</span> 才是第一个参数 David</li>
+</ul>
+<p>好处是不用一步步回答提问，一条命令就能跑完，方便自动化。名字里带空格时用引号括起来：<span class="ic">python name.py "David Malan"</span>。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`# 运行：python greet.py Harry Ron
+import sys
+print(len(sys.argv))`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'`3`',ok:true},
+  {a:'`2`',why:'别忘了 sys.argv[0] 是<b>程序名</b> greet.py 本身，也算一个。'},
+  {a:'`4`',why:'python 这个词不算，只有 greet.py、Harry、Ron 三个。'},
+  {a:'`1`',why:'后面跟了两个词，它们都在 sys.argv 里。'}],
+ exp:'sys.argv 是 [\'greet.py\', \'Harry\', \'Ron\']，长度 3。'},
+
+{t:'teach',kicker:'第 5 步',h:'检查参数个数，sys.exit 提前退出',
+ code:`import sys
+if len(sys.argv) < 2:
+    sys.exit("Too few arguments")
+print("hello,", sys.argv[1])`,
+ body:`<p>用户什么都不给时，直接访问 <span class="ic">sys.argv[1]</span> 会报 <b>IndexError</b>（索引超出范围）。</p>
+<p>与其用 try/except，老师更推荐先检查长度。不合格就 <span class="ic">sys.exit("提示")</span>：打印提示并<b>立刻结束整个程序</b>，后面的代码不再执行。</p>
+<p>这样后面「真正干活」的代码就不用缩在 else 里。</p>`},
+
+{t:'teach',kicker:'第 6 步',h:'切片：取列表的一段',
+ code:`args = ["name.py", "David", "Carter", "Rongxin"]
+print(args[1:])
+print(args[1:-1])`,
+ out:"['David', 'Carter', 'Rongxin']\n['David', 'Carter']",
+ body:`<p><span class="ic">列表[开始:结束]</span> 取出一段，叫<b>切片</b>：</p>
+<ul>
+<li>包含开始，<b>不含结束</b></li>
+<li>结束不写就取到末尾</li>
+<li>负数从末尾倒着数，-1 是最后一个</li>
+</ul>
+<p>老师用 <span class="ic">sys.argv[1:]</span> 跳过程序名，只给真正的名字打名牌。</p>`},
+
+{t:'quiz',kicker:'练一下',
+ code:`nums = [10, 20, 30, 40]
+print(nums[1:3])`,
+ q:'屏幕上会出现什么？',
+ opts:[
+  {a:'`[20, 30]`',ok:true},
+  {a:'`[10, 20, 30]`',why:'索引从 0 开始，[1] 是 20 不是 10。'},
+  {a:'`[20, 30, 40]`',why:'切片<b>不包含结束位置</b>：到索引 3（也就是 40）之前就停。'},
+  {a:'`[10, 20]`',why:'起点是索引 1，也就是 20。'}],
+ exp:'[1:3] 取索引 1 和 2，不含 3。'},
+
+{t:'teach',kicker:'第 7 步',h:'pip 装第三方包；requests 调 API',
+ code:`# 终端里：pip install requests
+import requests
+r = requests.get("https://itunes.apple.com/search?entity=song&limit=1&term=weezer")
+o = r.json()
+for result in o["results"]:
+    print(result["trackName"])`,
+ body:`<p><span class="ic">pip</span> 是 Python 的包管理器，一条命令就能装别人写好的包。</p>
+<p>requests 能像浏览器一样访问网址。很多网站提供 <b>API</b>，返回 <b>JSON</b> 格式的数据，<span class="ic">.json()</span> 把它变成 Python 的字典和列表。</p>
+<p>拿不准结构时，老师用 <span class="ic">json.dumps(o, indent=2)</span> 把它排版好看再读。</p>`},
+
+{t:'teach',kicker:'第 8 步',h:'自己写模块，和 __name__ == "__main__"',
+ code:`# sayings.py
+def hello(name):
+    print(f"hello, {name}")
+
+def main():
+    hello("world")
+
+if __name__ == "__main__":
+    main()`,
+ body:`<p>任何 .py 文件都能被别的文件 <span class="ic">from sayings import hello</span> 导入。</p>
+<p>问题：导入时 Python 会把整个文件跑一遍，如果最后一行直接写 <span class="ic">main()</span>，<b>测试代码也会跟着执行</b>。</p>
+<p>解决：<span class="ic">__name__</span> 在直接运行这个文件时等于 <span class="ic">"__main__"</span>，被别人导入时等于模块名。所以加上这个 if，只有直接运行时才调用 main。</p>`},
+
+{t:'teach',kicker:'动手',h:'去 Termux 试试',
+ body:`<ul>
+<li><span class="ic">python -c "import sys; print(sys.argv)" a b</span> 看看 argv 长什么样</li>
+<li>写个只打印 <span class="ic">__name__</span> 的文件，分别直接运行和被 import，看它的值</li>
+<li><span class="ic">pip install cowsay</span>，然后 <span class="ic">import cowsay; cowsay.cow("hi")</span></li>
+</ul>`}
+]}];
+
+/* ============ 渲染 ============ */
+const KW=/^(if|else|elif|for|while|def|return|import|from|in|not|and|or|is|True|False|None|class|try|except|finally|with|as|pass|break|continue|lambda|global|yield|raise|assert|match|case)$/;
+const BI=/^(print|input|len|int|str|float|bool|list|dict|range|type|open|sum|min|max|abs|round)$/;
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hl(code){
+  let out='',i=0;
+  while(i<code.length){
+    const c=code[i];
+    if(c==='"'||c==="'"){let j=i+1;while(j<code.length&&code[j]!==c)j++;
+      out+='<span class="s">'+esc(code.slice(i,Math.min(j+1,code.length)))+'</span>';i=j+1;continue;}
+    if(c==='#'){let j=code.indexOf('\n',i);if(j<0)j=code.length;
+      out+='<span class="cm">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[0-9]/.test(c)&&!/[A-Za-z0-9_]/.test(code[i-1]||' ')){
+      let j=i;while(j<code.length&&/[0-9.]/.test(code[j]))j++;
+      out+='<span class="n">'+esc(code.slice(i,j))+'</span>';i=j;continue;}
+    if(/[A-Za-z_]/.test(c)){
+      let j=i;while(j<code.length&&/[A-Za-z0-9_]/.test(code[j]))j++;
+      const w=code.slice(i,j);
+      out+=KW.test(w)?'<span class="k">'+esc(w)+'</span>'
+          :BI.test(w)?'<span class="b">'+esc(w)+'</span>':esc(w);i=j;continue;}
+    out+=esc(c);i++;
+  }
+  return out;
+}
+function rich(s){return (s||'').replace(/`([^`]+)`/g,(m,c)=>'<span class="ic">'+esc(c)+'</span>');}
+function codeBlock(c,out){
+  let h='<pre>'+hl(c)+'</pre>';
+  if(out!==undefined)h+='<div class="out"><span class="lb">屏幕上出现</span>'+
+    (out===''?'<span class="v none">（什么都没有）</span>':'<span class="v">'+esc(out)+'</span>')+'</div>';
+  return h;
+}
+
+const LTR=['A','B','C','D','E'];
+const KEY='cs50p_review_4';
+let cards=CHAPTERS[0].cards.slice();
+let idx=0, answered=false, wrongIdx=[], rightCnt=0, quizTotal=0, redo=false;
+cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+
+const stage=document.getElementById('stage');
+const dock=document.getElementById('dock');
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify({idx,wrongIdx,rightCnt}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(d&&d.idx>0&&d.idx<cards.length){idx=d.idx;wrongIdx=d.wrongIdx||[];rightCnt=d.rightCnt||0;}}catch(e){}}
+
+function render(){
+  const c=cards[idx];
+  if(!c){renderFin();return;}
+  answered=false;
+  document.getElementById('prog').textContent=(idx+1)+' / '+cards.length;
+  document.getElementById('barFill').style.width=(idx/cards.length*100)+'%';
+  document.getElementById('chTitle').textContent=redo?'重做错题 · 第4讲':'CS50P · '+CHAPTERS[0].name;
+
+  let h='<div class="card">';
+  if(c.kicker)h+='<div class="kicker">'+esc(c.kicker)+'</div>';
+  if(c.h)h+='<h2>'+esc(c.h)+'</h2>';
+  if(c.code)h+=codeBlock(c.code,c.out);
+  if(c.t==='teach'){
+    h+='<div class="body">'+c.body+'</div>';
+  }else{
+    h+='<div class="q">'+esc(c.q)+'</div><div class="opts" id="opts">';
+    c.opts.forEach((o,i)=>{
+      h+='<button class="opt" data-i="'+i+'"><span class="ltr">'+LTR[i]+'</span>'+
+         '<span class="txt">'+rich(o.a)+'</span></button>';
+    });
+    h+='</div><div id="expSlot"></div>';
+  }
+  h+='</div>';
+  stage.innerHTML=h;
+  window.scrollTo(0,0);
+
+  if(c.t==='quiz'){
+    document.getElementById('opts').querySelectorAll('.opt')
+      .forEach(b=>b.addEventListener('click',()=>pick(+b.dataset.i)));
+    dock.innerHTML='<button class="btn" id="next" disabled>先选一个</button>';
+  }else{
+    dock.innerHTML='<button class="btn" id="next">'+(idx===cards.length-1?'看结果':'懂了，继续')+'</button>';
+    document.getElementById('next').onclick=nextCard;
+  }
+  save();
+}
+
+function pick(i){
+  if(answered)return;
+  answered=true;
+  const c=cards[idx], right=c.opts.findIndex(o=>o.ok), good=(i===right);
+  const btns=document.getElementById('opts').querySelectorAll('.opt');
+  btns.forEach((b,k)=>{
+    b.disabled=true;
+    if(k===right)b.classList.add('ok');
+    else if(k===i)b.classList.add('no');
+    else b.classList.add('fade');
+  });
+  if(good){rightCnt++;}
+  else if(!wrongIdx.includes(idx)&&!redo){wrongIdx.push(idx);}
+
+  let e='<div class="exp '+(good?'g':'r')+'">';
+  e+='<div class="hd">'+(good?'✓ 对了':'✗ 选的是 '+LTR[i])+'</div>';
+  if(!good&&c.opts[i].why)e+='<p>'+rich(c.opts[i].why)+'</p><div class="more">'+rich(c.exp)+'</div>';
+  else e+=rich(c.exp);
+  e+='</div>';
+  document.getElementById('expSlot').innerHTML=e;
+
+  const n=document.getElementById('next');
+  n.disabled=false;
+  n.textContent=(idx===cards.length-1?'看结果':'下一题');
+  n.onclick=nextCard;
+  n.scrollIntoView({block:'nearest'});
+}
+
+function nextCard(){idx++;save();render();}
+
+function renderFin(){
+  document.getElementById('barFill').style.width='100%';
+  document.getElementById('prog').textContent='完成';
+  const w=wrongIdx.length;
+  stage.innerHTML='<div class="card fin">'+
+    '<div class="big">'+(w===0?'🎉':'📗')+'</div>'+
+    '<h2>'+(w===0?'一题没错':'第4讲复习完了')+'</h2>'+
+    '<div class="score"><em>'+rightCnt+'</em> / '+quizTotal+' 题答对</div>'+
+    '<div class="body" style="text-align:left;margin-top:14px">'+
+    (w>0?'<p>有 <b>'+w+'</b> 题答错。错的那几题正是没想通的地方，重做一遍比往下学新的更划算。</p>'
+        :'<p>全对。挑一两段代码去 Termux 里敲 <b>python</b> 亲手跑一遍，改改参数看结果怎么变。</p>')+'<a class="golink" href="cs50p-5.html">第5讲 · 单元测试 →</a>'+
+    '</div></div>';
+  let d='';
+  if(w>0)d+='<button class="btn" id="redo">重做那 '+w+' 题</button>';
+  d+='<button class="btn '+(w>0?'ghost':'')+'" id="again">'+(w>0?'从头':'从头再来一遍')+'</button>';
+  dock.innerHTML=d;
+  if(w>0)document.getElementById('redo').onclick=()=>{
+    const list=wrongIdx.slice();
+    cards=list.map(i=>CHAPTERS[0].cards[i]);
+    quizTotal=cards.length;rightCnt=0;wrongIdx=[];idx=0;redo=true;render();
+  };
+  document.getElementById('again').onclick=()=>{
+    cards=CHAPTERS[0].cards.slice();
+    quizTotal=0;cards.forEach(c=>{if(c.t==='quiz')quizTotal++;});
+    rightCnt=0;wrongIdx=[];idx=0;redo=false;
+    try{localStorage.removeItem(KEY);}catch(e){}
+    render();
+  };
+  try{localStorage.removeItem(KEY);}catch(e){}
+}
+
+load();
+render();
+</script>
+</body>
+</html>
