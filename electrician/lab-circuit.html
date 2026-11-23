@@ -1010,7 +1010,7 @@ function buildQ(c,q,qi){
         qSave(); render(); paintProg(); bumpCount();
       };
       go.addEventListener('click',submit);
-      inp.addEventListener('keydown',e=>{ if(e.key==='Enter') submit(); });
+      inp.addEventListener('keydown',e=>{ if(!e.isComposing&&e.keyCode!==229&&e.key==='Enter') submit(); });
     }
     const re = box.querySelector('.re');
     if(re) re.addEventListener('click',()=>{ delete QST[key]; qSave(); render(); paintProg(); bumpCount(); });

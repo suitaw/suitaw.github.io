@@ -448,7 +448,7 @@ function build(){
   el.title.onclick=()=>toggleLessons();
   el.send.onclick=()=>submit();
   el.input.addEventListener('keydown',e=>{
-    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit();}
+    if(!e.isComposing&&e.keyCode!==229&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit();}
   });
   // 键盘弹出会把面板压矮，不滚一下最后几条就看不见了
   el.input.addEventListener('focus',()=>setTimeout(scrollBottom,300));
