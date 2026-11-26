@@ -62,8 +62,8 @@ ol.steps li{color:var(--ink)}ol.steps li.done{color:var(--mut)}ol.steps li.cur{c
   <div id="info"></div>
   <div class="row" id="rowM">
     <span class="grp" id="rowV"><button id="prev">◀</button><span id="cnt"></span><button id="next">▶</button><button id="rev">对照</button></span>
-    <span class="grp" id="rowW" hidden><button id="hint">提示</button><button id="del">拆这根</button><button id="reset">重来</button></span>
-    <span class="grp" id="rowE1" hidden><button id="edel">拆这根</button><button id="eclr">全拆</button><button id="edone">接线完成</button></span>
+    <span class="grp" id="rowW" hidden><button id="hint">提示</button><button id="del">撤销</button><button id="reset">重来</button></span>
+    <span class="grp" id="rowE1" hidden><button id="edel">撤销</button><button id="eclr">全拆</button><button id="edone">接线完成</button></span>
     <span class="grp" id="rowE2" hidden><button id="epen">验电笔</button><button id="eglove">摘手套</button><button id="erep">报告</button><button id="esub">交卷</button></span>
     <span class="sp"></span>
     <button id="mode">自己接</button><button id="exam">考场</button><button id="snd">🔊</button>
@@ -920,6 +920,7 @@ function tagOf(id){
 /* ══ 状态 → 画面 ══ */
 const UI = {note:'', noteT:0, sel:0, step:false, sig:'', wire:false, pend:null, hint:0, msg:'', err:0};
 const DONE = {};               /* 自己接：已经接对的线 id */
+const DORD = [];                 /* 自己接：接对的先后顺序（撤销用） */
 const LS = 'elec_k32_3d_done';
 try{ (JSON.parse(localStorage.getItem(LS)||'[]')||[]).forEach(function(i){ if(i>=1 && i<=14) DONE[i]=1; }); }catch(e){}
 function doneN(){ return Object.keys(DONE).length; }
@@ -939,7 +940,7 @@ function termTap(id){
   const w = WIRES.filter(function(w){ return (w.from===a && w.to===id) || (w.from===id && w.to===a); })[0];
   if(w && DONE[w.id]){ UI.msg='这根已经接过了'; return; }
   if(w){
-    DONE[w.id]=1; applyDone(); click(1500, 0.05, 0.5); buzz(18);
+    DONE[w.id]=1; DORD.push(w.id); applyDone(); click(1500, 0.05, 0.5); buzz(18);
     UI.msg = doneN()===14 ? '🎉 <b>14 根全部接对</b>，接错 '+UI.err+' 次。点断路器 QF 合闸试车'
       : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）：'+tname(w.from)+' → '+tname(w.to);
     return;
@@ -1017,7 +1018,7 @@ function refresh(){
   });
   const exW = EX.on && EX.phase==='wire', exT = EX.on && EX.phase==='trial';
   for(const id in TERMS){ TERMS[id].mark.visible = (UI.wire && !SIM.qf) || exW || (exT && EX.pen && (id==='fu4-out' || id==='fu5-out')); TERMS[id].pick.userData.off = !(UI.wire || EX.on); }
-  document.getElementById('del').disabled = !(UI.sel && DONE[UI.sel]);
+  document.getElementById('del').disabled = !doneN();
   /* 考场道具 */
   ['mY','mG','mR'].forEach(function(id, i){ MAINS[MOT_SEG+i].mesh.visible = !EX.on || !!EX.con[id]; });
   for(const id in XT) XT[id].meshes.forEach(function(m){ m.visible = !!(EX.on && EX.con[id]); });
@@ -1040,7 +1041,7 @@ function refresh(){
   else if(EX.on){
     const st2 = '<div class="st">'+(EX.phase==='wire' ? '盘内接线 · 已接 '+EX.wires.length+' 根' :
       '手套'+(EX.glove ? '戴着' : '摘了')+' · '+(EX.pen ? '验电笔在手 · ' : '')+'总开关'+(EX.main ? '合' : '分')+' · QF '+(SIM.qf ? '合' : '分')+' · 电动机'+(SIM.motor>0?'正转':SIM.motor<0?'反转':'停'))+'</div>';
-    const body = s ? '你接的线：'+tname(s.w.from)+' → '+tname(s.w.to)+'（点「拆这根」拆掉）' : (SIM.blown ? '⚠ '+SIM.blown+'。分闸后重新合闸才恢复' : EX.msg);
+    const body = s ? '你接的线：'+tname(s.w.from)+' → '+tname(s.w.to)+'（点它可以拆掉）' : (SIM.blown ? '⚠ '+SIM.blown+'。分闸后重新合闸才恢复' : EX.msg);
     info.innerHTML = (body ? body+'<br>' : '')+(EX.guide ? '<span style="color:var(--mut)">下一步：</span>'+exNext() : '<span style="color:var(--mut)">提示已关（点这里看步骤、打开提示）</span>')+st2;
   }
   else if(UI.wire && !s){
@@ -1559,13 +1560,16 @@ function up(e){
   else if(a && a.type==='sign') exTapSign();
   else if(a && a.type==='ex') exTapPoint(a.id);
   else if(a && a.type==='wire' && EX.on){ if(EX.phase==='wire'){ UI.sel = UI.sel===a.id ? 0 : a.id; UI.pend = null; EX.delMode = false;
-    const w = UI.sel && EX.wires.filter(function(x){ return x.id===UI.sel; })[0]; EX.msg = w ? '选中了：'+tname(w.from)+' → '+tname(w.to)+'。点「拆这根」拆掉' : ''; } }
+    UI.sel = 0; const w = EX.wires.filter(function(x){ return x.id===a.id; })[0];
+    if(w) menu('这根线：'+tname(w.from)+' → '+tname(w.to), [['拆掉这根', function(){ exDelWire(w.id); exSave(); EX.msg = '拆掉了：'+tname(w.from)+' → '+tname(w.to); click(900, 0.04, 0.4); }]]); } }
   else if(a && a.type==='fr'){ ANIM.fr.press = 1; if(!SIM.frTrip){ simFR(true, now); click(1200, 0.04, 0.5); } }   /* 红：测试，按一下脱扣 */
   else if(a && a.type==='frreset'){ ANIM.frReset.v = 1; if(SIM.frTrip){ simFR(false, now); click(1500, 0.04, 0.5); } else note('热继电器没脱扣，复位钮按了也没变化'); }
   else if(a && a.type==='frdial'){ const k = (FR_SET.indexOf(SIM.frSet)+1) % FR_SET.length; SIM.frSet = FR_SET[k]; click(2400, 0.02, 0.3);
     note('整定电流调到 <b>'+SIM.frSet.toFixed(1)+'A</b>。电动机 0.75kW 额定约 2A，按 1～1.05 倍应调 <b>2.0～2.1A</b>'+(SIM.frSet<2 ? '（偏小：正常运转也可能误跳）' : SIM.frSet>2.1 ? '（偏大：过载时保护不及时）' : '（合适）')); }
   else if(a && a.type==='fuse'){ simFuse(a.id, now); click(900, 0.05, 0.5); buzz(12); }
   else if(a && a.type==='wire' && UI.rev && !EX.on){ revTap(a.id); }
+  else if(a && a.type==='wire' && UI.wire && !EX.on && DONE[a.id]){ const w = WIRES.filter(function(x){ return x.id===a.id; })[0];
+    menu('第 '+w.id+' 根：'+tname(w.from)+' → '+tname(w.to), [['拆掉这根', function(){ if(SIM.qf){ UI.msg='⚠ <b>带电不能拆线</b>：先分闸'; return; } delete DONE[w.id]; UI.msg='拆掉了第 '+w.id+' 根'; UI.sel=0; applyDone(); }]]); }
   else if(a && a.type==='wire'){ UI.sel = UI.sel===a.id && !UI.step ? 0 : a.id; UI.step = false; UI.pend = null; UI.hint = 0; }
   else { UI.sel = 0; UI.step = false; UI.pend = null; }
 }
@@ -1622,11 +1626,10 @@ document.getElementById('prev').onclick = function(){ stepTo(UI.sel ? UI.sel-1 :
 document.getElementById('next').onclick = function(){ stepTo(UI.sel+1); };
 cnt.onclick = function(){ UI.sel = 0; UI.step = false; };
 document.getElementById('exam').onclick = function(){ if(EX.on) exExit(); else exEnter(); };
-/* 拆线：选中了线就直接拆；没选中就进「拆线模式」，点端子列出接在它上面的线挑着拆（线细不好点中，端子好点） */
+/* 撤销：拆掉最后接的那根（11-26 他要「像撤销一样」）；要拆别的，直接点那根线 */
 document.getElementById('edel').onclick = function(){
-  if(UI.sel){ exDelWire(UI.sel); exSave(); EX.msg = '拆掉了'; UI.sel = 0; EX.delMode = false; return; }
-  EX.delMode = !EX.delMode; UI.pend = null;
-  EX.msg = EX.delMode ? '拆线：点要拆的那根线<b>任意一头的端子</b>（再点「拆这根」退出）' : '';
+  const w = EX.wires[EX.wires.length-1]; if(!w){ EX.msg = '还没接线'; return; }
+  exDelWire(w.id); exSave(); UI.sel = 0; UI.pend = null; EX.delMode = false; EX.msg = '撤销了：'+tname(w.from)+' → '+tname(w.to); click(900, 0.04, 0.4);
 };
 document.getElementById('edone').onclick = exWireDone;
 /* 盘内接线全拆重来（11-26 他问考场能不能清掉重来） */
@@ -1651,9 +1654,11 @@ document.getElementById('hint').onclick = function(){
   if(!w){ UI.msg='14 根都接完了，点断路器 QF 合闸试车'; return; }
   UI.hint=w.id; UI.msg='提示 · <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）：'+tname(w.from)+' → '+tname(w.to)+'<div class="st">'+GROUPS[w.group][1]+'</div>';
 };
-document.getElementById('del').onclick = function(){
+document.getElementById('del').onclick = function(){   /* 撤销：拆掉最后接对的那根 */
   if(SIM.qf){ UI.msg='⚠ <b>带电不能拆线</b>：先分闸'; UI.sel=0; return; }
-  if(UI.sel && DONE[UI.sel]){ delete DONE[UI.sel]; UI.msg='拆掉了第 '+UI.sel+' 根'; UI.sel=0; applyDone(); }
+  let id = 0; while(DORD.length && !id){ const k = DORD.pop(); if(DONE[k]) id = k; }
+  if(!id){ const ks = Object.keys(DONE).map(Number); if(!ks.length) return; id = Math.max.apply(null, ks); }
+  delete DONE[id]; UI.msg='撤销了第 '+id+' 根'; UI.sel=0; applyDone();
 };
 document.getElementById('reset').onclick = function(){
   if(!doneN() || !confirm('把接好的线全部拆掉，重新来？')) return;
