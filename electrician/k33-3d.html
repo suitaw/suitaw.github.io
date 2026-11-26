@@ -428,16 +428,23 @@ function ferrule(parent, p, q){
 /* 文字贴片：h 是字高（板面单位），平贴在 z 高度上，正对正面 */
 const SMALL = [];              /* 小字（端子号、型号）：镜头拉近了才显示，全景下只会糊成一片 */
 function label(text, x, y, z, h, color, bg, small){
-  const c = document.createElement('canvas'), g = c.getContext('2d'), F = 64;
-  g.font = '700 '+F+'px system-ui,"Noto Sans SC",sans-serif';
-  const tw = Math.ceil(g.measureText(text).width) + 20;
-  c.width = tw; c.height = F+20;
+  /* 11-26 他说字不清楚：常显字至少 12 高；字描一圈边（深字描白、白字描深），压在线上、灰板上也看得清；画 96px 再缩、开满各向异性 */
+  if(!small && !bg && h < 12) h = 12;
+  const c = document.createElement('canvas'), g = c.getContext('2d'), F = 96, P = Math.round(F*0.2);
+  const font = '700 '+F+'px system-ui,"Noto Sans SC",sans-serif';
+  g.font = font;
+  const tw = Math.ceil(g.measureText(text).width) + P*2 + 8;
+  c.width = tw; c.height = F + P*2;
   if(bg){ g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height); }
-  g.font = '700 '+F+'px system-ui,"Noto Sans SC",sans-serif';
-  g.fillStyle = color||'#1f2328'; g.textBaseline = 'middle'; g.textAlign = 'center';
-  g.fillText(text, c.width/2, c.height/2+3);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(h*c.width/c.height, h),
+  const col = color||'#1f2328', hx = /^#[0-9a-f]{6}$/i.test(col) ? col : '#1f2328';
+  const lum = (0.299*parseInt(hx.slice(1,3),16) + 0.587*parseInt(hx.slice(3,5),16) + 0.114*parseInt(hx.slice(5,7),16))/255;
+  g.font = font; g.textBaseline = 'middle'; g.textAlign = 'center';
+  if(!bg){ g.lineJoin = 'round'; g.lineWidth = F*0.2; g.strokeStyle = lum > 0.6 ? 'rgba(25,28,33,0.8)' : 'rgba(255,255,255,0.92)'; g.strokeText(text, c.width/2, c.height/2+4); }
+  g.fillStyle = col; g.fillText(text, c.width/2, c.height/2+4);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities ? renderer.capabilities.getMaxAnisotropy() : 4;
+  const ph = h*c.height/(F*1.3125);                                     /* 字形高度跟原来一样（原来字占贴图 64/84） */
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(ph*c.width/c.height, ph),
     new THREE.MeshBasicMaterial({map:t, transparent:true, depthWrite:false, toneMapped:false}));
   m.position.copy(V(x, y, z)); PARENT.add(m); if(small) SMALL.push(m); return m;
 }
@@ -616,7 +623,7 @@ DEVICES.forEach(function(d){
     rbox(x, y, w, h, 0, 16, MAT.cream, 2);
     [1,2].forEach(function(k){ box(x+w*k/3-0.5, y, 1, h, 0, 17, MAT.grey); });
     [20,56,92].forEach(function(o){ screw(x+o, y+42, 16, 5.6); });
-    label(d.tag, x+w/2, y+h+10, 0.4, 10, '#33383f');
+    label(d.tag, x+w/2, y+h+11, 0.4, 13, '#1f2328');
   }
   if(d.kind==='tube'){                                                  /* H 型四针日光灯：灯架 + 两根并排灯管（一头连通）+ 镇流器 */
     rbox(x, y+28, w, 50, 0, 10, PL(0xf2f2ee, 0.4, {metalness:0.2}), 4);
@@ -633,7 +640,7 @@ DEVICES.forEach(function(d){
     const br = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 33, 24), gm); br.position.copy(V(x+12, y+53, 20)); PARENT.add(br);   /* H 的横杠 */
     rbox(x+20, y+84, 90, 12, 0, 16, MAT.dark, 2);                      /* 镇流器 */
     label('镇流器', x+65, y+90, 16.4, 7, '#dfe3e8');
-    label('H 型日光灯管', x+w/2-20, y+16, 0.4, 11, '#33383f');
+    label('H 型日光灯管', x+w/2-20, y+14, 0.4, 13, '#1f2328');
   }
   if(d.kind==='lterm'){                                                 /* 灯具端子排：4 位，左边接盘里线，右边出厂线去灯 */
     rbox(x, y, w, h, 0, 18, MAT.cream, 2);
@@ -644,7 +651,7 @@ DEVICES.forEach(function(d){
                          : [[x+64,ty],[x+64,y+h+14+4*a[2]],[x+36+4*a[2],y+h+14+4*a[2]],[x+36+4*a[2],y+h+34]];   /* 3、4 → 灯泡灯座 */
       tube(path3([[x+52,ty]].concat(to), 20.6, null, 26+a[2]*2, null, null), 1.8, M(a[0], {roughness:0.5}), 5).castShadow = false;
     });
-    label(d.tag, x+w/2, y+h+12, 0.4, 10, '#33383f');
+    label(d.tag, x+w/2, y+h+13, 0.4, 13, '#1f2328');
     label('1 日光灯N  2 日光灯L', x+w/2, y-18, 0.4, 6.5, '#5b6470', null, true);
     label('3 灯泡N  4 灯泡L', x+w/2, y-10, 0.4, 6.5, '#5b6470', null, true);
   }
@@ -688,7 +695,7 @@ DEVICES.forEach(function(d){
   if(d.kind==='pebar'){
     rbox(x-4, y+1, 10, h-2, 0, 6, PL(0x2e7d32, 0.5), 2); rbox(x+w-6, y+1, 10, h-2, 0, 6, PL(0x2e7d32, 0.5), 2);
     rbox(x, y+3, w, h-6, 1, 6, MAT.copper, 1.2);
-    label(d.tag, x+w/2, y+h+12, 0.4, 10, '#33383f');
+    label(d.tag, x+w/2, y+h+13, 0.4, 13, '#1f2328');
   }
   if(d.kind==='socket' || d.kind==='sw'){                               /* 86 型面板：上面一条小端子排，下面面板 */
     rbox(x+6, y+4, w-12, 24, 0, 20, MAT.cream, 2);
@@ -708,7 +715,7 @@ DEVICES.forEach(function(d){
       ANIM.tog[d.id] = {piv:g, v:0, rocker:true};
       label(d.two ? '双控' : '单控', x+w/2, y+124, 14.4, 6.5, '#5b6470', null, true);
     }
-    label(d.tag, x+w/2, y+h+12, 0.4, 10, '#33383f');
+    label(d.tag, x+w/2, y+h+13, 0.4, 13, '#1f2328');
   }
   if(d.kind==='sb'){                                                    /* LA4-3H 按钮盒：圆角壳 + 镀铬护圈 + 按钮帽 */
     rbox(x, y, w, h, 0, 60, PL(0xd9dcdb, 0.55), 9);
@@ -835,7 +842,7 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
   const inner = new THREE.Mesh(new THREE.BoxGeometry(58, 24, 0.3), MAT.white); inner.position.set(0, 16, 2.5); sg.add(inner); plate.position.set(0, 16, 1.2); plate.castShadow = true; sg.add(plate);
   const f1 = label('禁止合闸', 0, 0, 0, 11, '#c0392b'), f2 = label('有人工作', 0, 0, 0, 9, '#c0392b'), bk = label('（牌扣着）', 0, 0, 0, 9, '#8a929c');
   [f1, f2, bk].forEach(function(m){ EXG.remove(m); sg.add(m); });
-  f1.position.set(0, 21, 2.8); f2.position.set(0, 10, 2.8); bk.position.set(0, 16, 2.8);
+  f1.position.set(0, 22.5, 2.8); f2.position.set(0, 9, 2.8); bk.position.set(0, 16, 2.8);
   const spad = new THREE.Mesh(new THREE.BoxGeometry(70, 36, 30), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
   spad.position.set(0, 16, 12); spad.userData.act = {type:'sign'}; sg.add(spad); picks.push(spad); XP._sign = {pick:spad};
   ANIM.sign = {g:sg, front:[f1, f2], back:bk};
