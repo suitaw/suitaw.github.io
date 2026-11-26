@@ -932,7 +932,8 @@ function makeGlove(flip){                   /* 平放的绝缘手套：手指朝
   PARENT = TOOLG;
   rbox(236, 1116, 324, 98, 0, 1.2, M(0x2f6b4f, {roughness:0.95}), 6);                  /* 绿胶垫 */
   const LZ = 1.8;
-  label('线缆', 282, 1130, LZ, 16, '#fff'); label('验电笔', 372, 1130, LZ, 16, '#fff'); label('螺丝刀', 372, 1172, LZ, 16, '#fff'); label('绝缘手套', 488, 1130, LZ, 16, '#fff');
+  const TL = function(s, x, y){ label(s, x, y, LZ, 13, '#1f2328', '#e3eee6'); };   /* 浅底深字：绿垫上白字一缩就糊 */
+  TL('线缆', 282, 1130); TL('验电笔', 372, 1130); TL('螺丝刀', 372, 1172); TL('绝缘手套', 488, 1130);
   function pick(id, x, y, w, h){
     const p = new THREE.Mesh(new THREE.BoxGeometry(w, h, 24), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
     p.position.copy(V(x, y, 12)); p.userData.act = {type:'tool', id:id}; TOOLG.add(p); picks.push(p); return p;
@@ -1780,7 +1781,7 @@ function fitD(w, h, exact){
 }
 const VIEWS = {
   front:function(){ const c = CONTENT || {x:280, y:BH/2, w:600, h:BH+20}; return {t:V(c.x, c.y, 20), d:[0,0,1], D:fitD(c.w, c.h, true)}; },
-  desk:function(){ return {t:V(320,960,30), d:[0,-0.45,1], D:fitD(490,300)}; },   /* 镜头往下挪：桌垫贴近底栏，不留大片空 */
+  desk:function(){ return {t:V(320,850,30), d:[0,-0.45,1], D:fitD(490,300)}; },   /* 镜头往下挪：桌垫贴近底栏，不留大片空 */
   km:function(){ return {t:V(237,415,40), d:[0.18,-0.5,1], D:fitD(450,300)}; },
   tb:function(){ return {t:V(480,300,30), d:[-0.5,-0.12,1], D:fitD(300,600)}; }
 };
