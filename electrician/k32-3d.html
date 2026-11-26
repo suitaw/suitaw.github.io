@@ -480,8 +480,8 @@ function ferrule(parent, p, q){
 /* 文字贴片：h 是字高（板面单位），平贴在 z 高度上，正对正面 */
 const SMALL = [];              /* 小字（端子号、型号）：镜头拉近了才显示，全景下只会糊成一片 */
 function label(text, x, y, z, h, color, bg, small){
-  /* 11-26 他说字不清楚：常显字至少 12 高；字描一圈边（深字描白、白字描深），压在线上、灰板上也看得清；画 96px 再缩、开满各向异性 */
-  if(!small && !bg && h < 12) h = 12;
+  /* 11-26 他说字不清楚：常显字至少 14 高；字描一圈边（深字描白、白字描深），压在线上、灰板上也看得清；画 96px 再缩、开满各向异性 */
+  if(!small && !bg && h < 14) h = 14;
   const c = document.createElement('canvas'), g = c.getContext('2d'), F = 96, P = Math.round(F*0.2);
   const font = '700 '+F+'px system-ui,"Noto Sans SC",sans-serif';
   g.font = font;
@@ -819,7 +819,7 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
   rbox(BX, BY, 206, 96, 0, 40, M(0x5d6b7a, {roughness:0.5, metalness:0.3}), 4);              /* 试车台（喷塑钢壳） */
   rbox(BX+4, BY+4, 198, 88, 39, 1.5, M(0x66768a, {roughness:0.45, metalness:0.3}), 3);
   for(const s of [[BX+8,BY+8],[BX+198,BY+8],[BX+8,BY+88],[BX+198,BY+88]]) screw(s[0], s[1], 40.5, 3);
-  label('总开关', BX+44, BY+8, 40.4, 11, '#fff'); label('试车台', BX+150, BY+8, 40.4, 11, '#fff');
+  label('总开关', BX+44, BY+11, 41.4, 11, '#fff'); label('试车台', BX+150, BY+11, 41.4, 11, '#fff');   /* z 要高过面板（40.5），不然被盖成虚线 */
   rbox(BX+14, BY+16, 60, 38, 40, 24, MAT.white, 4);
   box(BX+20, BY+28, 48, 14, 63.6, 1, MAT.hole);
   const piv = new THREE.Group(); piv.position.copy(V(BX+44, BY+35, 62)); EXG.add(piv);
@@ -844,7 +844,7 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
     cyl(x, JY, 40, 9.5, 2, MAT.steel, 24);
     cyl(x, JY, 41, 8, 6, PL(JC[i], 0.35, {clearcoat:0.6, bumpScale:0}), 32);
     cyl(x, JY, 46.6, 4.4, 0.6, MAT.brass, 24); cyl(x, JY, 46.8, 2.4, 0.6, MAT.hole, 16);
-    label(JN[i], x, JY+18, 40.4, 10, '#fff'); });
+    label(JN[i], x, JY+20, 41.4, 10, '#fff'); });
   /* 盘上接线排：电源进线 L1 L2 L3（实物上电源线和电机线在同一条接线排）*/
   const LX = [308, 340, 372], LY = 951;   /* 电源进线接线排：去电动机接线排左边 */
   [0,1,2].forEach(function(i){ rbox(292+i*32, 934, 31, 34, 0, 22, MAT.cream, 2); box(323+i*32, 934, 0.8, 34, 0, 23, MAT.grey); });
