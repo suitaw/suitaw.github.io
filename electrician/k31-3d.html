@@ -349,7 +349,7 @@ function simExplain(){
   if(k && b.sb3.pressed) return '<b>点动</b>：按着点动钮时它的动断（7-8）已经断开，自锁那条路是断的 —— 线圈只靠点动的动合（5-6）供电，<b>一松手就停</b>';
   if(k && !b.sb2.pressed) return '<b>自锁</b>：松手照转 —— KM 自己的 13-14 接通，经点动按钮的动断（7-8）回到公共点，等于把连续按钮短接住了';
   if(k) return '按着连续钮时，按钮和 KM 的 13-14 两条路并联着供电；松手后只剩 13-14 那条';
-  return '已合闸。<b>按一下绿色</b>连续运转、<b>按住黄色</b>点动（考场叫黑色）、<b>红色</b>停止；<b>粗红光</b>＝有电流、<b>细红边</b>＝带电但没电流、<b>变浅</b>＝不带电，<b>亮点</b>＝有电流';
+  return '已合闸。<b>按一下绿色</b>连续运转、<b>按住黄色</b>点动（考场叫黑色）、<b>红色</b>停止；<b>亮点</b>在跑的线＝有电流，<b>亮点</b>＝有电流';
 }
 simReset();
 /*__CORE_END__*/
@@ -949,7 +949,7 @@ function refresh(){
     /* 学 Falstad 两层显示：带电＝黑线外面罩一层青色光（11-26 他说淡红淡黄跟主电路红黄相线分不清，改成青光），
        亮点＝有电流。所以「按钮上口带电但没电流」能一眼看出来 */
     const pv = (r.pot||{})[key], live = !!pv && !hidden && !isSel && !(UI.sel && !isSel);
-    if(live && !c.halo){ const u = c.mesh.userData, seg = Math.max(24, Math.round(u.len/3));
+    if(false && live && !c.halo){ const u = c.mesh.userData, seg = Math.max(24, Math.round(u.len/3));
       c.halo = new THREE.Mesh(new THREE.TubeGeometry(u.curve, seg, 5.4, 10, false), HALO_M); c.mesh.add(c.halo);       /* 有电流：粗红光 */
       c.haloL = new THREE.Mesh(new THREE.TubeGeometry(u.curve, seg, 3.4, 8, false), HALO_L); c.mesh.add(c.haloL); }    /* 带电没电流：细淡红边 */
     c.mat.color.setHex(isSel ? 0x1c6fd6 : 0x22262b);
@@ -957,12 +957,11 @@ function refresh(){
     c.mat.emissiveIntensity = isSel ? 0.9 : 0;
     const vv = r.volt || {}, va = vv[c.w.from], vb = vv[c.w.to];
     c.flow = (r.cur[key] && !hidden && !(UI.sel && !isSel)) ? ((va!==undefined && vb!==undefined && vb>va) ? -1 : 1) : 0;
-    const dim = (UI.sel && !isSel) || (!UI.sel && powered() && !pv && !c.flow && !hidden);   /* 合闸后不带电的线变淡，带电的一眼看出来 */
+    const dim = UI.sel && !isSel;
     c.mat.opacity = UI.sel && !isSel ? 0.16 : dim ? 0.22 : 1; c.mat.depthWrite = !dim;
     /* 三档（11-26 他说红光太多不突出）：有电流＝粗红光＋亮点；带电没电流＝细淡红边（验电会亮的地方）；不带电＝变浅（浅色半透明，别像阴影） */
     const curOn = live && (!!c.flow || !!r.cur[key]);
-    if(c.halo){ c.halo.visible = curOn; c.haloL.visible = live && !curOn; }
-    if(dim && !(UI.sel && !isSel)){ c.mat.color.setHex(0xeef0f2); c.mat.opacity = 0.5; }
+    if(c.halo){ c.halo.visible = false; c.haloL.visible = false; }   /* 11-26 他说不区分了：线保持原色，只留电流亮点 */
   });
   const run = SIM.motor ? MAIN_RUN.km : [];
   MAINS.forEach(function(m, i){ m.mat.emissiveIntensity = run.indexOf(i)>=0 ? 0.55 : 0; });
@@ -996,7 +995,7 @@ function refresh(){
   cnt.textContent = UI.sel && UI.sel<100 ? UI.sel+' / '+NW : '全部';
   const st = '<div class="st">QF '+(SIM.qf?'合':'分')+' · KM '+(SIM.km.km.on?'吸合':'释放')+
     ' · 电动机'+(SIM.motor?'运转':'停')+'</div>'+
-    (powered() ? '<div class="st"><span style="color:#ff2a2a">■</span> 粗红光＝有电流　<span style="color:#ff9a9a">■</span> 细红边＝带电没电流　· 变浅＝不带电　· 亮点＝有电流</div>' : '');
+    (powered() ? '<div class="st">亮点＝有电流的线</div>' : '');
   if(EX.on){
     const st2 = '<div class="st">'+(EX.phase==='wire' ? '盘内接线 · 已接 '+EX.wires.length+' 根' :
       '手套'+(EX.glove ? '戴着' : '摘了')+' · '+(EX.pen ? '验电笔在手 · ' : '')+'总开关'+(EX.main ? '合' : '分')+' · QF '+(SIM.qf ? '合' : '分')+' · 电动机'+(SIM.motor?'运转':'停'))+'</div>';
