@@ -932,7 +932,7 @@ function makeGlove(flip){                   /* 平放的绝缘手套：手指朝
   PARENT = TOOLG;
   rbox(236, 1116, 324, 98, 0, 1.2, M(0x2f6b4f, {roughness:0.95}), 6);                  /* 绿胶垫 */
   const LZ = 1.8;
-  label('线缆', 282, 1130, LZ, 12, '#fff'); label('验电笔', 372, 1130, LZ, 12, '#fff'); label('螺丝刀', 372, 1172, LZ, 12, '#fff'); label('绝缘手套', 488, 1130, LZ, 12, '#fff');
+  label('线缆', 282, 1130, LZ, 16, '#fff'); label('验电笔', 372, 1130, LZ, 16, '#fff'); label('螺丝刀', 372, 1172, LZ, 16, '#fff'); label('绝缘手套', 488, 1130, LZ, 16, '#fff');
   function pick(id, x, y, w, h){
     const p = new THREE.Mesh(new THREE.BoxGeometry(w, h, 24), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
     p.position.copy(V(x, y, 12)); p.userData.act = {type:'tool', id:id}; TOOLG.add(p); picks.push(p); return p;
@@ -954,7 +954,7 @@ function makeGlove(flip){                   /* 平放的绝缘手套：手指朝
 })();
 /* 拿在手上验电的那支笔：笔尖碰在验电点上，笔身斜着朝外 */
 const PENP = makePen(); PENP.visible = false; root.add(PENP);
-PENP.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0.35, -0.45, 1).normalize());
+PENP.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0.55, -0.7, 0.45).normalize()); PENP.scale.setScalar(1.3);   /* 斜躺着朝右下，正面看得出是支笔 */
 const rings = [0,1].map(function(){
   const m = new THREE.Mesh(new THREE.TorusGeometry(8, 1.6, 10, 28), new THREE.MeshBasicMaterial({color:0x1c6fd6, toneMapped:false}));
   m.visible=false; root.add(m); return m;
@@ -1780,7 +1780,7 @@ function fitD(w, h, exact){
 }
 const VIEWS = {
   front:function(){ const c = CONTENT || {x:280, y:BH/2, w:600, h:BH+20}; return {t:V(c.x, c.y, 20), d:[0,0,1], D:fitD(c.w, c.h, true)}; },
-  desk:function(){ return {t:V(320,1068,30), d:[0,-0.45,1], D:fitD(490,300)}; },
+  desk:function(){ return {t:V(320,960,30), d:[0,-0.45,1], D:fitD(490,300)}; },   /* 镜头往下挪：桌垫贴近底栏，不留大片空 */
   km:function(){ return {t:V(237,415,40), d:[0.18,-0.5,1], D:fitD(450,300)}; },
   tb:function(){ return {t:V(480,300,30), d:[-0.5,-0.12,1], D:fitD(300,600)}; }
 };
