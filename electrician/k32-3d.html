@@ -63,7 +63,7 @@ ol.steps li{color:var(--ink)}ol.steps li.done{color:var(--mut)}ol.steps li.cur{c
   <div class="row" id="rowM">
     <span class="grp" id="rowV"><button id="prev">◀</button><span id="cnt"></span><button id="next">▶</button></span>
     <span class="grp" id="rowW" hidden><button id="hint">提示</button><button id="del">拆这根</button><button id="reset">重来</button></span>
-    <span class="grp" id="rowE1" hidden><button id="edel">拆这根</button><button id="edone">接线完成</button></span>
+    <span class="grp" id="rowE1" hidden><button id="edel">拆这根</button><button id="eclr">全拆</button><button id="edone">接线完成</button></span>
     <span class="grp" id="rowE2" hidden><button id="epen">验电笔</button><button id="eglove">摘手套</button><button id="erep">报告</button><button id="esub">交卷</button></span>
     <span class="sp"></span>
     <button id="mode">自己接</button><button id="exam">考场</button><button id="snd">🔊</button>
@@ -1023,7 +1023,7 @@ function refresh(){
     XP[id].mark.visible = exT && (EX.pen ? isProbe : !!XT[id]); XP[id].pick.userData.off = !exT; }
   ANIM.sign.front.forEach(function(m){ m.visible = !EX.on || EX.sign==='stand'; }); ANIM.sign.back.visible = EX.on && EX.sign!=='stand';
   if(EX.on){
-    document.getElementById('edel').disabled = !EX.wires.length; document.getElementById('edel').classList.toggle('on', !!EX.delMode);
+    document.getElementById('edel').disabled = !EX.wires.length; document.getElementById('eclr').disabled = !EX.wires.length; document.getElementById('edel').classList.toggle('on', !!EX.delMode);
     document.getElementById('epen').classList.toggle('on', !!EX.pen);
     document.getElementById('eglove').textContent = EX.glove ? '摘手套' : '戴手套';
   }
@@ -1086,13 +1086,44 @@ function exSup(){
   simAdvance(performance.now());
 }
 function exSave(){ try{ localStorage.setItem(LSX, JSON.stringify(EX.wires.map(function(w){ return [w.from, w.to]; }))); }catch(e){} }
+/* 考场里接的「标准接法之外」的线：自动排直角走线，不再两点拉斜线穿过元件（11-26 他发现 KM1-21→KM2-13 从 KM1 底下钻过去）。
+   1) 从端子朝最近的元件边出头；2) 试「先竖后横」「先横后竖」和经过元件旁空道的三段走法；3) 取不压任何元件、最短的那条。
+   每根线按编号错开几个单位，几根错线不叠成一根 */
+function autoRoute(a, b, id){
+  const A = TPOS[a], B = TPOS[b], off = 10 + (id % 5)*3, lane = (id % 6)*3;
+  const R = DEVICES.map(function(d){ return [d.x, d.y, d.x+(d.W||d.w), d.y+(d.H||d.h)]; });
+  function out(T){                                                     /* 朝最近的那条边出头 */
+    const d = dev(T.device), x0 = d.x, y0 = d.y, x1 = d.x+(d.W||d.w), y1 = d.y+(d.H||d.h);
+    const e = [[T.x-x0, -1, 0], [x1-T.x, 1, 0], [T.y-y0, 0, -1], [y1-T.y, 0, 1]].sort(function(p, q){ return p[0]-q[0]; })[0];
+    const inside = function(p){ return R.some(function(r){ return p[0]>r[0] && p[0]<r[2] && p[1]>r[1] && p[1]<r[3]; }); };
+    for(const o of [off, 10, 7, 5, 3]){ const p = e[1] ? [e[1]<0 ? x0-o : x1+o, T.y] : [T.x, e[2]<0 ? y0-o : y1+o]; if(!inside(p)) return p; }
+    return e[1] ? [e[1]<0 ? x0-3 : x1+3, T.y] : [T.x, e[2]<0 ? y0-3 : y1+3];
+  }
+  function clear(p, q){                                                /* 一段直线不压任何元件（元件框往里缩 1） */
+    const mx = Math.min(p[0], q[0]), Mx = Math.max(p[0], q[0]), my = Math.min(p[1], q[1]), My = Math.max(p[1], q[1]);
+    return R.every(function(r){ return Mx <= r[0]+1 || mx >= r[2]-1 || My <= r[1]+1 || my >= r[3]-1; });
+  }
+  function ok(path){ for(let i=0;i<path.length-1;i++) if(!clear(path[i], path[i+1])) return false; return true; }
+  function len(path){ let s = 0; for(let i=0;i<path.length-1;i++) s += Math.abs(path[i][0]-path[i+1][0]) + Math.abs(path[i][1]-path[i+1][1]); return s; }
+  const pa = out(A), pb = out(B), C = [[pa[0], pb[1]], [pb[0], pa[1]]];
+  const cand = [[pa, C[0], pb], [pa, C[1], pb]];
+  const xs = [], ys = [];
+  R.forEach(function(r){ xs.push(r[0]-8-lane, r[2]+8+lane); ys.push(r[1]-8-lane, r[3]+8+lane); });
+  xs.forEach(function(x){ cand.push([pa, [x, pa[1]], [x, pb[1]], pb]); });
+  ys.forEach(function(y){ cand.push([pa, [pa[0], y], [pb[0], y], pb]); });
+  xs.forEach(function(x){ ys.forEach(function(y){ cand.push([pa, [pa[0], y], [x, y], [x, pb[1]], pb]); cand.push([pa, [x, pa[1]], [x, y], [pb[0], y], pb]); }); });
+  let best = null, bl = 1e9;
+  cand.forEach(function(c){ if(ok(c)){ const l = len(c); if(l < bl){ bl = l; best = c; } } });
+  if(!best) best = [pa, C[0], pb];                                     /* 实在找不到就退回先竖后横 */
+  return [[A.x, A.y]].concat(best, [[B.x, B.y]]);
+}
 function exAddWire(a, b){
   const std = WIRES.filter(function(w){ return (w.from===a && w.to===b) || (w.from===b && w.to===a); })[0];
   const w = std ? {id:std.id, from:std.from, to:std.to} : {id:EX.nextId++, from:a, to:b};
   EX.wires.push(w); if(std) EX.has[std.id] = 1;
   if(!std){
     const A=TPOS[a], B=TPOS[b];
-    const pts = path3([[A.x,A.y],[B.x,B.y]], TZ[a]+4, TZ[b]+4, 100+(w.id%8)*3, dev(A.device), dev(B.device));
+    const pts = path3(autoRoute(a, b, w.id), TZ[a]+4, TZ[b]+4, 100+(w.id%8)*3, dev(A.device), dev(B.device));
     const mat = M(0x22262b, {roughness:0.45, emissive:0x000000, transparent:true});
     const mesh = tube(pts, 2.3, mat); ferrule(mesh, pts[0], pts[1]); ferrule(mesh, pts[pts.length-1], pts[pts.length-2]);
     const pick = tube(pts, 9, new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
@@ -1552,6 +1583,12 @@ document.getElementById('edel').onclick = function(){
   EX.msg = EX.delMode ? '拆线：点要拆的那根线<b>任意一头的端子</b>（再点「拆这根」退出）' : '';
 };
 document.getElementById('edone').onclick = exWireDone;
+/* 盘内接线全拆重来（11-26 他问考场能不能清掉重来） */
+document.getElementById('eclr').onclick = function(){
+  if(!EX.wires.length){ EX.msg = '还没接线'; return; }
+  menu('把盘内接的 '+EX.wires.length+' 根线全部拆掉，重新接？', [['全部拆掉', function(){
+    while(EX.wires.length) exDelWire(EX.wires[0].id); exSave(); UI.sel = 0; UI.pend = null; EX.delMode = false; EX.msg = '全部拆掉了，重新接吧'; click(900, 0.05, 0.5); }]]);
+};
 document.getElementById('epen').onclick = function(){ EX.pen = !EX.pen; EX.msg = EX.pen ? '验电笔拿在手上了：点要验的位置' : '验电笔放下了'; };
 document.getElementById('eglove').onclick = function(){ EX.glove = !EX.glove; exLog('glove', {on:EX.glove}); EX.msg = EX.glove ? '戴上了手套' : '摘下了手套'; };
 document.getElementById('erep').onclick = function(){
