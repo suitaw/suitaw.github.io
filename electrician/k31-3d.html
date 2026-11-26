@@ -857,10 +857,14 @@ const rings = [0,1].map(function(){
 
 /* 端子名牌：屏幕上固定大小（不随远近缩小），浮在蓝圈上方，全景下也认得出是哪个端子 */
 function shortName(id){
-  const m = id.match(/^km(\d)-(.+)$/); if(m) return 'KM'+m[1]+' · '+m[2].toUpperCase();
+  let m = id.match(/^km(\d?)-(.+)$/); if(m) return 'KM'+m[1]+' · '+m[2].toUpperCase();
   if(id==='fu4-out') return '4号熔断器'; if(id==='fu5-out') return '5号熔断器';
   if(id.indexOf('fr-')===0) return 'FR · '+id.slice(3);
-  return id==='tb-last' ? '端子排 末位' : '端子排 '+id.slice(3);
+  m = id.match(/^am(\d)-(\d)$/); if(m) return 'ABC'[m[1]-1]+'相电流表 · '+m[2];
+  m = id.match(/^ta(\d)-(s\d)$/); if(m) return 'ABC'[m[1]-1]+'相互感器 · '+m[2].toUpperCase();
+  if(id.indexOf('pe-')===0) return '接地铜排';
+  if(id.indexOf('tb-')===0) return id==='tb-last' ? '端子排 末位' : '端子排 '+id.slice(3);
+  return TLABEL[id] || id;
 }
 const TAGS = {};
 function tagOf(id){
@@ -965,7 +969,7 @@ function refresh(){
     const sp = tagOf(id), up = TPOS[ids[1-i]] ? TPOS[id].y <= TPOS[ids[1-i]].y : true;     /* 两头一上一下错开，别互相压着 */
     sp.visible = true; sp.position.copy(rp[i]); sp.position.z += 6;
     sp.center.set(0.5, (up || ids.length===1) ? -0.55 : 1.55);
-    const hgt = 30/H*2*Math.tan(camera.fov/2*Math.PI/180); sp.scale.set(hgt*sp.userData.ar, hgt, 1);
+    const hgt = 19/H*2*Math.tan(camera.fov/2*Math.PI/180);   /* 标签字高 19 像素（11-26 他嫌 30 太大挡画面） */ sp.scale.set(hgt*sp.userData.ar, hgt, 1);
   });
   const exW = EX.on && EX.phase==='wire', exT = EX.on && EX.phase==='trial';
   for(const id in TERMS){ TERMS[id].mark.visible = (UI.wire && !SIM.qf) || exW || (exT && EX.pen && (id==='fu4-out' || id==='fu5-out')); TERMS[id].pick.userData.off = !(UI.wire || EX.on); }

@@ -81,40 +81,41 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 
 /*__CORE_BEGIN__  数据 + 电路仿真：不碰 THREE / DOM，测试脚本把这一段抠出来在 node 里跑。
   全部照 wiring-trainer.html 的 defK34()（Notion「实训接线记录」版 + 他 09-05 拍的板）搬，坐标系也是它的 560×830 板面。 */
-const KM_W = 200, KM_H = 150;
+const KM_W = 200, KM_H = 150, BOARD_H = 1030;   /* BOARD_H：板面高度（11-26 元件放大 1.3 倍后加长） */
 const KM_PINS = [[34,18,'1/L1'],[72,18,'3/L2'],[110,18,'5/L3'],[34,132,'2/T1'],[72,132,'4/T2'],[110,132,'6/T3']];
 function kmTerms(p){ return [
   {id:p+'-13',label:'13',x:142,y:18},{id:p+'-21',label:'21',x:168,y:18},{id:p+'-a1',label:'A1',x:190,y:18},
   {id:p+'-14',label:'14',x:142,y:132},{id:p+'-22',label:'22',x:168,y:132},{id:p+'-a2',label:'A2',x:190,y:132}]; }
 const FR_PINS = [[28,18,'1'],[60,18,'3'],[92,18,'5'],[28,78,'2'],[60,78,'4'],[92,78,'6']];
+/* 11-26 他要「元件本身做大」：主要元件 s:1.3（整体放大，接线点跟着变），位置重排；内部尺寸仍按原图写 */
 const DEVICES = [
-  {id:'qf', tag:'QF 断路器', kind:'mcb', x:30, y:40, w:96, h:92,
+  {id:'qf', tag:'QF 断路器', kind:'mcb', x:20, y:24, w:96, h:92, s:1.3,
    pins:[[18,6,'1'],[48,6,'3'],[78,6,'5'],[18,86,'2'],[48,86,'4'],[78,86,'6']], terminals:[]},
-  {id:'fu1', tag:'FU1', kind:'fuse3', x:32, y:160, w:96, h:92,
+  {id:'fu1', tag:'FU1', kind:'fuse3', x:20, y:166, w:96, h:92, s:1.3,
    pins:[[16,6,''],[48,6,''],[80,6,''],[16,86,''],[48,86,''],[80,86,'']], terminals:[]},
-  {id:'fu4', tag:'4号', kind:'fuse', x:144, y:160, w:32, h:92, pins:[[16,6,'']], terminals:[{id:'fu4-out',label:'',x:16,y:84}]},
-  {id:'fu5', tag:'5号', kind:'fuse', x:186, y:160, w:32, h:92, pins:[[16,6,'']], terminals:[{id:'fu5-out',label:'',x:16,y:84}]},
-  /* K31 只用 KM 的常开 13-14；21/22 只画螺钉不登记成端子（登记了会出蓝圈，看着像也要接） */
-  {id:'km', tag:'KM', kind:'km', x:30, y:340, w:KM_W, h:KM_H, pins:KM_PINS.concat([[168,18,'21'],[168,132,'22']]),
+  {id:'fu4', tag:'4号', kind:'fuse', x:166, y:166, w:32, h:92, s:1.3, pins:[[16,6,'']], terminals:[{id:'fu4-out',label:'',x:16,y:84}]},
+  {id:'fu5', tag:'5号', kind:'fuse', x:222, y:166, w:32, h:92, s:1.3, pins:[[16,6,'']], terminals:[{id:'fu5-out',label:'',x:16,y:84}]},
+  /* K34 只用 KM 的常开 13-14；21/22 只画螺钉不登记成端子 */
+  {id:'km', tag:'KM', kind:'km', x:20, y:334, w:KM_W, h:KM_H, s:1.3, pins:KM_PINS.concat([[168,18,'21'],[168,132,'22']]),
    terminals:kmTerms('km').filter(function(t){ return !/-2[12]$/.test(t.id); })},
-  {id:'fr', tag:'FR 热继电器', kind:'fr', x:30, y:516, w:154, h:104, pins:FR_PINS,
+  {id:'fr', tag:'FR 热继电器', kind:'fr', x:20, y:562, w:154, h:104, s:1.3, pins:FR_PINS,
    terminals:[{id:'fr-96',label:'96',x:145,y:64},{id:'fr-95',label:'95',x:145,y:88}]},
-  {id:'tb', tag:'端子排', kind:'tb', x:474, y:236, w:62, h:336,
+  {id:'tb', tag:'端子排', kind:'tb', x:470, y:210, w:62, h:212, s:1.3,
    terminals:(function(){ const o=[]; for(let i=0;i<8;i++) o.push({id:'tb-'+(i+1),label:String(i+1),x:14,y:22+i*24});
      return o; })()},
   /* 电流互感器 ×3：主电路相线从圆孔穿过；二次侧 S1、S2 接线柱在底座前面 */
-  {id:'ct', tag:'TA 电流互感器', kind:'ct', x:30, y:626, w:124, h:48, pins:[[28,20,''],[60,20,''],[92,20,'']],
+  {id:'ct', tag:'TA 电流互感器', kind:'ct', x:20, y:716, w:124, h:48, s:1.3, pins:[[28,20,''],[60,20,''],[92,20,'']],
    terminals:[1,2,3].reduce(function(o,i){ const cx=28+32*(i-1); return o.concat([{id:'ta'+i+'-s1',label:'S1',x:cx-8,y:40},{id:'ta'+i+'-s2',label:'S2',x:cx+8,y:40}]); }, [])},
   /* 仪表板：三只电流表（A、B、C 相）+ 一只电压表；电流表接线柱在表下面那条端子条上 */
-  {id:'amp', tag:'仪表', kind:'amp', x:296, y:508, w:240, h:104,
+  {id:'amp', tag:'仪表', kind:'amp', x:296, y:560, w:240, h:104,
    terminals:[1,2,3].reduce(function(o,i){ return o.concat([{id:'am'+i+'-1',label:'1',x:20+60*(i-1),y:94},{id:'am'+i+'-2',label:'2',x:40+60*(i-1),y:94}]); }, [])},
-  {id:'tbm', tag:'去电动机', kind:'tbm', x:30, y:700, w:250, h:34, pins:[[30,17,'U'],[70,17,'V'],[110,17,'W']], terminals:[]},
-  {id:'pe', tag:'PE', kind:'pe', x:300, y:680, w:150, h:26, screws:[20,50],
+  {id:'tbm', tag:'去电动机', kind:'tbm', x:20, y:820, w:250, h:34, s:1.3, pins:[[30,17,'U'],[70,17,'V'],[110,17,'W']], terminals:[]},
+  {id:'pe', tag:'PE', kind:'pe', x:380, y:780, w:150, h:26, screws:[20,50],
    terminals:[{id:'pe-1',label:'',x:80,y:13},{id:'pe-2',label:'',x:105,y:13},{id:'pe-3',label:'',x:130,y:13}]},
-  {id:'sb', tag:'按钮盒', kind:'sb', x:440, y:40, w:116, h:122, terminals:[]}
+  {id:'sb', tag:'按钮盒', kind:'sb', x:400, y:18, w:116, h:122, s:1.3, terminals:[]}
 ];
 const TPOS = {};
-DEVICES.forEach(function(d){ d.terminals.forEach(function(t){ TPOS[t.id]={x:d.x+t.x,y:d.y+t.y,device:d.id,label:t.label}; }); });
+DEVICES.forEach(function(d){ const s=d.s||1; d.W=d.w*s; d.H=d.h*s; d.terminals.forEach(function(t){ TPOS[t.id]={x:d.x+t.x*s,y:d.y+t.y*s,device:d.id,label:t.label}; }); });   /* s：元件放大倍数；W/H 放大后的外框 */
 const TLABEL = {
   'fu4-out':'4号熔断器（L1）','fu5-out':'5号熔断器（L2）','fr-96':'热继电器96','fr-95':'热继电器95',
   'km-a1':'接触器A1','km-a2':'接触器A2','km-13':'接触器13NO','km-14':'接触器14NO',
@@ -134,20 +135,20 @@ const GROUPS = {
 };
 /* 7 根控制线 + 9 根互感器二次线，数组顺序＝接线顺序；waypoints 是板面上手排的专用通道 */
 const WIRES = [
-  {id:1, from:'fu4-out',to:'fr-95', group:1,waypoints:[[160,268],[256,268],[256,604]]},
-  {id:2, from:'fr-96',  to:'tb-8',  group:1,waypoints:[[266,580],[266,426]]},
-  {id:3, from:'fu5-out',to:'km-a1', group:2,waypoints:[[202,290],[220,290]]},
-  {id:4, from:'km-a2',  to:'km-14', group:2,waypoints:[[220,492],[172,492]]},
-  {id:5, from:'km-14',  to:'tb-2',  group:2,waypoints:[[172,498],[436,498],[436,282]]},
-  {id:6, from:'km-13',  to:'tb-1',  group:3,waypoints:[[172,318],[444,318],[444,258]]},
-  {id:7, from:'tb-1',   to:'tb-7',  group:3,waypoints:[[460,258],[460,402]]}
+  {id:1, from:'fu4-out',to:'fr-95', group:1,waypoints:[[186.8,300],[280,300],[280,676.4]]},
+  {id:2, from:'fr-96',  to:'tb-8',  group:1,waypoints:[[288,645.2],[288,457]]},
+  {id:3, from:'fu5-out',to:'km-a1', group:2,waypoints:[[242.8,292],[267,292]]},
+  {id:4, from:'km-a2',  to:'km-14', group:2,waypoints:[[267,540],[204.6,540]]},
+  {id:5, from:'km-14',  to:'tb-2',  group:2,waypoints:[[204.6,548],[424,548],[424,269.8]]},
+  {id:6, from:'km-13',  to:'tb-1',  group:3,waypoints:[[204.6,318],[432,318],[432,238.6]]},
+  {id:7, from:'tb-1',   to:'tb-7',  group:3,waypoints:[[452,238.6],[452,425.8]]}
 ];
 [1,2,3].forEach(function(i){
-  const cx = 30+28+32*(i-1), s1x = cx-8, s2x = cx+8, a1x = 296+20+60*(i-1), a2x = a1x+20, pex = 300+[80,105,130][i-1];
+  const s1x = 46+41.6*(i-1), s2x = s1x+20.8, a1x = 316+60*(i-1), a2x = a1x+20, pex = 460+25*(i-1);
   WIRES.push(
-    {id:5+3*i, from:'ta'+i+'-s1', to:'am'+i+'-1', group:4, waypoints:[[s1x,682+3*i],[278+4*i,682+3*i],[278+4*i,630+4*i],[a1x,630+4*i]]},
-    {id:6+3*i, from:'am'+i+'-2',  to:'ta'+i+'-s2', group:4, waypoints:[[a2x,640+4*i],[290+4*i,640+4*i],[290+4*i,690+2*i],[s2x,690+2*i]]},
-    {id:7+3*i, from:'ta'+i+'-s2', to:'pe-'+i,      group:4, waypoints:[[s2x,694+2*i],[pex,694+2*i]]});
+    {id:5+3*i, from:'ta'+i+'-s1', to:'am'+i+'-1', group:4, waypoints:[[s1x,781+3*i],[256+4*i,781+3*i],[256+4*i,668+3*i],[a1x,668+3*i]]},
+    {id:6+3*i, from:'am'+i+'-2',  to:'ta'+i+'-s2', group:4, waypoints:[[a2x,688+4*i],[270+4*i,688+4*i],[270+4*i,794+3*i],[s2x,794+3*i]]},
+    {id:7+3*i, from:'ta'+i+'-s2', to:'pe-'+i,      group:4, waypoints:[[s2x,806+4*i],[pex,806+4*i]]});
 });
 const NW = WIRES.length;
 /* 第 i 相电流表回路接通没有：S1—表1、表2—S2 都连着，且 S1、S2 没被直接短接 */
@@ -395,13 +396,13 @@ const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdfe3e8);
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.5;
 const camera = new THREE.PerspectiveCamera(30, 1, 20, 9000);
+const BW = 560, BH = BOARD_H;
 const sun = new THREE.DirectionalLight(0xffffff, 0.95);
 sun.position.set(-420, 620, 900); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 1.2;
-const sc = sun.shadow.camera; sc.left=-460; sc.right=460; sc.top=520; sc.bottom=-520; sc.near=100; sc.far=2400;
+const sc = sun.shadow.camera; sc.left=-460; sc.right=460; sc.top=BH/2+80; sc.bottom=-BH/2-80; sc.near=100; sc.far=2400;
 scene.add(sun);
 
-const BW = 560, BH = 840;
 function frDialAng(i){ return 1.0 - i*0.5; }   /* 整定旋钮第 i 档：指针从竖直向上逆时针转多少弧度（左高右低） */
 const FR_SET = [1.5, 1.8, 2.0, 2.2, 2.4];   /* JR36-20 热元件 1.5～2.4A 的刻度；电动机 Y2-80M2-4 0.75kW 额定约 2A */
 function V(x, y, z){ return new THREE.Vector3(x-BW/2, BH/2-y, z||0); }
@@ -511,7 +512,7 @@ function dev(id){ return DEVICES.filter(function(d){ return d.id===id; })[0]; }
 
 /* 安装板 + 导轨（导轨贴图按长度重复） */
 const BOARD = add(new THREE.Mesh(new RoundedBoxGeometry(BW+40, BH+20, 12, 2, 3), MAT.board)); BOARD.position.copy(V(BW/2, BH/2, -6)); BOARD.userData.bg = true;
-[[30,86,96],[30,206,190],[30,415,414],[30,602,154]].forEach(function(r){
+[[20,84,125],[20,226,245],[20,431,260],[20,630,200]].forEach(function(r){
   const t = RAIL_TEX.clone(); t.repeat.set((r[2]+16)/44, 1); t.needsUpdate = true;
   const m = M(0xffffff, {map:t, metalness:0.9, roughness:0.35});
   box(r[0]-8, r[1]-9, r[2]+16, 18, 0, 3.5, m);
@@ -532,7 +533,7 @@ function meterTex(u, sub){
 }
 /* 把一组零件攒进一个 Group（会动的零件用：按钮帽、衔铁、手柄） */
 function hitPad(geo, pos, act, parent){ const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
-  m.position.copy(pos); m.userData.act = act; (parent||root).add(m); picks.push(m); return m; }
+  m.position.copy(pos); m.userData.act = act; (parent||PARENT).add(m); picks.push(m); return m; }
 /* 绕一根轴转的零件：pivot 放在铰链处，里面再套一层把坐标挪回去，这样里面照常用板面坐标画 */
 function hinged(hx, hy, hz, fn){ const pv = new THREE.Group(); pv.position.copy(V(hx, hy, hz)); PARENT.add(pv);
   const inner = new THREE.Group(); inner.position.copy(V(hx, hy, hz)).negate(); pv.add(inner);
@@ -541,6 +542,10 @@ function group(fn){ const old = PARENT, g = new THREE.Group(); PARENT.add(g); PA
 const KM_CARRIER = PL(0x3a3e44, 0.5, {clearcoat:0.3});
 
 DEVICES.forEach(function(d){
+  /* 元件照旧按 (x,y) 原尺寸画，外面套一层 Group 以左上角为基点放大 s 倍（螺钉、按钮、点击垫全跟着变大） */
+  const s = d.s||1, DG = new THREE.Group(); DG.scale.set(s, s, s);
+  DG.position.set((1-s)*(d.x-BW/2), (1-s)*(BH/2-d.y), 0); root.add(DG);
+  const PARENT0 = PARENT; PARENT = DG;
   const x=d.x, y=d.y, w=d.w, h=d.h;
   if(d.kind==='mcb'){                                                   /* DZ47s 3P：三个模块并排，中间高起的「肩」上是手柄 */
     rbox(x, y+1, w, h-2, 0, 34, MAT.white, 3);
@@ -557,7 +562,7 @@ DEVICES.forEach(function(d){
     });
     const bar = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 70, 12), MAT.metal); bar.rotation.z = Math.PI/2; bar.position.set(0, 0, 16); piv.add(bar);   /* 联动杆 */
     const pad = new THREE.Mesh(new THREE.BoxGeometry(w, 60, 40), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
-    pad.position.copy(V(x+w/2, y+47, 80)); pad.userData.act = {type:'qf'}; root.add(pad); picks.push(pad);   /* 手指粗，点击范围放大 */
+    pad.position.copy(V(x+w/2, y+47, 80)); pad.userData.act = {type:'qf'}; PARENT.add(pad); picks.push(pad);   /* 手指粗，点击范围放大 */
     ANIM.qf = piv; PINZ[d.id] = 34;
     label('DZ47s C16', x+w/2, y+67, 64.4, 9, '#33383f', null, true);
     label('400V~  6000A', x+w/2, y+75, 64.4, 5.5, '#5b6470', null, true);
@@ -633,7 +638,7 @@ DEVICES.forEach(function(d){
     cyl(x+134, y+26, 30, 12, 1.5, MAT.metal, 28);                     /* 复位钮护圈 */
     const rb = cyl(x+134, y+26, 30, 9, 10, MAT.red); rb.userData.act = {type:'fr'}; picks.push(rb);   /* 红＝测试：按下就脱扣 */
     const pad = new THREE.Mesh(new THREE.SphereGeometry(17), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
-    pad.position.copy(V(x+136, y+26, 40)); pad.userData.act = {type:'fr'}; root.add(pad); picks.push(pad);
+    pad.position.copy(V(x+136, y+26, 40)); pad.userData.act = {type:'fr'}; PARENT.add(pad); picks.push(pad);
     ANIM.fr = {mesh:rb, z0:rb.position.z, v:0};
     PINZ[d.id] = 30;
     label(d.tag, x+50, y+48, 55.4, 13, '#fff');
@@ -650,7 +655,7 @@ DEVICES.forEach(function(d){
       box(x+w/2-10, y+t.y-8, 20, 16, 29.8, 1, MAT.white);              /* 号码牌 */
       if(t.label) label(t.label, x+w/2, y+t.y, 31.2, 13, '#1f2328');
     });
-    label(d.tag, x+w/2, y+h+26, 0.4, 17, '#33383f');
+    label(d.tag, x-30, y+h-12, 0.4, 13, '#33383f');
   }
   if(d.kind==='tbm'){
     d.pins.forEach(function(p, i){ rbox(x+i*40+10.5, y, 39, h, 0, 22, MAT.cream, 2); box(x+i*40+49.5, y, 1, h, 0, 23, MAT.grey); });
@@ -713,7 +718,7 @@ DEVICES.forEach(function(d){
       });
       g.children.forEach(function(m){ m.userData.act = {type:'btn', id:b.id}; picks.push(m); });
       const pad = new THREE.Mesh(new THREE.SphereGeometry(27), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
-      pad.position.copy(V(cx, cy, 80)); pad.userData.act = {type:'btn', id:b.id}; root.add(pad); picks.push(pad);
+      pad.position.copy(V(cx, cy, 80)); pad.userData.act = {type:'btn', id:b.id}; PARENT.add(pad); picks.push(pad);
       ANIM.btn[b.id] = {mesh:g, z0:g.position.z, v:0};
       box(x+8, cy-9, 30, 18, 66, 1, MAT.white);                         /* 铭牌 */
       label(b.name, x+23, cy, 67.4, 12, '#1f2328');
@@ -728,10 +733,13 @@ DEVICES.forEach(function(d){
     if(d.kind==='amp'){ screw(x+t.x, y+t.y, 14, 4); label(t.label, x+t.x, y+t.y-7, 14.4, 5, '#1f2328', null, true); }
     if(d.kind==='pe'){ screw(x+t.x, y+t.y, 7, 5); }
   });
+  PARENT = PARENT0;
+  if(PINZ[d.id]!==undefined) PINZ[d.id] *= s;
+  d.terminals.forEach(function(t){ TZ[t.id] = (TZ[t.id]-2.6)*s + 2.6; });
 });
 
 /* 电动机：Y 系列，轴朝外，正面能看见风扇往哪边转；外面一圈护罩 */
-const MOT = {x:150, y:776};
+const MOT = {x:150, y:960};
 cyl(MOT.x, MOT.y, 8, 44, 70, MAT.motor, 48);
 for(let i=0;i<24;i++){                                                 /* 一圈散热筋 */
   const a = i/24*Math.PI*2, f = new THREE.Mesh(new THREE.BoxGeometry(3, 9, 62), MAT.motor);
@@ -752,16 +760,16 @@ rbox(MOT.x+48, MOT.y-24, 36, 32, 30, 28, MAT.motor, 3);               /* 接线�
 rbox(MOT.x+50, MOT.y-22, 32, 28, 57, 3, MAT.motor, 3);
 label('Y2-80M2-4', MOT.x+66, MOT.y-8, 60.4, 5, '#dfe6ee', null, true);
 label('0.75kW', MOT.x+66, MOT.y-1, 60.4, 5, '#dfe6ee', null, true);
-label('电动机 M', MOT.x+160, MOT.y-16, 0.4, 21, '#33383f');
-const dirLb = {'1':label('运转 ↻', MOT.x+160, MOT.y+14, 0.4, 21, '#2f9e44'), '-1':label('反转 ↺', MOT.x+160, MOT.y+14, 0.4, 21, '#b7791f'),
-  '0':label('停着', MOT.x+160, MOT.y+14, 0.4, 21, '#5b6470')};
+label('电动机 M', MOT.x+128, MOT.y-16, 0.4, 21, '#33383f');
+const dirLb = {'1':label('运转 ↻', MOT.x+128, MOT.y+14, 0.4, 21, '#2f9e44'), '-1':label('反转 ↺', MOT.x+128, MOT.y+14, 0.4, 21, '#b7791f'),
+  '0':label('停着', MOT.x+128, MOT.y+14, 0.4, 21, '#5b6470')};
 
 /* ══ 导线 ══ 线头落在端子面上，出了元件就抬到自己那一层（每根线一层高度，转过来看互不穿插） */
 function exitPt(p, q, d){
   const L = Math.hypot(q[0]-p[0], q[1]-p[1]); if(!d || L<0.01) return p;
   const dx=(q[0]-p[0])/L, dy=(q[1]-p[1])/L, m=5;
-  const tx = dx>0 ? (d.x+d.w+m-p[0])/dx : dx<0 ? (d.x-m-p[0])/dx : 1e9;
-  const ty = dy>0 ? (d.y+d.h+m-p[1])/dy : dy<0 ? (d.y-m-p[1])/dy : 1e9;
+  const tx = dx>0 ? (d.x+d.W+m-p[0])/dx : dx<0 ? (d.x-m-p[0])/dx : 1e9;
+  const ty = dy>0 ? (d.y+d.H+m-p[1])/dy : dy<0 ? (d.y-m-p[1])/dy : 1e9;
   const t = Math.min(Math.max(0, Math.min(tx, ty)), L);
   return [p[0]+dx*t, p[1]+dy*t];
 }
@@ -792,35 +800,35 @@ function tube(pts, r, mat, rad){
   m.castShadow = true; PARENT.add(m); return m;
 }
 const PH = [0xe0a92e, 0x3fa845, 0xcf4436];
-function P(id, i){ const d=dev(id), p=d.pins[i]; return [d.x+p[0], d.y+p[1]]; }
+function P(id, i){ const d=dev(id), p=d.pins[i], s=d.s||1; return [d.x+p[0]*s, d.y+p[1]*s]; }
 function elbow(a, b, y){ return [a, [a[0],y], [b[0],y], b]; }
 /* 主电路 21 段（板上已接好，不练）。下标：0-2 进 QF / 3-5 QF→FU1 / 6-8 FU1→KM / 9-11 KM→FR / 12-14 FR→穿过互感器 / 15-17 →出线端子排 / 18-20 去电动机 */
-const MAINS = [];
+const MAINS = [], FEED_Y = 148;
 function main(i, p, a, b, ln){
   const mat = M(PH[i], {roughness:0.5, emissive:PH[i], emissiveIntensity:0});
   const pts = path3(p, a ? PINZ[a]+2.6 : null, b ? (b==='mot' ? 56 : PINZ[b]+2.6) : null, ln!=null ? ln : 9+i*5.5, a && dev(a), b && b!=='mot' && dev(b));
   MAINS.push({mat:mat, mesh:tube(pts, 2.8, mat)});
 }
-[0,1,2].forEach(function(i){ const b=P('qf',i), y=30-7*i; main(i, [[-18,y],[b[0],y],b], null, 'qf'); });
-[0,1,2].forEach(function(i){ main(i, elbow(P('qf',3+i), P('fu1',i), 146), 'qf', 'fu1'); });
-[0,1,2].forEach(function(i){ main(i, elbow(P('fu1',3+i), P('km',i), 296+8*i), 'fu1', 'km'); });
-[0,1,2].forEach(function(i){ main(i, elbow(P('km',3+i), P('fr',i), 498+6*i), 'km', 'fr'); });
-[0,1,2].forEach(function(i){ main(i, elbow(P('fr',3+i), [P('ct',i)[0], P('ct',i)[1]-16], 612+4*i).concat([[P('ct',i)[0], P('ct',i)[1]+14]]), 'fr', null, 17); });   /* 从互感器孔里穿过去 */
-[0,1,2].forEach(function(i){ const a=P('ct',i), b=P('tbm',i); main(i, [[a[0],a[1]+14],[a[0],690+3*i],[b[0],690+3*i],b], null, 'tbm', 17); });
-[0,1,2].forEach(function(i){ const a=P('tbm',i), x=MOT.x+60+9*i; main(i, [a,[a[0],744+4*i],[x,744+4*i],[x,MOT.y-12]], 'tbm', 'mot'); });
+[0,1,2].forEach(function(i){ const b=P('qf',i), y=16-5*i; main(i, [[-18,y],[b[0],y],b], null, 'qf'); });
+[0,1,2].forEach(function(i){ main(i, elbow(P('qf',3+i), P('fu1',i), 158), 'qf', 'fu1'); });
+[0,1,2].forEach(function(i){ main(i, elbow(P('fu1',3+i), P('km',i), 306+8*i), 'fu1', 'km'); });
+[0,1,2].forEach(function(i){ main(i, elbow(P('km',3+i), P('fr',i), 534+6*i), 'km', 'fr'); });
+[0,1,2].forEach(function(i){ const c=P('ct',i); main(i, [P('fr',3+i), [c[0], c[1]+18]], 'fr', null, PINZ.ct); });   /* FR 出线正好对着互感器孔，直着穿下去 */   /* 从互感器孔里穿过去 */
+[0,1,2].forEach(function(i){ const a=P('ct',i), b=P('tbm',i); main(i, [[a[0],a[1]+18],[a[0],796+3*i],[b[0],796+3*i],b], null, 'tbm', PINZ.ct); });
+[0,1,2].forEach(function(i){ const a=P('tbm',i), x=MOT.x+60+9*i; main(i, [a,[a[0],872+4*i],[x,872+4*i],[x,MOT.y-12]], 'tbm', 'mot'); });
 const MOT_SEG = 18;            /* 去电动机那三段的起始下标（考场里电机线没接就藏起来） */
 const MAIN_RUN = { km:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] };
 /* 控制回路取电：4、5 号熔断器上口从 L1、L2 引过来（板上已接好） */
 [['fu4',0],['fu5',1]].forEach(function(a, k){
-  const f=dev(a[0]), p=[f.x+16, f.y+6], q=P('qf',3+a[1]), mat=M(PH[a[1]], {roughness:0.5});
-  tube(path3([q,[q[0],140+4*k],[p[0],140+4*k],p], 36.6, 36.6, 24+k*4, dev('qf'), f), 2.2, mat);
+  const f=dev(a[0]), p=P(a[0],0), q=P('qf',3+a[1]), mat=M(PH[a[1]], {roughness:0.5});
+  tube(path3([q,[q[0],FEED_Y+4*k],[p[0],FEED_Y+4*k],p], PINZ.qf+2.6, PINZ[a[0]]+2.6, 24+k*4, dev('qf'), f), 2.2, mat);
 });
 /* 按钮盒到端子排右列的 12 根线（盒子出厂就带，不用接） */
 (function(){
   const tb=dev('tb'), sb=dev('sb'), mat=M(0x3a3f46);
   for(let i=0;i<tb.terminals.length;i++){
-    const y=tb.y+22+i*24, gx=tb.x+tb.w+6+(i%4)*4, sx=sb.x+34+i*6;
-    tube(path3([[tb.x+tb.w-14,y],[gx,y],[gx,tb.y-22],[sx,tb.y-22],[sx,sb.y+sb.h-4]], 32.6, 20, 40+(i%4)*3, null, null), 1.5, mat, 5).castShadow=false;
+    const ts=tb.s||1, y=tb.y+(22+i*24)*ts, gx=tb.x+tb.W+6+(i%4)*4, sx=sb.x+(30+i*5)*(sb.s||1);
+    tube(path3([[tb.x+(tb.w-14)*ts,y],[gx,y],[gx,tb.y-22],[sx,tb.y-22],[sx,sb.y+sb.H-4]], 30*ts+2.6, 20, 40+(i%4)*3, null, null), 1.5, mat, 5).castShadow=false;
   }
 })();
 /* 16 根线：控制 7 + 互感器二次 9 */
@@ -852,7 +860,7 @@ const EXG = new THREE.Group(); root.add(EXG);      /* 试车台一直摆着；�
 const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP：考场里能点的位置 id → {pos, mark, pick, name} */
 (function(){
   PARENT = EXG;
-  const BX = 366, BY = 738;
+  const BX = 340, BY = 910;
   rbox(BX, BY, 206, 96, 0, 40, M(0x5d6b7a, {roughness:0.5, metalness:0.3}), 4);              /* 试车台（喷塑钢壳） */
   rbox(BX+4, BY+4, 198, 88, 39, 1.5, M(0x66768a, {roughness:0.45, metalness:0.3}), 3);
   for(const s of [[BX+8,BY+8],[BX+198,BY+8],[BX+8,BY+88],[BX+198,BY+88]]) screw(s[0], s[1], 40.5, 3);
@@ -883,20 +891,21 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
     cyl(x, JY, 46.6, 4.4, 0.6, MAT.brass, 24); cyl(x, JY, 46.8, 2.4, 0.6, MAT.hole, 16);
     label(JN[i], x, JY+18, 40.4, 10, '#fff'); });
   /* 盘上接线排：电源进线 L1 L2 L3（实物上电源线和电机线在同一条接线排）*/
-  const LX = [200, 235, 270], LY = 697;
-  [0,1,2].forEach(function(i){ rbox(184+i*36.6, 680, 36, 34, 0, 22, MAT.cream, 2); box(220+i*36.6, 680, 0.8, 34, 0, 23, MAT.grey); });
+  const LX = [312, 344, 376], LY = 737;   /* 电源进线接线排：仪表板下面那块空地 */
+  [0,1,2].forEach(function(i){ rbox(296+i*32, 720, 31, 34, 0, 22, MAT.cream, 2); box(327+i*32, 720, 0.8, 34, 0, 23, MAT.grey); });
   LX.forEach(function(x, i){ screw(x, LY, 22); label('L'+(i+1), x+16, LY, 22.4, 12, '#1f2328'); });
   /* 外部接线 */
   const PEC = 0x8fbf2f, cn = ['黄','绿','红'], cid = ['Y','G','R'];
+  const pe = dev('pe'), PEX = [pe.x+20*(pe.s||1), pe.x+50*(pe.s||1)], PEY = pe.y+pe.H/2, PEZ = 7*(pe.s||1)+2.6;   /* 盘上 PE 排头两颗螺钉：电源箱地线、电机地线 */
   function wire(id, name, color, pts2, za, zb, lane, r){
     const m = tube(path3(pts2, za, zb, lane, null, null), r||2.8, M(color, {roughness:0.5})); m.visible = false;
     (XT[id] = XT[id] || {name:name, meshes:[]}).meshes.push(m);
   }
-  wire('gA', '电源箱地线（黄绿线：盘上 PE ↔ 试车台 PE 插孔）', PEC, [[320,693],[320,728],[JX[3],728],[JX[3],JY]], 9.6, 44, 24);
-  wire('gM', '电动机地线（接到盘上 PE）', PEC, [[350,693],[350,746],[250,746],[250,MOT.y+6]], 9.6, 10, 30);
+  wire('gA', '电源箱地线（黄绿线：盘上 PE ↔ 试车台 PE 插孔）', PEC, [[PEX[0],PEY],[PEX[0],880],[JX[3],880],[JX[3],JY]], PEZ, 44, 24);
+  wire('gM', '电动机地线（接到盘上 PE）', PEC, [[PEX[1],PEY],[PEX[1],892],[262,892],[262,MOT.y+6]], PEZ, 10, 30);
   [0,1,2].forEach(function(i){
     XT['m'+cid[i]] = {name:'电动机'+cn[i]+'线 → 接线排 '+'UVW'[i], meshes:[]};       /* 管子用主电路那三段（下面登记）*/
-    wire('p'+cid[i], '电源'+cn[i]+'线 → 接线排 L'+(i+1), PH[i], [[LX[i],LY],[LX[i],714+4*i],[JX[i],714+4*i],[JX[i],BY+2]], 24.6, null, 50+i*4);
+    wire('p'+cid[i], '电源'+cn[i]+'线 → 接线排 L'+(i+1), PH[i], [[LX[i],LY],[LX[i],858+5*i],[JX[i],858+5*i],[JX[i],BY+2]], 24.6, null, 50+i*4);
     wire('s'+cid[i], '电源'+cn[i]+'线另一端 → 试车台 L'+(i+1)+' 插孔', PH[i], [[JX[i],BY+2],[JX[i],BY+12],[JX[i],JY]], null, 45, 50+i*4);
   });
   /* 能点的位置：接线点 + 验电点 */
@@ -908,7 +917,7 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
     pick.position.copy(pos); pick.userData.act = {type:'ex', id:id}; pick.userData.off = true; EXG.add(pick); picks.push(pick);
     XP[id] = {pos:pos, mark:mark, pick:pick, name:name};
   }
-  point('gA', JX[3], JY, 46, '试车台 PE 插孔'); point('gM', 350, 693, 11, '盘上 PE 接地排');
+  point('gA', JX[3], JY, 46, '试车台 PE 插孔'); point('gM', PEX[1], PEY, PEZ+1.4, '盘上 PE 接地排');
   [0,1,2].forEach(function(i){
     const u = P('tbm', i);
     point('m'+cid[i], u[0], u[1], 26, '接线排 '+'UVW'[i]); point('p'+cid[i], LX[i], LY, 26, '接线排电源端子 L'+(i+1)); point('s'+cid[i], JX[i], JY, 46, '试车台 L'+(i+1)+' 插孔');
@@ -924,10 +933,14 @@ const rings = [0,1].map(function(){
 
 /* 端子名牌：屏幕上固定大小（不随远近缩小），浮在蓝圈上方，全景下也认得出是哪个端子 */
 function shortName(id){
-  const m = id.match(/^km(\d)-(.+)$/); if(m) return 'KM'+m[1]+' · '+m[2].toUpperCase();
+  let m = id.match(/^km(\d?)-(.+)$/); if(m) return 'KM'+m[1]+' · '+m[2].toUpperCase();
   if(id==='fu4-out') return '4号熔断器'; if(id==='fu5-out') return '5号熔断器';
   if(id.indexOf('fr-')===0) return 'FR · '+id.slice(3);
-  return id==='tb-last' ? '端子排 末位' : '端子排 '+id.slice(3);
+  m = id.match(/^am(\d)-(\d)$/); if(m) return 'ABC'[m[1]-1]+'相电流表 · '+m[2];
+  m = id.match(/^ta(\d)-(s\d)$/); if(m) return 'ABC'[m[1]-1]+'相互感器 · '+m[2].toUpperCase();
+  if(id.indexOf('pe-')===0) return '接地铜排';
+  if(id.indexOf('tb-')===0) return id==='tb-last' ? '端子排 末位' : '端子排 '+id.slice(3);
+  return TLABEL[id] || id;
 }
 const TAGS = {};
 function tagOf(id){
@@ -1035,7 +1048,7 @@ function refresh(){
     const sp = tagOf(id), up = TPOS[ids[1-i]] ? TPOS[id].y <= TPOS[ids[1-i]].y : true;     /* 两头一上一下错开，别互相压着 */
     sp.visible = true; sp.position.copy(rp[i]); sp.position.z += 6;
     sp.center.set(0.5, (up || ids.length===1) ? -0.55 : 1.55);
-    const hgt = 30/H*2*Math.tan(camera.fov/2*Math.PI/180); sp.scale.set(hgt*sp.userData.ar, hgt, 1);
+    const hgt = 19/H*2*Math.tan(camera.fov/2*Math.PI/180);   /* 标签字高 19 像素（11-26 他嫌 30 太大挡画面） */ sp.scale.set(hgt*sp.userData.ar, hgt, 1);
   });
   const exW = EX.on && EX.phase==='wire', exT = EX.on && EX.phase==='trial';
   for(const id in TERMS){ TERMS[id].mark.visible = (UI.wire && !SIM.qf) || exW || (exT && EX.pen && (id==='fu4-out' || id==='fu5-out')); TERMS[id].pick.userData.off = !(UI.wire || EX.on); }
@@ -1405,8 +1418,8 @@ function fitD(w, h, exact){
   return Math.max(h/(2*t*f), w*H/(2*t*W))*(exact ? 1 : 1.05);
 }
 const VIEWS = {
-  front:function(){ return {t:V(280,420,20), d:[0,0,1], D:fitD(600,860)}; },
-  desk:function(){ return {t:V(300,760,30), d:[0,-0.45,1], D:fitD(600,240)}; },
+  front:function(){ return {t:V(280,BH/2,20), d:[0,0,1], D:fitD(600,BH+20)}; },
+  desk:function(){ return {t:V(320,940,30), d:[0,-0.45,1], D:fitD(600,240)}; },
   km:function(){ return {t:V(237,415,40), d:[0.18,-0.5,1], D:fitD(450,300)}; },
   tb:function(){ return {t:V(480,300,30), d:[-0.5,-0.12,1], D:fitD(300,600)}; }
 };
