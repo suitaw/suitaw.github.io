@@ -313,7 +313,7 @@ function simExplain(){
   const q = ['qf1','qf2','qf3'].filter(function(x){ return !SIM.tog[x]; });
   if(q.length===3) return '已送电，空开都分着。<b>从左到右</b>合：① 总开关 → ② 插座（漏保） → ③ 照明';
   const on = [['el','灯泡亮'],['fl','日光灯亮'],['xs','插座有电']].filter(function(x){ return k[x[0]].on; }).map(function(x){ return x[1]; });
-  return (on.length ? '<b>'+on.join(' · ')+'</b>。' : '')+'灯泡考场顺序：<b>左开 → 右关 → 右开 → 左关</b>（两个双控任意一个都能开关）；单控管日光灯。电能表有电器在用就转。线外<b>发青光</b>＝带电，<b>亮点</b>＝有电流';
+  return (on.length ? '<b>'+on.join(' · ')+'</b>。' : '')+'灯泡考场顺序：<b>左开 → 右关 → 右开 → 左关</b>（两个双控任意一个都能开关）；单控管日光灯。电能表有电器在用就转。线外<b>发红光</b>＝带电、<b>变淡</b>的不带电，<b>亮点</b>＝有电流';
 }
 simReset();
 /*__CORE_END__*/
@@ -329,7 +329,7 @@ let renderer;
 try{ renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, preserveDrawingBuffer:Q.has('shot')}); }
 catch(e){ fatal('这个浏览器开不了 3D（WebGL）。换 Chrome 试试。'); throw e; }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 3));
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = false;   /* 11-26 他嫌线的阴影乱，影响看线：关掉投影 */
 renderer.toneMapping = THREE.NeutralToneMapping; renderer.toneMappingExposure = 1;   /* ACES 会把颜色洗白 */
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdfe3e8);
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
@@ -337,7 +337,7 @@ scene.environmentIntensity = 0.5;
 const camera = new THREE.PerspectiveCamera(30, 1, 20, 9000);
 const BW = 560, BH = BOARD_H;
 const sun = new THREE.DirectionalLight(0xffffff, 0.95);
-sun.position.set(-420, 620, 900); sun.castShadow = true;
+sun.position.set(-420, 620, 900); sun.castShadow = false;
 sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 1.2;
 const sc = sun.shadow.camera; sc.left=-460; sc.right=460; sc.top=BH/2+80; sc.bottom=-BH/2-80; sc.near=100; sc.far=2400;
 scene.add(sun);
@@ -450,7 +450,7 @@ const picks = [];              /* 能点的东西：mesh.userData.act */
 function dev(id){ return DEVICES.filter(function(d){ return d.id===id; })[0]; }
 
 /* 安装板 + 导轨（导轨贴图按长度重复） */
-const BOARD = add(new THREE.Mesh(new RoundedBoxGeometry(BW+40, BH+20, 12, 2, 3), MAT.board)); BOARD.position.copy(V(BW/2, BH/2, -6)); BOARD.userData.bg = true;
+const BOARD = add(new THREE.Mesh(new THREE.BoxGeometry((BW+40)*5, (BH+20)*4, 12), MAT.board));   /* 底板做得比屏幕大得多：缩放、全屏都铺满，不露背景 */ BOARD.position.copy(V(BW/2, BH/2, -6)); BOARD.userData.bg = true;
 [[30,368,330]].forEach(function(r){
   const t = RAIL_TEX.clone(); t.repeat.set((r[2]+16)/44, 1); t.needsUpdate = true;
   const m = M(0xffffff, {map:t, metalness:0.9, roughness:0.35});
@@ -934,7 +934,7 @@ function setMode(wire){
   const mb = document.getElementById('mode'); mb.textContent = wire ? '看答案' : '自己接'; mb.classList.toggle('on', wire);
 }
 const info = document.getElementById('info'), cnt = document.getElementById('cnt');
-const HALO_M = new THREE.MeshBasicMaterial({color:0x2fd4e8, transparent:true, opacity:0.38, depthWrite:false, toneMapped:false});   /* 带电控制线外面那层青光 */
+const HALO_M = new THREE.MeshBasicMaterial({color:0xff2a2a, transparent:true, opacity:0.55, depthWrite:false, toneMapped:false});   /* 带电的线外面那层红光（11-26 他要红色，原来青色） */
 /* 电流光点：所有通电控制线共用一个 InstancedMesh */
 const DOT_MAX = 900, DOTS = new THREE.InstancedMesh(new THREE.SphereGeometry(1.9, 10, 8),
   new THREE.MeshBasicMaterial({color:0xfffbe6, toneMapped:false}), DOT_MAX);
@@ -962,14 +962,15 @@ function refresh(){
        亮点＝有电流。所以「按钮上口带电但没电流」能一眼看出来 */
     const pv = (r.pot||{})[key], live = !!pv && !hidden && !isSel && !(UI.sel && !isSel);
     if(live && !c.halo){ const u = c.mesh.userData;
-      c.halo = new THREE.Mesh(new THREE.TubeGeometry(u.curve, Math.max(24, Math.round(u.len/3)), 4.4, 10, false), HALO_M); c.mesh.add(c.halo); }
+      c.halo = new THREE.Mesh(new THREE.TubeGeometry(u.curve, Math.max(24, Math.round(u.len/3)), 5.2, 10, false), HALO_M); c.mesh.add(c.halo); }
     if(c.halo) c.halo.visible = live;
     c.mat.color.setHex(isSel ? 0x1c6fd6 : (c.base!==undefined ? c.base : 0x22262b));
     c.mat.emissive.setHex(isSel ? 0x1c6fd6 : 0);
     c.mat.emissiveIntensity = isSel ? 0.9 : 0;
     const vv = r.volt || {}, va = vv[c.w.from], vb = vv[c.w.to];
     c.flow = (r.cur[key] && !hidden && !(UI.sel && !isSel)) ? ((va!==undefined && vb!==undefined && vb>va) ? -1 : 1) : 0;
-    c.mat.opacity = (UI.sel && !isSel) ? 0.16 : 1; c.mat.depthWrite = !(UI.sel && !isSel);
+    const dim = (UI.sel && !isSel) || (!UI.sel && powered() && !pv && !c.flow && !hidden);   /* 合闸后不带电的线变淡，带电的一眼看出来 */
+    c.mat.opacity = UI.sel && !isSel ? 0.16 : dim ? 0.22 : 1; c.mat.depthWrite = !dim;
   });
   const run = [];
   MAINS.forEach(function(m, i){ m.mat.emissiveIntensity = run.indexOf(i)>=0 ? 0.55 : 0; });
@@ -1002,7 +1003,7 @@ function refresh(){
   cnt.textContent = UI.sel && UI.sel<100 ? UI.sel+' / '+NW : '全部';
   const ld = function(){ return ['el','fl','xs'].map(function(k){ return SPEC.coils.filter(function(c){ return c.id===k; })[0].name+(SIM.km[k].on ? (k==='xs' ? '有电' : '亮') : (k==='xs' ? '没电' : '灭')); }).join(' · '); };
   const st = '<div class="st">'+(SIM.qf ? '已送电' : '没送电')+' · '+['qf1','qf2','qf3'].map(function(k, i){ return '①②③'[i]+(SIM.tog[k] ? '合' : '分'); }).join(' ')+' · '+ld()+'</div>'+
-    (powered() ? '<div class="st"><span style="color:#1fb8cc">■</span> 线外发青光＝带电　· 黑线＝不带电　· 亮点＝有电流</div>' : '');
+    (powered() ? '<div class="st"><span style="color:#ff2a2a">■</span> 线外发红光＝带电　· 变淡＝不带电　· 亮点＝有电流</div>' : '');
   if(EX.on){
     const st2 = '<div class="st">'+(EX.phase==='wire' ? '盘内接线 · 已接 '+EX.wires.length+' 根' :
       '手套'+(EX.glove ? '戴着' : '摘了')+' · '+(EX.pen ? '验电笔在手 · ' : '')+'总开关'+(EX.main ? '合' : '分')+' · '+ld())+'</div>';
