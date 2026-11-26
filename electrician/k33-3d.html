@@ -1071,14 +1071,16 @@ function pname(id){ return XP[id] ? XP[id].name : tname(id); }
 
 /* 底部弹出的菜单 */
 const ov = document.getElementById('ov'), menuEl = document.getElementById('menu');
+/* 手机上手指抬起后浏览器还会补发一次 click，会落到刚弹出的菜单上（关掉它或误点选项）：弹出 0.4 秒内不认点击（11-26 他点光环「没反应」就是这个） */
+let menuT = 0; const menuFresh = function(){ return performance.now() - menuT < 400; };
 function closeMenu(){ ov.classList.remove('show'); }
 function menu(title, items, html){
   menuEl.innerHTML = '<h3>'+title+'</h3>'+(html||'');
   items.concat([['取消', null, 'c']]).forEach(function(it){
     const b = document.createElement('button'); b.textContent = it[0]; if(it[2]) b.className = it[2];
-    b.onclick = function(){ closeMenu(); if(it[1]) it[1](); }; menuEl.appendChild(b);
+    b.onclick = function(){ if(menuFresh()) return; closeMenu(); if(it[1]) it[1](); }; menuEl.appendChild(b);
   });
-  ov.classList.add('show');
+  ov.classList.add('show'); menuT = performance.now();
 }
 function askHand(what, fn){ menu(what+'：用哪只手？', [['右手', function(){ fn('R'); }], ['左手', function(){ fn('L'); }]]); }
 function exLog(k, d){ const e = Object.assign({k:k, main:EX.main, tog:Object.assign({}, SIM.tog)}, d||{}); EX.ev.push(e); return e; }
@@ -1645,7 +1647,7 @@ document.getElementById('erep').onclick = function(){
 };
 document.getElementById('esub').onclick = function(){ menu('交卷？', [['交卷，看成绩单', exSheet]]); };
 info.onclick = function(){ if(EX.on) exStepMenu(); };   /* 点说明栏：看全部步骤（里面能开关提示） */
-ov.onclick = function(e){ if(e.target===ov) closeMenu(); };
+ov.onclick = function(e){ if(e.target===ov && !menuFresh()) closeMenu(); };
 document.getElementById('mode').onclick = function(){ revExit(); setMode(!UI.wire); };
 document.getElementById('rev').onclick = function(){ if(UI.rev) revExit(); else revEnter(); };
 document.getElementById('hint').onclick = function(){
