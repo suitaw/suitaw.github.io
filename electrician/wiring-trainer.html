@@ -454,7 +454,8 @@ body.stage-fs-lock{overflow:hidden}
 .ex-vd{font-size:1.05rem;font-weight:800;margin-bottom:6px}
 .ex-vd.fail{color:var(--red)} .ex-vd.mid{color:#a86200} .ex-vd.ok{color:var(--green)}
 .ex-rs{margin-top:6px;border-radius:8px;padding:6px 8px}
-.ex-rs.fail{background:var(--redbg)} .ex-rs.ded{background:#fdf1de} .ex-rs.wrong{background:#f3eefc} .ex-rs.other{background:#eef1f4}
+.ex-rs.fail{background:var(--redbg)} .ex-rs.wire{background:#fdf1de} .ex-rs.okw{background:var(--greenbg)}
+.ex-tip .lk2{border:0;background:none;color:var(--acc);text-decoration:underline;font-size:.74rem;padding:0 2px} .ex-rs.ded{background:#fdf1de} .ex-rs.wrong{background:#f3eefc} .ex-rs.other{background:#eef1f4}
 .ex-note{font-size:.7rem;color:var(--tx3);margin-top:8px}
 .ex-result button.pri{margin-top:8px;width:100%;border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:8px;padding:9px;font-size:.84rem}
 svg.ex-mode .sim-motor{display:none}
@@ -1716,7 +1717,7 @@ function toUser(cx, cy){
      不用先找复位按钮 */
   svg.addEventListener('dblclick', function(e){
     /* 自己接线时快速点两个端子就是在接线，不能当成双击放大 */
-    if(state.mode==='free') return;
+    if(state.mode==='free' || state.mode==='exam') return;
     if(VB.w <= VB0.w/ZMAX + 0.5){ zoomReset(); }
     else { const u = toUser(e.clientX, e.clientY); zoomAt(1.8, u.x, u.y); }
     e.preventDefault();
@@ -2765,6 +2766,7 @@ function simQF(on){
   /* 考场模拟：图上点 QF 也要先问用哪只手；拿着验电笔时点到它不算 */
   if(EX.on && !EX.internal){
     if(EX.pen || EX.result) return;
+    if(EX.phase==='wire'){ EX.warn = '先把盘内控制线接完，点「接线完成」'; exRender(); return; }
     exMenu('配电盘开关 QF（现在'+(SIM.qf ? '合着' : '断开')+'）', [
       ['确认开关状态', function(){ exCheck('panel'); }],
       [on ? '合闸' : '分闸', function(){ exAsk(on ? '合闸（配电盘开关）' : '分闸（配电盘开关）', function(h){ exPanel(on, h); }); }]
@@ -3273,7 +3275,7 @@ const FREE = { wires:[], uid:1, sel:null, selWire:null, undo:[], redo:[], t0:0, 
   graded:null, bad:{}, simUser:false, timer:null, on:false, circuit:null };
 
 function tl(id){ return TLABEL[id] || id; }
-function freeKey(){ return 'elec_wt_free_'+CURRENT_CIRCUIT; }
+function freeKey(){ return 'elec_wt_free_'+CURRENT_CIRCUIT+(EX.on ? '_exam' : ''); }   /* 考场模拟另存一份，不动「自己接线」里的 */
 function freeSave(){
   try{
     localStorage.setItem(freeKey(), JSON.stringify({
@@ -3359,6 +3361,7 @@ function freeChanged(){
   FREE.graded=null; FREE.bad={}; FREE.selWire=null;
   if(!FREE.t0 && FREE.wires.length) FREE.t0 = Date.now();
   freeSave(); freeRender(); freeSidePanel(); freeTime();
+  if(EX.on) exRender();
 }
 function freeAct(a){ freeApply(a); FREE.undo.push(a); FREE.redo=[]; freeChanged(); }
 function freeConnect(a, b){
@@ -3405,7 +3408,7 @@ function nearestWire(u, maxD){
 /* 缩放那套会抢指针捕获，click 落在 svg 本身上 —— 所以在 svg 上听、自己算点中了谁。
    拖过图之后那一下 click 会被缩放那边 preventDefault，这里看到就不当接线 */
 svg.addEventListener('click', function(e){
-  if(state.mode!=='free' || e.defaultPrevented) return;
+  if(!(state.mode==='free' || (EX.on && EX.phase==='wire')) || e.defaultPrevented) return;    /* 考场模拟的「盘内接线」也走这套 */
   const u = svgPoint(e.clientX, e.clientY); if(!u) return;
   const tt = nearestTerm(u, clamp(24/u.k, 10, 30)), ww = nearestWire(u, clamp(14/u.k, 6, 18));
   /* 端子的吸附半径大（全览时端子只有几像素），可竖版元件放大后，线常常就从端子旁边
@@ -4075,6 +4078,7 @@ const EXAMS = {
 function exSteps(){
   const X = EXAMS[CUR.id], C = X.cables;
   const st = [
+    {g:'盘内接线', t:'接控制回路：点一个端子、再点另一个就接上一根；接完点「接线完成」', ok:function(E){ return E.phase!=='wire'; }},
     {g:'环境检查', t:'确认配电盘电源开关是断开的（点板上的 QF → 确认开关状态）', ok:function(E){ return E.chk.panel; }},
     {g:'环境检查', t:'翻开标示牌（点牌子），再确认操作台电源总开关是断开的（点操作台最左边的空开）', ok:function(E){ return E.opened && E.chk.table; }},
     {g:'环境检查', t:'「禁止合闸，有人工作」标示牌挡住操作台电源总开关', ok:function(E){ return E.opened && E.sign==='block'; }},
@@ -4113,10 +4117,40 @@ function exReset(){
   EX.say = EX.mode==='exam' ? '开始考试：K31 电动机单向连续运转（带点动控制）。可以开始了。'
                             : '练习模式：每一步我都会提示，做错了当场告诉你。先做环境检查。';
   EX.warn=''; EX.t0=performance.now(); EX.typed = !exKey();
+  EX.phase='wire'; EX.wireGrade=null; EX.wireStd=0;
+  EX.say = (EX.mode==='exam' ? '开始考试：K31 电动机单向连续运转（带点动控制）。' : '练习模式：做错了当场告诉你。') +
+    '先接盘内控制线，接完点「接线完成」，再做通电试车。';
   simReset();
+  exWireStart();
   SIM.qf=false; exPower();
 }
 /* 电从操作台来：总开关合着、电源线两头都接上，QF 上口才有电 */
+/* ---- 盘内接线：复用「自己接线」那套（点端子接线、回退、删线、判分），线另存在 elec_wt_free_k31_exam ---- */
+function exWireStart(){
+  if(FREE.on) freeExit();
+  FREE.circuit = CURRENT_CIRCUIT;
+  FREE.wires=[]; FREE.uid=1; FREE.t0=0; FREE.undo=[]; FREE.redo=[]; FREE.graded=null; FREE.bad={}; FREE.msg='';
+  FREE.simUser = false;
+  freeEnter(); freeSave();
+}
+function exWireDone(std){
+  if(std){
+    FREE.wires = WIRES.map(function(w, i){ return {id:i+1, from:w.from, to:w.to}; });
+    FREE.uid = WIRES.length+1; EX.wireStd = 1;
+  }
+  if(!FREE.wires.length){ EX.warn = '一根线都还没接'; sndErr(); exRender(); return; }
+  freeGrade();
+  EX.wireGrade = FREE.graded;
+  exLog('wire', {n:FREE.wires.length, std:EX.wireStd});
+  freeExit();
+  FREE.simUser = true;                         /* 试车跑他自己接的线：接错了就真的起不来 / 停不下 */
+  gWire.style.display='none'; gUser.style.display='';
+  freeRender();
+  EX.phase = 'trial'; SIM.sig = '';
+  EX.warn = '';
+  exSay(EX.mode==='exam' ? '考官：盘内接线完成，开始通电试车流程。' : '盘内接线完成。下面做通电试车：先环境检查。');
+  exPower(); simTick(); exUpdate();
+}
 function exPower(){
   SIM.sup = !!(EX.table && EX.cab.pw1 && EX.cab.pw2);
   SIM.noMotor = !EX.cab.mot;
@@ -4248,11 +4282,11 @@ function exLin(i){ const d = DEVICES.filter(function(x){ return x.id==='tbm'; })
 function exUVW(i){ return devPin(DEVICES, 'tbm', i); }
 function exPEbar(i){ const d = DEVICES.filter(function(x){ return x.id==='pe'; })[0]; return [d.x+20+i*20, d.y+13]; }
 const EXP = {                       /* 桌上 / 操作台上各处的坐标 */
-  brk:[40,787,90,70], jackL:[262,859], jackPE:[402,859], lamp:[270,797],
+  brk:[40,787,90,70], jackL:[252,859], jackPE:[412,859], lamp:[270,797],
   peCoil:[205,1000], pwCoil:[310,1035], motor:[478,1015], pen:[140,1105],
   signStand:[24,830,124,92], signOpen:[18,960], signFlat:[18,1040]
 };
-function exJack(i){ return [EXP.jackL[0]+i*34, EXP.jackL[1]]; }
+function exJack(i){ return [EXP.jackL[0]+i*40, EXP.jackL[1]]; }
 function exMarks(){ exScene(); }
 let exSceneQ = 0;
 function scheduleScene(){ if(exSceneQ) return; exSceneQ = requestAnimationFrame(function(){ exSceneQ = 0; exScene(); }); }
@@ -4264,7 +4298,12 @@ function exScene(){
   function a(tag, at, txt){ const e = el(tag, at); if(txt!==undefined) e.textContent = txt; G.appendChild(e); return e; }
   function hit(tag, at, fn){
     const e = a(tag, Object.assign({class:'ex-hit'}, at));
-    e.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); ev.preventDefault(); EX.tapT = performance.now(); EX.skipClick = 1; if(!EX.result) fn(); });
+    e.addEventListener('pointerdown', function(ev){
+      ev.stopPropagation(); ev.preventDefault(); EX.tapT = performance.now(); EX.skipClick = 1;
+      if(EX.result) return;
+      if(EX.phase==='wire'){ EX.warn = '先把盘内控制线接完，点「接线完成」'; exRender(); return; }
+      fn();
+    });
     return e;
   }
   function curve(p, q, bend){
@@ -4320,13 +4359,17 @@ function exScene(){
   });
   ['L1','L2','L3','N'].forEach(function(t, k){
     const xy = exJack(k);
-    a('circle',{cx:xy[0], cy:xy[1], r:7, fill:['#e0a92e','#3fa845','#cf4436','#2e6fd1'][k], stroke:'#555'});
-    a('text',{x:xy[0], y:xy[1]+20, class:'ex-tiny'}, t);
+    a('circle',{cx:xy[0], cy:xy[1], r:9, fill:['#e0a92e','#3fa845','#cf4436','#2e6fd1'][k], stroke:'#555'});
+    a('circle',{cx:xy[0], cy:xy[1], r:3.5, fill:'#2b2f33'});
+    a('text',{x:xy[0], y:xy[1]+21, class:'ex-tiny'}, t);
   });
-  a('circle',{cx:EXP.jackPE[0], cy:EXP.jackPE[1], r:7, fill:'#3fa845', stroke:'#e0c12e', 'stroke-width':2.5});
+  a('circle',{cx:EXP.jackPE[0], cy:EXP.jackPE[1], r:9, fill:'#3fa845', stroke:'#e0c12e', 'stroke-width':3});
+  a('circle',{cx:EXP.jackPE[0], cy:EXP.jackPE[1], r:3.5, fill:'#2b2f33'});
   a('text',{x:EXP.jackPE[0], y:EXP.jackPE[1]+20, class:'ex-tiny'}, 'PE');
-  hit('rect',{x:exJack(0)[0]-14, y:EXP.jackL[1]-16, width:3*34+4, height:34}, function(){ exTapTarget('jack'); });
-  hit('circle',{cx:EXP.jackPE[0], cy:EXP.jackPE[1], r:16}, function(){ exTapTarget('jackPE'); });
+  /* 热区：L1~L3 一整块（上下各放宽到模块边），N、PE 各一块，正好铺满不留缝 —— 不全屏时孔在屏幕上才 20 来像素 */
+  hit('rect',{x:exJack(0)[0]-20, y:EXP.jackL[1]-26, width:2*40+40, height:52}, function(){ exTapTarget('jack'); });
+  hit('rect',{x:exJack(3)[0]-20, y:EXP.jackL[1]-26, width:40, height:52}, function(){ exTapN(); });
+  hit('rect',{x:EXP.jackPE[0]-20, y:EXP.jackL[1]-26, width:42, height:52}, function(){ exTapTarget('jackPE'); });
   /* DC 24V（装饰） */
   a('rect',{x:442, y:y0+22, width:104, height:118, rx:6, fill:'#f4f6f8', stroke:'#a9b2bb'});
   a('text',{x:494, y:y0+34, class:'ex-tiny'}, 'DC 24V');
@@ -4413,7 +4456,13 @@ function exTapTarget(t){
   if(EX.pen && t!=='lin'){ exWarn('拿着验电笔。要接线先把验电笔放回桌上'); exRender(); return; }
   if(EX.hold){
     const id = (EX_LINK[EX.hold]||{})[t];
-    if(!id){ exWarn('这根线不接这里'); exRender(); return; }
+    if(!id){
+      const hn = {pe:'黄绿双色线',pw:'电源线',mot:'电机三相线',mpe:'电机地线'}[EX.hold];
+      const why = t==='jackPE' ? '这是 PE 接地孔，只插黄绿双色线。电源线的黄绿红三相插左边 L1 L2 L3'
+        : t==='jack' ? '这是 L1 L2 L3 电源插孔，插电源线。'+hn+(EX.hold==='pe' ? '插右边的 PE 孔' : '不插这里')
+        : hn+'不接'+EX_TN[t];
+      exWarn(why); EX.warn = EX.warn || why; exRender(); return;
+    }
     if(EX.cab[id]){ EX.warn = '已经接上了'; exRender(); return; }
     const c = EX.hold;
     return exAsk('接「'+X.cables[id].full+'」', function(h){ exCable(id, h); if(c!=='pe' && c!=='pw') EX.hold=''; else if(EX.cab[Object.values(EX_LINK[c])[0]] && EX.cab[Object.values(EX_LINK[c])[1]]) EX.hold=''; });
@@ -4423,6 +4472,11 @@ function exTapTarget(t){
   exMenu(EX_TN[t], on.map(function(k){
     return ['拆下：'+X.cables[k].n, function(){ exAsk('拆「'+X.cables[k].n+'」', function(h){ exCable(k, h); }); }];
   }));
+}
+function exTapN(){
+  if(EX.hold){ const m='这是 N 零线孔，K31 用不到。电源线的黄绿红三相插左边 L1 L2 L3'; exWarn(m); EX.warn = m; }
+  else EX.warn = 'N 零线孔，K31 用不到';
+  exRender();
 }
 function exTapLin(){
   /* 拿着验电笔点接线排电源进线：挑最近的那一相——这里简单按三相依次验，没验过的先 */
@@ -4658,6 +4712,14 @@ function exGrade(){
   if(SIM.qf || EX.table) R.other.push('交卷时电源还没断开');
   const left = Object.keys(EX.cab).filter(function(k){ return EX.cab[k]; });
   if(left.length) R.other.push('线还没拆完：'+left.map(function(k){ return X.cables[k].n; }).join('、'));
+  const WG = EX.wireGrade;
+  R.wire = [];
+  if(EX.wireStd) R.wire.push('跳过了盘内接线（用的标准接法）');
+  else if(WG){
+    WG.res.filter(function(r){ return r.ok===false; }).forEach(function(r){ R.wire.push('通电检查没过：'+r.n+(r.h ? '（'+r.h+'）' : '')); });
+    if(WG.nb.length) R.wire.push('跟标准接法不一样的端子 '+WG.nb.length+' 个：'+WG.nb.slice(0,6).map(function(x){ return tl(x.t); }).join('、')+(WG.nb.length>6 ? '……' : ''));
+    if(!R.wire.length) R.wire.push('✓ '+WG.n+' 根全对，跟标准接法一样');
+  }
   R.pts = R.ded.reduce(function(a, d){ return a+d[0]; }, 0);
   return R;
 }
@@ -4692,8 +4754,9 @@ function exRender(){
     return '<button data-ex="menu:'+k+'">'+it[0]+'</button>';
   }).join('')+'<button data-ex="menu:x" class="x">取消</button></div>';
   if(EX.ask) h += '<div class="ex-ask"><div class="q">用哪只手'+EX.ask.label+'？</div><button data-ex="hand:L">左手</button><button data-ex="hand:R">右手</button><button data-ex="hand:x" class="x">取消</button></div>';
-  /* 嘴说 */
-  if(EX.typed){
+  /* 嘴说（盘内接线阶段用不上，不显示） */
+  if(EX.phase==='wire'){}
+  else if(EX.typed){
     h += '<div class="ex-voice typed"><span class="ex-vt">口述（点你说的那句）：</span>'+
       '<button data-ex="say:env">「'+X.reports.env.say+'」</button><button data-ex="say:wired">「'+X.reports.wired.say+'」</button>'+
       '<button data-ex="say:有电">「有电！」</button><button data-ex="say:无电">「无电！」</button>'+
@@ -4703,6 +4766,14 @@ function exRender(){
     h += '<div class="ex-voice"><button data-ex="mic" class="ex-mic '+EX.rec+'">'+lb+'</button>'+
       '<span class="ex-heard">'+(EX.heard ? '听到：「'+EX.heard+'」' : '报告考官、验电喊「有电」都用嘴说')+'</span>'+
       '<button data-ex="typed" class="lk">不用语音</button></div>';
+  }
+  if(EX.phase==='wire'){
+    h += '<div class="ex-tools"><span class="ex-pend" style="color:var(--tx2)">已接 '+FREE.wires.length+' 根</span>'+
+      '<button data-ex="w:undo">回退</button><button data-ex="w:del">删这根</button><button data-ex="w:clr">清除</button>'+
+      '<button data-ex="w:done" class="pri">接线完成</button></div>'+
+      (FREE.msg ? '<div class="ex-tip">'+FREE.msg+'</div>' : '')+
+      '<div class="ex-tip">只想练试车流程：<button data-ex="w:std" class="lk2">跳过，用标准接法</button></div>';
+    box.innerHTML = h; exSide(); scheduleScene(); return;
   }
   const pend = EX.pend.length ? '<span class="ex-pend">待喊：'+EX.pend.map(function(q){ return q.p.n; }).join('、')+'</span>' : '';
   h += '<div class="ex-tools">'+(EX.pen ? '<span class="ex-pend">🖊 验电笔在手上</span>' : '')+pend+
@@ -4738,6 +4809,7 @@ function exSide(){
   const verdict = R.fail.length ? '<div class="ex-vd fail">✘ 判不合格</div>'
     : '<div class="ex-vd '+(R.pts||R.wrong.length ? 'mid' : 'ok')+'">'+(R.pts ? '扣 '+R.pts+' 分' : '没有扣分项')+'</div>';
   side.innerHTML = '<div class="ex-result">'+verdict+
+    list((R.wire.length===1 && /^✓/.test(R.wire[0])) ? 'okw' : 'wire', '盘内接线', R.wire||[])+
     list('fail', '判不合格（一条就不合格）', R.fail)+
     list('ded', '扣分（材料写明分值的）', R.ded.map(function(d){ return '扣 '+d[0]+'：'+d[1]; }))+
     list('wrong', '判错（材料没写分值）', R.wrong)+
@@ -4769,6 +4841,12 @@ function exSide(){
     if(p[0]==='say'){
       const X = EXAMS[CUR.id];
       return exHear(p[1]==='env' ? X.reports.env.say : p[1]==='wired' ? X.reports.wired.say : p[1]+'！', true);
+    }
+    if(p[0]==='w'){
+      if(p[1]==='done') return exWireDone(false);
+      if(p[1]==='std') return exWireDone(true);
+      const b2 = document.getElementById({undo:'fUndo', del:'fDel', clr:'fClr'}[p[1]]); if(b2) b2.click();
+      exRender(); return;
     }
     if(a==='submit') return exSubmit();
     if(a==='reset'){ exReset(); exMarks(); exUpdate(); return; }
@@ -4813,6 +4891,9 @@ function exExit(){
   if(EXREC.mr && EX.rec==='on'){ try{ EXREC.mr.stop(); }catch(_){} }
   try{ speechSynthesis.cancel(); }catch(_){}
   SIM.sup = undefined; SIM.noMotor = false;
+  if(FREE.on) freeExit();
+  FREE.simUser = false; FREE.circuit = null;      /* 回「自己接线」时重新读它自己那份 */
+  gWire.style.display=''; gUser.style.display='none';
   svg.classList.remove('ex-mode');
   exMarks();
   setViewBox(CUR.viewBox);
