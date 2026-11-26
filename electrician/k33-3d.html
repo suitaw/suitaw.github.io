@@ -622,10 +622,15 @@ DEVICES.forEach(function(d){
   if(d.kind==='tube'){                                                  /* H 型四针日光灯：灯架 + 两根并排灯管（一头连通）+ 镇流器 */
     rbox(x, y+28, w, 50, 0, 10, PL(0xf2f2ee, 0.4, {metalness:0.2}), 4);
     rbox(x+w-34, y+24, 30, 58, 0, 22, PL(0xe6e6e0, 0.5), 4);           /* 四针灯座 */
-    const gm = new THREE.MeshStandardMaterial({color:0xf4f6f8, roughness:0.3, emissive:0xfff6dd, emissiveIntensity:0, transparent:true, opacity:0.92});
+    /* 灭：灰白哑光玻璃；亮：暖白自发光 + 外面一圈光晕 + 照亮板面（11-26 他说亮不亮看不出区别） */
+    const gm = new THREE.MeshStandardMaterial({color:0xbfc4c8, roughness:0.55, emissive:0xfff3d6, emissiveIntensity:0, transparent:true, opacity:0.95});
     ANIM.tubeMat = gm;
+    const glowM = new THREE.MeshBasicMaterial({color:0xfff1cc, transparent:true, opacity:0, depthWrite:false, toneMapped:false, blending:THREE.AdditiveBlending});
+    const tl = new THREE.PointLight(0xfff0d0, 0, 420); tl.position.copy(V(x+w/2-20, y+52, 60)); PARENT.add(tl);
+    ANIM.tubeGlow = {m:glowM, light:tl, v:0};
     [y+40, y+66].forEach(function(ty){ const t = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, w-46, 24), gm);
-      t.rotation.z = Math.PI/2; t.position.copy(V(x+12+(w-46)/2, ty, 20)); t.castShadow = true; PARENT.add(t); });
+      t.rotation.z = Math.PI/2; t.position.copy(V(x+12+(w-46)/2, ty, 20)); t.castShadow = true; PARENT.add(t);
+      const gl = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, w-40, 24), glowM); gl.rotation.z = Math.PI/2; gl.position.copy(t.position); PARENT.add(gl); });
     const br = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 33, 24), gm); br.position.copy(V(x+12, y+53, 20)); PARENT.add(br);   /* H 的横杠 */
     rbox(x+20, y+84, 90, 12, 0, 16, MAT.dark, 2);                      /* 镇流器 */
     label('镇流器', x+65, y+90, 16.4, 7, '#dfe3e8');
@@ -1535,7 +1540,9 @@ function frame(now){
   if(ANIM.rcd){ ANIM.rcd.v = Math.max(0, ANIM.rcd.v - dt*5); ANIM.rcd.mesh.position.z = ANIM.rcd.z0 - ANIM.rcd.v*3; }
   { const b = SIM.km.el.on ? 1 : 0, B = ANIM.bulb; B.v = (B.v||0) + (b - (B.v||0))*Math.min(1, dt*10);
     B.mat.emissiveIntensity = B.v*2.2; B.light.intensity = B.v*60000; B.fil.material.color.setHex(b ? 0xfff2c0 : 0x8a6a3a); }
-  { const f = SIM.km.fl.on ? 1 : 0, flick = f && (now % 1000) < 0; ANIM.tubeMat.emissiveIntensity += ((f ? 1.6 : 0) - ANIM.tubeMat.emissiveIntensity)*Math.min(1, dt*8); }
+  { const f = SIM.km.fl.on ? 1 : 0, G = ANIM.tubeGlow; G.v += (f - G.v)*Math.min(1, dt*8);
+    ANIM.tubeMat.emissiveIntensity = G.v*3; ANIM.tubeMat.color.setHex(f ? 0xffffff : 0xbfc4c8);
+    G.m.opacity = G.v*0.35; G.light.intensity = G.v*90000; }
   if(ANIM.sockLed) ANIM.sockLed.material.color.setHex(SIM.km.xs.on ? 0xff3b30 : 0x552222);
   { const m = ANIM.meter, p = (SIM.km.el.on ? 60 : 0) + (SIM.km.fl.on ? 36 : 0);   /* 灯 60W、日光灯 36W；读数加速演示 */
     m.disc.rotation.z -= p*dt*0.05; m.kwh += p*dt*0.0004;
