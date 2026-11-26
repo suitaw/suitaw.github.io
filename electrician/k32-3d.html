@@ -1346,7 +1346,7 @@ function setTool(t){
   if(EX.pen && was!=='pen') exLog('pen', {on:true});
 }
 function penBusy(){ if(EX.tool!=='pen') return false; EX.msg = '手里拿着验电笔：先点「验电笔」放下，再动手'; return true; }
-const CHKN = {main:'试车台总开关', qf:'盘上开关 QF', sign:'标识牌', cable:'线缆', pen:'验电笔', sd:'螺丝刀', glove:'绝缘手套'};
+const CHKN = Object.assign({main:'试车台总开关', qf:'盘上开关 QF', sign:'标识牌', cable:'线缆', pen:'验电笔', sd:'螺丝刀', glove:'绝缘手套'}, CFG.qfName || {});
 function exPoint(id, what){ EX.chk[id] = 1; exLog('chk', {id:id}); click(2600, 0.02, 0.2); EX.msg = '👆 '+what; }
 function exTapMain(){
   if(exNeedTrial()) return;
@@ -1393,8 +1393,9 @@ function exProbe(id){
   const live = exLive(id);
   EX.probeAt = at.clone(); EX.probeLive = live; EX.probeN = (EX.probeN||0)+1;
   if(live) click(3400, 0.03, 0.15);
-  function rec(said){ exLog('probe', {id:id, live:live, said:said, glove:EX.glove});
-    if(live && said && PROBE1.indexOf(id)>=0) EX.p1[id]=1; if(!live && !said && PROBE2.indexOf(id)>=0) EX.p2[id]=1;
+  function rec(said){ exLog('probe', {id:id, live:live, said:said, glove:EX.glove, pw:powered()});
+    if(PROBE1.indexOf(id)>=0 && (CFG.p1Both ? said===live && powered() : live && said)) EX.p1[id]=1; if(!live && !said && PROBE2.indexOf(id)>=0) EX.p2[id]=1;
+    if(said===live && SOCK.indexOf(id)>=0 && powered()) EX.sock[id]=1;
     EX.msg = '验了'+pname(id)+'，你喊「'+(said ? '有电！' : '无电！')+'」'; }
   menu('验电笔碰「'+pname(id)+'」：看笔里的氖泡', [['喊「有电！」', function(){ rec(true); }], ['喊「无电！」', function(){ rec(false); }]],
     '<div style="font-size:15px;margin:-4px 0 4px">氖泡'+(live ? '<b style="color:#e8590c">亮了</b>' : '<b style="color:#6c757d">没亮</b>')+'</div>');
@@ -1483,12 +1484,15 @@ function srDone(){
 function srRelease(){ clearTimeout(SRS.timer); if(SRS.on && SRS.obj) try{ SRS.obj.stop(); }catch(e){} }
 /* 把操作记录从头放一遍（K31/K32/K34 通用，差别看 CFG）：得出判分要的事实，给每一步打 ✓ / ✗（rows＝你的操作记录）。
    每条毛病记在一个「类别」下（c:接线id、d:拆线id、env、wired、sign1、on、probe1、trial、off、sign2、probe2、done、amp），原文步骤表 STD 按类别取 */
-const BTNN = {sb1:'红色（停止）', sb2:'绿色', sb3:CFG.code==='K32' ? '黄色' : '黑色（点动）'};
+const BTNN = CFG.btnName || {sb1:'红色（停止）', sb2:'绿色', sb3:CFG.code==='K32' ? '黄色' : '黑色（点动）'};
+const QI = CFG.qfs || ['qf'];                     /* 盘上开关：K33 是三个空开，从左到右 */
+function qfName(id){ return CFG.qfName ? CFG.qfName[id] : '盘上开关 QF'; }
 function exScan(){
   const F = {chkAtCon:null, left:[], hot:false, order:[], signAtOn:null, everOn:false, everOff:false, btnBeforeProbe:false, btnNoGlove:false,
     probeGlove:false, saidBad:0, disBeforeProbe2:false, standAfterOff:false, repEnv:false, repWired:false, repDone:false, repWrong:[], conSeq:[], disSeq:[],
     rows:[], chkPre:{}, tidyPre:false, tidyPost:false, gapShort:0, revSpin:false, seqWrong:0, standBeforeDis:null, stepBad:{}, envSaid:false, wiredSaid:false, ampOk:false, ampSaid:false};
-  let main=false, qf=false, chk={}, n1=0, n2=0, lastSeqT=null; const con={};
+  let main=false, chk={}, n1=0, n2=0, ns=0, lastSeqT=null; const con={}, tog={}; QI.forEach(function(k){ tog[k] = 0; });
+  const anyQf = function(){ return QI.some(function(k){ return tog[k]; }); };
   function ord(t){ if(F.order.indexOf(t)<0) F.order.push(t); }
   function bad(cat, why){ (F.stepBad[cat] = F.stepBad[cat] || []).push(why); return why; }
   function row(t, b, neutral){ b = b.filter(Boolean); F.rows.push({t:t, bad:b, n:!!neutral && !b.length}); }
@@ -1512,10 +1516,10 @@ function exScan(){
     }
     if(e.k==='con' || e.k==='dis'){
       const b = [], nm = XT[e.id] ? XT[e.id].name : e.id, cat = (e.k==='con' ? 'c:' : 'd:')+e.id;
-      if(main || qf){ F.hot = true; b.push('开关合着就'+(e.k==='con' ? '接' : '拆')+'线（扣 25 分）'); }
+      if(main || anyQf()){ F.hot = true; b.push('开关合着就'+(e.k==='con' ? '接' : '拆')+'线（扣 25 分）'); }
       if(e.hand==='L'){ F.left.push((e.k==='con' ? '接' : '拆')+nm.split('（')[0].split(' →')[0]); b.push('用了左手（接拆线用右手）'); }
       if(e.k==='con'){
-        if(F.chkAtCon===null){ F.chkAtCon = !!(chk.main && chk.qf); if(!F.chkAtCon) b.push('接线前没确认电源开关（判不合格）'); if(!F.envSaid) b.push('接线前没报告「'+RJ_ENV()+'」'); }
+        if(F.chkAtCon===null){ F.chkAtCon = !!(chk.main && QI.every(function(k){ return chk[k]; })); if(!F.chkAtCon) b.push('接线前没确认电源开关（判不合格）'); if(!F.envSaid) b.push('接线前没报告「'+RJ_ENV()+'」'); }
         if(!F.everOn){ const want = CON_ORDER[F.conSeq.length]; if(want && want!==e.id){ b.push('顺序：这时该接「'+XT[want].name+'」'); ord('接线顺序不对（'+CFG.con+'）'); }
           F.conSeq.push(e.id); b.forEach(function(x){ bad(cat, x); }); }
         con[e.id]=1; row(H+' 接上 '+nm, b, F.everOn);
@@ -1529,20 +1533,23 @@ function exScan(){
       return;
     }
     if(e.k==='sw'){
-      const b = [], nm = e.id==='main' ? '试车台总开关' : '盘上开关 QF', cat = e.on ? 'on' : 'off';
+      const b = [], nm = e.id==='main' ? '试车台总开关' : qfName(e.id), cat = e.on ? 'on' : 'off';
       if(e.hand==='L'){ F.left.push((e.on ? '合' : '分')+nm); b.push(bad(cat, '用了左手（合闸、分闸用右手）')); }
       if(e.id==='main'){
         if(e.on){ if(F.signAtOn===null) F.signAtOn = e.sign; if(e.sign==='stand') b.push(bad('sign1', '标识牌还立着就合闸：先扣牌'));
           if(!F.wiredSaid && !F.everOn) b.push(bad('on', '没报告「'+REPT.wired.replace('报告考官，', '')+'」就送电')); }
-        else if(qf){ b.push(bad('off', '顺序反：应该先断盘上开关，再断总开关')); ord('断电先断了试车台总开关（应该先盘上、再总闸）'); }
+        else if(anyQf()){ b.push(bad('off', '顺序反：应该先断盘上开关，再断总开关')); ord('断电先断了试车台总开关（应该先盘上、再总闸）'); }
         main = e.on;
       } else {
         if(e.on && !main && nCon===CON_ORDER.length){ b.push(bad('on', '顺序反：应该先合试车台总开关，再合盘上开关')); ord('送电先合了盘上开关（应该先总闸、再盘上）'); }
-        qf = e.on;
+        const i = QI.indexOf(e.id);
+        if(e.on && QI.slice(0, i).some(function(k){ return !tog[k]; })){ b.push(bad('on', '盘上空开要从左到右合')); ord('合闸顺序：盘上空开要从左到右合（先①再②再③）'); }
+        if(!e.on && QI.slice(i+1).some(function(k){ return tog[k]; })){ b.push(bad('off', '盘上空开要从右到左断')); ord('分闸顺序：盘上空开要从右到左断（先③再②再①）'); }
+        tog[e.id] = e.on ? 1 : 0;
       }
       const wasOn = F.everOn;
-      if(main && qf) F.everOn = true;
-      if(F.everOn && !main && !qf && !F.everOff) F.everOff = true;
+      if(main && tog[QI[0]]) F.everOn = true;
+      if(F.everOn && !main && !anyQf() && !F.everOff) F.everOff = true;
       row(H+(e.on ? ' 合上 ' : ' 断开 ')+nm, b, !e.on && !wasOn); return;
     }
     if(e.k==='sign'){
@@ -1552,20 +1559,21 @@ function exScan(){
       row(H+(e.to==='flat' ? ' 把标识牌扣放' : ' 把标识牌立起来'), b); return;
     }
     if(e.k==='probe'){
-      const b = [], P1 = PROBE1.indexOf(e.id)>=0, P2 = PROBE2.indexOf(e.id)>=0, cat = F.everOff ? 'probe2' : 'probe1';
-      if(e.glove && CFG.glove){ F.probeGlove = true; b.push(bad(cat, '戴着手套验电（要摘手套）')); }
+      const SK = SOCK.indexOf(e.id)>=0, b = [], P1 = PROBE1.indexOf(e.id)>=0, P2 = PROBE2.indexOf(e.id)>=0, cat = SK ? 'trial' : F.everOff ? 'probe2' : 'probe1';
+      if(e.glove && CFG.glove && !SK){ F.probeGlove = true; b.push(bad(cat, '戴着手套验电（要摘手套）')); }
       if(e.said!==e.live){ F.saidBad++; b.push(bad(cat, '喊错了：氖泡'+(e.live ? '亮了' : '没亮')+'，应该喊「'+(e.live ? '有电' : '无电')+'」')); }
-      if(e.live && e.said && P1) n1++;
+      if(P1 && (CFG.p1Both ? e.said===e.live && e.pw : e.live && e.said)) n1++;
+      if(SK && e.said===e.live && e.pw) ns++;
       if(F.everOff && !e.live && !e.said && P2) n2++;
-      row('验电 '+pname(e.id)+'：氖泡'+(e.live ? '亮' : '不亮')+'，喊「'+(e.said ? '有电' : '无电')+'」', b, !(P1 || P2)); return;
+      row((SK ? '测插座 ' : '验电 ')+pname(e.id)+'：氖泡'+(e.live ? '亮' : '不亮')+'，喊「'+(e.said ? '有电' : '无电')+'」', b, !(P1 || P2 || SK)); return;
     }
     if(e.k==='btn'){
-      const b = [], nm = '按 '+BTNN[e.id];
+      const b = [], nm = (CFG.btnVerb || '按 ')+BTNN[e.id]+(e.st ? ' → '+e.st : '');
       if(!e.pw){ row(nm+'（没电，没反应）', [], true); return; }
       if(!e.np){ F.btnBeforeProbe = true; b.push(bad('probe1', '没验电就试车（判不合格）')); } else if(e.np<PROBE1.length) b.push(bad('probe1', '验电没验全就试车'));
       if(!e.glove && CFG.glove){ F.btnNoGlove = true; b.push(bad('trial', '没戴手套')); }
       if(e.seq<SEQ.length){
-        if(e.id!==e.want){ F.seqWrong++; b.push(bad('trial', '顺序：这时该按'+BTNN[e.want])); }
+        if(e.adv!==undefined ? !e.adv : e.id!==e.want){ F.seqWrong++; b.push(bad('trial', '顺序：这时该'+(CFG.btnVerb || '按 ').trim()+BTNN[e.want])); }
         else {
           if(CFG.gap && lastSeqT!==null && e.t-lastSeqT < 2500){ F.gapShort++; b.push(bad('trial', '跟上一步隔了不到 3 秒')); }
           if(CFG.rev && e.seq===3 && e.spin){ F.revSpin = true; b.push(bad('trial', '电动机还没停稳就按了反转')); }
@@ -1573,10 +1581,10 @@ function exScan(){
           lastSeqT = e.t;
         }
       }
-      row(nm+(e.seq<SEQ.length && e.id===e.want ? '（试车第 '+(e.seq+1)+' 步）' : ''), b, e.seq>=SEQ.length && !b.length); return;
+      row(nm+(e.seq<SEQ.length && (e.adv!==undefined ? e.adv : e.id===e.want) ? '（试车第 '+(e.seq+1)+' 步）' : ''), b, e.seq>=SEQ.length && !b.length); return;
     }
   });
-  F.n1 = n1; F.n2 = n2;
+  F.n1 = n1; F.n2 = n2; F.ns = ns;
   return F;
 }
 function RJ_ENV(){ return REPT.env.replace('报告考官，', ''); }
@@ -1598,7 +1606,7 @@ function exGrade(){
   const F = exScan(), R = {fail:[], ded:[], wrong:[], undone:[], wire:EX.grade, skipped:EX.skipped, F:F};
   const nCon = Object.keys(EX.con).length, n1 = F.n1, n2 = F.n2, N1 = PROBE1.length, N2 = PROBE2.length;
   R.std = exStd(F);
-  if(F.chkAtCon===false || (F.chkAtCon===null && !(EX.chk.main && EX.chk.qf))) R.fail.push('没有「确认电源开关」动作：接线前要确认试车台总开关和盘上开关都在分闸');
+  if(F.chkAtCon===false || (F.chkAtCon===null && !(EX.chk.main && QI.every(function(k){ return EX.chk[k]; })))) R.fail.push('没有「确认电源开关」动作：接线前要确认试车台总开关和盘上开关都在分闸');
   if(F.everOn && (F.btnBeforeProbe || (!n1 && EX.seq>0))) R.fail.push('送电后不验电就试车');
   else if(F.everOn && n1<N1) R.wrong.push('送电后验电不全：'+N1+' 处只验对了 '+n1+' 处');
   if(F.everOff && (F.disBeforeProbe2 || (!n2 && nCon<CON_ORDER.length))) R.fail.push('断电后没有二次验电就拆线');
@@ -1622,7 +1630,8 @@ function exGrade(){
   if(CFG.amp && EX.seq>=1 && !F.ampOk && !F.repWrong.some(function(t){ return /电流/.test(t); })) R.wrong.push('电动机运转时没看电流表口述「'+REPT.amp+'」');
   if(F.standBeforeDis===false) R.wrong.push('断电后要先立牌：你先去拆线了');
   if(EX.seq<SEQ.length) R.undone.push('试车没做完：做到第 '+EX.seq+' / '+SEQ.length+' 步（'+CFG.trial+'）');
-  if(SIM.qf || EX.main) R.undone.push('开关还合着');
+  if(CFG.sock && F.everOn && F.ns<SOCK.length) R.undone.push('没测插座相序（验电笔：右孔相线有电、左孔零线无电）');
+  if(EX.main || (CFG.qfs ? CFG.qfs.some(function(k){ return SIM.tog[k]; }) : SIM.qf)) R.undone.push('开关还合着');
   if(nCon) R.undone.push('还有 '+nCon+' 根外部接线没拆');
   if(CFG.tidy && !F.tidyPost) R.undone.push('最后没整理线缆');
   if(CFG.done && !F.repDone) R.undone.push('没有报告「'+REPT.done+'」');
