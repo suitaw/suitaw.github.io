@@ -146,8 +146,8 @@ const WIRES = [
 [1,2,3].forEach(function(i){
   const s1x = 46+41.6*(i-1), s2x = s1x+20.8, a1x = 316+60*(i-1), a2x = a1x+20, pex = 460+25*(i-1);
   WIRES.push(
-    {id:5+3*i, from:'ta'+i+'-s1', to:'am'+i+'-1', group:4, waypoints:[[s1x,781+3*i],[256+4*i,781+3*i],[256+4*i,668+3*i],[a1x,668+3*i]]},
-    {id:6+3*i, from:'am'+i+'-2',  to:'ta'+i+'-s2', group:4, waypoints:[[a2x,688+4*i],[270+4*i,688+4*i],[270+4*i,794+3*i],[s2x,794+3*i]]},
+    {id:5+3*i, from:'ta'+i+'-s1', to:'am'+i+'-1', group:4, waypoints:[[s1x,781+3*i],[226+7*i,781+3*i],[226+7*i,682+3*i],[a1x,682+3*i]]},
+    {id:6+3*i, from:'am'+i+'-2',  to:'ta'+i+'-s2', group:4, waypoints:[[a2x,696+4*i],[250+7*i,696+4*i],[250+7*i,794+3*i],[s2x,794+3*i]]},
     {id:7+3*i, from:'ta'+i+'-s2', to:'pe-'+i,      group:4, waypoints:[[s2x,806+4*i],[pex,806+4*i]]});
 });
 const NW = WIRES.length;
@@ -375,7 +375,7 @@ function simExplain(){
                   : '<br>看仪表板：<b>三只电流表都摆起来、读数差不多</b> —— 考场上要口述「A相电流正常。B相电流正常。C相电流正常。三相电流平衡。」再按红色停止');
   }
   if(k) return '按着启动时，启动按钮和 KM 的 13-14 两条路并联着供电；松手后只剩 13-14 那条';
-  return '已合闸，电压表有读数。<b>按一下绿色</b>启动、<b>红色</b>停止；<b>亮点</b>在跑的线＝有电流，<b>亮点</b>＝有电流';
+  return '已合闸，电压表有读数。<b>按一下绿色</b>启动、<b>红色</b>停止；<b>亮点</b>在跑的线＝有电流';
 }
 simReset();
 /*__CORE_END__*/
@@ -403,7 +403,7 @@ sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normal
 const sc = sun.shadow.camera; sc.left=-460; sc.right=460; sc.top=BH/2+80; sc.bottom=-BH/2-80; sc.near=100; sc.far=2400;
 scene.add(sun);
 
-function frDialAng(i){ return 1.0 - i*0.5; }   /* 整定旋钮第 i 档：指针从竖直向上逆时针转多少弧度（左高右低） */
+function frDialAng(i){ return 1.16 - i*0.58; }   /* 整定旋钮第 i 档：指针从竖直向上逆时针转多少弧度（左高右低） */
 const FR_SET = [1.5, 1.8, 2.0, 2.2, 2.4];   /* JR36-20 热元件 1.5～2.4A 的刻度；电动机 Y2-80M2-4 0.75kW 额定约 2A */
 function V(x, y, z){ return new THREE.Vector3(x-BW/2, BH/2-y, z||0); }
 const root = new THREE.Group(); scene.add(root);
@@ -627,12 +627,12 @@ DEVICES.forEach(function(d){
     cyl(x+113, y+16, 30, 9, 1.5, MAT.metal, 28);                      /* 复位钮（蓝），在红钮左边，不被中间盖子挡 */
     const blue = cyl(x+113, y+16, 30, 7, 7, MAT.blue); ANIM.frReset = {mesh:blue, z0:blue.position.z, v:0};
     hitPad(new THREE.SphereGeometry(13), V(x+113, y+16, 40), {type:'frreset'});
-    label('复位', x+113, y+34, 55.4, 6.5, '#fff', null, true);
+    label('复位', x+113, y+4, 30.4, 5, '#fff', null, true);   /* 放蓝钮上方：下面会跟刻度数字叠 */
     /* 刻度沿旋钮外圈排：第 i 档的角度＝指针转到那档的角度（跟动画里 frDialAng 同一个公式），指哪个数就是几安 */
     FR_SET.forEach(function(v, i){
       const a = Math.PI/2 + frDialAng(i), cx = x+100, cy = y+48;
       const tk = box(cx+Math.cos(a)*12.6-0.4, cy-Math.sin(a)*12.6-1.6, 0.8, 3.2, 55, 0.5, MAT.white); tk.rotation.z = a-Math.PI/2;
-      label(v.toFixed(1), cx+Math.cos(a)*17.5, cy-Math.sin(a)*17.5, 55.4, 3.8, '#dfe3e8', null, true);
+      label(v.toFixed(1), cx+Math.cos(a)*19, cy-Math.sin(a)*19, 55.4, 3.4, '#dfe3e8', null, true);
     });
     label('A', x+100, y+61.5, 55.4, 3.8, '#dfe3e8', null, true);
     cyl(x+134, y+26, 30, 12, 1.5, MAT.metal, 28);                     /* 复位钮护圈 */
@@ -655,7 +655,7 @@ DEVICES.forEach(function(d){
       box(x+w/2-10, y+t.y-8, 20, 16, 29.8, 1, MAT.white);              /* 号码牌 */
       if(t.label) label(t.label, x+w/2, y+t.y, 31.2, 13, '#1f2328');
     });
-    label(d.tag, x-30, y+h-12, 0.4, 13, '#33383f');
+    label(d.tag, x+w/2, y+h+14, 0.4, 13, '#33383f');   /* K34 端子排下面是空地，左下那位置有线穿过 */
   }
   if(d.kind==='tbm'){
     d.pins.forEach(function(p, i){ rbox(x+i*40+10.5, y, 39, h, 0, 22, MAT.cream, 2); box(x+i*40+49.5, y, 1, h, 0, 23, MAT.grey); });
@@ -666,7 +666,7 @@ DEVICES.forEach(function(d){
     rbox(x-4, y+1, 10, h-2, 0, 6, PL(0x2e7d32, 0.5), 2); rbox(x+w-6, y+1, 10, h-2, 0, 6, PL(0x2e7d32, 0.5), 2);
     rbox(x, y+3, w, h-6, 1, 6, MAT.copper, 1.2);
     (d.screws||[20,50,80,104]).forEach(function(o){ screw(x+o, y+h/2, 7, 5); });
-    label('PE 接地', x+w/2, y+h+13, 0.4, 15, '#33383f');
+    label('PE 接地', x+w/2, y-12, 0.4, 15, '#33383f');   /* 下面有互感器地线穿过，字放上面 */
   }
   if(d.kind==='ct'){                                                    /* 电流互感器：立着的环（相线从孔里穿过）+ 底座 + 二次接线柱 */
     rbox(x, y+30, w, 18, 0, 12, MAT.dark, 3);
@@ -680,8 +680,8 @@ DEVICES.forEach(function(d){
       label('ABC'[i]+'相', cx, y+46, 12.4, 6, '#fff', null, true);
     });
     PINZ[d.id] = 17;
-    label('LMZJ1-0.5', x+w/2, y+31, 12.4, 5, '#9aa3ad', null, true);
-    label(d.tag, x+w+34, y+24, 0.4, 13, '#33383f');
+    label('LMZJ1-0.5', x+w+16, y+34, 0.4, 4.5, '#5b6470', null, true);   /* 型号挪到 TA 名字下面，别跟 S1/S2 叠 */
+    label('TA', x+w+12, y+22, 0.4, 13, '#33383f');   /* 只标 TA：右边有二次线竖着走，长名字会被穿过 */
   }
   if(d.kind==='amp'){                                                   /* 仪表板：三只电流表 + 一只电压表（指针在 ANIM.meters 里转） */
     rbox(x, y, w, h, 0, 10, PL(0x3b4148, 0.5), 4);

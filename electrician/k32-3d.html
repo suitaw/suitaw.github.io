@@ -129,7 +129,7 @@ const WIRES = [
   {id:1, from:'fu4-out',to:'fr-96', group:1,waypoints:[[186.8,300],[296,300],[296,909.2]]},
   {id:2, from:'fr-95',  to:'tb-12', group:1,waypoints:[[310,940.4],[310,641.8]]},
   {id:3, from:'fu5-out',to:'km2-a1',group:1,waypoints:[[242.8,292],[324,292],[324,590],[267,590]]},
-  {id:4, from:'km2-a1', to:'km1-a1',group:1,waypoints:[[267,594],[338,594],[338,310],[267,310]]},
+  {id:4, from:'km2-a1', to:'km1-a1',group:1,waypoints:[[267,554],[338,554],[338,310],[267,310]]},
   {id:5, from:'km1-22', to:'km2-a2',group:2,waypoints:[[238.4,540],[352,540],[352,800],[267,800]]},
   {id:6, from:'km2-22', to:'km1-a2',group:2,waypoints:[[238.4,806],[366,806],[366,548],[267,548]]},
   {id:7, from:'km1-21', to:'km2-14',group:3,waypoints:[[238.4,316],[380,316],[380,812],[204.6,812]]},
@@ -366,7 +366,7 @@ function simExplain(){
   if(k1 && !b.sb2.pressed) return '<b>自锁</b>：松手照转 —— KM1 的 13-14 并在正转按钮两端，自己给自己供电。同时 KM1 的 21-22 断开，反转那条路被锁死';
   if(k2 && !b.sb3.pressed) return '<b>自锁</b>：松手照转 —— KM2 的 13-14 并在反转按钮两端，自己给自己供电。同时 KM2 的 21-22 断开，正转那条路被锁死';
   if(k1 || k2) return '按着启动按钮时，按钮和自锁 13-14 两条路并联着供电；松手后只剩 13-14 那条';
-  return '已合闸。<b>按住绿色</b>正转、<b>黄色</b>反转、<b>红色</b>停止；<b>亮点</b>在跑的线＝有电流，<b>亮点</b>＝有电流';
+  return '已合闸。<b>按住绿色</b>正转、<b>黄色</b>反转、<b>红色</b>停止；<b>亮点</b>在跑的线＝有电流';
 }
 simReset();
 /*__CORE_END__*/
@@ -394,7 +394,7 @@ sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normal
 const sc = sun.shadow.camera; sc.left=-460; sc.right=460; sc.top=BH/2+80; sc.bottom=-BH/2-80; sc.near=100; sc.far=2400;
 scene.add(sun);
 
-function frDialAng(i){ return 1.0 - i*0.5; }   /* 整定旋钮第 i 档：指针从竖直向上逆时针转多少弧度（左高右低） */
+function frDialAng(i){ return 1.16 - i*0.58; }   /* 整定旋钮第 i 档：指针从竖直向上逆时针转多少弧度（左高右低） */
 const FR_SET = [1.5, 1.8, 2.0, 2.2, 2.4];   /* JR36-20 热元件 1.5～2.4A 的刻度；电动机 Y2-80M2-4 0.75kW 额定约 2A */
 function V(x, y, z){ return new THREE.Vector3(x-BW/2, BH/2-y, z||0); }
 const root = new THREE.Group(); scene.add(root);
@@ -605,12 +605,12 @@ DEVICES.forEach(function(d){
     cyl(x+113, y+16, 30, 9, 1.5, MAT.metal, 28);                      /* 复位钮（蓝），在红钮左边，不被中间盖子挡 */
     const blue = cyl(x+113, y+16, 30, 7, 7, MAT.blue); ANIM.frReset = {mesh:blue, z0:blue.position.z, v:0};
     hitPad(new THREE.SphereGeometry(13), V(x+113, y+16, 40), {type:'frreset'});
-    label('复位', x+113, y+34, 55.4, 6.5, '#fff', null, true);
+    label('复位', x+113, y+4, 30.4, 5, '#fff', null, true);   /* 放蓝钮上方：下面会跟刻度数字叠 */
     /* 刻度沿旋钮外圈排：第 i 档的角度＝指针转到那档的角度（跟动画里 frDialAng 同一个公式），指哪个数就是几安 */
     FR_SET.forEach(function(v, i){
       const a = Math.PI/2 + frDialAng(i), cx = x+100, cy = y+48;
       const tk = box(cx+Math.cos(a)*12.6-0.4, cy-Math.sin(a)*12.6-1.6, 0.8, 3.2, 55, 0.5, MAT.white); tk.rotation.z = a-Math.PI/2;
-      label(v.toFixed(1), cx+Math.cos(a)*17.5, cy-Math.sin(a)*17.5, 55.4, 3.8, '#dfe3e8', null, true);
+      label(v.toFixed(1), cx+Math.cos(a)*19, cy-Math.sin(a)*19, 55.4, 3.4, '#dfe3e8', null, true);
     });
     label('A', x+100, y+61.5, 55.4, 3.8, '#dfe3e8', null, true);
     cyl(x+134, y+26, 30, 12, 1.5, MAT.metal, 28);                     /* 复位钮护圈 */
@@ -839,8 +839,8 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
     cyl(x, JY, 46.6, 4.4, 0.6, MAT.brass, 24); cyl(x, JY, 46.8, 2.4, 0.6, MAT.hole, 16);
     label(JN[i], x, JY+18, 40.4, 10, '#fff'); });
   /* 盘上接线排：电源进线 L1 L2 L3（实物上电源线和电机线在同一条接线排）*/
-  const LX = [316, 348, 380], LY = 951;   /* 电源进线接线排：去电动机接线排左边 */
-  [0,1,2].forEach(function(i){ rbox(300+i*32, 934, 31, 34, 0, 22, MAT.cream, 2); box(331+i*32, 934, 0.8, 34, 0, 23, MAT.grey); });
+  const LX = [308, 340, 372], LY = 951;   /* 电源进线接线排：去电动机接线排左边 */
+  [0,1,2].forEach(function(i){ rbox(292+i*32, 934, 31, 34, 0, 22, MAT.cream, 2); box(323+i*32, 934, 0.8, 34, 0, 23, MAT.grey); });
   LX.forEach(function(x, i){ screw(x, LY, 22); label('L'+(i+1), x+16, LY, 22.4, 12, '#1f2328'); });
   /* 外部接线 */
   const PEC = 0x8fbf2f, cn = ['黄','绿','红'], cid = ['Y','G','R'];

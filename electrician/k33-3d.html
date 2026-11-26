@@ -142,10 +142,10 @@ const WIRES = [
   {id:2, from:'src-n', to:'mt-3',  group:1, waypoints:[[288,238],[111,238]]},
   {id:3, from:'mt-2',  to:'qf1-li',group:1, waypoints:[[79,254],[96,254]]},
   {id:4, from:'mt-4',  to:'qf1-ni',group:1, waypoints:[[143,266],[60,266]]},
-  {id:5, from:'qf1-lo',to:'qf2-li',group:2, waypoints:[[96,460],[128,460],[128,284],[196,284]]},
-  {id:6, from:'qf1-no',to:'qf2-ni',group:2, waypoints:[[60,468],[122,468],[122,278],[160,278]]},
-  {id:7, from:'qf2-li',to:'qf3-li',group:2, waypoints:[[196,290],[332,290]]},
-  {id:8, from:'qf2-ni',to:'qf3-ni',group:2, waypoints:[[160,294],[296,294]]},
+  {id:5, from:'qf1-lo',to:'qf2-li',group:2, waypoints:[[96,460],[128,460],[128,280],[196,280]]},
+  {id:6, from:'qf1-no',to:'qf2-ni',group:2, waypoints:[[60,468],[122,468],[122,273],[160,273]]},
+  {id:7, from:'qf2-li',to:'qf3-li',group:2, waypoints:[[196,287],[332,287]]},
+  {id:8, from:'qf2-ni',to:'qf3-ni',group:2, waypoints:[[160,295],[296,295]]},
   {id:9, from:'qf2-lo',to:'xs-l',  group:3, waypoints:[[196,476],[202,476]]},
   {id:10,from:'qf2-no',to:'xs-n',  group:3, waypoints:[[160,484],[146,484]]},
   {id:11,from:'qf3-lo',to:'s1-l',  group:4, waypoints:[[332,500],[286,500]]},
@@ -156,8 +156,8 @@ const WIRES = [
   {id:16,from:'s3-l',  to:'lt-2',  group:5, waypoints:[[522,516],[456,516],[456,195]]},
   {id:17,from:'qf3-no',to:'lt-3',  group:6, waypoints:[[296,450],[372,450],[372,223]]},
   {id:18,from:'qf3-no',to:'lt-1',  group:6, waypoints:[[296,456],[380,456],[380,167]]},
-  {id:19,from:'src-pe',to:'pe-1',  group:7, waypoints:[[252,140],[10,140],[10,661],[36,661]]},
-  {id:20,from:'pe-2',  to:'xs-pe', group:7, waypoints:[[66,620],[174,620]]}
+  {id:19,from:'src-pe',to:'pe-1',  group:7, waypoints:[[252,144],[183,144],[183,246],[10,246],[10,661],[36,661]]},
+  {id:20,from:'pe-2',  to:'xs-pe', group:7, waypoints:[[66,552],[174,552]]}
 ];
 const NW = WIRES.length;
 /* 线色照板上规矩：相线红、零线蓝、PE 黄绿 */
@@ -313,7 +313,7 @@ function simExplain(){
   const q = ['qf1','qf2','qf3'].filter(function(x){ return !SIM.tog[x]; });
   if(q.length===3) return '已送电，空开都分着。<b>从左到右</b>合：① 总开关 → ② 插座（漏保） → ③ 照明';
   const on = [['el','灯泡亮'],['fl','日光灯亮'],['xs','插座有电']].filter(function(x){ return k[x[0]].on; }).map(function(x){ return x[1]; });
-  return (on.length ? '<b>'+on.join(' · ')+'</b>。' : '')+'灯泡考场顺序：<b>左开 → 右关 → 右开 → 左关</b>（两个双控任意一个都能开关）；单控管日光灯。电能表有电器在用就转。<b>亮点</b>在跑的线＝有电流，<b>亮点</b>＝有电流';
+  return (on.length ? '<b>'+on.join(' · ')+'</b>。' : '')+'灯泡考场顺序：<b>左开 → 右关 → 右开 → 左关</b>（两个双控任意一个都能开关）；单控管日光灯。电能表有电器在用就转。<b>亮点</b>在跑的线＝有电流';
 }
 simReset();
 /*__CORE_END__*/
@@ -616,8 +616,7 @@ DEVICES.forEach(function(d){
     rbox(x, y, w, h, 0, 16, MAT.cream, 2);
     [1,2].forEach(function(k){ box(x+w*k/3-0.5, y, 1, h, 0, 17, MAT.grey); });
     [20,56,92].forEach(function(o){ screw(x+o, y+42, 16, 5.6); });
-    label(d.tag, x+w/2, y-9, 0.4, 11, '#33383f');
-    label('L    PE    N', x+w/2, y+29, 16.4, 6.5, '#33383f', null, true);
+    label(d.tag, x+w/2, y+h+10, 0.4, 10, '#33383f');
   }
   if(d.kind==='tube'){                                                  /* H 型四针日光灯：灯架 + 两根并排灯管（一头连通）+ 镇流器 */
     rbox(x, y+28, w, 50, 0, 10, PL(0xf2f2ee, 0.4, {metalness:0.2}), 4);
@@ -683,7 +682,7 @@ DEVICES.forEach(function(d){
     }
     label('合↑ 分↓', x+38, y+36, 64.4, 7, '#33383f', null, true);
     label(d.rcd ? 'DZ47LE C16 30mA' : 'DZ47s C16 2P', x+38, y+84, 64.4, 6, '#5b6470', null, true);
-    label(d.tag, x+w/2, y+h+12, 0.4, 10, '#33383f');
+    label({qf1:'① 总开关', qf2:'② 插座', qf3:'③ 照明'}[d.id], x+38, y+96, 64.4, 8.5, '#1f2328');   /* 名字写在空开正面：下面会被往下走的线挡住 */
     PINZ[d.id] = 34;
   }
   if(d.kind==='pebar'){
@@ -740,7 +739,7 @@ DEVICES.forEach(function(d){
     if(d.kind==='km'){ screw(x+t.x, y+t.y, 38, 5); label(t.label, x+t.x, y+(t.y<75 ? 44 : 106), 86.4, 12, '#1c6fd6'); }
     if(d.kind==='fr'){ screw(x+t.x, y+t.y, 30, 5); label(t.label, x+t.x-18, y+t.y, 30.4, 12, '#fff'); }
     if(['meter','src','lterm','mcb2','pebar','socket','sw'].indexOf(d.kind)>=0){ screw(x+t.x, y+t.y, z, d.kind==='mcb2' ? 5.6 : 4.8);
-      if(t.label && d.kind!=='lterm') label(t.label, x+t.x, y+t.y+(d.kind==='mcb2' && t.y>60 ? -12 : d.kind==='meter' ? -14 : 10), z+0.4, 6.5, d.kind==='meter' ? '#dfe3e8' : '#33383f', null, true); }
+      if(t.label && d.kind!=='lterm') label(t.label, x+t.x+(t.id==='src-pe' ? 13 : 0), y+t.y+(t.id==='src-pe' ? 0 : d.kind==='mcb2' && t.y>60 ? -12 : d.kind==='meter' ? -14 : d.kind==='src' ? -10 : 10), z+0.4, 6.5, d.kind==='meter' ? '#dfe3e8' : '#33383f', null, true); }
   });
   PARENT = PARENT0;
   if(PINZ[d.id]!==undefined) PINZ[d.id] *= s;
@@ -1002,7 +1001,7 @@ function refresh(){
   for(const id in XP){ if(id[0]==='_') continue;
     const isProbe = PROBE1.indexOf(id)>=0 || PROBE2.indexOf(id)>=0 || SOCK.indexOf(id)>=0;
     XP[id].mark.visible = exT && (EX.pen ? isProbe : !!XT[id]); XP[id].pick.userData.off = !exT; }
-  ANIM.sign.front.forEach(function(m){ m.visible = !EX.on || EX.sign==='stand'; }); ANIM.sign.back.visible = EX.on && EX.sign!=='stand';
+  ANIM.sign.front.forEach(function(m){ m.visible = signUp(); }); ANIM.sign.back.visible = !signUp();
   if(EX.on){
     document.getElementById('edel').disabled = !EX.wires.length; document.getElementById('edel').classList.toggle('on', !!EX.delMode);
     document.getElementById('epen').classList.toggle('on', !!EX.pen);
@@ -1030,6 +1029,8 @@ function refresh(){
 /* 一闪而过的提示（转旋钮、按复位这种），3 秒后消失 */
 function note(h){ UI.note = h; UI.noteT = performance.now(); }
 function noteOn(){ return UI.note && performance.now()-UI.noteT < 3000; }
+/* 标识牌立着没有：考场看操作；平时模式下送电就自动扣下（不然送着电还立着「禁止合闸」） */
+function signUp(){ return EX.on ? EX.sign==='stand' : !SIM.qf; }
 function sig(){ return [SIM.qf, SIM.sup, SIM.blown, JSON.stringify(SIM.tog), SIM.km.el.on, SIM.km.fl.on, SIM.km.xs.on,
   JSON.stringify(SIM.last && SIM.last.cur), UI.sel, UI.step, UI.wire, UI.pend, UI.hint, UI.msg, UI.err, Object.keys(DONE).join(),
   EX.on, EX.phase, EX.on && EX.wires.length, EX.on && EX.ev.length, EX.pen, EX.glove, EX.sign, EX.main, EX.msg, EX.guide, EX.seq, noteOn() && UI.note].join('|'); }
@@ -1550,8 +1551,8 @@ function frame(now){
       g.fillStyle = '#111'; g.fillRect(0, 0, 256, 64); g.font = '700 46px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
       const s = (sh/10).toFixed(1).padStart(7, '0'); g.fillStyle = '#f4f4f4'; g.fillText(s.slice(0, 5), 104, 34); g.fillStyle = '#e04030'; g.fillText(s.slice(5), 214, 34);
       m.tx.needsUpdate = true; } }
-  { const ma = EX.on && EX.main ? -0.5 : 0.5; ANIM.main.rotation.x += (ma-ANIM.main.rotation.x)*Math.min(1, dt*20);
-    const sa = !EX.on || EX.sign==='stand' ? 1.0 : 0; ANIM.sign.g.rotation.x += (sa-ANIM.sign.g.rotation.x)*Math.min(1, dt*14); }
+  { const ma = (EX.on ? EX.main : SIM.qf) ? -0.5 : 0.5;   /* 平时模式：手柄跟着送电状态（11-26 他发现扳了不动） */ ANIM.main.rotation.x += (ma-ANIM.main.rotation.x)*Math.min(1, dt*20);
+    const sa = signUp() ? 1.0 : 0; ANIM.sign.g.rotation.x += (sa-ANIM.sign.g.rotation.x)*Math.min(1, dt*14); }
   if(fly){ fly.k = Math.min(1, fly.k+dt/0.45); const k = fly.k*fly.k*(3-2*fly.k);
     camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if(fly.k>=1) fly=null; }
   controls.update(); if(!fly) camUI(); drawDots(now);
