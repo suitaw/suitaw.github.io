@@ -1423,7 +1423,7 @@ function fitD(w, h, exact){
   return Math.max(h/(2*t*f), w*H/(2*t*W))*(exact ? 1 : 1.05);
 }
 const VIEWS = {
-  front:function(){ return {t:V(280,BH/2,20), d:[0,0,1], D:fitD(600,BH+20)}; },
+  front:function(){ const c = CONTENT || {x:280, y:BH/2, w:600, h:BH+20}; return {t:V(c.x, c.y, 20), d:[0,0,1], D:fitD(c.w, c.h, true)}; },
   desk:function(){ return {t:V(320,940,30), d:[0,-0.45,1], D:fitD(600,240)}; },
   km:function(){ return {t:V(237,415,40), d:[0.18,-0.5,1], D:fitD(450,300)}; },
   tb:function(){ return {t:V(480,300,30), d:[-0.5,-0.12,1], D:fitD(300,600)}; }
@@ -1614,6 +1614,21 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 flushScrews();
+/* 全景按「实际有东西的范围」装满屏幕（11-26 他嫌板子四周空地占地方）：看得见的零件外框 + 一点边；考场才出现的外部电源线不算 */
+let CONTENT = null;
+(function(){
+  /* 只按元件外框 + 电动机 + 试车台算；伸到板边的进线、按钮盒出厂线不算（裁掉一点点不影响看） */
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  function add(a, b, c, d){ x0 = Math.min(x0, a); y0 = Math.min(y0, b); x1 = Math.max(x1, c); y1 = Math.max(y1, d); }
+  DEVICES.forEach(function(d){ add(d.x, d.y, d.x+d.W, d.y+d.H); });
+  if(MOT.y > 0) add(MOT.x-60, MOT.y-60, MOT.x+100, MOT.y+56);
+  const bb = new THREE.Box3(), tmp = new THREE.Box3(); EXG.updateMatrixWorld(true);
+  EXG.traverse(function(o){ if(!o.isMesh || !o.visible || (o.material && o.material.opacity===0)) return;
+    for(let p=o; p && p!==EXG; p=p.parent) if(!p.visible) return; tmp.setFromObject(o); if(isFinite(tmp.min.x)) bb.union(tmp); });
+  if(!bb.isEmpty()) add(bb.min.x+BW/2, BH/2-bb.max.y, bb.max.x+BW/2, BH/2-bb.min.y);
+  const m = 14;
+  CONTENT = {x:(x0+x1)/2, y:(y0+y1)/2, w:x1-x0+2*m, h:y1-y0+2*m};
+})();
 resize(); stretchBoard(); view(VIEWS[Q.get('v')] ? Q.get('v') : 'front', true);
 if(Q.get('sel')) stepTo(+Q.get('sel'));
 if(Q.has('wire')) setMode(true);
