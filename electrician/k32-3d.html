@@ -61,7 +61,7 @@ ol.steps li{color:var(--ink)}ol.steps li.done{color:var(--mut)}ol.steps li.cur{c
 <div class="bot">
   <div id="info"></div>
   <div class="row" id="rowM">
-    <span class="grp" id="rowV"><button id="prev">◀</button><span id="cnt"></span><button id="next">▶</button></span>
+    <span class="grp" id="rowV"><button id="prev">◀</button><span id="cnt"></span><button id="next">▶</button><button id="rev">对照</button></span>
     <span class="grp" id="rowW" hidden><button id="hint">提示</button><button id="del">拆这根</button><button id="reset">重来</button></span>
     <span class="grp" id="rowE1" hidden><button id="edel">拆这根</button><button id="eclr">全拆</button><button id="edone">接线完成</button></span>
     <span class="grp" id="rowE2" hidden><button id="epen">验电笔</button><button id="eglove">摘手套</button><button id="erep">报告</button><button id="esub">交卷</button></span>
@@ -996,6 +996,9 @@ function refresh(){
     const dim = UI.sel && !isSel;
     c.mat.opacity = UI.sel && !isSel ? 0.16 : dim ? 0.22 : 1; c.mat.depthWrite = !dim;
     /* 三档（11-26 他说红光太多不突出）：有电流＝粗红光＋亮点；带电没电流＝细淡红边（验电会亮的地方）；不带电＝变浅（浅色半透明，别像阴影） */
+    if(UI.rev && !EX.on){ const got = !!UI.rev.has[id]; c.mesh.visible = true; c.pick.userData.off = false; c.flow = 0;
+      c.mat.color.setHex(got ? (c.base!==undefined ? c.base : 0x22262b) : 0xc8ccd2); c.mat.emissive.setHex(0);
+      c.mat.opacity = got ? 1 : 0.38; c.mat.depthWrite = got; }
     const curOn = live && (!!c.flow || !!r.cur[key]);
     if(c.halo){ c.halo.visible = false; c.haloL.visible = false; }   /* 11-26 他说不区分了：线保持原色，只留电流亮点 */
   });
@@ -1028,11 +1031,13 @@ function refresh(){
     document.getElementById('eglove').textContent = EX.glove ? '摘手套' : '戴手套';
   }
   for(const k in dirLb) dirLb[k].visible = String(SIM.motor)===k;
+  document.getElementById('rev').textContent = UI.rev ? '退出对照' : '对照';
   cnt.textContent = UI.sel && UI.sel<100 ? UI.sel+' / 14' : '全部';
   const st = '<div class="st">QF '+(SIM.qf?'合':'分')+' · KM1 '+(SIM.km.km1.on?'吸合':'释放')+' · KM2 '+(SIM.km.km2.on?'吸合':'释放')+
     ' · 电动机'+(SIM.motor>0?'正转':SIM.motor<0?'反转':'停')+'</div>'+
     (powered() ? '<div class="st">亮点＝有电流的线</div>' : '');
-  if(EX.on){
+  if(UI.rev && !EX.on){ info.innerHTML = revInfo(); }
+  else if(EX.on){
     const st2 = '<div class="st">'+(EX.phase==='wire' ? '盘内接线 · 已接 '+EX.wires.length+' 根' :
       '手套'+(EX.glove ? '戴着' : '摘了')+' · '+(EX.pen ? '验电笔在手 · ' : '')+'总开关'+(EX.main ? '合' : '分')+' · QF '+(SIM.qf ? '合' : '分')+' · 电动机'+(SIM.motor>0?'正转':SIM.motor<0?'反转':'停'))+'</div>';
     const body = s ? '你接的线：'+tname(s.w.from)+' → '+tname(s.w.to)+'（点「拆这根」拆掉）' : (SIM.blown ? '⚠ '+SIM.blown+'。分闸后重新合闸才恢复' : EX.msg);
@@ -1117,6 +1122,45 @@ function autoRoute(a, b, id){
   if(!best) best = [pa, C[0], pb];                                     /* 实在找不到就退回先竖后横 */
   return [[A.x, A.y]].concat(best, [[B.x, B.y]]);
 }
+/* ── 对照：把考场里接的线叠在标准答案上（11-26 他说看答案时不知道自己哪里接错）──
+   接对的＝正常颜色；漏接的＝半透明影子；接错/多接的＝橙色（标准里没有）。数据来自考场存档 LSX */
+function revEnter(){
+  let ws = []; try{ ws = JSON.parse(localStorage.getItem(LSX)||'[]')||[]; }catch(e){}
+  ws = ws.filter(function(p){ return TPOS[p[0]] && TPOS[p[1]]; });
+  if(!ws.length){ note('还没有考场盘内接线的记录：先进「考场」接一遍，再来对照'); return; }
+  if(UI.wire) setMode(false);
+  const key = function(a, b){ return [a, b].sort().join('|'); }, std = {};
+  WIRES.forEach(function(w){ std[key(w.from, w.to)] = w.id; });
+  const has = {}, extras = [];
+  ws.forEach(function(p){ const k = key(p[0], p[1]); if(std[k]) has[std[k]] = 1; else extras.push({from:p[0], to:p[1]}); });
+  extras.forEach(function(w, i){ const A = TPOS[w.from], B = TPOS[w.to];
+    const pts = path3(autoRoute(w.from, w.to, 200+i), TZ[w.from]+4, TZ[w.to]+4, 100+(i%8)*3, dev(A.device), dev(B.device));
+    w.mesh = tube(pts, 2.6, M(0xff7a00, {roughness:0.4, emissive:0xff7a00, emissiveIntensity:0.35}));
+    w.pick = tube(pts, 9, new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false})); w.pick.castShadow = false;
+    w.pick.userData.act = {type:'wire', id:'rx'+i}; picks.push(w.pick); });
+  UI.rev = {has:has, extras:extras, miss:WIRES.filter(function(w){ return !has[w.id]; }), k:0, note:''};
+  UI.sel = 0; UI.step = false; UI.hint = 0; simQF(false, performance.now());
+}
+function revExit(){
+  if(!UI.rev) return;
+  UI.rev.extras.forEach(function(w){ root.remove(w.mesh); root.remove(w.pick); const i = picks.indexOf(w.pick); if(i>=0) picks.splice(i, 1); });
+  UI.rev = null;
+}
+function revInfo(){
+  const R = UI.rev, good = WIRES.length - R.miss.length;
+  let h = '<b>对照你考场接的线</b>：接对 <b>'+good+'</b> / '+WIRES.length+' 根 · <span style="color:#7d8590">影子＝漏接 '+R.miss.length+'</span> · <span style="color:#e06a00">橙线＝接错/多接 '+R.extras.length+'</span>';
+  if(R.note) return h+'<div class="st">'+R.note+'</div>';
+  const L = R.miss.slice(0, 3).map(function(w){ return '漏：'+tname(w.from)+' → '+tname(w.to); })
+    .concat(R.extras.slice(0, 3).map(function(w){ return '错：'+tname(w.from)+' → '+tname(w.to); }));
+  return h+'<div class="st">'+(L.length ? L.join('；')+(R.miss.length+R.extras.length > 6 ? '……（点线看每一根）' : '（点线看详情）') : '全部接对 🎉')+'</div>';
+}
+function revTap(id){
+  const R = UI.rev; R.k++;
+  if(typeof id==='string' && id.indexOf('rx')===0){ const w = R.extras[+id.slice(2)];
+    R.note = '<span style="color:#e06a00">✗ 你接的</span>：'+tname(w.from)+' → '+tname(w.to)+'（标准接法里没有这根）'; return; }
+  const w = WIRES.filter(function(x){ return x.id===id; })[0]; if(!w) return;
+  R.note = (R.has[id] ? '✓ 接对了' : '<span style="color:#7d8590">○ 漏接</span>')+'：第 '+id+' 根 '+tname(w.from)+' → '+tname(w.to)+(GROUPS[w.group] ? '（'+GROUPS[w.group][0]+'）' : '');
+}
 function exAddWire(a, b){
   const std = WIRES.filter(function(w){ return (w.from===a && w.to===b) || (w.from===b && w.to===a); })[0];
   const w = std ? {id:std.id, from:std.from, to:std.to} : {id:EX.nextId++, from:a, to:b};
@@ -1139,6 +1183,7 @@ function exDelWire(id){
   setActive(EX.wires.slice());
 }
 function exEnter(){
+  revExit();
   if(UI.wire) setMode(false);
   simQF(false, performance.now());
   Object.assign(EX, {on:true, phase:'wire', delMode:false, wires:[], has:{}, nextId:100, grade:null, skipped:false, ev:[], con:{}, main:false, sign:'stand', glove:true, pen:false,
@@ -1332,7 +1377,7 @@ function exSheet(){
       .concat(R.wire.extra.length ? ['多了 / 不一样的：'+R.wire.extra.map(function(w){ return tname(w.from)+' → '+tname(w.to); }).join('；')] : []));
   }
   h += '<div style="color:var(--mut);font-size:12.5px;margin-top:10px">分值只有材料写明的三条：合闸状态接拆线 25、不立牌 10、顺序相反累计 20（我按「有就扣 20」算）。</div>';
-  menu('成绩单 · K32 正反转', [['再考一次', function(){ exEnter(); }]], h);
+  menu('成绩单 · K32 正反转', [['再考一次', function(){ exEnter(); }]].concat(R.skipped ? [] : [['在板上看哪里接错', function(){ exExit(); revEnter(); }]]), h);
 }
 /* 下一步该干什么（练习用，点提示那一栏可以关掉）*/
 
@@ -1520,6 +1565,7 @@ function up(e){
   else if(a && a.type==='frdial'){ const k = (FR_SET.indexOf(SIM.frSet)+1) % FR_SET.length; SIM.frSet = FR_SET[k]; click(2400, 0.02, 0.3);
     note('整定电流调到 <b>'+SIM.frSet.toFixed(1)+'A</b>。电动机 0.75kW 额定约 2A，按 1～1.05 倍应调 <b>2.0～2.1A</b>'+(SIM.frSet<2 ? '（偏小：正常运转也可能误跳）' : SIM.frSet>2.1 ? '（偏大：过载时保护不及时）' : '（合适）')); }
   else if(a && a.type==='fuse'){ simFuse(a.id, now); click(900, 0.05, 0.5); buzz(12); }
+  else if(a && a.type==='wire' && UI.rev && !EX.on){ revTap(a.id); }
   else if(a && a.type==='wire'){ UI.sel = UI.sel===a.id && !UI.step ? 0 : a.id; UI.step = false; UI.pend = null; UI.hint = 0; }
   else { UI.sel = 0; UI.step = false; UI.pend = null; }
 }
@@ -1597,7 +1643,8 @@ document.getElementById('erep').onclick = function(){
 document.getElementById('esub').onclick = function(){ menu('交卷？', [['交卷，看成绩单', exSheet]]); };
 info.onclick = function(){ if(EX.on) exStepMenu(); };   /* 点说明栏：看全部步骤（里面能开关提示） */
 ov.onclick = function(e){ if(e.target===ov) closeMenu(); };
-document.getElementById('mode').onclick = function(){ setMode(!UI.wire); };
+document.getElementById('mode').onclick = function(){ revExit(); setMode(!UI.wire); };
+document.getElementById('rev').onclick = function(){ if(UI.rev) revExit(); else revEnter(); };
 document.getElementById('hint').onclick = function(){
   const w = WIRES.filter(function(w){ return !DONE[w.id]; })[0];
   UI.pend=null; UI.sel=0;
@@ -1645,7 +1692,7 @@ function frame(now){
   controls.update(); if(!fly) camUI(); drawDots(now);
   const near = H/(2*camera.position.distanceTo(controls.target)*Math.tan(camera.fov/2*Math.PI/180)) > 0.66;   /* 每个板面单位占多少像素 */
   if(near!==UI.near){ UI.near = near; SMALL.forEach(function(m){ m.visible = near; }); }
-  const s = sig(); if(s!==UI.sig){ UI.sig = s; refresh(); hlApply(); }
+  const s = sig()+(UI.rev ? '|rev'+UI.rev.k : ''); if(s!==UI.sig){ UI.sig = s; refresh(); hlApply(); }
   hlFrame(now);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
