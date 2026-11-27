@@ -651,7 +651,7 @@ DEVICES.forEach(function(d){
     [1,2,3].forEach(function(k){ box(x+32*k+2, y, 1, h, 0, 17, MAT.grey); });
     const mt = dev('mt'), MN = ['1 进火','2 出火','3 进零','4 出零'];
     [0,1,2,3].forEach(function(i){ const tx = x+18+32*i; screw(tx, y+14, 16, 4.8);
-      label(MN[i], tx, y+28, 16.4, 8, i<2 ? '#b8282a' : '#1c5fb8', null, false, true);
+      label(MN[i], tx, y+28, 16.4, 10, i<2 ? '#b8282a' : '#1c5fb8', null, false, true);
       const mp = TPOS['mt-'+(i+1)], lx = x-8-3*i, ly = mt.y+mt.H+8+3*i;
       tube(path3([[mp.x, mp.y],[mp.x, ly],[lx, ly],[lx, y+14],[tx, y+14]], 22.6, 18.6, 30+i*2, null, null), 1.6, M(0x22262b, {roughness:0.5}), 5).castShadow = false; });
     label(d.tag, x+w+44, y+h/2, 0.4, 13, '#1f2328');
