@@ -67,7 +67,7 @@ ol.steps li.bad{color:#c0392b}
 <div class="top">
   <a class="blink" id="back" href="k3-3d.html">‹ 返回</a><span class="sp"></span>
   <span class="views">
-    <button id="home" hidden>复原</button><button id="rot">3D 看</button><button id="fs">全屏</button><button id="snd">🔊</button>
+    <button id="home" hidden>复原</button><button id="rot">3D 看</button><button id="fs">全屏</button><button id="snd" aria-label="声音"><svg viewBox="0 0 24 24" width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.2em" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
   </span>
 </div>
 <div class="bot">
@@ -92,6 +92,7 @@ ol.steps li.bad{color:#c0392b}
 }}
 </script>
 <script type="module">
+const IC = {mic:'<svg viewBox="0 0 24 24" width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.2em" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>',pt:'<svg viewBox="0 0 24 24" width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.2em" aria-hidden="true"><path d="M9 11V5a2 2 0 0 1 4 0v5"/><path d="M13 10a2 2 0 0 1 4 0v1"/><path d="M17 11a2 2 0 0 1 4 0v3a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.6-2.8L5 16a2 2 0 0 1 3-2.6l1 1.1"/></svg>',ok:'<svg viewBox="0 0 24 24" width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.2em" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',zap:'<svg viewBox="0 0 24 24" width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.2em" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',son:'<svg viewBox="0 0 24 24" width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.2em" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',soff:'<svg viewBox="0 0 24 24" width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.2em" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>'};  /* 线条图标（替换原来的表情符号） */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -1234,7 +1235,7 @@ function termTap(id){
   if(w && DONE[w.id]){ UI.msg='这根已经接过了'; return; }
   if(w){
     DONE[w.id]=1; DORD.push(w.id); applyDone(); click(1500, 0.05, 0.5); buzz(18);
-    UI.msg = doneN()===NW ? '🎉 <b>'+NW+' 根全部接对</b>，接错 '+UI.err+' 次。点断路器 QF 合闸试车'
+    UI.msg = doneN()===NW ? IC.ok+' <b>'+NW+' 根全部接对</b>，接错 '+UI.err+' 次。点断路器 QF 合闸试车'
       : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）· '+w.tier+'：'+tname(w.from)+' → '+tname(w.to)+([w.from, w.to].indexOf(a)<0 || [w.from, w.to].indexOf(id)<0 ? '（接地排哪个孔都行，图上画在标准那个孔）' : '');
     return;
   }
@@ -1467,7 +1468,7 @@ function revInfo(){
   if(R.note) return h+'<div class="st">'+R.note+'</div>';
   const L = R.miss.slice(0, 3).map(function(w){ return '漏：'+tname(w.from)+' → '+tname(w.to); })
     .concat(R.extras.slice(0, 3).map(function(w){ return '错：'+tname(w.from)+' → '+tname(w.to); }));
-  return h+'<div class="st">'+(L.length ? L.join('；')+(R.miss.length+R.extras.length > 6 ? '……（点线看每一根）' : '（点线看详情）') : '全部接对 🎉')+'</div>';
+  return h+'<div class="st">'+(L.length ? L.join('；')+(R.miss.length+R.extras.length > 6 ? '……（点线看每一根）' : '（点线看详情）') : '全部接对 '+IC.ok)+'</div>';
 }
 function revTap(id){
   const R = UI.rev; R.k++;
@@ -1535,7 +1536,7 @@ function exTermTap(id){
   if(EX.phase==='trial'){
     if(EX.tool==='pen'){ if(PROBE1.indexOf(id)>=0) exProbe(id); else EX.msg = '这个位置不在验电步骤里'; return; }
     if(EX.tool==='meter'){ exLog('meter', {id:id}); EX.msg = '万用表测 '+tname(id)+'：断电时测通断'; click(3000, 0.02, 0.15); return; }
-    if(EX.tool==='point'){ EX.msg = '👆 '+tname(id); return; }
+    if(EX.tool==='point'){ EX.msg = IC.pt+' '+tname(id); return; }
     if(!exDebugEdit()) return;
   } else if(EX.phase!=='wire') return;
   UI.sel = 0;
@@ -1572,7 +1573,7 @@ function setTool(t){
 }
 function penBusy(){ if(EX.tool!=='pen' && EX.tool!=='meter') return false; EX.msg = '手里拿着'+(EX.tool==='pen' ? '验电笔' : '万用表')+'：先放下，再动手'; return true; }
 const CHKN = Object.assign({main:'试车台总开关', qf:'盘上开关 QF', sign:'标识牌', cable:'线缆', pen:'验电笔', sd:'螺丝刀', glove:'绝缘手套'}, CFG.qfName || {});
-function exPoint(id, what){ EX.chk[id] = 1; exLog('chk', {id:id}); click(2600, 0.02, 0.2); EX.msg = '👆 '+what; }
+function exPoint(id, what){ EX.chk[id] = 1; exLog('chk', {id:id}); click(2600, 0.02, 0.2); EX.msg = IC.pt+' '+what; }
 function exTapMain(){
   if(exNeedTrial()) return;
   if(EX.tool==='point') return exPoint('main', '确认：试车台总开关在<b>'+(EX.main ? '合闸' : '分闸')+'</b>位置');
@@ -1631,7 +1632,7 @@ function exTapPoint(id){
   if(EX.tool==='pen'){ exProbe(id); return; }
   if(EX.tool==='meter'){ exMeter(id); return; }
   if(!XT[id]){ EX.msg = pname(id)+'：这里是验电的位置'; return; }
-  if(EX.tool==='point'){ EX.msg = '👆 '+XT[id].name+(EX.con[id] ? '（接着）' : '（没接）'); return; }
+  if(EX.tool==='point'){ EX.msg = IC.pt+' '+XT[id].name+(EX.con[id] ? '（接着）' : '（没接）'); return; }
   const on = !EX.con[id];
   if(on){ EX.con[id]=1; EX.cab = 'used'; } else delete EX.con[id];
   exLog(on ? 'con' : 'dis', {id:id, hand:EX.hand}); exSup(); click(on ? 1500 : 1300, 0.05, 0.5); buzz(18);
@@ -1647,12 +1648,12 @@ function exBtn(id){
 /* ── 报告：短按＝从几句里选；按住＝说话（浏览器自带语音识别，zh-CN）。说法要求看 CFG（各板不一样） ── */
 function doRep(text, voice){
   const r = repJudge(text);
-  if(!r.id){ EX.msg = '🎤 听到：「'+text+'」—— 听不出是哪一句，再按住「报告」说一次'; return; }
+  if(!r.id){ EX.msg = IC.mic+' 听到：「'+text+'」—— 听不出是哪一句，再按住「报告」说一次'; return; }
   const run = !!SIM.motor;
   if(r.id==='inst' && EX.phase!=='wire'){ EX.msg = '元件装好、盘内线接好，再报告安装完毕'; return; }
   EX.rep[r.id] = 1;
   exLog('rep', {id:r.id, ok:r.ok, why:r.why, said:text, voice:!!voice, run:run});
-  EX.msg = (voice ? '🎤 ' : '')+'你报告：「'+text+'」'+(EX.mode==='practice' && !r.ok ? '<br><span style="color:#c0392b">✗ '+r.why+'</span>' : '');
+  EX.msg = (voice ? IC.mic+' ' : '')+'你报告：「'+text+'」'+(EX.mode==='practice' && !r.ok ? '<br><span style="color:#c0392b">✗ '+r.why+'</span>' : '');
   if(r.id==='inst') exTrial();
 }
 function repMenu(){
@@ -1665,10 +1666,10 @@ function srStart(){
   SRS.used = true; SRS.txt = ''; SRS.err = null;
   try{
     const r = SRS.obj = new SR(); r.lang = 'zh-CN'; r.interimResults = true; r.continuous = true; r.maxAlternatives = 1;
-    r.onresult = function(ev){ let s = ''; for(let i=0;i<ev.results.length;i++) s += ev.results[i][0].transcript; SRS.txt = s; EX.msg = '🎤 '+(s || '正在听…'); };
+    r.onresult = function(ev){ let s = ''; for(let i=0;i<ev.results.length;i++) s += ev.results[i][0].transcript; SRS.txt = s; EX.msg = IC.mic+' '+(s || '正在听…'); };
     r.onerror = function(ev){ SRS.err = ev.error; };
     r.onend = function(){ SRS.on = false; SRS.btn.classList.remove('rec'); srDone(); };
-    r.start(); SRS.on = true; SRS.btn.classList.add('rec'); EX.msg = '🎤 正在听……说完松手'; buzz(15);
+    r.start(); SRS.on = true; SRS.btn.classList.add('rec'); EX.msg = IC.mic+' 正在听……说完松手'; buzz(15);
   }catch(err){ SRS.on = false; EX.msg = '这个浏览器用不了语音识别：短按「报告」选一句'; }
 }
 function srDone(){
@@ -1837,13 +1838,13 @@ function exScan(){
       row(3, e.ok ? '装上 '+DEVN[e.slot] : '装 '+pn+'：'+(e.why ? '型号不对' : '位置不对'), e.ok ? [] : [e.why || '位置不对（那是'+DEVN[e.slot]+'的位置）']); break; }
     case 'splice': row(3, '绞合接头：剥线头 → 绞合 → 包绝缘胶布', e.bad ? ['顺序弄错 '+e.bad+' 次'] : []); break;
     case 'rep': { const b = [];
-      if(e.id==='inst'){ if(!e.ok) b.push(e.why); row(3, (e.voice ? '🎤 ' : '')+'报告「'+e.said+'」', b); break; }
+      if(e.id==='inst'){ if(!e.ok) b.push(e.why); row(3, (e.voice ? IC.mic+' ' : '')+'报告「'+e.said+'」', b); break; }
       if(e.id==='wired'){ if(!e.ok) b.push(e.why);
         if(nCon<CON_ORDER.length) b.push('时机不对：外部线还没接完'); else if(F.everOn) b.push('时机不对：已经送过电了'); else { wiredSaid = true; wiredOk = !!e.ok; }
-        row(5, (e.voice ? '🎤 ' : '')+'报告「'+e.said+'」', b); break; }
+        row(5, (e.voice ? IC.mic+' ' : '')+'报告「'+e.said+'」', b); break; }
       row(5, '报告「'+e.said+'」', ['这时不该说这句']); break; }
     case 'hang': row(4, '电盘挂到通电台，考官宣布「开始操作」', [], true); break;
-    case 'chk': if(!nCon && !F.everOn && e.id==='main') chkMain = true; row(4, '👆 确认 '+CHKN[e.id], [], !(e.id==='main' && !nCon)); break;
+    case 'chk': if(!nCon && !F.everOn && e.id==='main') chkMain = true; row(4, IC.pt+' 确认 '+CHKN[e.id], [], !(e.id==='main' && !nCon)); break;
     case 'probe': { const z = PROBE0.indexOf(e.id)>=0, b = [];
       if(e.said!==e.live) b.push('喊错了：氖泡'+(e.live ? '亮了' : '没亮')+'，应该喊「'+(e.live ? '有电' : '无电')+'」');
       if(z && !e.live && !e.said && !nCon && !F.everOn) p0[e.id] = 1;
@@ -1878,7 +1879,7 @@ function exScan(){
       if(!e.pw){ row(6, nm+'（没电，没反应）', [], true); break; }
       const b = []; if(e.seq<SEQ.length && e.id!==e.want){ F.seqWrong++; }
       row(6, nm+(e.seq<SEQ.length && e.id===e.want ? '（试车核查第 '+(e.seq+1)+' 步）' : ''), b, e.seq>=SEQ.length || e.id!==e.want); break; }
-    case 'short': F.fail.push('短路：'+e.msg); row(6, '⚡ '+e.msg, ['短路（判不合格）']); break;
+    case 'short': F.fail.push('短路：'+e.msg); row(6, IC.zap+' '+e.msg, ['短路（判不合格）']); break;
     case 'debug': row(6, '断电后调试改线（第 '+e.n+' 次）', [], true); break;
     case 'dis': { const b = [];
       if(main || qf){ F.hot = true; b.push('开关合着就拆线（扣 25 分）'); }
@@ -2300,7 +2301,7 @@ document.getElementById('eclr').onclick = function(){
     while(EX.wires.length) exDelWire(EX.wires[0].id); exSave(); UI.sel = 0; UI.pend = null; EX.delMode = false; EX.msg = '全部拆掉了，重新接吧'; click(900, 0.05, 0.5); }]]);
 };
 document.getElementById('epen').onclick = function(){ setTool('pen'); EX.msg = EX.pen ? '拿起了验电笔：点要验电的位置' : '验电笔放回桌上了'; };
-document.getElementById('etool').onclick = function(){ setTool('point'); EX.msg = EX.tool==='point' ? '👆 指认：点要确认、检查的东西' : '收回手指，空手了'; };
+document.getElementById('etool').onclick = function(){ setTool('point'); EX.msg = EX.tool==='point' ? IC.pt+' 指认：点要确认、检查的东西' : '收回手指，空手了'; };
 document.getElementById('ehand').onclick = function(){ EX.hand = EX.hand==='R' ? 'L' : 'R'; EX.msg = '换成'+hn()+'了'; };
 
 document.getElementById('eglove').onclick = function(){ if(CFG.meterTool){ setTool('meter'); EX.msg = EX.tool==='meter' ? '拿起了万用表：点要测的线' : '万用表放回桌上了'; return; } EX.glove = !EX.glove; exLog('glove', {on:EX.glove}); EX.msg = EX.glove ? '戴上了手套' : '摘下了手套'; };
@@ -2339,7 +2340,7 @@ document.getElementById('reset').onclick = function(){
   simQF(false, performance.now()); for(const k in DONE) delete DONE[k]; UI.err=0; UI.sel=0; UI.pend=null; UI.hint=0; UI.msg=''; applyDone();
   UI.mount = {}; UI.part = null; UI.hintSlot = null; try{ localStorage.removeItem(LSM); }catch(e){}
 };
-document.getElementById('snd').onclick = function(){ sndOn = !sndOn; this.textContent = sndOn ? '🔊' : '🔇'; if(!sndOn) hum(false); else if(SIM.motor) hum(true); };
+document.getElementById('snd').onclick = function(){ sndOn = !sndOn; this.innerHTML = sndOn ? IC.son : IC.soff; if(!sndOn) hum(false); else if(SIM.motor) hum(true); };
 /* 屏幕尺寸变了（全屏、转屏）：没手动放大过就按新尺寸重新摆全景 */
 function refit(){ const keep = CAM==='front' && !zoomedIn() && !rotOn; resize(); stretchBoard(); if(keep) view('front', true); }
 /* 屏幕比板子细长时，灰色底板上下加长到正好贴住顶栏和底栏（全景下看不到留白） */
