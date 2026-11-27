@@ -85,15 +85,27 @@ ELEC.reg({
     加了一根<b>速断弹簧</b>。试试<b>先开外壳、再去合闸</b> —— 看它让不让你合。
   </div>
   <div class="card">
-    <canvas id="cv1"></canvas>
+    <div class="k3d-v" id="hh3d"></div>
     <div class="ctrl">
       <div class="btns">
         <button class="btn big" id="s2lv">扳手柄合闸</button>
         <button class="btn" id="s2dr">打开外壳</button>
       </div>
     </div>
+    <div class="ctrl" id="hh3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="hh3info"></div>
   </div>
   <div class="note" id="n1"></div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验</div>
+    ① <b>点右边的黑手柄</b>合闸：手柄是匀速扳过去的，三把刀却是<b>「啪」一下</b>同时插进静触座 —— 速断弹簧攒够劲才放。<br>
+    ② 合着闸去<b>点箱盖</b>：打不开（联锁）。先拉闸，再开盖。<br>
+    ③ 盖开着再去扳手柄：<b>合不上</b>。
+    <span class="sub">点任意零件看它叫什么；「剖开外壳」把铁箱体变透明，箱盖照样能开关。</span>
+  </div>
+  <div class="card">
+    <canvas id="cv1"></canvas>
+  </div>
 
   <div class="note" style="margin-top:10px">
     <div class="st">速断弹簧一个零件，办了三件事</div>
@@ -139,7 +151,7 @@ ELEC.reg({
     下面这个是最常见的用法：市电 / 断 / 备用电源，三选一。
   </div>
   <div class="card">
-    <canvas id="cv2"></canvas>
+    <div class="k3d-v" id="hz3d"></div>
     <div class="ctrl">
       <div class="rowlab">转动手柄（也可以直接点画面上那个旋钮）</div>
       <div class="btns" id="s3p">
@@ -148,8 +160,21 @@ ELEC.reg({
         <button class="btn" data-k="2">2　备用</button>
       </div>
     </div>
+    <div class="ctrl" id="hz3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="hz3info"></div>
   </div>
   <div class="note" id="n2"></div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验</div>
+    点「剖开外壳」后<b>点旋钮</b>一档一档转，盯住三层里的黄铜动触片：<br>
+    ① 0 档：三层都没搭上。② 1 档：第 ① 层（市电）和第 ③ 层（指示）通。③ 2 档：第 ② 层（备用）和第 ③ 层通。<br>
+    <b>第 ① 层和第 ② 层的动触片装的角度差了 60°</b>，所以一根轴怎么转都不可能让两路电源同时接上 —— 这就是「天生的互锁」。
+    <span class="sub">点任意零件看它叫什么；「侧面」能看清三层叠在一根轴上。</span>
+  </div>
+  <div class="card">
+    <canvas id="cv2"></canvas>
+  </div>
+
 
   <div class="note" style="margin-top:10px">
     <div class="st good">它最值钱的一点：互锁是天生的</div>
@@ -690,6 +715,19 @@ $('s2lv').addEventListener('click', function(){
   }
   S2.msg = ''; S2.leverT = S2.leverT > 0.5 ? 0 : 1; note2();
 });
+/* 3D 铁壳开关：读 S2，点手柄＝扳、点箱盖＝开关盖（联锁照页面原来的逻辑） */
+let HH3 = null;
+const HH3I = '点模型上任意零件看它叫什么、干什么用。<b>点黑手柄＝扳，点箱盖＝开/关盖</b>。';
+$('hh3info').innerHTML = HH3I;
+$('hh3c').innerHTML = window.E3D ? E3D.controlsHTML() : '';
+if(window.E3D){
+  E3D.ironCase($('hh3d'), {
+    state:function(){ return {door:S2.door, lever:S2.lever, blade:S2.blade, flash:S2.flash}; },
+    onLever:function(){ $('s2lv').click(); }, onDoor:function(){ $('s2dr').click(); },
+    onInfo:function(p){ $('hh3info').innerHTML = p ? '<b>'+p[0]+'</b>：'+p[1] + (S2.msg ? '<br><b style="color:var(--err)">'+S2.msg+'</b>' : '') : HH3I; }
+  }).then(function(a){ HH3 = a; });
+  E3D.bindControls($('hh3c'), function(){ return HH3; });
+}
 $('s2dr').addEventListener('click', function(){
   if(S2.leverT > 0.5 && S2.doorT < 0.5){
     S2.msg = '合着闸，箱盖打不开'; note2(); return;
@@ -801,6 +839,19 @@ function setK(k){
   S3.k = k;
   document.querySelectorAll('#s3p .btn').forEach(function(b){ b.classList.toggle('on', +b.dataset.k===k); });
   note3();
+}
+/* 3D 组合开关：读 S3，点旋钮转一档 */
+let HZ3 = null;
+const HZ3I = '点模型上任意零件看它叫什么。<b>点黑旋钮转一档</b>。';
+$('hz3info').innerHTML = HZ3I;
+$('hz3c').innerHTML = window.E3D ? E3D.controlsHTML() : '';
+if(window.E3D){
+  E3D.rotary($('hz3d'), {
+    state:function(){ return {k:S3.k, a:S3.a}; },
+    onTurn:function(){ const b = document.querySelector('#s3p .btn[data-k="'+((S3.k+1)%3)+'"]'); if(b) b.click(); },
+    onInfo:function(p){ $('hz3info').innerHTML = p ? '<b>'+p[0]+'</b>：'+p[1] : HZ3I; }
+  }).then(function(a){ HZ3 = a; });
+  E3D.bindControls($('hz3c'), function(){ return HZ3; });
 }
 document.getElementById('s3p').addEventListener('click', function(e){
   const b = e.target.closest('.btn'); if(b) setK(+b.dataset.k);

@@ -708,3 +708,178 @@ E3D.knife = function(el, opt){ return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 铁壳开关 HH 系列（封闭式负荷开关，三极）══════════════
+   铁箱 + 往左开的箱盖；一根横转轴带三把刀，转轴伸出右壁接手柄；速断弹簧挂在转轴的拐臂上；
+   刀下面是三只瓷插式熔断器。箱盖和转轴之间有机械联锁：合着闸开不了盖、开着盖合不了闸。
+   状态全来自页面 c2-1.js 的 S2：opt.state() → {door 0~1, lever 0~1, blade 0~1, flash}；点手柄 → opt.onLever()，点箱盖 → opt.onDoor() */
+(function(){
+'use strict';
+const PARTS = {
+  door:   ['箱盖', '铁的，平时关着。<b>点它就是开/关盖</b>。合着闸的时候它被联锁卡住，打不开。', '箱盖'],
+  box:    ['铁外壳（箱体）', '整个开关装在铁箱里，箱体要<b>可靠接地</b>（PE 线接箱体上的接地螺钉）。', '铁箱体'],
+  latch:  ['机械联锁', '转轴上的凸轮和箱盖上的挡块互相卡：<b>合着闸开不了盖、开着盖合不了闸</b>。人手碰不到带电的刀。', '联锁'],
+  shaft:  ['转轴（绝缘）', '三把刀装在同一根绝缘转轴上，<b>三相同时通断</b>。', '转轴'],
+  blade:  ['触刀', '跟着转轴转：转下来插进静触座＝合，转起来＝分。', '触刀'],
+  clip:   ['静触座', '固定的铜夹座，接电源进线。', '静触座'],
+  fuse:   ['瓷插式熔断器', '每相一只，熔体装在瓷插件里，拔出来就能换。管<b>短路</b>。', '熔断器'],
+  spring: ['速断弹簧', '扳手柄时先把它<b>拉长攒劲</b>，过了中间一下弹过去，带着刀<b>快速</b>分合 —— 跟手扳快慢无关，电弧拉不长。', '速断弹簧'],
+  handle: ['手柄', '在箱子外面，人只碰它。<b>点它就是扳一下</b>（盖开着扳不动）。', '手柄'],
+  tin:    ['进线端子', '三相电源从上面进。', '进线'],
+  tout:   ['出线端子', '经熔断器出去接电动机。', '出线']
+};
+const PX = [-20, 0, 20], SY = 6, SZ = 20, BL = 20;      /* 三相 x；转轴 y、z；刀长 */
+
+E3D.ironCase = function(el, opt){ return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 22], view:{th:0.55, ph:0.95, r:270},
+  presets:{front:[1, 0, 0, Math.PI/2, 260], side:[0, 1, 0, -Math.PI/2, 260]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag, opt = K.opt;
+  const paint = H.M(0x8a9097, {metalness:0.4, roughness:0.5, transparent:true}), porc = H.M(0xf1efe8, {roughness:0.3});
+  /* 箱体（剖开时半透明）：底板 + 四面墙，箱盖单独做 */
+  [[76, 104, 2, 0, 0, 1], [76, 2, 40, 0, 52, 20], [76, 2, 40, 0, -52, 20], [2, 104, 40, -38, 0, 20], [2, 104, 40, 38, 0, 20]].forEach(function(b){
+    const m = tag(H.box(b[0], b[1], b[2], b[3], b[4], b[5], paint, shell), 'box'); });
+  H.plate('HH 380V 60A', 30, 5, 0, 0, 2.2, '#2a2e33', null, root);
+  /* 箱盖：铰链在左边（x=-38），往左翻开 */
+  const door = new T.Group(); door.position.set(-38, 0, 41); shell.add(door);   /* 挂在 shell 下：剖开时箱盖也半透明，照样能点 */
+  const dm = H.M(0x7c838b, {metalness:0.45, roughness:0.45, transparent:true});
+  tag(H.box(76, 104, 1.6, 38, 0, 0, dm, door), 'door');
+  tag(H.box(14, 6, 4, 64, 22, -2.8, M.blk, door), 'latch');                      /* 盖上的联锁挡块 */
+  /* 转轴 + 三把刀（绕 x 轴转：0＝刀平躺朝 +y 插进静触座；1＝刀立起来） */
+  const shaft = new T.Group(); shaft.position.set(0, SY, SZ); root.add(shaft);
+  const sg = new T.CylinderGeometry(3, 3, 84, 16); sg.rotateZ(Math.PI/2);
+  const sm = tag(new T.Mesh(sg, H.M(0x5d4a36, {roughness:0.7})), 'shaft'); sm.position.set(4, 0, 0); shaft.add(sm);
+  PX.forEach(function(x){ tag(H.box(3, BL, 6, x, BL/2, 0, M.cu, shaft), 'blade'); });
+  tag(H.box(8, 4, 10, 30, 0, 4, M.blk, shaft), 'latch');                           /* 转轴上的凸轮 */
+  /* 拐臂 + 速断弹簧（右壁里面） */
+  const crank = new T.Group(); crank.position.set(34, 0, 0); shaft.add(crank);
+  tag(H.box(3, 12, 3, 0, -6, 0, M.zinc, crank), 'spring');
+  const spr = tag(H.spring(2.2, 10, 20, 0.5, M.spr), 'spring'); root.add(spr);
+  /* 手柄：转轴伸出右壁 */
+  const hd = new T.Group(); hd.position.set(44, 0, 0); shaft.add(hd);
+  tag(H.box(4, 26, 5, 0, -13, 0, M.blk, hd), 'handle'); tag(H.box(7, 8, 8, 0, -27, 0, M.blk, hd), 'handle');
+  /* 静触座（上）+ 进线；熔断器（下）+ 出线 */
+  const PHc = [0xe0a92e, 0x3fa845, 0xcf4436].map(function(c){ return H.M(c, {roughness:0.5}); });
+  PX.forEach(function(x, i){
+    [-2.2, 2.2].forEach(function(dx){ tag(H.box(1, 8, 10, x+dx, SY+BL-2, SZ, M.brass, root), 'clip'); });
+    tag(H.box(4, 20, 1.2, x, SY+BL+8, SZ-4, M.cu, root), 'clip');
+    tag(H.box(9, 8, 0.8, x, 44, SZ-4, M.zinc, root), 'tin'); tag(H.cylZ(2.8, 2.4, x, 44, SZ-2.6, M.zinc, root), 'tin');
+    H.wire([[x, 44, SZ-1], [x, 60, SZ-1]], 1.6, PHc[i], root);
+    /* 刀根 → 熔断器上座 */
+    H.wire([[x, SY, SZ-3], [x, -8, 10], [x, -12, 6]], 0.9, M.cu, root);
+    tag(H.box(12, 26, 8, x, -24, 6, porc, root), 'fuse');                         /* 瓷插件 */
+    tag(H.box(6, 8, 4, x, -24, 12, porc, root), 'fuse');                          /* 拔插手柄 */
+    tag(H.box(3, 22, 0.8, x, -24, 10.4, M.cu, root), 'fuse');
+    tag(H.box(9, 8, 0.8, x, -44, 6, M.zinc, root), 'tout'); tag(H.cylZ(2.8, 2.4, x, -44, 7.4, M.zinc, root), 'tout');
+    H.wire([[x, -44, 9], [x, -60, 9]], 1.6, H.M(0x5b6068, {roughness:0.5}), root);
+  });
+  const paths = PX.map(function(x){ return K.dots(10, K.curM, H.poly([[x, 60, SZ-1], [x, 44, SZ-1], [x, SY+BL+8, SZ-4], [x, SY+BL-2, SZ], [x, SY, SZ], [x, -8, 10], [x, -12, 6], [x, -24, 10.4], [x, -36, 8], [x, -44, 9], [x, -60, 9]])); });
+  const flM = new T.MeshBasicMaterial({color:0xcfe4ff, toneMapped:false, transparent:true, opacity:0, blending:T.AdditiveBlending, depthWrite:false});
+  const arcs = PX.map(function(x){ const m = new T.Mesh(new T.SphereGeometry(3, 12, 10), flM); m.position.set(x, SY+BL-2, SZ); root.add(m); return m; });
+  const A = new T.Vector3(), Bv = new T.Vector3(30, -14, 8), Z = new T.Vector3(0, 0, 1);
+  return {
+    labels:[['door', -10, 40, 42, door], ['box', -38, -30, 20], ['latch', 30, SY, SZ+8], ['shaft', -32, SY, SZ+3], ['blade', 0, SY+10, SZ+4], ['clip', -20, SY+BL, SZ+6],
+            ['fuse', 20, -24, 14], ['spring', 30, -8, 14], ['handle', 44, -20, SZ], ['tin', -20, 44, SZ], ['tout', 0, -44, 9]],
+    press:function(k){ if(k==='handle' && opt.onLever){ opt.onLever(); return true; } if((k==='door' || k==='latch') && opt.onDoor){ opt.onDoor(); return true; } return false; },
+    tick:function(dt, k){
+      const s = opt.state ? opt.state() : {door:0, lever:0, blade:0, flash:0};
+      door.rotation.y = -s.door*1.9;                                    /* 往左翻开约 110° */
+      shaft.rotation.x = (1 - s.blade)*1.25;                            /* 刀：合＝平躺，分＝立起 */
+      hd.rotation.x = (s.blade - s.lever)*1.25;                        /* 手柄跟手（lever）匀速走，刀（blade）攒够劲一下弹；手柄挂在转轴上，所以减掉转轴已转的 */
+      /* 弹簧：一头挂箱体，一头挂拐臂末端（拐臂跟手柄走） */
+      crank.rotation.x = hd.rotation.x;
+      A.set(0, -12, 0).applyAxisAngle(new T.Vector3(1, 0, 0), shaft.rotation.x + crank.rotation.x).add(new T.Vector3(34, SY, SZ));
+      spr.position.copy(Bv); const d = A.clone().sub(Bv); spr.scale.set(1, 1, d.length()/20);
+      spr.quaternion.setFromUnitVectors(Z, d.normalize());
+      flM.opacity = Math.min(1, s.flash*4); arcs.forEach(function(m){ m.visible = s.flash > 0.01; });
+      const on = s.blade > 0.95;
+      paths.forEach(function(g){ K.flow(g, on, 0.12/k, dt); });
+      return true;
+    }
+  };
+  }}, opt); };
+})();
+
+/* ══════════════ 组合开关 HZ10 类（三层，0/1/2 三档）══════════════
+   几层「触片盒」叠在一根方轴上：每层两片静触片朝外接端子，轴上的动触片跟着转，转到对的角度才把两片搭通。
+   ① 层只在 1 档通、② 层只在 2 档通（所以两路电源不可能同时接上 —— 结构互锁），③ 层是弧形动触片，1、2 档都通。
+   状态来自页面 c2-1.js 的 S3：opt.state() → {k 档位, a 当前角度(从正上方顺时针)}；点旋钮 → opt.onTurn() */
+(function(){
+'use strict';
+const PARTS = {
+  knob:   ['手柄（旋钮）', '转到 0 / 1 / 2 三个位置，每档有定位（「咔」一下卡住）。<b>点它转一档</b>。', '手柄'],
+  shaft:  ['方轴', '所有层的动触片都套在这一根方轴上，转手柄就是同时转所有层。', '方轴'],
+  deck:   ['触片盒（一层）', '绝缘的一层盒子，里面一对静触片、一片动触片。层数越多能管的回路越多。', '触片盒'],
+  fix:    ['静触片', '固定在盒子上，朝外的一头是接线端子。', '静触片'],
+  mov:    ['动触片', '套在方轴上跟着转。<b>转到正对两片静触片的角度</b>才把它们搭通 —— 不同层的动触片装的角度不一样，所以不同档通的是不同的层。', '动触片'],
+  arc:    ['弧形动触片（第 ③ 层）', '做成一段弧，<b>1 档和 2 档都搭得上</b>，只有 0 档不通。所以只要有一路电送上，送电指示灯就亮。', '弧形动触片'],
+  term:   ['接线端子', '每层左右各一个。', '端子']
+};
+const KA = [0, 1.05, 2.10];                      /* 三档角度：从正上方顺时针 */
+const LAY = [{t:'① 市电', ang:KA[1], kind:'bar'}, {t:'② 备用', ang:KA[2], kind:'bar'}, {t:'③ 指示', ang:0, kind:'arc'}];
+const DZ = [8, 20, 32];                          /* 三层的高度 */
+
+E3D.rotary = function(el, opt){ return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 24], view:{th:0.5, ph:0.95, r:220},
+  presets:{front:[1, 0, 0, Math.PI/2, 210], side:[0, 1, 0, -Math.PI/2, 210]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag, opt = K.opt;
+  const bake = H.M(0x3a2e26, {roughness:0.6, transparent:true});
+  const dir = function(c, r){ return [Math.sin(c)*r, Math.cos(c)*r]; };   /* 顺时针角 c、半径 r → x,y */
+  const shaft = new T.Group(); root.add(shaft);
+  tag(H.box(5, 5, 44, 0, 0, 24, M.steel, shaft), 'shaft');
+  const fixM = [];
+  LAY.forEach(function(L, i){
+    const z = DZ[i];
+    tag(H.box(44, 44, 9, 0, 0, z, bake, shell), 'deck');
+    /* 静触片：在 L.ang 和 L.ang+π 两个方向，从半径 10 伸到 24，外头是端子 */
+    [0, Math.PI].forEach(function(o){
+      const c = L.ang + o, p = dir(c, 17), q = dir(c, 27);
+      const m = tag(H.box(4, 14, 1.6, p[0], p[1], z, M.cu, root), 'fix'); m.rotation.z = -c;
+      const tm = tag(H.box(8, 8, 1, q[0], q[1], z+1, M.zinc, root), 'term'); tm.rotation.z = -c;
+      tag(H.cylZ(2.4, 2.2, q[0], q[1], z+2.4, M.zinc, root), 'term');
+    });
+    const lab = dir(L.ang, 34); H.plate(L.t, 14, 4, lab[0], lab[1], z+4.6, '#dfe3e8', '#2b2f34', root);
+    /* 动触片（装在轴上） */
+    if(L.kind === 'bar'){
+      /* 轴转到 L.ang 时它正对静触片：在轴的坐标里它就是竖的（朝正上方） */
+      tag(H.box(3.5, 23, 1.6, 0, 0, z+1.8, M.brass, shaft), 'mov');
+    } else {
+      /* 弧：轴相对角 [-2.25, -0.9] 和对面那段 —— 轴转到 0.9~2.25 之间时盖住正上方/正下方的静触片 */
+      [0, Math.PI].forEach(function(o){
+        const c1 = -2.25 + o, c2 = -0.9 + o;
+        const g = new T.TorusGeometry(11, 1.3, 6, 20, c2 - c1);
+        const m = tag(new T.Mesh(g, M.brass), 'arc'); m.rotation.z = Math.PI/2 - c2; m.position.z = z+1.8; shaft.add(m);
+      });
+      /* 两段弧用一根过中心的连接片连成一体（弧中点在轴相对角 -1.575 和它对面） */
+      const cb = tag(H.box(3.5, 22, 1.6, 0, 0, z+1.8, M.brass, shaft), 'arc'); cb.rotation.z = 1.575;
+    }
+  });
+  /* 面板 + 档位刻字 + 旋钮 */
+  tag(H.box(50, 50, 2, 0, 0, 40, bake, shell), 'deck');
+  ['0', '1', '2'].forEach(function(t, k){ const p = dir(KA[k], 21); H.plate(t, 5, 5, p[0], p[1], 41.2, '#ffffff', null, root); });
+  const knob = new T.Group(); knob.position.z = 41; root.add(knob);
+  tag(H.cylZ(11, 6, 0, 0, 3, M.blk, knob), 'knob');
+  tag(H.box(4, 16, 3, 0, 5, 7, H.M(0xc0392b, {roughness:0.5}), knob), 'knob');     /* 指针（红杆，指向档位） */
+  /* 电流小点：每层 端子→静触片→动触片→静触片→端子 */
+  const paths = LAY.map(function(L, i){ const z = DZ[i], a = dir(L.ang, 30), b = dir(L.ang, 10), c = dir(L.ang+Math.PI, 10), d = dir(L.ang+Math.PI, 30);
+    const pts = L.kind === 'bar' ? [[a[0], a[1], z+2.5], [b[0], b[1], z+2.5], [c[0], c[1], z+2.5], [d[0], d[1], z+2.5]]
+                                  : [[a[0], a[1], z+2.5], [b[0], b[1], z+2.5], [0, 0, z+2.5], [c[0], c[1], z+2.5], [d[0], d[1], z+2.5]];
+    return K.dots(8, K.curM, H.poly(pts)); });
+  const on = function(i, k){ return [[false,true,false],[false,false,true],[false,true,true]][i][k]; };
+  let lastA = null;
+  return {
+    labels:[['knob', 0, 11, 48, knob], ['shaft', 0, 0, 46], ['deck', -22, -22, 20], ['fix', 17, 10, 8], ['mov', 0, 8, 22, shaft], ['arc', -8, -6, 34, shaft], ['term', -27, -6, 30]],
+    press:function(k){ if(k==='knob' && opt.onTurn){ opt.onTurn(); return true; } return false; },
+    tick:function(dt, kk){
+      const s = opt.state ? opt.state() : {k:0, a:0};
+      shaft.rotation.z = -s.a; knob.rotation.z = -s.a;
+      const moving = lastA === null || Math.abs(s.a - lastA) > 1e-4; lastA = s.a;
+      const settled = Math.abs(s.a - KA[s.k]) < 0.05;
+      let any = false;
+      paths.forEach(function(g, i){ const o = settled && on(i, s.k); any = any || o; K.flow(g, o, 0.15/kk, dt); });
+      return moving || any;
+    }
+  };
+  }}, opt); };
+})();
