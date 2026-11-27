@@ -112,6 +112,16 @@ ELEC.reg({
     <b>点一处看接线。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">动手摇：绕组对外壳</div>
+    <div class="k3d-v" id="mg56"></div>
+    <div class="ctrl">
+      <div class="btns" id="mg56R"><button class="btn sm on" data-r="0">停</button><button class="btn sm" data-r="60">慢摇 60</button><button class="btn sm" data-r="120">额定 120 r/min</button></div>
+      <div class="btns" id="mg56M"><button class="btn sm on" data-m="good">好的</button><button class="btn sm" data-m="damp">受潮</button><button class="btn sm" data-m="short">绕组碰壳</button></div>
+    </div>
+    <div class="ctrl" id="mg56c" style="padding-top:0"></div>
+    <div class="k3d-info" id="mg56info"></div>
+  </div>
+  <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
       <div class="btns" id="s2k">
@@ -712,6 +722,16 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 摇表（同 3.8） */
+let MG56 = null;
+if(window.E3D){
+  E3D.megger($('mg56'), { onRead:function(r, st){ document.querySelectorAll('#mg56R .btn').forEach(function(b){ b.classList.toggle('on', +b.dataset.r === st.rpm); });
+      document.querySelectorAll('#mg56M .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.m === st.motor); }); $('mg56info').innerHTML = r.msg; },
+    onInfo:function(p, k){ if(p && k !== 'crank') $('mg56info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ MG56 = a; });
+  $('mg56c').innerHTML = E3D.controlsHTML(); E3D.bindControls($('mg56c'), function(){ return MG56; });
+  $('mg56R').addEventListener('click', function(e){ const b = e.target.closest('[data-r]'); if(b && MG56) MG56.set({rpm:+b.dataset.r}); });
+  $('mg56M').addEventListener('click', function(e){ const b = e.target.closest('[data-m]'); if(b && MG56) MG56.set({motor:b.dataset.m}); });
+}
 ElecNav.init({ch:5, sec:'5.6'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();

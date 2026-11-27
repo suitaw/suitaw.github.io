@@ -33,6 +33,11 @@ ELEC.reg({
     <b>切三种做法看读数。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">动手量：电池已经拆下，Ω 档</div>
+    <div class="ml-card" data-init="{batt:false, dial:'ohm'}"></div>
+  </div>
+  <div class="note" style="margin:10px 0"><div class="st">照着做</div>① 红黑笔点 <b>T2、T3</b>（灯两头）：100 Ω —— 灯丝的冷态电阻。② 点 T1、T2（开关两头）：开关合着读 0，点「断开开关」再量：OL。③ 点「装上电池」再测：表报警 —— <b>带电不能测电阻</b>。</div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="btns" id="s1k">
@@ -102,6 +107,11 @@ ELEC.reg({
     电阻小到一定程度（一般 <b>30~50 Ω 以下</b>）蜂鸣器就响。
     查熔断器、查断线、认线头全靠它。<b>点四种被测件看反应。</b>
   </div>
+  <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">动手量：通断档</div>
+    <div class="ml-card" data-init="{batt:false, dial:'beep'}"></div>
+  </div>
+  <div class="note" style="margin:10px 0"><div class="st">照着做</div>两笔点 <b>T1、T2</b>（开关两头）：开关合着<b>「滴」</b>一声（真的会响，开声音听）；断开开关再点：不响。点 T2、T3（灯丝 100 Ω）：不响 —— 通断档只认 30 Ω 以下。</div>
   <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
@@ -936,6 +946,8 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 万用表实验台（同 3.6a，开局状态不同） */
+if(window.E3D && window.MLab) document.querySelectorAll('.ml-card').forEach(function(b){ E3D.meterLabCard(b, (new Function('return '+b.dataset.init))()); });
 ElecNav.init({ch:3, sec:'3.6b'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4(); syncBtn3();

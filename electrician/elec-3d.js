@@ -1015,7 +1015,7 @@ const TPS = {T1:[30, 34], T2:[72, 34], T3:[72, -34], T4:[30, -34]};     /* 板�
 const JK = {a:[-74, -44], ma:[-62, -44], jcom:[-50, -44], v:[-38, -44]}; /* 四个插孔：10A mA COM VΩ */
 
 E3D.meterLab = function(el, opt){ return E3D.viewer(el, {
-  parts:PARTS, center:[9, -4, 8], view:{th:0.0, ph:0.5, r:350},
+  parts:PARTS, center:[9, -4, 8], view:{th:0.0, ph:0.5, r:385},
   presets:{front:[1, 0, 0, Math.PI/2, 340], side:[0, 1, 0, -Math.PI/2, 300]},
   build:function(K){
   const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag, opt = K.opt;
@@ -1111,6 +1111,7 @@ E3D.meterLab = function(el, opt){ return E3D.viewer(el, {
   let ac = null;
   function beep(){ try{ ac = ac || new (window.AudioContext || window.webkitAudioContext)(); const o = ac.createOscillator(), g = ac.createGain();
     o.frequency.value = 2700; g.gain.value = 0.06; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.35); }catch(e){} }
+  if(opt.init) Object.assign(st, opt.init);   /* 开局状态（3.6b 测电阻：电池拆了、Ω 档） */
   update();
   const api = {
     st:st, update:update,
@@ -2273,3 +2274,30 @@ E3D.starDelta = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* 整张万用表实验卡：E3D.meterLabCard(容器, 开局状态) —— 3D + 档位/插孔/开关/电池按钮 + 说明区，各节复用 */
+E3D.meterLabCard = function(box, init){
+  if(!window.MLab){ box.innerHTML = ''; return; }
+  const id = 'mlc' + Math.random().toString(36).slice(2, 7), q = function(s){ return box.querySelector(s); };
+  box.innerHTML = '<div class="k3d-v"></div><div class="ctrl"><div class="rowlab">档位（也可以点表上的旋钮）</div><div class="btns" data-r="dial">'+
+    [['off','OFF'], ['dcv','直流 V'], ['acv','交流 V'], ['ohm','Ω'], ['beep','通断'], ['ma','mA'], ['a','10A']].map(function(d){ return '<button class="btn sm" data-d="'+d[0]+'">'+d[1]+'</button>'; }).join('')+
+    '</div><div class="rowlab">红笔插哪个孔（黑笔永远在 COM）</div><div class="btns" data-r="jack">'+[['v','VΩ'], ['ma','mA'], ['a','10A']].map(function(j){ return '<button class="btn sm" data-j="'+j[0]+'">'+j[1]+'</button>'; }).join('')+
+    '</div><div class="btns"><button class="btn sm" data-x="sw"></button><button class="btn sm" data-x="batt"></button><button class="btn sm" data-x="clr">收回表笔</button><button class="btn sm" data-x="fuse" style="display:none">换保险管</button></div></div>'+
+    '<div class="ctrl" data-r="views" style="padding-top:0"></div><div class="k3d-info"></div>';
+  let api = null;
+  const info = q('.k3d-info');
+  function sync(r, st){
+    box.querySelectorAll('[data-d]').forEach(function(b){ b.classList.toggle('on', b.dataset.d === st.dial); });
+    box.querySelectorAll('[data-j]').forEach(function(b){ b.classList.toggle('on', b.dataset.j === st.jack); });
+    q('[data-x="sw"]').textContent = st.sw ? '断开开关' : '合上开关'; q('[data-x="batt"]').textContent = st.batt ? '拆下电池' : '装上电池';
+    q('[data-x="fuse"]').style.display = st.fuse ? 'none' : '';
+    info.innerHTML = '<div style="font-size:.78rem;color:var(--tx3)">'+(st.red ? '红笔 '+st.red : '红笔没放')+'，'+(st.black ? '黑笔 '+st.black : '黑笔没放')+'</div>' + (r.warn ? '<div style="color:var(--err)">'+r.msg+'</div>' : r.msg);
+  }
+  E3D.meterLab(q('.k3d-v'), {init:init, onRead:sync, onInfo:function(p, k){ if(p && !/^(tp|dial|jv|jma|ja|batt|sw)$/.test(k)) info.innerHTML = '<b>'+p[0]+'</b>：'+p[1]; }}).then(function(a){ api = a; });
+  q('[data-r="views"]').innerHTML = E3D.controlsHTML(null, [['oblique','俯视'], ['front','正上方'], ['side','侧面']]);
+  E3D.bindControls(q('[data-r="views"]'), function(){ return api; });
+  box.addEventListener('click', function(e){ const b = e.target.closest('button'); if(!b || !api) return;
+    if(b.dataset.d) api.dial(b.dataset.d); else if(b.dataset.j) api.jack(b.dataset.j);
+    else if(b.dataset.x === 'sw') api.set({sw:!api.st.sw}); else if(b.dataset.x === 'batt') api.set({batt:!api.st.batt});
+    else if(b.dataset.x === 'clr') api.clearProbes(); else if(b.dataset.x === 'fuse') api.fuse(); });
+};

@@ -2720,3 +2720,4 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - `E3D.twoWay`（7.1 第 2 屏双控）：墙＝模型 y=0 竖面；L 红进 SA1 COM，上/下两根灰色联络线，SA2 COM → 灯 → N 蓝；a===b 灯亮，电流点走对应那根联络线；读 S2 {a,b}，点开关 → 页面按钮。
 - `E3D.distBox`（8.2 第 2 屏）：配电箱（电能表/总开关/漏保带 T/两路分支/N 排蓝/PE 排黄绿）+ 洗衣机 + 人；leak/pe/touch/tripped；PE 好→漏电走 PE 跳；PE 断无人摸→不跳、外壳闪红；人摸→跳；T 钮→跳；有故障时合闸立刻又跳。截图里同类「缺零件 / 整片变黑（像没灯光）」又出现，每次不一样，仍按截图环境问题处理（未确认）。
 - `E3D.starDelta`（11.4 第 3 屏）：KMY（下端星点铜排）+ KM△（下端→V1 W1 U1）两台 kmBuild + 电动机接线盒六头；L1L2L3 直接到 U1V1W1；U2V2W2 并到两台上端；start → star（5 演示秒倒计时）→ delta；数字卡显示 220/380 V。
+- `E3D.meterLabCard(容器, 开局状态)`：整张万用表实验卡（3D+档位/插孔/开关/电池按钮+说明），3.6b 第 1 屏 {batt:false, dial:'ohm'}、第 2 屏 {batt:false, dial:'beep'} 用它；页面里写 `<div class="ml-card" data-init="{...}">`。meterLab 支持 opt.init。5.6 第 2 屏复用 E3D.megger。
