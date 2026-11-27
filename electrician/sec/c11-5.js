@@ -65,6 +65,17 @@ ELEC.reg({
     <b>点两个按钮，比一比两条曲线。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">比一比：自由停车 vs 反接制动</div>
+    <div class="k3d-v" id="pb3d"></div>
+    <div class="ctrl">
+      <div class="btns"><button class="btn" id="pbRun">起动</button><button class="btn" id="pbCoast">断电自由停车</button><button class="btn" id="pbBrake">反接制动</button></div>
+      <div class="btns"><button class="btn sm" id="pbKs">速度继电器：好的</button></div>
+      <div class="nums three"><div class="num hi"><div class="k">转速</div><div class="v" id="pbN">0</div></div><div class="num"><div class="k">KM1</div><div class="v" id="pbK1">断</div></div><div class="num"><div class="k">KM2</div><div class="v" id="pbK2">断</div></div></div>
+    </div>
+    <div class="ctrl" id="pb3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="pb3info">先点「起动」，等转起来再选一种停法。</div>
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="btns" id="s1k">
@@ -753,6 +764,18 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 反接制动（复用 E3D.fwdRev 的 brake 模式） */
+let PB = null;
+if(window.E3D){
+  E3D.fwdRev($('pb3d'), { brake:true, onState:function(e){ $('pbN').textContent = Math.round(Math.abs(e.n)) + (e.n < -5 ? ' 反' : ''); $('pbK1').textContent = e.km1 ? '吸合' : '断'; $('pbK2').textContent = e.km2 ? '吸合' : '断'; if(e.msg) $('pb3info').innerHTML = e.msg; },
+    onInfo:function(p){ if(p) $('pb3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ PB = a; });
+  $('pb3c').innerHTML = E3D.controlsHTML(null, [['oblique','正上方'], ['front','正面'], ['side','侧面']]);
+  E3D.bindControls($('pb3c'), function(){ return PB; });
+  $('pbRun').addEventListener('click', function(){ if(PB) PB.run(); });
+  $('pbCoast').addEventListener('click', function(){ if(PB) PB.coast(); });
+  $('pbBrake').addEventListener('click', function(){ if(PB) PB.brake(); });
+  $('pbKs').addEventListener('click', function(){ if(!PB) return; PB.ksBroken(!PB.st.ksBad); this.textContent = PB.st.ksBad ? '速度继电器：坏了（不断开）' : '速度继电器：好的'; this.classList.toggle('on', PB.st.ksBad); });
+}
 ElecNav.init({ch:11, sec:'11.5'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();

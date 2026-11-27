@@ -1954,7 +1954,8 @@ E3D.fwdRev = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
     km1:['KM1 正转接触器', '下端出线直接接电动机 U V W —— 相序 L1 L2 L3。', 'KM1 正转'],
     km2:['KM2 反转接触器', '下端出线<b>把 L1、L3 对调</b>后再接电动机 —— 相序反了，电动机就反转。', 'KM2 反转'],
     motor:['电动机', '看轴头那块红白圆盘的转向。', '电动机'],
-    swap:['对调的两根线', 'KM2 出来的第一相和第三相交叉 —— 就这一个交叉让电动机反转。', '两相对调']
+    swap:['对调的两根线', 'KM2 出来的第一相和第三相交叉 —— 就这一个交叉让电动机反转。', '两相对调'],
+    ks:['速度继电器 KS', '装在电动机轴上，转得快触点闭合；<b>转速低到 100 r/min 左右就断开</b>（常见动作 / 复位转速 120 / 100 r/min，以铭牌为准），切断反接制动。', '速度继电器 KS']
   }),
   center:[0, -36, 40], view:{th:0, ph:0.62, r:460},
   presets:{front:[1, 0, 0, Math.PI/2, 440], side:[0, 1, 0, -Math.PI/2, 420]},
@@ -1993,8 +1994,13 @@ E3D.fwdRev = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   outWire(-OX, outA, null); outWire(OX, outB, 'swap');
   const flM = new T.MeshBasicMaterial({color:0xcfe4ff, toneMapped:false, transparent:true, opacity:0, blending:T.AdditiveBlending, depthWrite:false});
   const arcs = [-OX, OX].map(function(ox){ const m = new T.Mesh(new T.SphereGeometry(10, 14, 12), flM); m.position.set(ox-13, 0, 66); root.add(m); return m; });
-  const st = {km1:false, km2:false, lock:true, arc:0, rot:0, msg:''};
-  function emit(){ if(opt.onState) opt.onState({km1:st.km1, km2:st.km2, lock:st.lock, msg:st.msg}); K.S.dirty = true; }
+  const st = {km1:false, km2:false, lock:true, arc:0, rot:0, msg:'', n:0, mode:'', ksBad:false, t:0};
+  /* 反接制动模式（11.5）：轴头加速度继电器 KS；转速 n（r/min）按页面口径：运行 1440、自由停车 1440·e^(−t/6)、反接制动线性 2.2 s 到零、KS 100 r/min 断开 */
+  let ksArm = null;
+  if(opt.brake){ const ks = new T.Group(); ks.position.set(60, MY, 28); root.add(ks);
+    tag(H.box(14, 16, 16, 6, 0, 0, H.M(0x2b2f34, {roughness:0.5}), ks), 'ks'); ksArm = new T.Group(); ksArm.position.set(14, 0, 6); ks.add(ksArm);
+    tag(H.box(2, 2, 8, 0, 0, 4, M.brass, ksArm), 'ks'); H.plate('KS', 8, 4, 66, MY, 37, '#e6edf5', null, root); }
+  function emit(){ if(opt.onState) opt.onState({km1:st.km1, km2:st.km2, lock:st.lock, msg:st.msg, n:st.n, mode:st.mode}); K.S.dirty = true; }
   function short(){ st.km1 = st.km2 = false; st.arc = 1; st.msg = '<b style="color:var(--err)">两台同时吸合 —— L1、L3 经两台接触器直接短路！</b>电弧烧触点，总开关跳闸。这就是为什么必须有互锁。'; }
   const api = {
     st:st,
@@ -2003,17 +2009,33 @@ E3D.fwdRev = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
     rev:function(){ if(st.km1){ if(st.lock){ st.msg = '<b>按了没反应</b>：KM1 正吸合着，它的常闭 21-22 串在 KM2 线圈那一路、断开着（电气互锁）。先按停止。'; emit(); return; } st.km2 = true; short(); emit(); return; }
       st.km2 = true; st.msg = 'KM2 吸合：L1、L3 对调了 → <b>反转</b>。'; emit(); },
     stop:function(){ st.km1 = st.km2 = false; st.msg = '停了。'; emit(); },
-    lock:function(b){ st.lock = b; st.msg = b ? '互锁装上了。' : '<b>互锁拆掉了</b>（危险演示）：现在正转时再按反转试试。'; emit(); }
+    lock:function(b){ st.lock = b; st.msg = b ? '互锁装上了。' : '<b>互锁拆掉了</b>（危险演示）：现在正转时再按反转试试。'; emit(); },
+    run:function(){ st.km1 = true; st.km2 = false; st.mode = 'run'; st.msg = 'KM1 吸合，电动机起动，转到 1440 r/min。'; emit(); },
+    coast:function(){ if(st.mode !== 'run') return; st.km1 = false; st.mode = 'coast'; st.t = 0; st.msg = '<b>自由停车</b>：断了电，靠惯性和摩擦慢慢停 —— 要 20 秒上下。'; emit(); },
+    brake:function(){ if(st.mode !== 'run') return; st.km1 = false; st.km2 = true; st.mode = 'brake'; st.msg = '<b>反接制动</b>：KM1 断开、KM2 吸合，相序反了，旋转磁场倒着拽转子 —— 转速掉得飞快。'; emit(); },
+    ksBroken:function(b){ st.ksBad = !!b; emit(); }
   };
   emit();
   const lab = function(l, ox){ return [l[0], l[1]+ox, l[2], l[3], l[4]]; };
   return {
-    labels:[lab(['carrier', 0, 7, 88, A.mov], -OX), ['motor', 0, MY-28, 40], ['swap', OX-20, -70, 80]],
+    labels:[lab(['carrier', 0, 7, 88, A.mov], -OX), ['motor', 0, MY-28, 40], ['swap', OX-20, -70, 80]].concat(opt.brake ? [['ks', 66, MY, 40]] : []),
     api:api,
     tick:function(dt, k){
       A.api.set(st.km1); B.api.set(st.km2);
       st.arc = Math.max(0, st.arc - dt/(0.6*k)); flM.opacity = st.arc; arcs.forEach(function(m){ m.visible = st.arc > 0.01; m.scale.setScalar(0.5 + st.arc); });
-      const w = st.km1 ? 1 : st.km2 ? -1 : 0;
+      let w = st.km1 ? 1 : st.km2 ? -1 : 0;
+      if(opt.brake){
+        const d = dt/k;
+        if(st.mode === 'run') st.n = Math.min(1440, st.n + 1440*d/1.2);
+        else if(st.mode === 'coast'){ st.t += d; st.n = 1440*Math.exp(-st.t/6); if(st.n < 60){ st.n = 0; st.mode = ''; st.msg = '自由停车：差不多 20 秒才停住。'; emit(); } }
+        else if(st.mode === 'brake'){ st.n -= 1440/2.2*d;
+          if(!st.ksBad && st.n <= 100){ st.km2 = false; st.n = 0; st.mode = ''; st.msg = '转速掉到 100 r/min 左右，<b>速度继电器 KS 断开</b>，KM2 释放 —— 约 2 秒就停住了，而且不会反转。'; emit(); }
+          else if(st.ksBad && st.n < -300){ st.mode = 'rev'; st.msg = '<b style="color:var(--err)">KS 没断开：电动机停下来以后接着反转起来了！</b>反接制动必须有速度继电器及时撒手。'; emit(); } }
+        else if(st.mode === 'rev') st.n = Math.max(-1440, st.n - 1440*d/1.2);
+        if(Math.abs(st.n) > 0) emit();
+        w = st.n/1440*1.6;
+        if(ksArm) ksArm.rotation.y = Math.abs(st.n) > 100 ? 0.5 : 0;           /* KS 触点：转着闭合，低于 100 断开 */
+      }
       st.rot += w*2.2*dt/k; shaft.rotation.x = st.rot;
       return A.tick(dt, k) | B.tick(dt, k) | (w !== 0) | (st.arc > 0);
     }
