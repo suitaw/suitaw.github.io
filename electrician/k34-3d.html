@@ -187,7 +187,7 @@ const GROUPS = {
   8:['热继电器支路','4 号熔断器下方 → 热继电器 95，96 → 端子排 8（停止常闭）'],
   9:['线圈支路','5 号熔断器下方 → 接触器 A1；A2 → 14NO；14NO → 端子排 2'],
   10:['自锁与跳线','13NO → 端子排 1；跳线 1 — 7'],
-  11:['互感器二次侧','每相一组：互感器 S1 → 横端子排右段「电流表接线」该相 1，该相 2 → 互感器 S2（端子排背面出厂接到仪表箱），S2 → 接地铜排。二次侧一端必须接地；运行中二次侧不许开路（会感应出高压）。⚠ 这 9 根是按常规接法排的，Notion 没记逐根走法'],
+  11:['互感器二次侧','每相一组：互感器 S1 → 横端子排右段「电流表接线」该相 1，该相 2 → 互感器 S2，S2 → 接地铜排。端子排下排到仪表箱那 6 根也要自己接（下一组）。二次侧一端必须接地；运行中二次侧不许开路（会感应出高压）。⚠ 这 9 根是按常规接法排的，Notion 没记逐根走法'],
   12:['电流表 → 仪表箱','横端子排「电流表接线」下排 → 仪表箱电流表插孔：A1 → A相表插孔 1（上），A2 → 插孔 2（下）；B、C 相同样。同一节端子上下排是通的']
 };
 /* 42 根：主电路 18 + 控制电源 2 + 控制 7 + 互感器二次 9 + 端子排到仪表箱 6（11-27 晚加）。数组顺序＝接线顺序；线都自动走线槽（routeWire） */
@@ -1039,9 +1039,15 @@ WIRES.forEach(function(w){
   CW.push({w:w, mesh:mesh, mat:mat, base:w.color, pick:pick, ends:[pts[0], pts[pts.length-1]], dirs:[outDir(pts, false), outDir(pts, true)]});
 });
 /* 11-27 他问考试时线有长有短怎么办：按沿线槽实际走的长度分三档（板宽 560）。没有考场板子实尺寸，不写厘米 */
-const TIER_TIP = '短线＝相邻元件、同一元件上的短接；长线＝差不多跨整块盘；剪线宁长勿短，多的盘进线槽';
+const TIER_TIP = '按走线槽的路程算：短线＝挨着直连、端子排短接；长线＝要绕线槽跨大半块盘。同一段的几根（比如三相）按最长那根算，剪线宁长勿短，多的盘进线槽';
 function lenTier(n){ return n<260 ? '短线' : n<560 ? '中线' : '长线'; }
-CW.forEach(function(c){ c.w.tier = lenTier(c.mesh.userData.len); });
+// 同一组里接在同一对元件之间的几根（三相那种）算一段，按这段最长那根分档：
+// 各根在线槽里错开的位置不同，长度差几十，单根分会把同一段拆成「中、长」（11-27 review）
+(function(){
+  const dv = function(t){ return (TPOS[t] && TPOS[t].device) || t; }, run = function(w){ return w.group+':'+[dv(w.from), dv(w.to)].sort().join('|'); }, mx = {};
+  CW.forEach(function(c){ const k = run(c.w); mx[k] = Math.max(mx[k]||0, c.mesh.userData.len); });
+  CW.forEach(function(c){ c.w.tier = lenTier(mx[run(c.w)]); });
+})();
 /* 成品线怎么分（11-27 他要记到网站上）：先按颜色分堆，再在每堆里按长短分，对着这个数数够再接 */
 const WIRE_SUM = (function(){
   const CN = {0xe0a92e:'黄', 0x3fa845:'绿', 0xcf4436:'红', 0x22262b:'黑', 0x8fbf2f:'黄绿', 0xd42f2f:'红', 0x1c6dd0:'蓝'}, C = {}, O = [];
@@ -1455,8 +1461,8 @@ function refresh(){
   }
   else if(UI.wire && !s){
     const intro = inMount() ? '先<b>装元件</b>：点下面<b>零件盒</b>里的零件，再点导轨上它的位置（虚线框）。'+MOUNTABLE.length+' 个都装好再接线'
-      : '点一个<b>蓝圈端子</b>，再点另一个，接一根线（端子小就双指放大，点「复原」或双击空白处回到原样）。顺序：主电路（电源进线 → QF → FU1 → KM → 穿互感器 → 热继 → 出线）→ 控制电源 → 热继电器支路 → 线圈支路 → 自锁与跳线 → 互感器二次侧<br><span style="color:var(--mut)">'+WIRE_SUM+'</span>';
-    info.innerHTML = (SIM.qf ? simExplain() : (UI.msg || intro))+'<div class="st">'+(inMount() ? '已装 '+MOUNTABLE.filter(function(k){ return UI.mount[k]; }).length+' / '+MOUNTABLE.length+' 个元件 · ' : '')+'已接 '+doneN()+' / '+NW+' 根 · 接错 '+UI.err+' 次'+(SIM.qf ? ' · 电动机'+(SIM.motor?'运转':'停') : '')+'</div>';
+      : '点一个<b>蓝圈端子</b>，再点另一个，接一根线（端子小就双指放大，点「复原」或双击空白处回到原样）。顺序：主电路（电源进线 → QF → FU1 → KM → 穿互感器 → 热继 → 出线）→ 控制电源 → 热继电器支路 → 线圈支路 → 自锁与跳线 → 互感器二次侧 → 电流表 → 仪表箱';
+    info.innerHTML = (SIM.qf ? simExplain() : (UI.msg || intro))+'<div class="st">'+(inMount() ? '已装 '+MOUNTABLE.filter(function(k){ return UI.mount[k]; }).length+' / '+MOUNTABLE.length+' 个元件 · ' : '')+'已接 '+doneN()+' / '+NW+' 根 · 接错 '+UI.err+' 次'+(SIM.qf ? ' · 电动机'+(SIM.motor?'运转':'停') : '')+(inMount() ? '' : '<br>'+WIRE_SUM)+'</div>';
   }
   else if(s){ const g=GROUPS[s.w.group];
     info.innerHTML = '<b>第 '+s.w.id+' 根</b>（'+g[0]+'）· <b>'+s.w.tier+'</b>：'+tname(s.w.from)+' → '+tname(s.w.to)+'<div class="st">'+g[1]+'<br>'+TIER_TIP+'</div>'; }
