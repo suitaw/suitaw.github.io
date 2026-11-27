@@ -2677,3 +2677,12 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - 接线板 20 根照练习页 K33（**照考试软件 K31-02 排的、没有他的实做记录**，页面标了），端子的 n 跟原理图同一根线才能接，L 接 N 提示短路、碰 PE 提示地线；接地排 pe1-2-3 是 FIXED。顺序 5 组照练习页（电能表进线 / 分路 / 插座 / 双控 / 日光灯）
 - 测试 `/sdcard/webdev/el/t_k33.js`：通电屏考场顺序每步灯状态对、接线 20 根接完试车对、相线接零线报短路
 - 入口：首页「配套的几块」+ schema-to-wire 顶上第 4 格「K33 ›」
+
+### 3D 元件：elec-3d.js + 2.2 接触器样板（2026-11-27）
+
+他要课文「做到实操版（K3 3D 板）的水准」，先拿 2.2 做样板，看了满意再铺开。
+- `elec-3d.js` 普通 script（薄壳页和 book.html 都没有 importmap）：three 用动态 `import()` 拿 CDN，转镜头自己写（不用 OrbitControls）；CSS 自带。`E3D.contactor(el, {onStep, onInfo})` → Promise<api>（`set/cut/slow/labels/reset/view`）；加载失败给一句话，平面图照常用。
+- 模型按 CJX2 真实结构：E 形叠片静铁芯 + 短路环 + 线圈（A1/A2）+ 衔铁 + 两根反力弹簧；触点架＝下横梁 + 两侧立柱 + 上横梁 + 露头；三对桥式主触点（双断点）+ 13-14 常开 + 21-22 常闭，常开有触点弹簧和 1.5mm 超程，常闭先空走 1mm 再拉开（**常闭先断、常开后合**）。整体平躺（root.rotation.x=-90°），衔铁往下吸，和平面图同向。
+- 颜色照站规：橙点＝电流（主电路、线圈回路），蓝点＝磁通；选中＝背面放大 1.08 的蓝描边，不改本色；主线黄绿红、控制线黑。
+- 2.2 第一屏：3D 卡插在原平面图上面，两边按钮共用 `S1.on`。
+- **验证**：容器 SwiftShader 跑不了（Shader VALIDATE_STATUS false），手机没 root 时用 AutoDL：`~/bin/km3d-shot <动作...>`（传 electrician 文件 → `/root/autodl-tmp/webgl/wgl.py` 真显卡跑 c2-2.html → 截图拉回 /sdcard/webdev/shots/）。动作：`wait:ms` `click:sel` `tap:x,y`（画布比例）`eval:js` `shot:名`（3D 卡）`vp:名`。three 从 `site/three/` 本地供（路由拦截 jsdelivr）；中文字体是传上去的更纱。

@@ -19,6 +19,27 @@ ELEC.reg({
     点下面的按钮，盯住中间那块衔铁。
   </div>
   <div class="card">
+    <div class="k3d-v" id="km3d"></div>
+    <div class="k3d-steps" id="km3dSt"><span>① 线圈通电</span><span>② 吸住衔铁</span><span>③ 带动触点</span><span>④ 断电复位</span></div>
+    <div class="ctrl">
+      <div class="btns"><button class="btn big" id="km3dOn">给线圈通电</button></div>
+      <div class="btns">
+        <button class="btn sm on" id="km3dCut">剖开外壳</button>
+        <button class="btn sm" id="km3dSlow">慢放</button>
+        <button class="btn sm" id="km3dLbl">标出名字</button>
+        <button class="btn sm" id="km3dRst">摆正</button>
+      </div>
+    </div>
+    <div class="k3d-info" id="km3dInfo"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">怎么看这个模型</div>
+    这是一台 CJX2 系列交流接触器（K3 实操盘上用的就是这一类），<b>外壳剖成半透明</b>，里面的零件都是真实结构。
+    <b>单指拖</b>转着看，<b>两指捏</b>放大，<b>点任意零件</b>下面会写它叫什么、干什么用。<br>
+    <b>橙色小点＝电流</b>，<b>蓝色小点＝铁芯里的磁通</b>。
+    <span class="sub">动作已经放慢了：真的接触器从通电到触点合上大约只要十几到几十毫秒（不同型号不一样），肉眼根本看不清。</span>
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="btns">
@@ -432,6 +453,7 @@ function note1(){
   const on = S1.on;
   const ratio = Math.round(MAIN_KW*1000/COIL_W);
   $('s1on').textContent = on ? '把线圈断电' : '给线圈通电';
+  $('km3dOn').textContent = $('s1on').textContent;
   $('s1a').textContent = on ? COIL_W + ' W' : '0 W';
   $('s1b').textContent = on ? MAIN_KW + ' kW' : '0 kW';
   $('s1c').textContent = on ? '约 ' + ratio + ' 倍' : '—';
@@ -450,6 +472,22 @@ function note1(){
       '<span class="sub">点上面的按钮通电，盯住衔铁和那道气隙。</span>';
 }
 $('s1on').addEventListener('click', function(){ S1.on = !S1.on; note1(); });
+
+/* 3D 模型（elec-3d.js）：和下面平面图共用 S1.on，哪个按钮按都两边一起动 */
+let KM3 = null;
+const INFO0 = '点模型上任意一个零件，这里会写它叫什么、干什么用。';
+$('km3dInfo').innerHTML = INFO0;
+if(window.E3D) E3D.contactor($('km3d'), {
+  onStep:function(s){ document.querySelectorAll('#km3dSt span').forEach(function(e, i){ e.classList.toggle('on', i===s-1); }); },
+  onInfo:function(p){ $('km3dInfo').innerHTML = p ? '<b>'+p[0]+'</b>：'+p[1] : INFO0; }
+}).then(function(api){ KM3 = api; if(api) api.set(S1.on); });
+$('km3dOn').addEventListener('click', function(){ $('s1on').click(); });
+$('s1on').addEventListener('click', function(){ if(KM3) KM3.set(S1.on); });
+[['km3dCut', 'cut', true], ['km3dSlow', 'slow', false], ['km3dLbl', 'labels', false]].forEach(function(b){
+  let v = b[2];
+  $(b[0]).addEventListener('click', function(){ v = !v; this.classList.toggle('on', v); if(KM3) KM3[b[1]](v); });
+});
+$('km3dRst').addEventListener('click', function(){ if(KM3) KM3.reset(); });
 
 /* ================================================================
    场景 2：四种触点（原理图画法）
