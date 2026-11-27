@@ -212,6 +212,27 @@ ELEC.reg({
     <b>点「起动 SB1」看整个过程。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">动手起动一次</div>
+    <div class="k3d-v" id="sd3d"></div>
+    <div class="ctrl">
+      <div class="btns"><button class="btn big" id="sdGo">按 SB1 起动</button><button class="btn" id="sdStop">停止</button></div>
+      <div class="nums three">
+        <div class="num"><div class="k">现在是</div><div class="v" id="sdP">停</div></div>
+        <div class="num"><div class="k">每相绕组</div><div class="v" id="sdU">0</div></div>
+        <div class="num hi"><div class="k">倒计时</div><div class="v" id="sdT">—</div></div>
+      </div>
+    </div>
+    <div class="ctrl" id="sd3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="sd3info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">盯住三处</div>
+    ① 按起动：左边 <b>KMY</b> 吸合，橙色电流从 U2 V2 W2 走到它下面的<b>星点铜排</b> —— 星形，每相 220 V。<br>
+    ② 倒计时到 0：KMY <b>先</b>释放，右边 <b>KM△</b> 再吸合，电流改走到 V1 W1 U1 —— 三角形，每相 380 V，电动机转快了。<br>
+    ③ 接线盒里的连接片<b>全拆了</b>：六个头都由接触器来接，这就是「接触器干的是连接片的活」。
+    <span class="sub">时间继电器这里设 5 秒（实际按电机大小几秒到十几秒）。点任意零件看名字。</span>
+  </div>
+  <div class="card">
     <canvas id="cv2"></canvas>
     <div class="ctrl">
       <div class="btns" id="s3k">
@@ -807,6 +828,17 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 星三角 */
+let SD3 = null;
+if(window.E3D){
+  E3D.starDelta($('sd3d'), { onState:function(e){ $('sdP').textContent = e.phase === 'star' ? '星形' : e.phase === 'delta' ? '三角形' : '停';
+      $('sdU').textContent = e.Uph; $('sdT').textContent = e.phase === 'star' ? Math.max(0, Math.ceil(e.left)) + ' s' : '—'; $('sd3info').innerHTML = e.msg; },
+    onInfo:function(p){ if(p) $('sd3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ SD3 = a; });
+  $('sd3c').innerHTML = E3D.controlsHTML(null, [['oblique','正上方'], ['front','正面'], ['side','侧面']]);
+  E3D.bindControls($('sd3c'), function(){ return SD3; });
+  $('sdGo').addEventListener('click', function(){ if(SD3) SD3.start(); });
+  $('sdStop').addEventListener('click', function(){ if(SD3) SD3.stop(); });
+}
 ElecNav.init({ch:11, sec:'11.4'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();

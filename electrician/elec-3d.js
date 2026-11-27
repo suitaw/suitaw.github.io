@@ -2197,3 +2197,79 @@ E3D.distBox = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 星三角起动（11.4）：KMY + KM△ + 电动机接线盒 ══════════════
+   电源 L1 L2 L3 直接到 U1 V1 W1（总开关后）。U2 V2 W2 同时引到两台接触器的上端：
+     KMY 下端 2/4/6 用一根铜排短接 ＝ 星点 → 星形（每相 220 V）
+     KM△ 下端 2/4/6 分别接 V1 W1 U1 → U2-V1、V2-W1、W2-U1 首尾相连 ＝ 三角形（每相 380 V）
+   自带：按起动 → KMY（星形）→ 时间继电器倒数 → KMY 断、KM△ 合（三角形）。opt.onState({phase, left, I, Uph, msg}) */
+(function(){
+'use strict';
+const OX = 48, MY = -120;
+E3D.starDelta = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:Object.assign({}, E3D._PARTS_KM, {
+    kmy:['KMY 星形接触器', '下面三个出线端用一根铜排短接 —— 把三相绕组的尾巴 U2 V2 W2 连成一点（星点）。起动时先合它。', 'KMY 星形'],
+    kmd:['KM△ 三角形接触器', '下面三个出线端分别接 V1、W1、U1 —— 让每相绕组的尾接到下一相的头，首尾相连围成三角形。', 'KM△ 三角形'],
+    star:['星点铜排', 'KMY 一吸合，U2 V2 W2 经它连在一起。', '星点'],
+    box:['电动机接线盒', '<b>连接片要全部拆掉</b>，六个头都引出来接到两台接触器上 —— 接成什么形由接触器决定。', '接线盒'],
+    motor:['电动机', '', '电动机']
+  }),
+  center:[0, -40, 40], view:{th:0, ph:0.6, r:470},
+  presets:{front:[1, 0, 0, Math.PI/2, 450], side:[0, 1, 0, -Math.PI/2, 420]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  function sub(x){ const g = new T.Group(); g.position.x = x; root.add(g); const sh = new T.Group(); sh.position.x = x; K.shell.add(sh);
+    return E3D._kmBuild(Object.assign({}, K, {root:g, shell:sh}), {}, E3D._CT_KM); }
+  const KY = sub(-OX), KD = sub(OX);
+  H.plate('KMY 星形', 26, 6, -OX, 56, 0.4, '#e6edf5', null, root); H.plate('KM△ 三角形', 30, 6, OX, 56, 0.4, '#e6edf5', null, root);
+  /* 星点铜排：KMY 下端 2/4/6 */
+  tag(H.box(34, 4, 2, -OX-13, -40, 80, M.cu, root), 'star');
+  /* 电动机 + 接线盒（六个端子，上排 W2 U2 V2、下排 U1 V1 W1） */
+  const mo = H.M(0x4f6f8f, {roughness:0.55, metalness:0.3});
+  const mg = new T.CylinderGeometry(26, 26, 64, 28); mg.rotateZ(Math.PI/2);
+  const mb = tag(new T.Mesh(mg, mo), 'motor'); mb.position.set(0, MY, 28); root.add(mb);
+  tag(H.box(50, 40, 4, 0, MY, 2, mo, root), 'motor'); tag(H.box(40, 26, 8, 0, MY, 58, mo, root), 'box');
+  const shaft = new T.Group(); shaft.position.set(44, MY, 28); root.add(shaft);
+  const dg = new T.CylinderGeometry(12, 12, 2, 24); dg.rotateZ(Math.PI/2); shaft.add(tag(new T.Mesh(dg, M.white), 'motor'));
+  tag(H.box(2.4, 12, 24, 0, 6, 0, H.M(0xc0392b), shaft), 'motor');
+  const T6 = {W2:[-12, MY+6], U2:[0, MY+6], V2:[12, MY+6], U1:[-12, MY-6], V1:[0, MY-6], W1:[12, MY-6]};
+  Object.keys(T6).forEach(function(n){ const p = T6[n]; tag(H.cylZ(1.8, 4, p[0], p[1], 64, M.brass, root), 'box'); H.plate(n, 6, 3.4, p[0], p[1] + (p[1] > MY ? 4.5 : -4.5), 62.2, '#e6edf5', null, root); });
+  const PHM = [0xe0a92e, 0x3fa845, 0xcf4436].map(function(c){ return H.M(c, {roughness:0.5}); }), PX = [-27, -13, 1];
+  /* 电源 L1 L2 L3 → U1 V1 W1 */
+  ['U1', 'V1', 'W1'].forEach(function(n, i){ const p = T6[n]; H.wire([[-120, 40 - i*6, 70], [-90, 40 - i*6, 70], [-90, MY - 20 - i*4, 70], [p[0], MY - 20 - i*4, 70], [p[0], p[1], 66]], 1.1, PHM[i], root); });
+  H.plate('L1 L2 L3', 24, 5, -110, 50, 0.4, '#e6edf5', null, root);
+  /* U2 V2 W2 → 两台接触器的上端 1/3/5（并联） */
+  ['U2', 'V2', 'W2'].forEach(function(n, i){ const p = T6[n], z = 92 + i*3;
+    H.wire([[p[0], p[1], 66], [p[0], MY + 26 + i*4, z], [-OX + PX[i], 50 + i*4, z], [-OX + PX[i], 33, 79]], 0.9, PHM[i], root);
+    H.wire([[p[0], MY + 26 + i*4, z], [OX + PX[i], 50 + i*4, z], [OX + PX[i], 33, 79]], 0.9, PHM[i], root); });
+  /* KM△ 下端 2/4/6 → V1 W1 U1 */
+  ['V1', 'W1', 'U1'].forEach(function(n, i){ const p = T6[n]; H.wire([[OX + PX[i], -33, 79], [OX + PX[i], -60, 84 - i*3], [p[0] + 3, MY - 14, 72], [p[0], p[1], 66]], 0.9, PHM[(i+1)%3], root); });
+  /* 电流点：星形时 U2V2W2 → KMY → 星点；三角形时 U2 → KM△ → V1 … */
+  const starP = [0, 1, 2].map(function(i){ const p = T6[['U2', 'V2', 'W2'][i]]; return K.dots(8, K.curM, H.poly([[p[0], p[1], 66], [p[0], MY + 26 + i*4, 92 + i*3], [-OX + PX[i], 50 + i*4, 92 + i*3], [-OX + PX[i], 33, 79], [-OX + PX[i], -33, 79], [-OX - 13, -40, 81]])); });
+  const deltaP = [0, 1, 2].map(function(i){ const p = T6[['U2', 'V2', 'W2'][i]], q = T6[['V1', 'W1', 'U1'][i]];
+    return K.dots(10, K.curM, H.poly([[p[0], p[1], 66], [p[0], MY + 26 + i*4, 92 + i*3], [OX + PX[i], 50 + i*4, 92 + i*3], [OX + PX[i], 33, 79], [OX + PX[i], -33, 79], [OX + PX[i], -60, 84 - i*3], [q[0] + 3, MY - 14, 72], [q[0], q[1], 66]])); });
+  const DELAY = 5;
+  const st = {phase:'stop', left:0, rot:0, spd:0};
+  function emit(){ const I = st.phase === 'star' ? '约 2 倍额定（直接起动要 6 倍，星形只有它的 1/3）' : st.phase === 'delta' ? '额定（1 倍）' : '0';
+    const U = st.phase === 'star' ? '220 V' : st.phase === 'delta' ? '380 V' : '0';
+    const msg = st.phase === 'star' ? '<b>星形起动</b>：KMY 把三个尾巴短接成星点，每相绕组只分到 <b>220 V</b>，起动电流降到直接起动的 1/3。时间继电器倒数 '+Math.ceil(st.left)+' 秒……'
+      : st.phase === 'delta' ? '<b>三角形运行</b>：KMY 先断开、KM△ 再吸合（顶替，不能同时），每相绕组 <b>380 V</b>，全压全速。' : '停着。按「起动」看一整套动作。';
+    if(opt.onState) opt.onState({phase:st.phase, left:st.left, I:I, Uph:U, msg:msg}); K.S.dirty = true; }
+  const api = { st:st, start:function(){ if(st.phase !== 'stop') return; st.phase = 'star'; st.left = DELAY; emit(); }, stop:function(){ st.phase = 'stop'; emit(); } };
+  emit();
+  let lastSec = -1;
+  return {
+    labels:[['kmy', -OX, 0, 96], ['kmd', OX, 0, 96], ['star', -OX-13, -40, 82], ['box', 0, MY, 70]],
+    api:api,
+    tick:function(dt, k){
+      if(st.phase === 'star'){ st.left -= dt/k; const s = Math.ceil(st.left); if(s !== lastSec){ lastSec = s; emit(); } if(st.left <= 0){ st.phase = 'delta'; emit(); } }
+      KY.api.set(st.phase === 'star'); KD.api.set(st.phase === 'delta');
+      const tgt = st.phase === 'star' ? 1.4 : st.phase === 'delta' ? 2.6 : 0;
+      st.spd += (tgt - st.spd) * Math.min(1, dt*1.2/k); st.rot += st.spd*dt/k; shaft.rotation.x = st.rot;
+      starP.forEach(function(g){ K.flow(g, st.phase === 'star' && KY.api.coil.t > 0.9, 0.1/k, dt); });
+      deltaP.forEach(function(g){ K.flow(g, st.phase === 'delta' && KD.api.coil.t > 0.9, 0.1/k, dt); });
+      return KY.tick(dt, k) | KD.tick(dt, k) | (st.spd > 0.01) | (st.phase !== 'stop');
+    }
+  };
+  }}, opt); };
+})();
