@@ -1117,10 +1117,10 @@ function applyDone(){
 }
 /* ══ 摆元件（11-27 新规：元件自己装到导轨上）══ 位置固定：导轨上有空位，点零件盒里的零件、再点空位装上去；装错位置装不上，记一次错。
    4、5 号是两只一样的单只熔断器，两个空位随便放 */
-const MOUNTABLE = ['qf','fu1','fu4','fu5','km','fr'];
+const MOUNTABLE = ['qf','fu1','fu4','fu5','km'];   /* 只有空开、熔断器、接触器自己装；热继电器盘上固定 */
 const PARTS = [{k:'qf', name:'断路器 QF', fits:['qf']}, {k:'fu1', name:'熔断器 FU1（三只）', fits:['fu1']}, {k:'fus', name:'熔断器（单只）', fits:['fu4','fu5'], n:2},
-  {k:'km', name:'接触器 KM', fits:['km']}, {k:'fr', name:'热继电器 FR', fits:['fr']}];
-const DEVN = {qf:'断路器 QF', fu1:'熔断器 FU1', fu4:'4 号熔断器', fu5:'5 号熔断器', km:'接触器 KM', fr:'热继电器 FR'};
+  {k:'km', name:'接触器 KM', fits:['km']}];
+const DEVN = {qf:'断路器 QF', fu1:'熔断器 FU1', fu4:'4 号熔断器', fu5:'5 号熔断器', km:'接触器 KM'};
 const LSM = 'elec_k31_3d_mount';
 UI.mount = {}; UI.part = null;
 try{ (JSON.parse(localStorage.getItem(LSM)||'[]')||[]).forEach(function(k){ if(MOUNTABLE.indexOf(k)>=0) UI.mount[k] = 1; }); }catch(e){}
@@ -1658,12 +1658,11 @@ const SHELF = [
   ['qf','断路器 DZ47s C16 三极','p',1],['qf2','断路器 DZ47s C16 两极','p',0,'两极的：三相电路要三极断路器'],
   ['fu','熔断器 RT18-32（带熔体，5 只）','p',1],
   ['km','接触器 CJX2s-0911 线圈 380V','p',1],['km220','接触器 CJX2s-0911 线圈 220V','p',0,'线圈 220V：这块盘控制回路取 L1、L2 两相是 380V，要线圈 380V 的'],
-  ['fr','热继电器 NR2-25 整定 1.6～2.5A','p',1],['fr9','热继电器 NR2-25 整定 9～13A','p',0,'整定范围太大：电动机 0.75kW 额定电流约 2A，要 1.6～2.5A 的'],
   ['rcd','漏电断路器 1P+N','p',0,'这块盘用不上漏电断路器']];
 const SHN = {}; SHELF.forEach(function(s){ SHN[s[0]] = s; });
 /* 装元件时零件盒里的东西：从桌面上拿来的；放错型号的装不上 */
-const XPARTS = {qf:{name:'断路器 QF', fits:['qf']}, fu:{name:'熔断器（5 只）', fits:['fu1','fu4','fu5']}, km:{name:'接触器 KM', fits:['km']}, fr:{name:'热继电器 FR', fits:['fr']},
-  qf2:{name:'断路器（两极）', fits:[], bad:SHN.qf2[4]}, km220:{name:'接触器（线圈 220V）', fits:[], bad:SHN.km220[4]}, fr9:{name:'热继电器（9～13A）', fits:[], bad:SHN.fr9[4]}, rcd:{name:'漏电断路器', fits:[], bad:SHN.rcd[4]}};
+const XPARTS = {qf:{name:'断路器 QF', fits:['qf']}, fu:{name:'熔断器（5 只）', fits:['fu1','fu4','fu5']}, km:{name:'接触器 KM', fits:['km']},
+  qf2:{name:'断路器（两极）', fits:[], bad:SHN.qf2[4]}, km220:{name:'接触器（线圈 220V）', fits:[], bad:SHN.km220[4]}, rcd:{name:'漏电断路器', fits:[], bad:SHN.rcd[4]}};
 /* 线：颜色 + 线径。主电路按相色 2.5，控制线黑 1.0 */
 const WK = {Y:['黄 2.5', PH[0], 2.6], G:['绿 2.5', PH[1], 2.6], R:['红 2.5', PH[2], 2.6], K:['黑 1.0', 0x22262b, 2.0], PE:['黄绿 2.5', 0x8fbf2f, 2.6]};
 function wkWant(a, b){
