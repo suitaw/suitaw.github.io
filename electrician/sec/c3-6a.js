@@ -99,6 +99,37 @@ ELEC.reg({
     电路本身照常工作。<b>点开关能通断，切三种接法看读数。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">动手实验台：拿表自己量</div>
+    <div class="k3d-v" id="ml3d"></div>
+    <div class="ctrl">
+      <div class="rowlab">档位（也可以点表上的旋钮）</div>
+      <div class="btns" id="mlDial">
+        <button class="btn sm" data-d="off">OFF</button><button class="btn sm on" data-d="dcv">直流 V</button><button class="btn sm" data-d="acv">交流 V</button>
+        <button class="btn sm" data-d="ohm">Ω</button><button class="btn sm" data-d="beep">通断</button><button class="btn sm" data-d="ma">mA</button><button class="btn sm" data-d="a">10A</button>
+      </div>
+      <div class="rowlab">红笔插哪个孔（黑笔永远在 COM）</div>
+      <div class="btns" id="mlJack">
+        <button class="btn sm on" data-j="v">VΩ</button><button class="btn sm" data-j="ma">mA</button><button class="btn sm" data-j="a">10A</button>
+      </div>
+      <div class="btns">
+        <button class="btn sm" id="mlSw">断开开关</button><button class="btn sm" id="mlBatt">拆下电池</button>
+        <button class="btn sm" id="mlClr">收回表笔</button><button class="btn sm" id="mlFuse" style="display:none">换保险管</button>
+      </div>
+    </div>
+    <div class="ctrl" id="ml3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="ml3info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">照着做，一条一条试</div>
+    ① <b>量电池</b>：直流 V 档，红笔点 T1、黑笔点 T4 —— 读 11.94 V（比 12 V 少一点：灯在耗电，电池内阻上掉了一点）。<br>
+    ② <b>量开关两头</b>（T1、T2）：合着读 0，<b>断开读 12 V</b> —— 开关合上了两头却量到电压 ＝ 触点没接通，查线就靠这一招。<br>
+    ③ <b>红黑反着放</b>：读数带负号。<br>
+    ④ <b>测电流</b>：断开开关，红笔换到 mA 孔、档位 mA，表笔跨在开关两头（T1、T2）—— 表<b>串</b>进去了，灯亮，读 118 mA 左右。<br>
+    ⑤ <b>犯个错</b>：同样 mA 档，表笔跨在灯两头（T2、T3）—— 保险管当场烧掉。<br>
+    ⑥ <b>测灯丝电阻</b>：先拆下电池，Ω 档，红笔插回 VΩ，量 T2、T3 —— 100 Ω。不拆电池去量会怎样？试试。
+    <span class="sub">数字口径同下面平面图（电压档内阻 10 MΩ，mA 档内阻按 1 Ω）。点表上的插孔、旋钮、电路上的开关和电池都能直接操作。</span>
+  </div>
+  <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
       <div class="btns" id="s2k">
@@ -891,6 +922,28 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 万用表实验台（elec-3d.js 的 E3D.meterLab + elec-meterlab.js 算读数） */
+let ML = null;
+function mlSync(r, st){
+  document.querySelectorAll('#mlDial .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.d === st.dial); });
+  document.querySelectorAll('#mlJack .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.j === st.jack); });
+  $('mlSw').textContent = st.sw ? '断开开关' : '合上开关';
+  $('mlBatt').textContent = st.batt ? '拆下电池' : '装上电池';
+  $('mlFuse').style.display = st.fuse ? 'none' : '';
+  const where = (st.red ? '红笔 '+st.red : '红笔没放') + '，' + (st.black ? '黑笔 '+st.black : '黑笔没放');
+  $('ml3info').innerHTML = '<div style="font-size:.78rem;color:var(--tx3)">'+where+'</div>' + (r.warn ? '<div style="color:var(--err)">'+r.msg+'</div>' : r.msg);
+}
+if(window.E3D && window.MLab){
+  E3D.meterLab($('ml3d'), { onRead:mlSync, onInfo:function(p, k){ if(p && !/^(tp|dial|jv|jma|ja|batt|sw)$/.test(k)) $('ml3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ ML = a; });
+  $('ml3c').innerHTML = E3D.controlsHTML([['oblique','俯视'], ['front','正上方'], ['side','侧面']]);
+  E3D.bindControls($('ml3c'), function(){ return ML; });
+  $('mlDial').addEventListener('click', function(e){ const b = e.target.closest('[data-d]'); if(b && ML) ML.dial(b.dataset.d); });
+  $('mlJack').addEventListener('click', function(e){ const b = e.target.closest('[data-j]'); if(b && ML) ML.jack(b.dataset.j); });
+  $('mlSw').addEventListener('click', function(){ if(ML) ML.set({sw:!ML.st.sw}); });
+  $('mlBatt').addEventListener('click', function(){ if(ML) ML.set({batt:!ML.st.batt}); });
+  $('mlClr').addEventListener('click', function(){ if(ML) ML.clearProbes(); });
+  $('mlFuse').addEventListener('click', function(){ if(ML) ML.fuse(); });
+}
 ElecNav.init({ch:3, sec:'3.6a'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4(); syncBtn4();

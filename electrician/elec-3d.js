@@ -254,7 +254,7 @@ function make(T, el, spec, opt){
     hit.forEach(function(m){ if(m.userData.part==='housing') return; const on = k && m.userData.part===k;
       if(on && !m.userData.ol){ const o = new T.Mesh(m.geometry, OUTLINE); o.scale.setScalar(1.08); m.add(o); m.userData.ol = o; }
       if(!on && m.userData.ol){ m.remove(m.userData.ol); m.userData.ol = null; } });
-    if(opt.onInfo) opt.onInfo(k ? spec.parts[k] : null);
+    if(opt.onInfo) opt.onInfo(k ? spec.parts[k] : null, k);
     S.dirty = true;
   }
   S.renderer.domElement.addEventListener('pointerup', function(e){ if(orb.moved() >= 6) return;
@@ -262,6 +262,7 @@ function make(T, el, spec, opt){
     ndc.set((e.clientX-r.left)/r.width*2-1, -((e.clientY-r.top)/r.height*2-1)); ray.setFromCamera(ndc, S.cam);
     const hs = ray.intersectObjects(hit.filter(function(m){ return !(st.cut && m.userData.part==='housing'); }), false);
     const k = hs.length ? hs[0].object.userData.part : null;
+    if(hs.length && B.hitMesh && B.hitMesh(hs[0].object)) S.dirty = true;   /* 元件要知道点的是哪一个网格（比如哪根测点） */
     if(k && B.press && B.press(k)) { S.dirty = true; }       /* 元件说这一下是「操作」（按钮、旋钮），也照样出说明 */
     select(k);
   });
@@ -974,6 +975,161 @@ E3D.timer = function(el, opt){ return E3D.viewer(el, {
       K.flow(coilP, s.on, 0.4/k, dt); K.flow(swiP, s.on, 0.4/k, dt); K.flow(swdP, !!s.acted, 0.4/k, dt);
       K.flow(airP, !!s.counting, 0.25/k, dt);
       return true;
+    }
+  };
+  }}, opt); };
+})();
+
+/* ══════════════ 万用表实验台：一块数字表 + 一块小电路板 ══════════════
+   电在 elec-meterlab.js（MLab.read），这里只管画面和手：点接线柱放表笔（先红后黑）、点旋钮换档、点插孔换红笔、点开关/电池。
+   opt.onRead(结果, 状态) 每次读数变了回调页面（写说明）。 */
+(function(){
+'use strict';
+const PARTS = {
+  lcd:    ['液晶屏', '显示读数。最大 1999（「三位半」表），超了显示 OL。', '液晶屏'],
+  dial:   ['档位旋钮', '<b>点它换一档</b>（也可以用下面的按钮）：OFF → 直流电压 → 交流电压 → 电阻 → 通断 → mA → 10A。<b>先插孔、后拨档</b>，量之前看一眼档位对不对。', '旋钮'],
+  jcom:   ['COM 插孔', '<b>黑笔永远插这里</b>，不用动。', 'COM'],
+  jv:     ['VΩ 插孔', '量电压、电阻、通断时红笔插这里。<b>点它把红笔插过来</b>。', 'VΩ 孔'],
+  jma:    ['mA 插孔', '量小电流（200 mA 以内）红笔插这里，里面有保险管。<b>点它把红笔插过来</b>。', 'mA 孔'],
+  ja:     ['10A 插孔', '量大电流红笔插这里，<b>多数表这一路没保险</b>，量的时间别超过十几秒。<b>点它把红笔插过来</b>。', '10A 孔'],
+  red:    ['红表笔', '点电路板上的铜接线柱放下。', '红笔'],
+  black:  ['黑表笔', '点电路板上的铜接线柱放下。', '黑笔'],
+  tp:     ['测点（接线柱）', '<b>点它把表笔放上去</b>：先红笔，再黑笔；再点就从红笔重新来。T1 电池正极、T2 开关后面（灯上端）、T3 灯下端、T4 电池负极。', '测点'],
+  batt:   ['电池（12 V）', '<b>点它装上 / 拆下</b>。测电阻、通断之前要拆下 —— 带电不能测电阻。', '电池'],
+  sw:     ['开关', '<b>点它合上 / 断开</b>。', '开关'],
+  lamp:   ['灯泡（12 V，约 100 Ω）', '电流越大越亮。', '灯泡'],
+  board:  ['电路板', '电池、开关、灯泡串成一圈。', '电路板'],
+  housing:['表壳', '']
+};
+const DIALS = ['off', 'dcv', 'acv', 'ohm', 'beep', 'ma', 'a'];
+const DLAB = {off:'OFF', dcv:'V⎓', acv:'V~', ohm:'Ω', beep:'通断', ma:'mA', a:'A'};
+const TPS = {T1:[30, 34], T2:[72, 34], T3:[72, -34], T4:[30, -34]};     /* 板子上四个测点的 x,y（表在左边 x<0） */
+const JK = {a:[-74, -44], ma:[-62, -44], jcom:[-50, -44], v:[-38, -44]}; /* 四个插孔：10A mA COM VΩ */
+
+E3D.meterLab = function(el, opt){ return E3D.viewer(el, {
+  parts:PARTS, center:[9, -4, 8], view:{th:0.0, ph:0.5, r:350},
+  presets:{front:[1, 0, 0, Math.PI/2, 340], side:[0, 1, 0, -Math.PI/2, 300]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag, opt = K.opt;
+  const st = {batt:true, sw:true, dial:'dcv', jack:'v', red:null, black:null, fuse:true, next:'red', beepT:0};
+  /* ── 表：黄色护套 + 深灰机身 + 液晶 + 旋钮 + 四孔 ── */
+  const mx = -56;
+  tag(H.box(48, 104, 10, mx, 0, 5, H.M(0xe8b923, {roughness:0.6}), root), 'housing');
+  tag(H.box(42, 96, 3, mx, 0, 11, H.M(0x2d3136, {roughness:0.5}), root), 'housing');
+  /* 液晶：canvas 贴图，读数变了重画 */
+  const lc = document.createElement('canvas'); lc.width = 320; lc.height = 140; const lg = lc.getContext('2d');
+  const ltex = new T.CanvasTexture(lc); ltex.colorSpace = T.SRGBColorSpace;
+  const lcd = tag(new T.Mesh(new T.PlaneGeometry(34, 15), new T.MeshBasicMaterial({map:ltex, toneMapped:false})), 'lcd'); lcd.position.set(mx, 34, 12.6); root.add(lcd);
+  function drawLcd(r){ lg.fillStyle = '#9fb59a'; lg.fillRect(0, 0, 320, 140);
+    lg.fillStyle = '#1b2219'; lg.textAlign = 'right'; lg.textBaseline = 'middle';
+    lg.font = '700 84px ui-monospace,monospace'; lg.fillText(r.lcd, 300, 78);
+    lg.textAlign = 'left'; lg.font = '600 30px system-ui,sans-serif'; lg.fillText(r.unit || '', 12, 28);
+    if(r.beep){ lg.fillText('·)))', 12, 118); }
+    ltex.needsUpdate = true; }
+  /* 旋钮 + 档位字（一圈） */
+  const dial = new T.Group(); dial.position.set(mx, 2, 12.5); root.add(dial);
+  tag(H.cylZ(13, 4, 0, 0, 1, M.blk, dial), 'dial'); tag(H.box(3, 14, 2, 0, 6, 3.6, M.white, dial), 'dial');
+  const DA = function(i){ return -1.9 + i*(3.8/(DIALS.length-1)); };           /* 第 i 档的角度（从正上方顺时针） */
+  DIALS.forEach(function(d, i){ const a = DA(i); H.plate(DLAB[d], 8, 3.6, mx + Math.sin(a)*19, 2 + Math.cos(a)*19, 12.6, '#e6edf5', null, root); });
+  /* 四个插孔 */
+  const jackMesh = {};
+  [['a', '10A'], ['ma', 'mA'], ['jcom', 'COM'], ['v', 'VΩ']].forEach(function(j){ const p = JK[j[0]];
+    const k = j[0] === 'a' ? 'ja' : j[0] === 'ma' ? 'jma' : j[0] === 'v' ? 'jv' : 'jcom';
+    const m = tag(H.cylZ(3.4, 1, p[0], p[1], 12.6, H.M(j[0] === 'jcom' ? 0x111214 : 0x1a1b1e, {roughness:0.4}), root), k);
+    jackMesh[j[0]] = m;
+    tag(H.cylZ(4.4, 0.8, p[0], p[1], 12.3, j[0] === 'jcom' ? M.blk : H.M(0xb02a2a, {roughness:0.5}), root), k);
+    H.plate(j[1], 9, 3.4, p[0], p[1]+7, 12.6, '#e6edf5', null, root); });
+  /* ── 电路板：电池 → T1 → 开关 → T2 → 灯 → T3 → T4 → 电池 ── */
+  tag(H.box(96, 96, 3, 50, 0, 1.5, H.M(0x2f5d3a, {roughness:0.7}), root), 'board');
+  const battG = new T.Group(); root.add(battG);
+  tag(H.box(16, 46, 14, 14, 0, 10, H.M(0x2b2f34, {roughness:0.5}), battG), 'batt');
+  tag(H.box(16, 14, 14.2, 14, 16, 10, H.M(0xc0392b, {roughness:0.5}), battG), 'batt');
+  H.plate('12V', 12, 5, 14, -6, 17.2, '#e6edf5', null, battG);
+  H.plate('+', 5, 5, 14, 16, 17.3, '#ffffff', null, battG);
+  const swG = new T.Group(); swG.position.set(51, 34, 6); root.add(swG);
+  tag(H.box(10, 10, 4, 0, 0, 0, M.blk, swG), 'sw');
+  const lever = new T.Group(); lever.position.set(0, 0, 2); swG.add(lever);
+  tag(H.box(2.4, 2.4, 12, 0, 0, 6, M.zinc, lever), 'sw');
+  /* 灯：灯座 + 玻璃泡（发光） */
+  tag(H.box(14, 14, 6, 72, 0, 6, M.white, root), 'lamp');
+  const glass = H.M(0xfff4d6, {roughness:0.1, transparent:true, opacity:0.55, emissive:0x000000});
+  const bulb = tag(new T.Mesh(new T.SphereGeometry(7, 20, 16), glass), 'lamp'); bulb.position.set(72, 0, 16); root.add(bulb);
+  const lightC = new T.PointLight(0xffd27a, 0, 80); lightC.position.set(72, 0, 22); root.add(lightC);
+  /* 测点：铜接线柱 + 字 */
+  const tpMesh = {};
+  Object.keys(TPS).forEach(function(k){ const p = TPS[k];
+    tpMesh[k] = tag(H.cylZ(3.2, 8, p[0], p[1], 7, M.brass, root), 'tp'); tpMesh[k].userData.tp = k;
+    H.plate(k, 8, 4, p[0], p[1] + (p[1] > 0 ? 8 : -8), 3.2, '#e6edf5', null, root); });
+  /* 板上导线（铜） */
+  const wire = function(pts){ H.wire(pts.map(function(p){ return [p[0], p[1], 4]; }), 0.9, M.cu, root); };
+  wire([[14, 23], [14, 34], [30, 34]]); wire([[30, 34], [46, 34]]); wire([[56, 34], [72, 34]]); wire([[72, 34], [72, 7]]);
+  wire([[72, -7], [72, -34]]); wire([[72, -34], [30, -34]]); wire([[30, -34], [14, -34], [14, -23]]);
+  /* 电流小点：沿板上回路 */
+  const loopP = K.dots(14, K.curM, H.poly([[14, 23, 5], [14, 34, 5], [46, 34, 5], [56, 34, 5], [72, 34, 5], [72, 7, 5], [72, -7, 5], [72, -34, 5], [14, -34, 5], [14, -23, 5]]));
+  /* ── 表笔：笔身 + 引线（从插孔到笔尾，悬链） ── */
+  function probe(col){ const g = new T.Group(); root.add(g);
+    const pm = H.M(col, {roughness:0.5});
+    const b = new T.CylinderGeometry(1.8, 1.8, 26, 12); b.rotateX(Math.PI/2);
+    const body = tag(new T.Mesh(b, pm), col === 0xc0392b ? 'red' : 'black'); body.position.z = 17; g.add(body);
+    const tip = new T.Mesh(new T.CylinderGeometry(0.5, 0.5, 6, 8).rotateX(Math.PI/2), M.zinc); tip.position.z = 1; g.add(tip);
+    return {g:g, m:pm, lead:null}; }
+  const pr = {red:probe(0xc0392b), black:probe(0x24272b)};
+  const REST = {red:[-14, -62], black:[-24, -62]};
+  function placeLead(k){
+    const p = pr[k], from = k === 'black' ? JK.jcom : JK[st.jack], to = p.g.position;
+    if(p.lead){ root.remove(p.lead); p.lead.geometry.dispose(); }
+    const a = new T.Vector3(from[0], from[1], 13), b = new T.Vector3(to.x, to.y, to.z + 30);
+    const mid = a.clone().lerp(b, 0.5); mid.z = Math.max(a.z, b.z) - 6; mid.y -= 14;
+    p.lead = new T.Mesh(new T.TubeGeometry(new T.QuadraticBezierCurve3(a, mid, b), 24, 0.9, 6, false), p.m); root.add(p.lead);
+  }
+  function placeProbe(k){ const at = st[k], p = pr[k];
+    if(at){ const q = TPS[at]; p.g.position.set(q[0] + (k === 'red' ? -1.5 : 1.5), q[1], 11); p.g.rotation.set(0, k === 'red' ? -0.25 : 0.25, 0); }
+    else { const q = REST[k]; p.g.position.set(q[0], q[1], 2); p.g.rotation.set(Math.PI/2.2, 0, 0); }
+    placeLead(k); }
+  /* 表里电流（mA / 10A 档时沿表笔线走）—— 只在有电流时显示 */
+  let r = null;
+  function update(){
+    r = MLab.read(st);
+    if(r.fuseBlow){ st.fuse = false; const m = r.msg; r = MLab.read(st); r.msg = m; r.warn = true; }   /* 烧了以后电路照新情况重算（灯、读数），说明留着「烧了」那句 */
+    drawLcd(r);
+    dial.rotation.z = -DA(DIALS.indexOf(st.dial));
+    battG.position.z = st.batt ? 0 : 26; battG.position.x = st.batt ? 0 : -6;
+    lever.rotation.x = st.sw ? 0.45 : -0.45;
+    placeProbe('red'); placeProbe('black');
+    if(r.beep) beep();
+    if(opt.onRead) opt.onRead(r, st);
+    K.S.dirty = true;
+  }
+  let ac = null;
+  function beep(){ try{ ac = ac || new (window.AudioContext || window.webkitAudioContext)(); const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = 2700; g.gain.value = 0.06; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.35); }catch(e){} }
+  update();
+  const api = {
+    st:st, update:update,
+    set:function(o){ Object.assign(st, o); update(); },
+    dial:function(d){ st.dial = d; update(); }, jack:function(j){ st.jack = j; update(); },
+    fuse:function(){ st.fuse = true; st.red = st.black = null; st.next = 'red'; update(); },   /* 换保险前先把表笔拿开，不然一装上又烧 */ clearProbes:function(){ st.red = st.black = null; st.next = 'red'; update(); }
+  };
+  return {
+    labels:[['lcd', -56, 34, 13], ['dial', -56, 2, 16], ['jcom', -50, -44, 13], ['jv', -38, -44, 13], ['jma', -62, -44, 13], ['ja', -74, -44, 13],
+            ['batt', 14, 0, 18], ['sw', 51, 34, 14], ['lamp', 72, 0, 24], ['tp', 30, 34, 11]],
+    press:function(k){
+      if(k === 'tp'){ return false; }
+      if(k === 'dial'){ st.dial = DIALS[(DIALS.indexOf(st.dial)+1) % DIALS.length]; update(); return true; }
+      if(k === 'jv' || k === 'jma' || k === 'ja'){ st.jack = k === 'jv' ? 'v' : k === 'jma' ? 'ma' : 'a'; update(); return true; }
+      if(k === 'batt'){ st.batt = !st.batt; update(); return true; }
+      if(k === 'sw'){ st.sw = !st.sw; update(); return true; }
+      return false;
+    },
+    /* 测点要知道点的是哪一根柱子：viewer 只给键名，所以单独接一下 pointerup 拿到网格 */
+    hitMesh:function(m){ if(m.userData.tp){ const k = st.next; st[k] = m.userData.tp; st.next = k === 'red' ? 'black' : 'red'; update(); return true; } return false; },
+    api:api,
+    tick:function(dt, k){
+      const lit = Math.min(1, (r ? r.lampW : 0) / 1.44);
+      glass.emissive.setHex(0xffc65a); glass.emissiveIntensity = lit*1.6; lightC.intensity = lit*3000;
+      const flowing = r && r.lampW > 0.005;
+      K.flow(loopP, flowing, 0.12/k, dt);
+      return flowing || lit > 0.01;
     }
   };
   }}, opt); };
