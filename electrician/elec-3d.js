@@ -1691,8 +1691,8 @@ E3D.testPen = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   const fg = new T.CapsuleGeometry(3.2, 22, 6, 12); fg.rotateZ(Math.PI/2);
   const finger = tag(new T.Mesh(fg, skin), 'hand'); hand.add(finger);
   const arm = tag(new T.Mesh(new T.CylinderGeometry(6, 7, 1, 16).rotateX(Math.PI/2), H.M(0xe0b18e, {roughness:0.7, transparent:true, opacity:0.55})), 'hand'); root.add(arm);
-  const mat = tag(H.box(50, 40, 3, 80, 0, -28.5, H.M(0x2f6b3a, {roughness:0.8}), root), 'mat');
-  const gnd = H.plate('大地', 14, 5, 80, 26, -29.8, '#e6edf5', null, root);
+  const mat = tag(H.box(44, 40, 3, 56, 0, -28.5, H.M(0x2f6b3a, {roughness:0.8}), root), 'mat');
+  const gnd = H.plate('大地', 14, 5, 56, 26, -29.8, '#e6edf5', null, root);
   /* 电流点：插孔铜片 → 笔 → 手 → 人体 → 地 */
   const pathFn = { pts:null };
   const cur = K.dots(14, K.curM, function(t, out){ return pathFn.f ? pathFn.f(t, out) : (out||new T.Vector3()); });
@@ -1709,7 +1709,7 @@ E3D.testPen = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   function update(){ if(opt.onRead) opt.onRead(read(), st); K.S.dirty = true; }
   update();
   return {
-    labels:[['tip', 14, -8, 16, pen], ['res', 14, -8, 34, pen], ['neon', 14, -8, 56, pen], ['spring', 14, -8, 73, pen], ['cap', 14, -8, 88, pen], ['hand', 50, 0, 60], ['mat', 80, -14, -27], ['socket', -30, 30, 9]],
+    labels:[['tip', 14, -8, 16, pen], ['res', 14, -8, 34, pen], ['neon', 14, -8, 56, pen], ['spring', 14, -8, 73, pen], ['cap', 14, -8, 88, pen], ['hand', 50, 0, 60], ['mat', 56, -14, -27], ['socket', -30, 30, 9]],
     hitMesh:function(m){ if(m.userData.hole){ st.hole = m.userData.hole; update(); return true; } return false; },
     api:{ st:st, set:function(o){ Object.assign(st, o); update(); } },
     tick:function(dt, k){
@@ -1720,7 +1720,7 @@ E3D.testPen = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
       const tz = st.grip === 1 ? 60 : 94, tx = st.grip === 1 ? 17 : 16;
       st.g += (tz - st.g) * Math.min(1, dt*6/k);
       finger.position.set(st.x + tx, st.y, st.g); 
-      const ax = st.x + 46, top = st.g;
+      const ax = st.x + 8, top = st.g;                                     /* 人体柱放在笔右边 42 处，别出画面 */
       /* 人体柱：从手的高度一直到地面（单位高度的圆柱，按高度缩放） */
       arm.scale.set(1, 1, top + 30); arm.position.set(ax + 34, 0, (top - 30)/2);
       mat.visible = st.grip === 2;
