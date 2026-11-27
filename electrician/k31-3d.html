@@ -930,6 +930,10 @@ WIRES.forEach(function(w){
   pick.userData.act = {type:'wire', id:w.id}; picks.push(pick);
   CW.push({w:w, mesh:mesh, mat:mat, base:w.color, pick:pick, ends:[pts[0], pts[pts.length-1]], dirs:[outDir(pts, false), outDir(pts, true)]});
 });
+/* 11-27 他问考试时线有长有短怎么办：按沿线槽实际走的长度分三档（板宽 560）。没有考场板子实尺寸，不写厘米 */
+const TIER_TIP = '短线＝相邻元件、同一元件上的短接；长线＝差不多跨整块盘；剪线宁长勿短，多的盘进线槽';
+function lenTier(n){ return n<260 ? '短线' : n<560 ? '中线' : '长线'; }
+CW.forEach(function(c){ c.w.tier = lenTier(c.mesh.userData.len); });
 /* 自己接线用：每个端子一个点击靶（放大了的隐形球）+ 一个蓝圈标记「这儿能接」 */
 const TERMS = {};
 Object.keys(TPOS).forEach(function(id){
@@ -1219,7 +1223,7 @@ function termTap(id){
   if(w){
     DONE[w.id]=1; DORD.push(w.id); applyDone(); click(1500, 0.05, 0.5); buzz(18);
     UI.msg = doneN()===NW ? '🎉 <b>'+NW+' 根全部接对</b>，接错 '+UI.err+' 次。点断路器 QF 合闸试车'
-      : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）：'+tname(w.from)+' → '+tname(w.to)+([w.from, w.to].indexOf(a)<0 || [w.from, w.to].indexOf(id)<0 ? '（接地排哪个孔都行，图上画在标准那个孔）' : '');
+      : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）· '+w.tier+'：'+tname(w.from)+' → '+tname(w.to)+([w.from, w.to].indexOf(a)<0 || [w.from, w.to].indexOf(id)<0 ? '（接地排哪个孔都行，图上画在标准那个孔）' : '');
     return;
   }
   UI.err++; buzz([40,40,40]); click(400, 0.12, 0.6);
@@ -1338,7 +1342,7 @@ function refresh(){
     info.innerHTML = (SIM.qf ? simExplain() : (UI.msg || intro))+'<div class="st">'+(inMount() ? '已装 '+MOUNTABLE.filter(function(k){ return UI.mount[k]; }).length+' / '+MOUNTABLE.length+' 个元件 · ' : '')+'已接 '+doneN()+' / '+NW+' 根 · 接错 '+UI.err+' 次'+(SIM.qf ? ' · 电动机'+(SIM.motor?'运转':'停') : '')+'</div>';
   }
   else if(s){ const g=GROUPS[s.w.group];
-    info.innerHTML = '<b>第 '+s.w.id+' 根</b>（'+g[0]+'）：'+tname(s.w.from)+' → '+tname(s.w.to)+'<div class="st">'+g[1]+'</div>'; }
+    info.innerHTML = '<b>第 '+s.w.id+' 根</b>（'+g[0]+'）· <b>'+s.w.tier+'</b>：'+tname(s.w.from)+' → '+tname(s.w.to)+'<div class="st">'+g[1]+'<br>'+TIER_TIP+'</div>'; }
   else info.innerHTML = (noteOn() ? UI.note+'<br>' : '')+simExplain()+st;
 }
 /* 一闪而过的提示（转旋钮、按复位这种），3 秒后消失 */
@@ -2019,7 +2023,7 @@ function exNext(){
     if(w){ const want = wkWant(w.from, w.to)[0];
       if(EX.wk!==want) return hl(null, '先在上面选 <b>'+WK[want][0]+'</b> 的线');
       const nxtT = UI.pend===w.from ? w.to : UI.pend===w.to ? w.from : w.from;
-      return hl({pos:TERMS[nxtT].pos}, '接第 '+w.id+' 根（'+GROUPS[w.group][0]+'）：'+tname(w.from)+' → '+tname(w.to)); }
+      return hl({pos:TERMS[nxtT].pos}, '接第 '+w.id+' 根（'+GROUPS[w.group][0]+'）· <b>'+w.tier+'</b>：'+tname(w.from)+' → '+tname(w.to)); }
     if(EX.splice.step<3) return hl(BTN('esplice'), '点「接头」，在指定位置做绞合连接');
     return hl(BTN('einst'), '<b>按住「报告」</b>说：报告安装完毕'); }
   /* 通电台上 */
