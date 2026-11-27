@@ -8,6 +8,7 @@ const { PRACTICE, TUTORIAL, INPUT, VIEW, PLAY_CN, esc, q, hex, CN } = window.PZ_
 const { Pyra, Big, lessons, patterns, CamPlan, Mx, dot, norm } = window.PUZ;
 const PZ = window.PZ;
 const SVG = {
+  kbd: '<svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M8 14.3h8"/><circle cx="6.5" cy="10" r=".6"/><circle cx="10.2" cy="10" r=".6"/><circle cx="13.8" cy="10" r=".6"/><circle cx="17.5" cy="10" r=".6"/></svg>',
   undo: '<svg viewBox="0 0 24 24"><path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H11"/></svg>',
   tip: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>',
   more: '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg>',
@@ -73,7 +74,7 @@ function show(tab) {
 /* ---- 舞台：画布 + 四边翻面箭头 + 计时行 ---- */
 function stageHtml(v) {
   return `<div class="pzStage"><canvas></canvas>
-    ${v.mode === PRACTICE ? '<div class="pzBar"><b class="pzT">0:00</b><button class="pzSw">▶ 手动计时</button><span class="pzN">0 步</span></div>' : ''}
+    ${v.mode === PRACTICE ? '<div class="pzBar"><b class="pzT">0:00</b><span class="pzN">0 步</span><button class="pzSw">▶ 秒表</button></div>' : ''}
     <div class="flip">${'udlr'.split('').map(f => `<button data-f="${f}" aria-label="${FLIP_CN[f]}"><svg viewBox="0 0 24 24">${SVG.flip[f]}</svg></button>`).join('')}</div></div>`;
 }
 function stageBind(root, v) {
@@ -90,7 +91,7 @@ function stageBind(root, v) {
       T.textContent = Math.floor(ms / 60000) + ':' + String(Math.floor(ms / 1000) % 60).padStart(2, '0'); T.style.visibility = cfg('timer') > 0.5 ? '' : 'hidden';
       N.textContent = v.steps + ' 步';
       const run = v.manT0 !== 0, m2 = run ? Date.now() - v.manT0 : v.manMs;
-      SW.textContent = run ? '■ ' + fmt(m2) : m2 >= 0 ? '↺ ' + fmt(m2) : '▶ 手动计时'; SW.classList.toggle('run', run);
+      SW.textContent = run ? '■ ' + fmt(m2) : m2 >= 0 ? '↺ ' + fmt(m2) : '▶ 秒表'; SW.classList.toggle('run', run);
     };
     SW.onclick = () => { const t = Date.now(); if (v.manT0) { v.manMs = t - v.manT0; v.manT0 = 0; } else if (v.manMs >= 0) v.manMs = -1; else v.manT0 = t; tick(); };
     tick(); timerT = setInterval(tick, 50);
@@ -111,14 +112,14 @@ function sheet(root, id, html) {
 /* ======================= 练习页 ======================= */
 function pagePractice(root, v) {
   root.className = 'page on pzFull';
-  root.innerHTML = bar('自己练', `<button class="ic" id="pzUndo" title="撤销">${SVG.undo}</button><button class="ic" id="pzTip" title="提示下一步">${SVG.tip}</button><button class="ic" id="pzMore" title="更多：摆正视角、回复原、成绩、设置">${SVG.more}</button>`)
+  root.innerHTML = bar('自己练', `<button class="ic" id="pzUndo" title="撤销">${SVG.undo}</button><button class="ic" id="pzTip" title="提示下一步">${SVG.tip}</button><button class="ic" id="pzKbd" title="记号键盘">${SVG.kbd}</button><button class="ic" id="pzMore" title="更多：摆正视角、回复原、成绩、设置">${SVG.more}</button>`)
     + stageHtml(v) + `<div id="pzMsg" class="pzMsg"></div><div id="pzCtl"></div>
-    <div id="pzKeys" class="pzKeys"></div><button id="pzKbd" class="pzSmall"></button>`;
+    <div id="pzKeys" class="pzKeys"></div>`;
   wireChip(root); stageBind(root, v);
   q('pzUndo').onclick = () => v.undo(); q('pzTip').onclick = () => v.tip();
   q('pzMore').onclick = () => moreSheet(root, v);
   let kbd = localStorage.getItem('cube_pz_kbd') === '1';
-  const keys = () => { q('pzKeys').style.display = kbd ? '' : 'none'; q('pzKbd').textContent = kbd ? '收起记号键盘' : '⌨ 记号键盘';
+  const keys = () => { q('pzKeys').style.display = kbd ? '' : 'none'; q('pzKbd').classList.toggle('on', kbd); q('pzKbd').title = kbd ? '收起记号键盘' : '记号键盘';
     const per = v.puz.keys.length % 8 === 0 ? 8 : 6; q('pzKeys').style.gridTemplateColumns = `repeat(${per},1fr)`;
     q('pzKeys').innerHTML = v.puz.keys.map(k => `<button data-k="${k}" title="${esc(v.puz.moveCn(k))}">${k}</button>`).join('');
     q('pzKeys').querySelectorAll('button').forEach(b => b.onclick = () => v.turn(b.dataset.k)); };

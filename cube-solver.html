@@ -70,7 +70,7 @@
     border:1px solid var(--line2);border-radius:var(--r2);padding:11px 10px;
     box-shadow:var(--sheen);
     transition:background .12s ease,border-color .12s ease,transform .06s ease}
-  button:active{background:var(--panel3);transform:translateY(1px);box-shadow:none}
+  button:active{background:var(--panel3);transform:scale(.96);box-shadow:none}
   /* 主操作用纯黄实心，不做渐变 —— 贴纸是平的哑光，渐变会显得像玻璃按钮 */
   button.pri{background:var(--acc);border-color:#ffe14a;color:var(--accTxt);
     font-weight:700;box-shadow:var(--sheen),0 8px 20px -12px rgba(247,209,20,.9)}
@@ -614,6 +614,16 @@
     stroke-linecap:round;stroke-linejoin:round}
   #tabs button.on{color:var(--accL);font-weight:600}
   #tabs button.on::after{display:none}
+  /* App 0.0.31：导航选中项图标垫一块淡黄胶囊 */
+  #tabs button svg{box-sizing:content-box;padding:3px 16px;border-radius:15px}
+  #tabs button.on svg{background:rgba(247,209,20,.18)}
+  /* 记号键盘开关进了顶栏，底下那颗长按钮不要了；开着时图标高亮 */
+  #prKbdTog,#pPr.started #prKbdTog{display:none}
+  .appBar button.ic.on{background:rgba(247,209,20,.18);color:var(--accL)}
+  /* 清空类按钮改次要样式（透明底） */
+  #inTools button{background:transparent;color:#c9cfd9}
+  /* 色板：选中的放大，其余缩一点压暗，全填满都是 ✓ 时也一眼看出拿的哪个色 */
+  #pal:has(.sw.on) .sw:not(.on),#patPal:has(.sw.on) .sw:not(.on){transform:scale(.94);filter:brightness(.78)}
   /* 跟 App 一样四个页签：复原 / 练习 / 学习 / 花色。设置收进练习页 ⋯ 里（2026-09-27 按 App 同步） */
   #tabGo,#tabHome,#tabs .tabSep,#tabSet{display:none!important}
   #tabIn{order:1} #tabPr{order:2} #tabTu{order:3} #tabPat{order:4}
@@ -906,9 +916,12 @@
   .pzStage>canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   .pzBar{position:absolute;left:12px;right:12px;top:9px;z-index:2;display:flex;align-items:center;gap:8px;pointer-events:none}
   .pzBar~.flip [data-f=u]{top:50px}   /* 练习页顶上压着计时行，往下让一格 */
-  #pPr.started #prFlip:not(.side) [data-f=u]{top:50px}   /* 三阶练习页同理（计时行中间有手动秒表） */
+  #pPr.started #prFlip:not(.side) [data-f=u]{top:50px}   /* 三阶练习页同理 */
+  #prBar{gap:14px;align-items:center}
+  #prBar #prSw{margin-left:auto}
   .pzBar b{font-size:20px;font-family:ui-monospace,Menlo,monospace}
-  .pzBar .pzN{margin-left:auto;font-size:13px;color:var(--dim)}
+  .pzBar .pzN{font-size:13px;color:var(--dim)}
+  .pzBar .pzSw{margin-left:auto}
   .pzSw{pointer-events:auto;padding:4px 10px;min-height:30px;font-size:12.5px;border-radius:999px;
     font-family:ui-monospace,Menlo,monospace;background:rgba(255,255,255,.06)}
   .pzSw.run{color:var(--accTxt);background:var(--acc);border-color:var(--acc)}
@@ -1044,7 +1057,7 @@
        它得在一进来就看得见的地方。用 pri2（淡黄）：比灰按钮重，
        又明显轻于吸底那颗实心黄的「求解」 -->
   <div class="row" style="margin-top:10px">
-    <button id="btnCam" class="pri2" style="flex:1 1 100%">📷 拍照识别（不用一格格点）</button>
+    <button id="btnCam" class="pri2" style="flex:1 1 100%">📷 拍照识别</button>
   </div>
 
   <!-- 工具条只留两个常用的（跟 App 一样）：翻面用魔方四边的箭头；点填过的格子本来就能改；
@@ -1197,6 +1210,7 @@
     <b id="prTitle">自己练</b>
     <button id="prUndo" class="ic" title="撤销"><svg viewBox="0 0 24 24"><path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H11"/></svg></button>
     <button id="prTip" class="ic" title="提示下一步"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg></button>
+    <button id="prKbdIc" class="ic" title="记号键盘（带 2 的是 180°）"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M8 14.3h8"/><circle cx="6.5" cy="10" r=".6"/><circle cx="10.2" cy="10" r=".6"/><circle cx="13.8" cy="10" r=".6"/><circle cx="17.5" cy="10" r=".6"/></svg></button>
     <button id="prMoreBtn" class="ic" title="更多"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg></button>
   </div>
   <!-- 从④教程「出一道题」过来的返回条，平时收着 -->
@@ -1220,8 +1234,8 @@
     </div></div>
     <div id="prBar">
       <span id="prTimeWrap"><b id="prTime">0:00</b>用时</span>
-      <button id="prSw" class="pzSw">▶ 手动计时</button>
       <span><b id="prCount">0</b>步</span>
+      <button id="prSw" class="pzSw">▶ 秒表</button>
     </div>
   </div>
 
@@ -1264,7 +1278,7 @@
         <i></i>
         <button id="prPlanSpd">正常</button>
         <button id="prPlanTog">箭头</button>
-        <button id="prPlanX" aria-label="关闭解法">×</button>
+        <button id="prPlanX" class="ctl" aria-label="关闭解法">✕</button>
       </div>
       <div id="prPlanSeq"></div>
     </div>
@@ -4010,7 +4024,7 @@ let prSwT0 = 0, prSwMs = -1, prSwTick = 0;
 function prSwShow(){
   const run = prSwT0 !== 0, ms = run ? Date.now() - prSwT0 : prSwMs, el = $('prSw');
   const f = t => Math.floor(t/60000) + ':' + String(Math.floor(t/1000)%60).padStart(2,'0') + '.' + String(Math.floor(t/10)%100).padStart(2,'0');
-  el.textContent = run ? '■ ' + f(ms) : ms >= 0 ? '↺ ' + f(ms) : '▶ 手动计时';
+  el.textContent = run ? '■ ' + f(ms) : ms >= 0 ? '↺ ' + f(ms) : '▶ 秒表';
   el.classList.toggle('run', run);
 }
 $('prSw').onclick = () => {
@@ -4186,6 +4200,8 @@ const buzz = ms => {
   if(!k) return;
   try{ navigator.vibrate && navigator.vibrate(Math.round(ms*k)); }catch(e){}
 };
+// App 0.0.31：按钮按下轻震一下（跟着设置里的「震动」走）
+document.addEventListener('click', e => { if(e.target.closest && e.target.closest('button')) buzz(4); }, true);
 
 /* ---- 执行一次转动 ----
    外层：直接一个记号。
@@ -5077,10 +5093,11 @@ prSheet.addEventListener('click', e => {
 $('prSetOpen').onclick = () => setOpen(true);   // 设置只在这儿（跟 App 一样，底部导航不再单占一格）
 function prKbdSet(v){
   $('pPr').classList.toggle('kbd', v);
+  $('prKbdIc').classList.toggle('on', v); $('prKbdIc').title = v ? '收起记号键盘' : '记号键盘（带 2 的是 180°）';
   if($('pPr').classList.contains('started')){ prResize(); prRender(); }   // 魔方区域变高/变矮了
   try{ localStorage.setItem('cube_pr_kbd', v ? '1' : '0'); }catch(e){}
 }
-$('prKbdTog').onclick = () => prKbdSet(!$('pPr').classList.contains('kbd'));
+$('prKbdTog').onclick = $('prKbdIc').onclick = () => prKbdSet(!$('pPr').classList.contains('kbd'));
 try{ if(localStorage.getItem('cube_pr_kbd') === '1') prKbdSet(true); }catch(e){}
 
 /* ==========================================================
@@ -6558,7 +6575,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-11-27 20:33';
+const BUILD = '2026-11-27 20:35';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
