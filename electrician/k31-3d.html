@@ -934,6 +934,12 @@ WIRES.forEach(function(w){
 const TIER_TIP = '短线＝相邻元件、同一元件上的短接；长线＝差不多跨整块盘；剪线宁长勿短，多的盘进线槽';
 function lenTier(n){ return n<260 ? '短线' : n<560 ? '中线' : '长线'; }
 CW.forEach(function(c){ c.w.tier = lenTier(c.mesh.userData.len); });
+/* 成品线怎么分（11-27 他要记到网站上）：先按颜色分堆，再在每堆里按长短分，对着这个数数够再接 */
+const WIRE_SUM = (function(){
+  const CN = {0xe0a92e:'黄', 0x3fa845:'绿', 0xcf4436:'红', 0x22262b:'黑', 0x8fbf2f:'黄绿', 0xd42f2f:'红', 0x1c6dd0:'蓝'}, C = {}, O = [];
+  CW.forEach(function(c){ const k = CN[c.w.color] || '其他'; if(!C[k]){ C[k] = {短线:0, 中线:0, 长线:0}; O.push(k); } C[k][c.w.tier]++; });
+  return '成品线怎么分（短/中/长）：'+O.map(function(k){ return k+' '+C[k].短线+'/'+C[k].中线+'/'+C[k].长线; }).join('，')+'。先按颜色分堆，再每堆里按长短分，数够再接';
+})();
 /* 自己接线用：每个端子一个点击靶（放大了的隐形球）+ 一个蓝圈标记「这儿能接」 */
 const TERMS = {};
 Object.keys(TPOS).forEach(function(id){
@@ -1338,7 +1344,7 @@ function refresh(){
   }
   else if(UI.wire && !s){
     const intro = inMount() ? '先<b>装元件</b>：点下面<b>零件盒</b>里的零件，再点导轨上它的位置（虚线框）。'+MOUNTABLE.length+' 个都装好再接线'
-      : '点一个<b>蓝圈端子</b>，再点另一个，接一根线（端子小就双指放大，点「复原」或双击空白处回到原样）。顺序：主电路（电源进线 → QF → FU1 → KM → 热继 → 出线）→ 控制电源 → 线圈与自锁 → 热继电器 → 端子排跳线';
+      : '点一个<b>蓝圈端子</b>，再点另一个，接一根线（端子小就双指放大，点「复原」或双击空白处回到原样）。顺序：主电路（电源进线 → QF → FU1 → KM → 热继 → 出线）→ 控制电源 → 线圈与自锁 → 热继电器 → 端子排跳线<br><span style="color:var(--mut)">'+WIRE_SUM+'</span>';
     info.innerHTML = (SIM.qf ? simExplain() : (UI.msg || intro))+'<div class="st">'+(inMount() ? '已装 '+MOUNTABLE.filter(function(k){ return UI.mount[k]; }).length+' / '+MOUNTABLE.length+' 个元件 · ' : '')+'已接 '+doneN()+' / '+NW+' 根 · 接错 '+UI.err+' 次'+(SIM.qf ? ' · 电动机'+(SIM.motor?'运转':'停') : '')+'</div>';
   }
   else if(s){ const g=GROUPS[s.w.group];

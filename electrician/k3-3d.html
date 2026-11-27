@@ -25,6 +25,11 @@ h1{font-size:19px;margin:10px 0 2px}
 .todo .k{color:var(--mut)}
 .tag{font-size:12px;border:1px solid var(--line);border-radius:6px;padding:0 6px;color:var(--mut)}
 .note{color:var(--mut);font-size:12.5px;margin-top:12px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:12px}
+.box h2{font-size:15px;margin:0 0 6px}
+.box ol,.box ul{margin:0;padding-left:20px}
+.box li{margin:3px 0}
+.box .m{color:var(--mut);font-size:12.5px}
 </style>
 </head>
 <body>
@@ -32,26 +37,43 @@ h1{font-size:19px;margin:10px 0 2px}
 <h1>K3 实操 · 3D 接线板</h1>
 <p class="sub">看线 · 自己接线 · 通电试车 · 考场模拟</p>
 <div class="grid">
-  <a class="card" href="k33-3d.html?v=1127t">
-    <div class="top"><span class="k">K31-02</span><span class="n">20 根</span></div>
+  <a class="card" href="k33-3d.html?v=1127u">
+    <div class="top"><span class="k">K31-02</span><span class="n">19 根</span></div>
     <div class="name">电能表照明设备接线</div>
     <div class="desc"><b style="color:#c76a00">新规</b> · 照考场照明盘实拍：3 个空开自己装、线走线槽；考场按新讲义 9 步，试灯 + 测插座</div>
   </a>
-  <a class="card" href="k31-3d.html?v=1127t">
+  <a class="card" href="k31-3d.html?v=1127u">
     <div class="top"><span class="k">K31-03</span><span class="n">27 根</span></div>
     <div class="name">单向连续、点动接线</div>
     <div class="desc"><b style="color:#c76a00">新规</b> · 照考场电动盘实拍：自己装元件、主电路也自己接、线走线槽；考场按新讲义 9 步</div>
   </a>
-  <a class="card" href="k34-3d.html?v=1127t">
-    <div class="top"><span class="k">K31-04</span><span class="n">36 根</span></div>
+  <a class="card" href="k34-3d.html?v=1127u">
+    <div class="top"><span class="k">K31-04</span><span class="n">42 根</span></div>
     <div class="name">带电流互感器的电动机接线</div>
     <div class="desc"><b style="color:#c76a00">新规</b> · 照考场互感器盘实拍：主线穿互感器也自己接，电流表要穿对、二次线接对才摆；考场按新讲义 9 步 + 口述三相电流</div>
   </a>
-  <a class="card" href="k32-3d.html?v=1127t">
+  <a class="card" href="k32-3d.html?v=1127u">
     <div class="top"><span class="k">K31-05</span><span class="n">37 根</span></div>
     <div class="name">正反转运行电路</div>
     <div class="desc"><b style="color:#c76a00">新规</b> · 照考场正反转盘实拍：KM1、KM2 并排，自己装元件、主电路换相也自己接；考场按新讲义 9 步</div>
   </a>
+</div>
+<div class="box">
+  <h2>拿到成品线怎么分</h2>
+  <ol>
+    <li><b>先按颜色分堆</b>：主电路黄、绿、红（2.5 平方）一堆，控制线黑（1.0 平方，比主电路线细）一堆，黄绿地线单放；照明盘是红、蓝、黄绿。</li>
+    <li><b>每堆里按长短分</b>：一头对齐捋直。比盘宽还长的＝长线，一拃左右＝短线，剩下的＝中线。</li>
+    <li><b>对着下面的数数够再接</b>，缺了多了马上知道。<b>先接长线</b>：长线能借短一点的路，短线没得借。</li>
+    <li>拿不准就先接一头，顺着线槽走到另一头比一下。长了把多的盘进线槽，短了换一根，别硬拉。</li>
+  </ol>
+  <h2 style="margin-top:10px">每块盘各要几根（短 / 中 / 长）</h2>
+  <ul>
+    <li><b>K31-02 照明</b>（19 根）：红 7/2/2，蓝 2/1/4，黄绿 0/1/0</li>
+    <li><b>K31-03 点动连续</b>（27 根）：黄 2/2/1，绿 2/2/2，红 2/2/2，黑 5/4/1</li>
+    <li><b>K31-04 互感器</b>（42 根）：黄 1/4/1，绿 1/5/1，红 1/5/1，黑 3/8/11</li>
+    <li><b>K31-05 正反转</b>（37 根）：黄 2/4/1，绿 3/2/3，红 3/2/3，黑 5/6/3</li>
+  </ul>
+  <p class="m" style="margin:6px 0 0">按网页里的布局沿线槽算的，考场板子元件位置不完全一样，长短按实物稍调；总根数和颜色是准的。黄绿红根数不一样：4、5 号熔断器的控制电源线用绿、红。每块盘点「自己接」也能看到本盘的数。</p>
 </div>
 <p class="note">编号按 11-27 新版实操讲义。四块盘都已改成新规（照考场实拍、元件自己装、全部线自己接、新讲义考场流程）。</p>
 </body>
