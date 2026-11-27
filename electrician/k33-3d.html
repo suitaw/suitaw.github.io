@@ -140,6 +140,9 @@ const DEVICES = [
 ];
 const TPOS = {};
 DEVICES.forEach(function(d){ const s=d.s||1; d.W=d.w*s; d.H=d.h*s; d.terminals.forEach(function(t){ TPOS[t.id]={x:d.x+t.x*s,y:d.y+t.y*s,device:d.id,label:t.label}; }); });
+/* 11-27 他说：接地排上哪个孔都行。跟标准接法比对时，接地排各孔当同一个点 */
+function tk(id){ return /^pe-\d+$/.test(id) ? 'pe' : id; }
+function wkey(a, b){ return [tk(a), tk(b)].sort().join('|'); }
 const TLABEL = {
   'mb-1':'电能表接线排 1（进火）','mb-2':'电能表接线排 2（出火）','mb-3':'电能表接线排 3（进零）','mb-4':'电能表接线排 4（出零）',
   'mt-1':'电能表 1（火线1·进）','mt-2':'电能表 2（火线2·出）','mt-3':'电能表 3（零线1·进）','mt-4':'电能表 4（零线2·出）',
@@ -160,7 +163,7 @@ const GROUPS = {
   4:['空开③ 火 → 双控 → 灯泡','空开③ 下方 L → 双控① L（公共端）；① L1—② L1、① L2—② L2 两根联络线；双控② L → 灯具端子排 4（灯泡红线）'],
   5:['空开③ 火 → 单控 → 日光灯','空开③ 下方 L → 单控 L1；单控 L → 灯具端子排 2（日光灯红线）'],
   6:['空开③ 零 → 两盏灯','空开③ 下方 N → 灯具端子排 3（灯泡蓝线）、→ 灯具端子排 1（日光灯蓝线）。开关只断相线，零线直接去灯'],
-  7:['地线（推测）','电源进线 PE → 接地排，接地排 → 插座 PE。⚠ 便签里没有地线（你当时还没接），这两根是按常规补的']
+  7:['地线（推测）','接地排 → 插座 PE（接地排上哪个孔都行）。电源进线 PE → 接地排 那根是挂上通电台后第 4 步接的，不在盘内线里。⚠ 便签里没有地线，这根是按常规补的']
 };
 const WIRES = [
   {id:1, from:'src-l', to:'mb-1',  group:1, waypoints:[[216,226],[47,226]]},
@@ -181,12 +184,12 @@ const WIRES = [
   {id:16,from:'s3-l',  to:'lt-2',  group:5, waypoints:[[522,516],[456,516],[456,195]]},
   {id:17,from:'qf3-no',to:'lt-3',  group:6, waypoints:[[296,450],[372,450],[372,223]]},
   {id:18,from:'qf3-no',to:'lt-1',  group:6, waypoints:[[296,456],[380,456],[380,167]]},
-  {id:19,from:'src-pe',to:'pe-1',  group:7, waypoints:[[252,144],[183,144],[183,246],[10,246],[10,661],[36,661]]},
-  {id:20,from:'pe-2',  to:'xs-pe', group:7, waypoints:[[66,552],[174,552]]}
+  /* 11-27 他说：电源进线 PE → 接地排 是通电试车时接的（第 4 步「先接 PE 线」），不算盘内线，挪到考场外部线 gB */
+  {id:19,from:'pe-2',  to:'xs-pe', group:7, waypoints:[[66,552],[174,552]]}
 ];
 const NW = WIRES.length;
 /* 线色照板上规矩：相线红、零线蓝、PE 黄绿 */
-const NWIRE = {2:1,4:1,6:1,8:1,10:1,17:1,18:1}, PEWIRE = {19:1,20:1};
+const NWIRE = {2:1,4:1,6:1,8:1,10:1,17:1,18:1}, PEWIRE = {19:1};
 WIRES.forEach(function(w){ w.color = PEWIRE[w.id] ? 0x8fbf2f : NWIRE[w.id] ? 0x1c6dd0 : 0xd42f2f; });
 /* 负载（当线圈用）：灯泡在灯具端子排 4-3 之间，日光灯在 2-1 之间；插座 L-N 之间算「有电」 */
 const SPEC = {
@@ -294,7 +297,7 @@ const CHECKS = [
    h:'合闸后每个空开下方：L 口连着相线（有电）、N 口连着零线（验电笔不亮）。电能表 2 接 L、4 接 N，接反就不对'},
   {n:'合空开①②：插座有电', f:function(T){ T.set('qf1',1); T.set('qf2',1); return T.on('xs'); },
    h:'顺着走：进线 L → 表 1 → 2 → 空开① → 空开② → 插座 L；进线 N → 表 3 → 4 → 空开① → 空开② → 插座 N'},
-  {n:'插座左零右火上接地', f:function(T){ T.set('qf1',1); T.set('qf2',1); return T.live('xs-l') && !T.live('xs-n') && T.conn('xs-pe','src-pe'); },
+  {n:'插座左零右火上接地', f:function(T){ T.set('qf1',1); T.set('qf2',1); return T.live('xs-l') && !T.live('xs-n') && T.conn('xs-pe','pe-1'); },
    h:'空开② 下方 L → 插座 L（右），N → 插座 N（左）；进线 PE → 接地排 → 插座 PE（上）'},
   {n:'合空开①③，开单控：日光灯亮', f:function(T){ T.set('qf1',1); T.set('qf3',1); T.set('s3',1); return T.on('fl'); },
    h:'空开③ 下方 L → 单控 L1，单控 L → 灯具端子排 2；空开③ 下方 N → 灯具端子排 1'},
@@ -315,7 +318,7 @@ const CHECKS = [
 function gradeWires(ws){
   const res = {checks:[], bad:'', miss:[], extra:[]};
   CHECKS.forEach(function(c){ const T = makeTester(ws); const r = c.f(T); res.checks.push({n:c.n, ok:r, h:c.h}); if(T.bad) res.bad = T.bad; });
-  function key(w){ return [w.from, w.to].sort().join('|'); }
+  function key(w){ return wkey(w.from, w.to); }
   const std={}, got={}; WIRES.forEach(function(w){ std[key(w)]=w; }); ws.forEach(function(w){ got[key(w)]=w; });
   for(const k in std) if(!got[k]) res.miss.push(std[k]);
   for(const k in got) if(!std[k]) res.extra.push(got[k]);
@@ -833,7 +836,7 @@ const PH = [0xe0a92e, 0x3fa845, 0xcf4436];
 function P(id, i){ const d=dev(id), p=d.pins[i], s=d.s||1; return [d.x+p[0]*s, d.y+p[1]*s]; }
 function elbow(a, b, y){ return [a, [a[0],y], [b[0],y], b]; }
 const MAINS = [], MOT_SEG = 0, MAIN_RUN = {};
-/* 20 根线：相线红、零线蓝、地线黄绿 */
+/* 19 根线：相线红、零线蓝、地线黄绿 */
 /* ══ 线槽 ══ 照片：导轨上下两条横槽，两头竖槽连起来。槽宽 24、深 22，上面敞口，两壁是一排梳齿（线从齿缝里进出） */
 const DUCTS = {
   H:[{y:236, x0:20, x1:548}, {y:430, x0:20, x1:548}],
@@ -921,6 +924,7 @@ WIRES.forEach(function(w){
 const TERMS = {};
 Object.keys(TPOS).forEach(function(id){
   if(/^mt-/.test(id)) return;   /* 电能表端子出厂接到接线排上了，盘内线接接线排下排 */
+  if(id==='src-pe') return;     /* 11-27 进线 PE 上口只接去接地排那根，那根在第 4 步当外部线接（XT.gB） */
   const t=TPOS[id], pos=V(t.x, t.y, TZ[id]+1.5);
   const mark = new THREE.Mesh(new THREE.TorusGeometry(6.2, 1.1, 8, 24), new THREE.MeshBasicMaterial({color:0x1c6fd6, transparent:true, opacity:0.7, toneMapped:false}));
   mark.position.copy(pos); mark.visible=false; root.add(mark);
@@ -975,6 +979,9 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
     wire(cid[i]+'P', cn[i]+'一头 → 盘上电源进线端子', JC[i], [[SXs[i],SY],[SXs[i],ly],[gx,ly],[gx,dy],[jx[i],dy],[jx[i],BY+2]], SZ, null, 60+i*4);
     wire(cid[i]+'S', cn[i]+'另一头 → 试车台插孔', JC[i], [[jx[i],BY+2],[jx[i],BY+12],[jx[i],JY]], null, 45, 60+i*4);
   });
+  /* 11-27 电源进线 PE → 接地排：第 4 步最先接（先 PE 线），走线槽，点进线端子上口那颗螺钉接/拆 */
+  { const za = TZ['src-pe'], zb = TZ['pe-1'], m = tube(wirePts('src-pe', 'pe-1', 19, za, zb), 2.3, M(0x8fbf2f, {roughness:0.45})); m.visible = false;
+    XT.gB = {name:'地线（黄绿）：盘上电源进线 PE → 接地排', meshes:[m]}; }
   /* 能点的位置：接线点 + 验电点 */
   function point(id, x, y, z, name){
     const pos = V(x, y, z);
@@ -988,6 +995,7 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
     point(cid[i]+'P', SXs[i], SY, SZ, '盘上进线端子 '+['L（相线）','N（零线）','PE（地线）'][i]);
     point(cid[i]+'S', jx[i], JY, 46, '试车台 '+JN[i]+' 插孔');
   });
+  point('gB', TPOS['src-pe'].x, TPOS['src-pe'].y, TZ['src-pe']+1.5, '盘上进线 PE 上口（去接地排）');
   const xs = dev('xs');
   const xss = xs.s||1; point('xL', xs.x+(xs.w/2+14)*xss, xs.y+102*xss, 16*xss, '插座右孔（火线 L）'); point('xN', xs.x+(xs.w/2-14)*xss, xs.y+102*xss, 16*xss, '插座左孔（零线 N）');
   PARENT = root;
@@ -1183,12 +1191,12 @@ function termTap(id){
   if(!UI.pend){ UI.pend=id; UI.msg='起点：<b>'+tname(id)+'</b>。再点这根线的另一头'; click(2600, 0.02, 0.2); return; }
   if(UI.pend===id){ UI.pend=null; UI.msg=''; return; }
   const a=UI.pend; UI.pend=null;
-  const w = WIRES.filter(function(w){ return (w.from===a && w.to===id) || (w.from===id && w.to===a); })[0];
+  const w = WIRES.filter(function(w){ return wkey(w.from, w.to)===wkey(a, id); })[0];
   if(w && DONE[w.id]){ UI.msg='这根已经接过了'; return; }
   if(w){
     DONE[w.id]=1; DORD.push(w.id); applyDone(); click(1500, 0.05, 0.5); buzz(18);
     UI.msg = doneN()===NW ? '🎉 <b>'+NW+' 根全部接对</b>，接错 '+UI.err+' 次。点断路器 QF 合闸试车'
-      : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）：'+tname(w.from)+' → '+tname(w.to);
+      : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）：'+tname(w.from)+' → '+tname(w.to)+([w.from, w.to].indexOf(a)<0 || [w.from, w.to].indexOf(id)<0 ? '（接地排哪个孔都行，图上画在标准那个孔）' : '');
     return;
   }
   UI.err++; buzz([40,40,40]); click(400, 0.12, 0.6);
@@ -1321,10 +1329,10 @@ function sig(){ return [SIM.qf, SIM.sup, SIM.blown, JSON.stringify(SIM.tog), SIM
 /* ══ 考场 ══ 流程和扣分只照背诵材料「K33 通电试车流程（16 步）」+「K3 通用：扣分硬条和通则」，不凭印象加步骤。
    先盘内接线（随便接，接错了合闸就出真后果），再接电源线（地 → 零 → 相）→ 送电（总闸 → 盘上从左到右）→ 验电 6 处 → 试灯、测插座 → 断电（盘上从右到左 → 总闸）→ 二次验电 → 拆线（红蓝、地线最后）。 */
 const EX = {on:false};
-const XW = [];                 /* 考场里接的、不在标准 20 根里的线（现造管子）*/
+const XW = [];                 /* 考场里接的、不在标准 19 根里的线（现造管子）*/
 const LSX = 'elec_k33_3d_exam';
-const CON_ORDER = ['gP','gS','nP','nS','lP','lS'];
-const DIS_ORDER = ['lS','nS','lP','nP','gS','gP'];
+const CON_ORDER = ['gB','gP','gS','nP','nS','lP','lS'];   /* gB：进线 PE → 接地排（11-27 挪到第 4 步） */
+const DIS_ORDER = ['lS','nS','lP','nP','gS','gP','gB'];
 const PROBE1 = ['qf1-lo','qf1-no','qf2-lo','qf2-no','qf3-lo','qf3-no'], PROBE2 = ['lP','nP'], SOCK = ['xL','xN'];
 const SEQ = [['s1','el',true],['s2','el',false],['s2','el',true],['s1','el',false],['s3','fl',true],['s3','fl',false]];
 const SEQN = ['左边双控① 开灯','右边双控② 关灯','右边双控② 开灯','左边双控① 关灯','单控开 H 型灯管','单控关灯管'];
@@ -1334,7 +1342,7 @@ const QFS = ['qf1','qf2','qf3'], TOG_NAME = {qf1:'空开①（总开关）', qf2
 /* ── 这块板的考场配置（11-27 新规：照新版讲义「四盘考试流程」）── */
 const CFG = {code:'K31-02', name:'K31-02 电能表照明设备接线', glove:false, tools:false, tidy:false, done:false, gap:false, rev:false, amp:false, sock:true, p1Both:true, meterTool:true, env:'作业', wiredTry:false,
   qfs:['qf1','qf2','qf3'], qfName:{qf1:'空开①（总开关）', qf2:'空开②（插座·漏保）', qf3:'空开③（照明）'}, btnVerb:'扳 ', btnName:{s1:'双控①', s2:'双控②', s3:'单控'},
-  con:'先地线，再零线，再相线：盘上进线端子 → 试车台插孔', dis:'相线 → 零线 → 地线',
+  con:'先地线（进线 PE → 接地排，再进线端子 → 试车台），再零线，再相线', dis:'相线 → 零线 → 地线',
   probe1:'3 个空开下方的相线 L、零线 N', probe2:'进线端子的相线、零线', trial:'左双控开 → 右双控关 → 右双控开 → 左双控关 → 单控开 → 单控关，再测插座',
   stdName:'新版讲义「四盘考试流程」9 步', note:'按 11-27 新版讲义「K31-02～05 四盘考试流程」；试车核查用 9 月材料的试灯和测插座；扣分硬条沿用 9 月材料'};
 const REPT = {inst:'报告安装完毕', wired:'报告考官，接线完毕，申请送电调试'};
@@ -1396,7 +1404,7 @@ function revEnter(){
   ws = ws.filter(function(p){ return TPOS[p[0]] && TPOS[p[1]]; });
   if(!ws.length){ note('还没有考场盘内接线的记录：先进「考场」接一遍，再来对照'); return; }
   if(UI.wire) setMode(false);
-  const key = function(a, b){ return [a, b].sort().join('|'); }, std = {};
+  const key = wkey, std = {};
   WIRES.forEach(function(w){ std[key(w.from, w.to)] = w.id; });
   const has = {}, extras = [];
   ws.forEach(function(p){ const k = key(p[0], p[1]); if(std[k]) has[std[k]] = 1; else extras.push({from:p[0], to:p[1]}); });
@@ -1432,7 +1440,7 @@ function exHas(){ EX.has = {}; EX.wires.forEach(function(w){ if(w.std) EX.has[w.
 /* 考场里接的每一根线都现造管子：颜色、粗细按当时选的线（标准那 27 根的现成管子考场里不用）*/
 function exAddWire(a, b, wk){
   wk = WK[wk] ? wk : EX.wk || 'K';
-  const std = WIRES.filter(function(w){ return (w.from===a && w.to===b) || (w.from===b && w.to===a); })[0];
+  const std = WIRES.filter(function(w){ return wkey(w.from, w.to)===wkey(a, b); })[0];
   const w = {id:EX.nextId++, from:a, to:b, wk:wk, std:std ? std.id : 0};
   EX.wires.push(w); exHas(); (EX.wireLog = EX.wireLog || []).push({from:a, to:b, wk:wk});
   const K = WK[wk], pts = wirePts(a, b, w.id, TZ[a]+4, TZ[b]+4);
@@ -1574,7 +1582,7 @@ function exTapTool(id){
 function exLive(id){
   if(id==='lP') return EX.main && !!EX.con.lP && !!EX.con.lS;                       /* 进线端子相线：总开关合着、相线两头都接着 */
   if(id==='lS') return EX.main;                                                        /* 电源箱相线插孔 */
-  if(id==='nP' || id==='nS' || id==='gP' || id==='gS') return false;                  /* 零线、地线：验电笔不亮 */
+  if(id==='nP' || id==='nS' || id==='gP' || id==='gS' || id==='gB') return false;                  /* 零线、地线：验电笔不亮 */
   const t = id==='xL' ? 'xs-l' : id==='xN' ? 'xs-n' : id;
   const v = SIM.last && SIM.last.volt && SIM.last.volt[t];
   return powered() && v!==undefined && v>=0.5;
@@ -1992,8 +2000,8 @@ function exNext(){
     if(p.bad) return hl(null, '这个型号不对：'+p.bad+'。换桌上对的那个');
     const sl = p.fits.filter(function(k){ return !EX.mount[k]; })[0]; return hl({pos:SLOTS[sl].pl.position.clone()}, '把 <b>'+p.name+'</b> 装到橙圈那个位置'); }
   if(EX.phase==='wire'){
-    const has = {}; EX.wires.forEach(function(w){ has[[w.from, w.to].sort().join('|')] = 1; });
-    const w = WIRES.filter(function(x){ return !has[[x.from, x.to].sort().join('|')]; })[0];
+    const has = {}; EX.wires.forEach(function(w){ has[wkey(w.from, w.to)] = 1; });
+    const w = WIRES.filter(function(x){ return !has[wkey(x.from, x.to)]; })[0];
     if(w){ const want = wkWant(w.from, w.to)[0];
       if(EX.wk!==want) return hl(null, '先在上面选 <b>'+WK[want][0]+'</b> 的线');
       const nxtT = UI.pend===w.from ? w.to : UI.pend===w.to ? w.from : w.from;
@@ -2223,7 +2231,8 @@ document.getElementById('home').onclick = function(){ view('front'); };
     else de.requestFullscreen({navigationUI:'hide'}).catch(function(){});
   };
   document.addEventListener('fullscreenchange', function(){
-    b.textContent = document.fullscreenElement ? '退出全屏' : '全屏'; setTimeout(refit, 150);
+    b.textContent = document.fullscreenElement ? '退出全屏' : '全屏';
+    setTimeout(function(){ resize(); stretchBoard(); view('front', true); }, 150);   /* 11-27 切全屏后一律回全景（原来挪过镜头就不重摆，画面偏到一边） */
   });
 })();
 
@@ -2352,6 +2361,7 @@ let CONTENT = null;
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
   function add(a, b, c, d){ x0 = Math.min(x0, a); y0 = Math.min(y0, b); x1 = Math.max(x1, c); y1 = Math.max(y1, d); }
   DEVICES.forEach(function(d){ add(d.x, d.y, d.x+d.W, d.y+d.H); });
+  DUCTS.H.forEach(function(h){ add(h.x0-13, h.y-13, h.x1+13, h.y+13); }); DUCTS.V.forEach(function(v){ add(v.x-13, v.y0-13, v.x+13, v.y1+13); });   /* 线槽也算进取景：左右留白才对称 */
   if(MOT.y > 0) add(MOT.x-60, MOT.y-60, MOT.x+100, MOT.y+56);
   const bb = new THREE.Box3(), tmp = new THREE.Box3(); EXG.updateMatrixWorld(true);
   EXG.traverse(function(o){ if(!o.isMesh || !o.visible || (o.material && o.material.opacity===0)) return;

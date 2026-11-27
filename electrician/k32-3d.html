@@ -130,6 +130,9 @@ const DEVICES = [
 ];
 const TPOS = {};
 DEVICES.forEach(function(d){ const s=d.s||1; d.W=d.w*s; d.H=d.h*s; d.terminals.forEach(function(t){ TPOS[t.id]={x:d.x+t.x*s,y:d.y+t.y*s,device:d.id,label:t.label}; }); });   /* s：元件放大倍数；W/H 放大后的外框 */
+/* 11-27 他说：接地排上哪个孔都行。跟标准接法比对时，接地排各孔当同一个点 */
+function tk(id){ return /^pe-\d+$/.test(id) ? 'pe' : id; }
+function wkey(a, b){ return [tk(a), tk(b)].sort().join('|'); }
 /* 新规（11-27）：主电路也自己接 —— 主触点、出线端子也登记成能点的端子。PHASE：这个端子本来属于哪一相（自己接线时按它给线上色） */
 const MTERM = {qf:['qf-1','qf-3','qf-5','qf-2','qf-4','qf-6'], fu1:['fu1-i1','fu1-i2','fu1-i3','fu1-o1','fu1-o2','fu1-o3'], fu4:['fu4-in'], fu5:['fu5-in'],
   km1:['km1-1','km1-3','km1-5','km1-2','km1-4','km1-6'], km2:['km2-1','km2-3','km2-5','km2-2','km2-4','km2-6'], fr:['fr-1','fr-3','fr-5','fr-2','fr-4','fr-6'], tbm:['x-U','x-V','x-W','x-L1','x-L2','x-L3']};
@@ -401,7 +404,7 @@ function gradeWires(ws){
   const T = makeTester(ws), res = {checks:[], bad:'', miss:[], extra:[]};
   CHECKS.forEach(function(c){ T.reset(); const r = c.f(T); res.checks.push({n:c.n, ok:r, h:c.h}); });
   res.bad = T.bad;
-  function key(w){ return [w.from, w.to].sort().join('|'); }
+  function key(w){ return wkey(w.from, w.to); }
   const std={}, got={};
   WIRES.forEach(function(w){ std[key(w)]=w; }); ws.forEach(function(w){ got[key(w)]=w; });
   for(const k in std) if(!got[k]) res.miss.push(std[k]);
@@ -1239,12 +1242,12 @@ function termTap(id){
   if(!UI.pend){ UI.pend=id; UI.msg='起点：<b>'+tname(id)+'</b>。再点这根线的另一头'; click(2600, 0.02, 0.2); return; }
   if(UI.pend===id){ UI.pend=null; UI.msg=''; return; }
   const a=UI.pend; UI.pend=null;
-  const w = WIRES.filter(function(w){ return (w.from===a && w.to===id) || (w.from===id && w.to===a); })[0];
+  const w = WIRES.filter(function(w){ return wkey(w.from, w.to)===wkey(a, id); })[0];
   if(w && DONE[w.id]){ UI.msg='这根已经接过了'; return; }
   if(w){
     DONE[w.id]=1; DORD.push(w.id); applyDone(); click(1500, 0.05, 0.5); buzz(18);
     UI.msg = doneN()===NW ? '🎉 <b>'+NW+' 根全部接对</b>，接错 '+UI.err+' 次。点断路器 QF 合闸试车'
-      : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）：'+tname(w.from)+' → '+tname(w.to);
+      : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）：'+tname(w.from)+' → '+tname(w.to)+([w.from, w.to].indexOf(a)<0 || [w.from, w.to].indexOf(id)<0 ? '（接地排哪个孔都行，图上画在标准那个孔）' : '');
     return;
   }
   UI.err++; buzz([40,40,40]); click(400, 0.12, 0.6);
@@ -1453,7 +1456,7 @@ function revEnter(){
   ws = ws.filter(function(p){ return TPOS[p[0]] && TPOS[p[1]]; });
   if(!ws.length){ note('还没有考场盘内接线的记录：先进「考场」接一遍，再来对照'); return; }
   if(UI.wire) setMode(false);
-  const key = function(a, b){ return [a, b].sort().join('|'); }, std = {};
+  const key = wkey, std = {};
   WIRES.forEach(function(w){ std[key(w.from, w.to)] = w.id; });
   const has = {}, extras = [];
   ws.forEach(function(p){ const k = key(p[0], p[1]); if(std[k]) has[std[k]] = 1; else extras.push({from:p[0], to:p[1]}); });
@@ -1489,7 +1492,7 @@ function exHas(){ EX.has = {}; EX.wires.forEach(function(w){ if(w.std) EX.has[w.
 /* 考场里接的每一根线都现造管子：颜色、粗细按当时选的线（标准那 27 根的现成管子考场里不用）*/
 function exAddWire(a, b, wk){
   wk = WK[wk] ? wk : EX.wk || 'K';
-  const std = WIRES.filter(function(w){ return (w.from===a && w.to===b) || (w.from===b && w.to===a); })[0];
+  const std = WIRES.filter(function(w){ return wkey(w.from, w.to)===wkey(a, b); })[0];
   const w = {id:EX.nextId++, from:a, to:b, wk:wk, std:std ? std.id : 0};
   EX.wires.push(w); exHas(); (EX.wireLog = EX.wireLog || []).push({from:a, to:b, wk:wk});
   const K = WK[wk], pts = wirePts(a, b, w.id, TZ[a]+4, TZ[b]+4);
@@ -2039,8 +2042,8 @@ function exNext(){
     if(p.bad) return hl(null, '这个型号不对：'+p.bad+'。换桌上对的那个');
     const sl = p.fits.filter(function(k){ return !EX.mount[k]; })[0]; return hl({pos:SLOTS[sl].pl.position.clone()}, '把 <b>'+p.name+'</b> 装到橙圈那个位置'); }
   if(EX.phase==='wire'){
-    const has = {}; EX.wires.forEach(function(w){ has[[w.from, w.to].sort().join('|')] = 1; });
-    const w = WIRES.filter(function(x){ return !has[[x.from, x.to].sort().join('|')]; })[0];
+    const has = {}; EX.wires.forEach(function(w){ has[wkey(w.from, w.to)] = 1; });
+    const w = WIRES.filter(function(x){ return !has[wkey(x.from, x.to)]; })[0];
     if(w){ const want = wkWant(w.from, w.to)[0];
       if(EX.wk!==want) return hl(null, '先在上面选 <b>'+WK[want][0]+'</b> 的线');
       const nxtT = UI.pend===w.from ? w.to : UI.pend===w.to ? w.from : w.from;
@@ -2270,7 +2273,8 @@ document.getElementById('home').onclick = function(){ view('front'); };
     else de.requestFullscreen({navigationUI:'hide'}).catch(function(){});
   };
   document.addEventListener('fullscreenchange', function(){
-    b.textContent = document.fullscreenElement ? '退出全屏' : '全屏'; setTimeout(refit, 150);
+    b.textContent = document.fullscreenElement ? '退出全屏' : '全屏';
+    setTimeout(function(){ resize(); stretchBoard(); view('front', true); }, 150);   /* 11-27 切全屏后一律回全景（原来挪过镜头就不重摆，画面偏到一边） */
   });
 })();
 
@@ -2393,6 +2397,7 @@ let CONTENT = null;
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
   function add(a, b, c, d){ x0 = Math.min(x0, a); y0 = Math.min(y0, b); x1 = Math.max(x1, c); y1 = Math.max(y1, d); }
   DEVICES.forEach(function(d){ add(d.x, d.y, d.x+d.W, d.y+d.H); });
+  DUCTS.H.forEach(function(h){ add(h.x0-13, h.y-13, h.x1+13, h.y+13); }); DUCTS.V.forEach(function(v){ add(v.x-13, v.y0-13, v.x+13, v.y1+13); });   /* 线槽也算进取景：左右留白才对称 */
   if(MOT.y > 0) add(MOT.x-60, MOT.y-60, MOT.x+100, MOT.y+56);
   const bb = new THREE.Box3(), tmp = new THREE.Box3(); EXG.updateMatrixWorld(true);
   EXG.traverse(function(o){ if(!o.isMesh || !o.visible || (o.material && o.material.opacity===0)) return;
