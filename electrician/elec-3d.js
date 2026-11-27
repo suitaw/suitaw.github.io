@@ -2091,3 +2091,109 @@ E3D.twoWay = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 家用配电箱 + 漏电保护（8.2）══════════════
+   导轨上：电能表 → 总开关 QF → 漏电保护器 RCD（带 T 试验钮）→ 照明、插座两路分支；N 排（蓝）、PE 排（黄绿）分开。
+   箱外一台洗衣机（金属外壳接 PE）。自带状态：leak 外壳漏电 / pe PE 线接好 / touch 人摸外壳 / tripped。
+   RCD 看的是「去的电流和回的电流差了多少」：漏到 PE 或者漏到人身上都会差 → 超过 30 mA 就跳。
+   opt.onState({tripped, live 外壳带电?, path 'pe'|'person'|null, msg}) */
+(function(){
+'use strict';
+const PARTS = {
+  meter: ['电能表', '计量用了多少度电。', '电能表'],
+  qf:    ['总开关（断路器）', '管短路和过载。', '总开关'],
+  rcd:   ['漏电保护器 RCD', '里面一个零序互感器同时套着相线和零线：<b>去多少回多少</b>就平衡；有电流漏到 PE 或人身上，回来的少了 → 差值超过 <b>30 mA</b>，0.1 秒内跳闸。<b>点它合闸</b>（跳了以后）。', '漏电保护'],
+  test:  ['试验按钮 T', '按一下人为造一个漏电，<b>应该立刻跳</b>。每月按一次 —— 不跳就是坏了。<b>点它试一下</b>。', '试验按钮 T'],
+  br:    ['分支断路器', '照明一路、插座一路，各管各的。', '分支开关'],
+  nbar:  ['N 排（零线端子板，蓝）', '各路零线汇到这里。<b>必须和 PE 排分开</b>（书上唯一一条硬要求）。', 'N 排'],
+  pebar: ['PE 排（地线端子板，黄绿）', '各路地线、设备外壳汇到这里，再接到接地极。', 'PE 排'],
+  wm:    ['洗衣机（金属外壳）', '外壳通过 PE 线接地。<b>点它让人去摸 / 松手</b>。', '洗衣机'],
+  pe:    ['PE 线（黄绿）', '外壳漏电时，电流顺着它流进大地 —— 不从人身上走。', 'PE 线'],
+  person:['人', '', '人'],
+  housing:['箱体', '']
+};
+E3D.distBox = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[30, -10, 20], view:{th:0, ph:0.55, r:380},
+  presets:{front:[1, 0, 0, Math.PI/2, 360], side:[0, 1, 0, -Math.PI/2, 340]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag;
+  /* 箱体（剖开半透明） */
+  [[110, 140, 2, 0, 0, 1], [110, 2, 30, 0, 70, 15], [110, 2, 30, 0, -70, 15], [2, 140, 30, -55, 0, 15], [2, 140, 30, 55, 0, 15]].forEach(function(b){ tag(H.box(b[0], b[1], b[2], b[3], b[4], b[5], H.M(0xdfe2e6, {roughness:0.6, transparent:true}), shell), 'housing'); });
+  /* 电能表 */
+  tag(H.box(40, 34, 14, 0, 46, 8, H.M(0xeceef0, {roughness:0.5}), root), 'meter'); tag(H.box(26, 8, 1, 0, 52, 15.5, H.M(0x2d3136), root), 'meter');
+  H.plate('kWh', 10, 4, 0, 40, 15.2, '#2a2e33', null, root);
+  /* 导轨 + 模块：每个模块宽 18（单极）/ 36（两极） */
+  tag(H.box(100, 8, 2, 0, 6, 3, M.zinc, root), 'housing');
+  const mods = [];
+  function mod(x, w, key, col, label){ tag(H.box(w, 44, 26, x, 6, 15, H.M(col, {roughness:0.5}), root), key);
+    const lev = new T.Group(); lev.position.set(x, 6, 28); root.add(lev); tag(H.box(Math.min(w-6, 22), 5, 8, 0, 0, 4, M.blk, lev), key);
+    H.plate(label, w-4, 4.4, x, -12, 28.2, '#2a2e33', null, root); mods.push(lev); return lev; }
+  const levQF = mod(-34, 34, 'qf', 0xf2f3f4, '总开关'), levRCD = mod(4, 36, 'rcd', 0xf2f3f4, '漏电保护'), levB1 = mod(33, 18, 'br', 0xf2f3f4, '照明'), levB2 = mod(46, 8, 'br', 0xf2f3f4, '');
+  const tbtn = tag(H.box(6, 5, 3, 16, 20, 29, H.M(0xe0a92e), root), 'test'); H.plate('T', 4, 4, 16, 26, 28.3, '#2a2e33', null, root);
+  /* N 排、PE 排 */
+  tag(H.box(44, 6, 5, -26, -46, 4, H.M(0x1c6dd0, {roughness:0.4}), root), 'nbar'); H.plate('N', 6, 5, -52, -46, 3, '#1c6dd0', null, root);
+  tag(H.box(44, 6, 5, 26, -46, 4, H.M(0x8fbf2f, {roughness:0.4}), root), 'pebar'); H.plate('PE', 8, 5, 52, -46, 3, '#8fbf2f', null, root);
+  for(let i=0;i<5;i++){ tag(H.cylZ(1.6, 2, -42 + i*8, -46, 7.5, M.zinc, root), 'nbar'); tag(H.cylZ(1.6, 2, 10 + i*8, -46, 7.5, M.zinc, root), 'pebar'); }
+  /* 洗衣机（箱外右边） */
+  const WX = 120, WY = -20;
+  const wmM = H.M(0xf3f4f6, {roughness:0.35, emissive:0x000000});
+  tag(H.box(46, 46, 60, WX, WY, 30, wmM, root), 'wm');
+  const door = tag(H.cylZ(14, 2, 0, 0, 0, H.M(0x9fb3c8, {roughness:0.2}), root), 'wm'); door.rotation.x = Math.PI/2; door.position.set(WX, WY-23.5, 34);   /* 门朝前 */
+  /* 导线：L（红）从 RCD 下来经插座回路到洗衣机；N（蓝）回 N 排；PE（黄绿）外壳 → PE 排 */
+  const red = H.M(0xd42f2f, {roughness:0.5}), blue = H.M(0x1c6dd0, {roughness:0.5}), yg = H.M(0x8fbf2f, {roughness:0.5});
+  H.wire([[46, -16, 18], [46, -30, 18], [70, -30, 20], [WX-23, WY+10, 40]], 0.9, red, root);
+  H.wire([[-10, -46, 8], [-10, -58, 12], [80, -58, 16], [WX-23, WY+4, 36]], 0.9, blue, root);
+  const peWire = tag(H.wire([[26, -46, 8], [26, -62, 10], [90, -62, 12], [WX-23, WY-2, 30]], 1.0, yg, root), 'pe');
+  const peCut = new T.Mesh(new T.SphereGeometry(3, 10, 8), H.M(0x111111)); peCut.position.set(90, -62, 12); root.add(peCut);
+  H.wire([[26, -46, 6], [26, -72, 0], [26, -90, -10]], 1.0, yg, root); H.plate('接地极', 16, 5, 26, -96, -10, '#e6edf5', null, root);
+  /* 人：一根肤色柱子，手伸到洗衣机外壳 */
+  const skin = H.M(0xe0b18e, {roughness:0.7});
+  const person = new T.Group(); person.position.set(WX + 50, WY, 0); root.add(person);
+  const pBody = tag(new T.Mesh(new T.CylinderGeometry(7, 8, 70, 16).rotateX(Math.PI/2), skin), 'person'); pBody.position.z = 35; person.add(pBody);
+  const armG = new T.Group(); armG.position.set(0, 0, 55); person.add(armG);
+  const ag = new T.CapsuleGeometry(3, 22, 6, 10); ag.rotateZ(Math.PI/2); const arm = tag(new T.Mesh(ag, skin), 'person'); arm.position.x = -14; armG.add(arm);
+  /* 电流点：负载电流（相线去、零线回）；漏电电流（外壳 → PE 或 → 人 → 地） */
+  const loadP = K.dots(14, K.curM, H.poly([[-34, 30, 20], [4, 30, 20], [46, -16, 18], [46, -30, 18], [70, -30, 20], [WX-23, WY+10, 40], [WX-23, WY+4, 36], [80, -58, 16], [-10, -58, 12], [-10, -46, 8]]));
+  const peP = K.dots(8, K.curM, H.poly([[WX-23, WY-2, 30], [90, -62, 12], [26, -62, 10], [26, -46, 8], [26, -72, 0], [26, -90, -10]]));
+  const manP = K.dots(8, K.curM, H.poly([[WX+23, WY, 45], [WX+36, WY, 55], [WX+50, WY, 55], [WX+50, WY, 0]]));
+  const st = {leak:false, pe:true, touch:false, tripped:false, t:0, testT:0};
+  function evaluate(){
+    let msg, path = null, live = false;
+    if(st.tripped) msg = '<b>漏电保护器跳了</b>，回路断电。查出漏电原因再合闸（点漏电保护器）。';
+    else if(!st.leak) msg = st.touch ? '外壳没漏电，摸上去没事。' : '正常：去多少回多少，漏电保护器不动作。点「外壳漏电」造个故障。';
+    else if(st.pe){ path = 'pe'; msg = '外壳漏电了：电流顺着 <b>PE 线</b>流进大地，回来的电流少了 → 漏电保护器<b>立刻跳闸</b>。人没碰到也照样跳 —— PE 线 + 漏保两道保险。'; }
+    else if(st.touch){ path = 'person'; msg = '<b>PE 线断了，人摸到带电的外壳</b>：电流从人身上流进大地，超过 30 mA → 漏电保护器 0.1 秒内跳闸。人会被电一下，但保住了命。'; }
+    else { live = true; msg = '<b style="color:var(--err)">PE 线断了：外壳带着电，漏电保护器却没跳</b> —— 没地方漏，电流差为零。这是最危险的状态：等着下一个人来摸。'; }
+    return {msg:msg, path:path, live:live};
+  }
+  function emit(){ const e = evaluate(); if(opt.onState) opt.onState({tripped:st.tripped, live:e.live, path:e.path, msg:e.msg}, st); K.S.dirty = true; return e; }
+  const api = {
+    st:st,
+    set:function(o){ Object.assign(st, o); const e = evaluate(); if(!st.tripped && e.path){ st.t = 0.35; } emit(); },
+    reset:function(){ if(!st.tripped) return; st.tripped = false;
+      if(evaluate().path){ st.tripped = true; if(opt.onState) opt.onState({tripped:true, live:false, path:null, msg:'<b>合不上，又跳了</b>：漏电故障还在。先拔掉洗衣机插头、查出漏电原因。'}, st); K.S.dirty = true; return; }
+      emit(); },
+    test:function(){ if(st.tripped) return; st.testT = 0.25; }
+  };
+  emit();
+  return {
+    labels:[['meter', 0, 46, 16], ['qf', -34, 6, 30], ['rcd', 4, 6, 30], ['test', 16, 20, 31], ['br', 33, 6, 30], ['nbar', -26, -46, 7], ['pebar', 26, -46, 7], ['wm', WX, WY, 62], ['pe', 90, -62, 13], ['person', WX+50, WY, 72]],
+    press:function(k){ if(k === 'test'){ api.test(); return true; } if(k === 'rcd'){ api.reset(); return true; } if(k === 'wm' || k === 'person'){ api.set({touch:!st.touch}); return true; } return false; },
+    api:api,
+    tick:function(dt, k){
+      if(st.t > 0){ st.t -= dt/k; if(st.t <= 0){ st.tripped = true; emit(); } }            /* 漏电 → 0.1 秒级跳闸（画面放慢到 0.35 秒） */
+      if(st.testT > 0){ st.testT -= dt/k; tbtn.position.z = 27.5; if(st.testT <= 0){ tbtn.position.z = 29; st.tripped = true; if(opt.onState) opt.onState({tripped:true, live:false, path:null, msg:'按了试验按钮：人为造了一个漏电 → <b>立刻跳闸</b>，说明漏保是好的。点漏电保护器合回去。'}, st); K.S.dirty = true; } }
+      levRCD.rotation.x = st.tripped ? -0.6 : 0.6; levQF.rotation.x = 0.6; levB1.rotation.x = 0.6; levB2.rotation.x = 0.6;
+      peWire.visible = st.pe; peCut.visible = !st.pe;
+      armG.rotation.z = st.touch ? 0 : 0.9;
+      const e = evaluate();
+      wmM.emissive.setHex(0xff0000); wmM.emissiveIntensity = e.live && !st.tripped ? 0.25 + 0.2*Math.sin(performance.now()/160) : 0;
+      const powered = !st.tripped;
+      K.flow(loadP, powered, 0.1/k, dt);
+      K.flow(peP, powered && e.path === 'pe', 0.15/k, dt);
+      K.flow(manP, powered && e.path === 'person', 0.15/k, dt);
+      return true;
+    }
+  };
+  }}, opt); };
+})();

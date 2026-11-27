@@ -114,6 +114,24 @@ ELEC.reg({
     <b>点画布上的接法看会怎样。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">家里的配电箱：PE 线和漏电保护器，两道保险</div>
+    <div class="k3d-v" id="db3d"></div>
+    <div class="ctrl">
+      <div class="btns"><button class="btn sm" id="dbLeak">洗衣机外壳漏电</button><button class="btn sm on" id="dbPe">PE 线：接好</button><button class="btn sm" id="dbTouch">人去摸外壳</button></div>
+      <div class="btns"><button class="btn sm" id="dbTest">按试验按钮 T</button><button class="btn sm" id="dbReset">合上漏电保护器</button></div>
+    </div>
+    <div class="ctrl" id="db3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="db3info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验</div>
+    ① 点「外壳漏电」：电流顺着黄绿的 <b>PE 线</b>进了大地，漏电保护器立刻跳 —— 没人碰也跳。<br>
+    ② 合回去之前先点「PE 线」把它弄断，再合：<b>不跳了，洗衣机外壳一闪一闪发红</b> —— 带着电，等人来摸。<br>
+    ③ 点「人去摸外壳」：电从人身上走，超过 30 mA，漏保 0.1 秒内跳闸，保住了命。<br>
+    ④ 什么故障都没有时按「试验按钮 T」：应该立刻跳。<b>每月按一次</b>，不跳就换。
+    <span class="sub">时间放慢了：真的漏保 0.1 秒以内动作。点任意零件看名字。</span>
+  </div>
+  <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
       <div class="btns" id="s2k">
@@ -798,6 +816,23 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 配电箱 + 漏电保护 */
+let DB3 = null;
+function dbState(e, st){
+  $('dbLeak').classList.toggle('on', st.leak); $('dbPe').textContent = st.pe ? 'PE 线：接好' : 'PE 线：断了'; $('dbPe').classList.toggle('on', st.pe);
+  $('dbTouch').classList.toggle('on', st.touch); $('dbTouch').textContent = st.touch ? '人松手' : '人去摸外壳';
+  $('db3info').innerHTML = (e.tripped ? '<div style="font-size:.78rem;color:var(--tx3)">漏电保护器：<b>跳闸了</b></div>' : '') + e.msg;
+}
+if(window.E3D){
+  E3D.distBox($('db3d'), { onState:dbState, onInfo:function(p, k){ if(p && !/^(test|rcd|wm|person)$/.test(k)) $('db3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ DB3 = a; });
+  $('db3c').innerHTML = E3D.controlsHTML(null, [['oblique','正上方'], ['front','正面'], ['side','侧面']]);
+  E3D.bindControls($('db3c'), function(){ return DB3; });
+  $('dbLeak').addEventListener('click', function(){ if(DB3) DB3.set({leak:!DB3.st.leak}); });
+  $('dbPe').addEventListener('click', function(){ if(DB3) DB3.set({pe:!DB3.st.pe}); });
+  $('dbTouch').addEventListener('click', function(){ if(DB3) DB3.set({touch:!DB3.st.touch}); });
+  $('dbTest').addEventListener('click', function(){ if(DB3) DB3.test(); });
+  $('dbReset').addEventListener('click', function(){ if(DB3) DB3.reset(); });
+}
 ElecNav.init({ch:8, sec:'8.2'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
