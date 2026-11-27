@@ -21,7 +21,7 @@ ELEC.reg({
     <b>拖两根滑杆改匝数，看下面三对柱子怎么变。</b>
   </div>
   <div class="card">
-    <canvas id="cv0"></canvas>
+    <div class="k3d-v" id="tf3d"></div>
     <div class="ctrl">
       <div class="rowlab">一次绕组匝数 N<sub>1</sub>　<b id="s1n1">1000 匝</b></div>
       <input type="range" id="s1a" min="200" max="2000" step="50" value="1000">
@@ -38,8 +38,14 @@ ELEC.reg({
         <div class="num"><div class="k">二次<br>电流 I₂</div><div class="v" id="s1i">0.22 A</div></div>
       </div>
     </div>
+    <div class="ctrl" id="tf3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="tf3info">拖匝数滑杆：线圈圈数跟着变，二次电压和灯的亮度跟着变。蓝点是铁芯里的交变磁通，一会儿正一会儿反。</div>
   </div>
   <div class="note" id="n0"></div>
+  <div class="card">
+    <canvas id="cv0"></canvas>
+  </div>
+
 
   <div class="note" style="margin-top:10px">
     <div class="st">三个比例，一次记住</div>
@@ -449,6 +455,13 @@ function note1(){
         '但仍然有铁损（空载损耗），所以长期不用的变压器该断开。点「接 100 Ω」看带载之后有什么不同。</span>');
 }
 $('s1a').addEventListener('input', function(){ S1.n1 = +this.value; note1(); });
+/* 3D 变压器 */
+let TF3 = null;
+if(window.E3D){
+  E3D.transformer($('tf3d'), { state:function(){ return {n1:S1.n1, n2:S1.n2}; }, onInfo:function(p){ if(p) $('tf3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ TF3 = a; });
+  $('tf3c').innerHTML = E3D.controlsHTML(null, [['oblique','斜着看'], ['front','正面'], ['side','侧面']]);
+  E3D.bindControls($('tf3c'), function(){ return TF3; });
+}
 $('s1b').addEventListener('input', function(){ S1.n2 = +this.value; note1(); });
 document.getElementById('s1l').addEventListener('click', function(e){
   const b = e.target.closest('.btn'); if(!b) return;

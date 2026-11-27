@@ -2567,3 +2567,61 @@ E3D.ring = function(el, opt){ opt = opt||{}; const BADM = opt.mode === 'bad'; re
   return { labels:[['core', 3, 0, 1], ['ins', -10, 0, 1.6]], api:api, tick:function(){ return false; } };
   }}, opt); };
 })();
+
+/* ══════════════ 单相变压器（2.6 第 1 屏）：口字形铁芯 + 一次绕组（左柱）+ 二次绕组（右柱）══════════════
+   绕组画的圈数跟匝数成比例（示意）；铁芯里的蓝点＝交变磁通，按 50 Hz 放慢来回换向；二次接一盏灯，亮度跟 U₂。
+   状态来自 c2-6.js 的 S1 {n1, n2, rl}；U₁ = 220 V、U₂ = 220·n2/n1（同页面）。 */
+(function(){
+'use strict';
+const PARTS = {
+  core: ['铁芯（硅钢片叠成）', '两组线圈套在同一个闭合铁芯上，磁通在铁芯里转圈 —— 线圈之间<b>没有导线相连</b>，电能靠磁传过去。', '铁芯'],
+  pri:  ['一次绕组 N₁（接电源）', '接 220 V。匝数越多，每匝分到的电压越少。', '一次绕组'],
+  sec:  ['二次绕组 N₂（接负载）', '<b>U₂ = U₁ × N₂ / N₁</b>：匝数是一次的几分之一，电压就是几分之一。', '二次绕组'],
+  flux: ['交变磁通（示意）', '一次通的是交流，磁通也一会儿顺时针一会儿逆时针 —— 正因为它在变，二次才能感应出电压。<b>直流电变压器不能用</b>。', '磁通'],
+  lamp: ['负载（灯）', '', '负载']
+};
+E3D.transformer = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 60], view:{th:0.3, ph:1.3, r:380},
+  presets:{front:[1, 0, 0, 0.0001, 240], side:[0, 1, 0, -Math.PI/2, 240]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  /* 口字形铁芯：外 84×84，柱宽 14，厚 22（y 方向），叠片纹 */
+  [[84, 14, 0, 7], [84, 14, 0, 77]].forEach(function(b){ for(let i=0;i<6;i++) tag(H.box(b[0], 3.4, b[1], b[2], -8.75 + i*3.5, b[3], i%2 ? M.steel : M.steel2, root), 'core'); });
+  [-35, 35].forEach(function(x){ for(let i=0;i<6;i++) tag(H.box(14, 3.4, 56, x, -8.75 + i*3.5, 42, i%2 ? M.steel : M.steel2, root), 'core'); });
+  const pri = new T.Group(), sec = new T.Group(); root.add(pri); root.add(sec);
+  function coil(g, x, n, key){ while(g.children.length){ const c = g.children[0]; g.remove(c); c.geometry.dispose(); }
+    const turns = Math.max(3, Math.min(22, Math.round(n))), h = 46, step = h/turns;
+    for(let i=0;i<turns;i++){ const sh = new T.Shape(); sh.moveTo(-11, -14); sh.lineTo(11, -14); sh.lineTo(11, 14); sh.lineTo(-11, 14); sh.lineTo(-11, -14);
+      const hole = new T.Path(); hole.moveTo(-8, -12); hole.lineTo(8, -12); hole.lineTo(8, 12); hole.lineTo(-8, 12); hole.lineTo(-8, -12); sh.holes.push(hole);
+      const ge = new T.ExtrudeGeometry(sh, {depth:Math.min(step*0.8, 3), bevelEnabled:false}); const m = tag(new T.Mesh(ge, M.winding), key); m.position.set(x, 0, 19 + i*step); g.add(m); } }
+  /* 引线 + 电源 + 灯 */
+  H.wire([[-46, -12, 64], [-80, -12, 70], [-80, -12, 90]], 0.9, H.M(0xd42f2f), root); H.wire([[-46, 12, 22], [-80, 12, 18], [-80, 12, 90]], 0.9, H.M(0x1c6dd0), root);
+  H.plate('220 V ~', 22, 6, -80, 0, 96, '#e6edf5', null, root);
+  H.wire([[46, -12, 64], [80, -12, 70], [80, -12, 96]], 0.9, M.blk, root); H.wire([[46, 12, 22], [80, 12, 18], [80, 12, 96]], 0.9, M.blk, root);
+  const glass = H.M(0xfff4d6, {roughness:0.1, transparent:true, opacity:0.7, emissive:0x000000});
+  const bulb = tag(new T.Mesh(new T.SphereGeometry(9, 18, 14), glass), 'lamp'); bulb.position.set(80, 0, 106); root.add(bulb);
+  const lt = new T.PointLight(0xffd27a, 0, 150); lt.position.set(80, -20, 106); root.add(lt);
+  /* 二次电压字牌 */
+  const c = document.createElement('canvas'); c.width = 256; c.height = 80; const tex = new T.CanvasTexture(c); tex.colorSpace = T.SRGBColorSpace;
+  const u2p = new T.Mesh(new T.PlaneGeometry(30, 9.4).rotateX(Math.PI/2), new T.MeshBasicMaterial({map:tex, transparent:true, toneMapped:false})); u2p.position.set(60, -12, 96); root.add(u2p);
+  /* 磁通点：沿铁芯中线绕口字 */
+  const flux = K.dots(16, K.sigM, H.poly([[-35, -12, 7], [35, -12, 7], [35, -12, 77], [-35, -12, 77], [-35, -12, 7]]));   /* 贴在铁芯正面，别被铁芯挡住 */
+  flux.a.forEach(function(m){ tag(m, 'flux'); });
+  let last = '', t = 0;
+  return {
+    labels:[['core', 0, -11, 80], ['pri', -35, -14, 46, null], ['sec', 35, -14, 46, null], ['flux', 0, -12, 7], ['lamp', 80, 0, 116]],
+    tick:function(dt, k){
+      const s = opt.state ? opt.state() : {n1:1000, n2:100};
+      const key = s.n1 + '/' + s.n2; const U2 = 220*s.n2/s.n1;
+      if(key !== last){ last = key; coil(pri, -35, s.n1/100, 'pri'); coil(sec, 35, s.n2/50, 'sec');
+        const g = c.getContext('2d'); g.clearRect(0, 0, 256, 80); g.fillStyle = 'rgba(16,24,32,.85)'; g.fillRect(0, 0, 256, 80);
+        g.fillStyle = '#7cc4ff'; g.font = '700 46px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('U₂ ' + U2.toFixed(1) + ' V', 128, 42); tex.needsUpdate = true; }
+      const lit = Math.min(1, U2/36);
+      glass.emissive.setHex(0xffc65a); glass.emissiveIntensity = lit*2.4; lt.intensity = lit*2500;
+      t += dt/k; flux.ph = 0.5 + 0.5*Math.sin(t*1.6);                     /* 交流：磁通来回换向（画面放慢） */
+      flux.a.forEach(function(m, i){ m.visible = true; flux.path((flux.ph*0.25 + i/flux.n) % 1, m.position); });
+      return true;
+    }
+  };
+  }}, opt); };
+})();
