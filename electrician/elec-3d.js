@@ -1638,3 +1638,99 @@ E3D.clamp = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 验电笔（3.5）：一只三孔插座 + 一支剖开的氖管验电笔 + 一只手 ══════════════
+   回路：插座孔里的铜片 → 笔尖 → 限流电阻（按 1 MΩ）→ 氖管 → 弹簧 → 笔尾金属帽 → 手指 → 人体 → 大地。
+   只有「火线孔 + 手指抵住笔尾 + 脚接地」才闭合 → 氖管亮。口径同 c3-5.js：220 V ÷ 1 MΩ = 0.22 mA。
+   自带状态 {hole 'L'|'N'|'PE', grip 0 抵住笔尾 / 1 没抵住 / 2 站在绝缘垫上}；opt.onRead({lit, msg}) */
+(function(){
+'use strict';
+const PARTS = {
+  tip:    ['笔尖（金属）', '插进插座孔，碰到里面的铜片。', '笔尖'],
+  res:    ['限流电阻（约 1 MΩ）', '<b>保命的就是它</b>：把流过人体的电流限制在 0.2 mA 左右，人感觉不到。没有它的话 220 V ÷ 人体 2 kΩ ＝ 110 mA，是致命的量。', '限流电阻'],
+  neon:   ['氖管', '两个电极之间充着氖气，电压到 60 V 左右就起辉发红光 —— 所以低压验电笔量程是 60～500 V。', '氖管'],
+  spring: ['弹簧', '把氖管压紧在电阻和笔尾之间。', '弹簧'],
+  cap:    ['笔尾金属帽', '<b>手指必须抵住它</b>，电流才能从你身上走到大地，回路才闭合。', '笔尾'],
+  body:   ['透明笔身（绝缘）', '', '笔身'],
+  hand:   ['手 / 人体', '这时候你就是回路里的一段导线：电流从手指进、经身体、从脚流进大地。', '人体'],
+  mat:    ['绝缘垫', '站在绝缘垫上，回路在脚下断了 —— 笔就不亮。<b>可那根线明明带电</b>：不亮≠没电。', '绝缘垫'],
+  socket: ['三孔插座', '面对插座：<b>左零右火上接地</b>（左 N、右 L、上 PE）。', '插座'],
+  hole:   ['插孔', '<b>点哪个孔，笔就插到哪个孔</b>。', '插孔']
+};
+const HOLES = {L:[14, -8], N:[-14, -8], PE:[0, 16]};
+E3D.testPen = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[20, 0, 40], view:{th:0.55, ph:1.2, r:260},
+  presets:{front:[1, 0, 0, Math.PI/2, 240], side:[0, 1, 0, -Math.PI/2, 260]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag;
+  /* 地面 + 插座 */
+  tag(H.box(220, 120, 2, 40, 0, -31, H.M(0x5d6670, {roughness:0.9}), root), 'hand');
+  tag(H.box(80, 80, 8, 0, 0, 4, H.M(0xf2f2ee, {roughness:0.4}), root), 'socket');
+  const holeM = {};
+  Object.keys(HOLES).forEach(function(k){ const p = HOLES[k];
+    const sl = tag(H.box(k === 'PE' ? 3 : 9, k === 'PE' ? 9 : 3, 1, p[0], p[1], 8.2, M.blk, root), 'hole'); sl.userData.hole = k;
+    if(k !== 'PE') sl.rotation.z = k === 'L' ? 0.5 : -0.5;
+    tag(H.box(4, 4, 6, p[0], p[1], 4.5, M.brass, root), 'hole').userData.hole = k;
+    H.plate(k, 7, 5, p[0], p[1] + (k === 'PE' ? 9 : -9), 8.3, '#3a3f45', null, root); });
+  /* 笔（整体移动到所选孔） */
+  const pen = new T.Group(); root.add(pen);
+  const cylZ = function(r, z0, z1, mat, key, par){ const g = new T.CylinderGeometry(r, r, z1-z0, 20); g.rotateX(Math.PI/2); const m = tag(new T.Mesh(g, mat), key); m.position.z = (z0+z1)/2; (par||pen).add(m); return m; };
+  cylZ(0.9, 4, 24, M.zinc, 'tip');
+  const glassBody = H.M(0xcfe8f5, {roughness:0.05, transparent:true, opacity:0.25});
+  const bodyM = new T.Mesh(new T.CylinderGeometry(4.5, 4.5, 70, 24, 1, true).rotateX(Math.PI/2), glassBody); bodyM.position.z = 56; tag(bodyM, 'body'); pen.add(bodyM);
+  cylZ(2.2, 26, 42, H.M(0x8b5a2b, {roughness:0.5}), 'res');
+  [29, 32, 35].forEach(function(z, i){ cylZ(2.35, z, z+1.2, H.M([0x8b4513, 0x111111, 0x2e7d32][i]), 'res'); });
+  const neonM = H.M(0xd8c9c0, {roughness:0.1, transparent:true, opacity:0.6, emissive:0x000000});
+  cylZ(2.6, 46, 66, neonM, 'neon'); cylZ(0.8, 47, 53, M.zinc, 'neon'); cylZ(0.8, 59, 65, M.zinc, 'neon');
+  const spr = tag(H.spring(2, 6, 12, 0.35, M.spr), 'spring'); spr.position.z = 67; pen.add(spr);
+  cylZ(4.6, 80, 92, M.zinc, 'cap'); tag(H.box(2, 4, 26, 5, 0, 74, M.zinc, pen), 'cap');
+  const glow = new T.PointLight(0xff5a20, 0, 60); glow.position.z = 56; pen.add(glow);
+  /* 手指 + 人体（简化成一根肤色的柱子从手指一直到地面） + 绝缘垫 */
+  const skin = H.M(0xe0b18e, {roughness:0.7});
+  const hand = new T.Group(); root.add(hand);
+  const fg = new T.CapsuleGeometry(3.2, 22, 6, 12); fg.rotateZ(Math.PI/2);
+  const finger = tag(new T.Mesh(fg, skin), 'hand'); hand.add(finger);
+  const arm = tag(new T.Mesh(new T.CylinderGeometry(6, 7, 1, 16).rotateX(Math.PI/2), H.M(0xe0b18e, {roughness:0.7, transparent:true, opacity:0.55})), 'hand'); root.add(arm);
+  const mat = tag(H.box(50, 40, 3, 80, 0, -28.5, H.M(0x2f6b3a, {roughness:0.8}), root), 'mat');
+  const gnd = H.plate('大地', 14, 5, 80, 26, -29.8, '#e6edf5', null, root);
+  /* 电流点：插孔铜片 → 笔 → 手 → 人体 → 地 */
+  const pathFn = { pts:null };
+  const cur = K.dots(14, K.curM, function(t, out){ return pathFn.f ? pathFn.f(t, out) : (out||new T.Vector3()); });
+  const st = {hole:'L', grip:0, x:HOLES.L[0], y:HOLES.L[1], g:0};
+  function read(){
+    const lit = st.hole === 'L' && st.grip === 0;
+    let msg;
+    if(st.hole === 'L') msg = st.grip === 0 ? '<b>亮了</b>：火线 → 笔尖 → 电阻 → 氖管 → 笔尾 → 手 → 身体 → 大地，回路闭合。流过你的电流约 <b>0.22 mA</b>（220 V ÷ 1 MΩ），感觉不到。'
+      : st.grip === 1 ? '<b>不亮</b>：手指没抵住笔尾金属帽，回路在手这里断了。<b>但这孔是火线</b> —— 不亮≠没电。'
+      : '<b>不亮</b>：站在绝缘垫上，回路在脚下断了。<b>可这孔是火线！</b>判断停电绝不能只凭验电笔不亮。';
+    else msg = '<b>不亮</b>：'+(st.hole === 'N' ? '零线' : '地线')+'对地基本没有电压（正常情况下），氖管起不了辉。'+(st.hole === 'N' ? '要是零线也亮，多半是零线断了 —— 那是故障。' : '');
+    return {lit:lit, msg:msg};
+  }
+  function update(){ if(opt.onRead) opt.onRead(read(), st); K.S.dirty = true; }
+  update();
+  return {
+    labels:[['tip', 14, -8, 16, pen], ['res', 14, -8, 34, pen], ['neon', 14, -8, 56, pen], ['spring', 14, -8, 73, pen], ['cap', 14, -8, 88, pen], ['hand', 50, 0, 60], ['mat', 80, -14, -27], ['socket', -30, 30, 9]],
+    hitMesh:function(m){ if(m.userData.hole){ st.hole = m.userData.hole; update(); return true; } return false; },
+    api:{ st:st, set:function(o){ Object.assign(st, o); update(); } },
+    tick:function(dt, k){
+      const h = HOLES[st.hole];
+      st.x += (h[0] - st.x) * Math.min(1, dt*6/k); st.y += (h[1] - st.y) * Math.min(1, dt*6/k);
+      pen.position.set(st.x, st.y, 0);
+      /* 手：抵住笔尾（0、2）或者握在笔身中段（1） */
+      const tz = st.grip === 1 ? 60 : 94, tx = st.grip === 1 ? 17 : 16;
+      st.g += (tz - st.g) * Math.min(1, dt*6/k);
+      finger.position.set(st.x + tx, st.y, st.g); 
+      const ax = st.x + 46, top = st.g;
+      /* 人体柱：从手的高度一直到地面（单位高度的圆柱，按高度缩放） */
+      arm.scale.set(1, 1, top + 30); arm.position.set(ax + 34, 0, (top - 30)/2);
+      mat.visible = st.grip === 2;
+      const lit = st.hole === 'L' && st.grip === 0 && Math.abs(st.x - h[0]) < 0.5;
+      neonM.emissive.setHex(0xff4a14); neonM.emissiveIntensity = lit ? 2.2 : 0; glow.intensity = lit ? 900 : 0;
+      const P = [[st.x, st.y, 4], [st.x, st.y, 24], [st.x, st.y, 42], [st.x, st.y, 66], [st.x, st.y, 92], [st.x + 16, st.y, 94], [ax + 34, 0, top], [ax + 34, 0, -30]];
+      pathFn.f = H.poly(P);
+      K.flow(cur, lit, 0.12/k, dt);
+      return true;
+    }
+  };
+  }}, opt); };
+})();

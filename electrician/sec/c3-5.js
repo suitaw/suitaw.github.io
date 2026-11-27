@@ -28,6 +28,18 @@ ELEC.reg({
     <b>点三种握法，看回路通不通。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">动手试：插哪个孔、怎么握</div>
+    <div class="k3d-v" id="tp3d"></div>
+    <div class="ctrl">
+      <div class="rowlab">插哪个孔（也可以直接点插座上的孔）</div>
+      <div class="btns" id="tpH"><button class="btn sm on" data-h="L">右孔 L 火线</button><button class="btn sm" data-h="N">左孔 N 零线</button><button class="btn sm" data-h="PE">上孔 PE 地线</button></div>
+      <div class="rowlab">怎么握</div>
+      <div class="btns" id="tpG"><button class="btn sm on" data-g="0">手指抵住笔尾</button><button class="btn sm" data-g="1">没抵住笔尾</button><button class="btn sm" data-g="2">站在绝缘垫上</button></div>
+    </div>
+    <div class="ctrl" id="tp3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="tp3info"></div>
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="btns" id="s1k">
@@ -841,6 +853,20 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 验电笔 */
+let TP3 = null;
+function tpRead(r, st){
+  document.querySelectorAll('#tpH .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.h === st.hole); });
+  document.querySelectorAll('#tpG .btn').forEach(function(b){ b.classList.toggle('on', +b.dataset.g === st.grip); });
+  $('tp3info').innerHTML = r.msg;
+}
+if(window.E3D){
+  E3D.testPen($('tp3d'), { onRead:tpRead, onInfo:function(p, k){ if(p && k !== 'hole') $('tp3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ TP3 = a; });
+  $('tp3c').innerHTML = E3D.controlsHTML();
+  E3D.bindControls($('tp3c'), function(){ return TP3; });
+  $('tpH').addEventListener('click', function(e){ const b = e.target.closest('[data-h]'); if(b && TP3) TP3.set({hole:b.dataset.h}); });
+  $('tpG').addEventListener('click', function(e){ const b = e.target.closest('[data-g]'); if(b && TP3) TP3.set({grip:+b.dataset.g}); });
+}
 ElecNav.init({ch:3, sec:'3.5'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
