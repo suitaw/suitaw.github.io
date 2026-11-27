@@ -1112,9 +1112,11 @@ function refresh(){
     if(false && live && !c.halo){ const u = c.mesh.userData, seg = Math.max(24, Math.round(u.len/3));
       c.halo = new THREE.Mesh(new THREE.TubeGeometry(u.curve, seg, 5.4, 10, false), HALO_M); c.mesh.add(c.halo);       /* 有电流：粗红光 */
       c.haloL = new THREE.Mesh(new THREE.TubeGeometry(u.curve, seg, 3.4, 8, false), HALO_L); c.mesh.add(c.haloL); }    /* 带电没电流：细淡红边 */
-    c.mat.color.setHex(isSel ? 0x1c6fd6 : 0x22262b);
-    c.mat.emissive.setHex(isSel ? 0x1c6fd6 : 0);
-    c.mat.emissiveIntensity = isSel ? 0.9 : 0;
+    /* 选中的线保持本来的颜色（11-27 他说选中变蓝会误以为是零线），只加一层同色微光；黑线稍微提亮 */
+    const base = c.base!==undefined ? c.base : 0x22262b, dark = base===0x22262b;
+    c.mat.color.setHex(base);
+    c.mat.emissive.setHex(isSel ? (dark ? 0x4a5566 : base) : 0);
+    c.mat.emissiveIntensity = isSel ? (dark ? 1 : 0.35) : 0;
     const vv = r.volt || {}, va = vv[c.w.from], vb = vv[c.w.to];
     c.flow = (r.cur[key] && !hidden && !(UI.sel && !isSel)) ? ((va!==undefined && vb!==undefined && vb>va) ? -1 : 1) : 0;
     if(c.w.group===4 && !/pe-/.test(c.w.to) && !hidden && !(UI.sel && !isSel)){
