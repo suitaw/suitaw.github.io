@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>K33 电能表带照明 · 3D 接线板</title>
+<title>K31-02 电能表照明设备接线 · 3D 接线板</title>
 <style>
 :root{--bg:#dfe3e8;--ink:#1f2328;--mut:#5b6470;--card:rgba(255,255,255,.92);--line:#c5ccd5;--blue:#1c6fd6}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -1142,7 +1142,7 @@ const REPS = {env:'报告考官，作业环境安全，请求接线', wired:'报
   x1:'报告考官，现场环境安全，请求接线', x2:'报告考官，周围环境安全，请求接线'};
 const QFS = ['qf1','qf2','qf3'], TOG_NAME = {qf1:'空开①（总开关）', qf2:'空开②（插座·漏保）', qf3:'空开③（照明）', s1:'双控①', s2:'双控②', s3:'单控'};
 /* ── 动手版考场：这块板的配置（11-26）。通用代码（exScan/exGrade）看它决定判什么；K33 的下一步提示单独写 ── */
-const CFG = {code:'K33', name:'K33 电能表带照明', glove:true, tools:true, tidy:true, done:true, gap:false, rev:false, amp:false, sock:true, p1Both:true, env:'作业', wiredTry:false,
+const CFG = {code:'K33', name:'K31-02 电能表照明设备接线', glove:true, tools:true, tidy:true, done:true, gap:false, rev:false, amp:false, sock:true, p1Both:true, env:'作业', wiredTry:false,
   qfs:['qf1','qf2','qf3'], qfName:{qf1:'空开①（总开关）', qf2:'空开②（插座·漏保）', qf3:'空开③（照明）'}, btnVerb:'扳 ', btnName:{s1:'双控①', s2:'双控②', s3:'单控'},
   con:'先地线，再零线，再相线；每根先盘上、再电源箱', dis:'电源箱接口红、蓝 → 盘上红、蓝 → 地线先拔电源箱、再拆端子排',
   probe1:'3 个空开下方的相线 L、零线 N（相线喊有电、零线喊无电）', probe2:'进线端子的相线、零线', trial:'左开 → 右关 → 右开 → 左关 → 单控开 → 关'};

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>K32 正反转 · 3D 接线板</title>
+<title>K31-05 正反转运行电路 · 3D 接线板</title>
 <style>
 :root{--bg:#dfe3e8;--ink:#1f2328;--mut:#5b6470;--card:rgba(255,255,255,.92);--line:#c5ccd5;--blue:#1c6fd6}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -1146,7 +1146,7 @@ const SEQ = ['sb2','sb3','sb1','sb3','sb2','sb1'], SEQN = ['绿色（正转）',
 const REPS = {env:'报告考官，周围环境安全，请求接线', wired:'报告考官，接线完毕，请求送电', done:'报告考官，操作完毕',
   x1:'报告考官，现场环境安全，请求接线', x2:'报告考官，作业环境安全，请求接线'};
 /* ── 动手版考场：这块板的配置（11-26）。通用代码（exScan/exGrade/exNext）看它决定判什么 ── */
-const CFG = {code:'K32', name:'K32 正反转', glove:true, tools:true, tidy:true, done:true, gap:true, rev:true, amp:false, env:'周围', wiredTry:false,
+const CFG = {code:'K32', name:'K31-05 正反转运行电路', glove:true, tools:true, tidy:true, done:true, gap:true, rev:true, amp:false, env:'周围', wiredTry:false,
   con:'先地线，再电机线黄绿红，再电源线黄绿红', dis:'电源红绿黄 → 电机红绿黄 → 地线（先电机、再电源箱）',
   probe1:'左、右接触器进线端各三相，4、5 号熔断器出线端', probe2:'盘上接线排电源端子 L1、L2、L3', trial:'绿 → 黄 → 红 → 黄 → 绿 → 红'};
 const REPT = {env:'报告考官，周围环境安全，请求接线', wired:'报告考官，接线完毕，请求送电', done:'报告考官，操作完毕'};

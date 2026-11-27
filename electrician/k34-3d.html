@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>K34 带仪表和电流互感器 · 3D 接线板</title>
+<title>K31-04 带电流互感器的电动机接线 · 3D 接线板</title>
 <style>
 :root{--bg:#dfe3e8;--ink:#1f2328;--mut:#5b6470;--card:rgba(255,255,255,.92);--line:#c5ccd5;--blue:#1c6fd6}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -1203,7 +1203,7 @@ const REPS = {env:'报告考官，现场环境安全，请求接线', wired:'报
   x1:'报告考官，周围环境安全，请求接线', x2:'报告考官，接线完毕，请求送电',
   amp:'A相电流正常。B相电流正常。C相电流正常。三相电流平衡。'};
 /* ── 动手版考场：这块板的配置（11-26）。通用代码（exScan/exGrade/exNext）看它决定判什么 ── */
-const CFG = {code:'K34', name:'K34 带仪表和电流互感器', glove:false, tools:false, tidy:false, done:false, gap:false, rev:false, amp:true, env:'现场', wiredTry:true,
+const CFG = {code:'K34', name:'K31-04 带电流互感器的电动机接线', glove:false, tools:false, tidy:false, done:false, gap:false, rev:false, amp:true, env:'现场', wiredTry:true,
   con:'先地线（电源箱、电动机），再电动机线黄绿红，再电源线黄绿红：接线排 → 插孔', dis:'插孔黄绿红 → 接线排电源线黄绿红 → 电机线黄绿红 → 电机地线 → 电源箱地线',
   probe1:'接触器上端主回路三相 + 4、5 号熔断器下端', probe2:'配电盘接线排的电源线黄绿红三相', trial:'绿启动 → 看电流表口述 → 红停止',
   note:'K34 材料（＝K31）没写手套、没写最后报告「操作完毕」：这两样只记录、不判'};
