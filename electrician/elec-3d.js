@@ -2817,3 +2817,55 @@ E3D.pliers = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 电是怎么送到你家的（8.1 第 1 屏）：35 kV 变电站 → 10 kV 线路 → 配电变压器 → 380/220 V 进楼 ══════════════
+   电压、型号照书上图 8-1：T1 6300 kV·A Yd11 35/10 kV；T2 50 kV·A Yyn0 10/0.4 kV。
+   地面上两块区域：高压段（红，低压电工证管不着，别碰）、低压段（蓝，你的活）。 */
+(function(){
+'use strict';
+const PARTS = {
+  hv35: ['35 kV 进线', '电力系统送来 35~110 kV。', '35 kV'],
+  t1:   ['电力变压器 T1（35/10 kV）', '书上图 8-1：<b>6300 kV·A　Yd11　35/10 kV</b>。把 35 kV 降到 10 kV 的<b>高压配电电压</b>。', 'T1 35/10 kV'],
+  hv10: ['10 kV 高压配电线路', '<b>6~10 kV 属于高压</b>。低压电工作业证的范围是交流 1 kV 以下 —— <b>这一段不是你的活，靠近都不行</b>。', '10 kV 线路'],
+  t2:   ['配电变压器 T2（10/0.4 kV）', '书上图 8-1：<b>50 kV·A　Yyn0　10/0.4 kV</b>。降成 <b>380 V / 220 V</b> —— 从它的低压侧出来，才是你能碰的。', 'T2 10/0.4 kV'],
+  lv:   ['380/220 V 低压线路', '<b>低压供配电线路＝380 V/220 V</b>。进楼、进配电柜、进配电箱 —— 你上班碰的全在这一段。', '380/220 V'],
+  bld:  ['用户（楼）', '进了楼还要分三级（第 2 屏）。', '楼'],
+  zone: ['区域', '', '区域']
+};
+E3D.gridChain = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[-8, 0, 24], view:{th:0.12, ph:1.08, r:800},
+  presets:{front:[1, 0, 0, 0.0001, 400], side:[0, 1, 0, -Math.PI/2, 400]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  /* 地面两块：高压段红、低压段蓝（半透明） */
+  tag(H.box(250, 70, 1, -55, 0, 0, H.M(0xc23b32, {transparent:true, opacity:0.18, roughness:1}), root), 'zone');
+  tag(H.box(110, 70, 1, 125, 0, 0, H.M(0x2f90d6, {transparent:true, opacity:0.2, roughness:1}), root), 'zone');
+  H.plate('高压：不是你的活', 60, 8, -55, -42, 1.2, '#ff8a80', null, root); H.plate('低压 ≤ 1 kV：你的活', 64, 8, 125, -42, 1.2, '#7cc4ff', null, root);
+  const grey = H.M(0x8d939a, {roughness:0.5, metalness:0.3}), dark = H.M(0x4a5058, {roughness:0.5});
+  /* 35 kV 进线铁塔（左） */
+  [[-170, 0]].forEach(function(p){ [-1, 1].forEach(function(s){ const leg = tag(H.box(2, 2, 70, p[0] + s*6, 0, 35, grey, root), 'hv35'); leg.rotation.y = s*0.08; });
+    tag(H.box(30, 2, 2, p[0], 0, 64, grey, root), 'hv35'); });
+  /* T1 电力变压器（大，带散热片） */
+  tag(H.box(30, 26, 30, -120, 0, 16, dark, root), 't1'); for(let i=0;i<5;i++) tag(H.box(1.2, 4, 22, -132 + i*6, -15, 14, grey, root), 't1');   /* 散热片 */
+  [-8, 0, 8].forEach(function(x){ tag(H.cylZ(1.8, 12, -120 + x, 0, 37, H.M(0x9a6b4a), root), 't1'); });
+  H.plate('T1 35/10 kV', 34, 7, -120, -15, 25, '#e6edf5', null, root);
+  /* 10 kV 线路：两根电线杆 + 三根导线 */
+  [-70, -20].forEach(function(x){ tag(H.cylZ(2.2, 70, x, 0, 35, H.M(0x9e9a92), root), 'hv10'); tag(H.box(2, 30, 2, x, 0, 66, grey, root), 'hv10'); });
+  [-10, 0, 10].forEach(function(y){ H.wire([[-114, y*0.6, 44], [-70, y, 67], [-20, y, 67], [24, y*0.6, 44]], 0.5, M.blk, root); });
+  /* T2 配电变压器（小，箱式） */
+  tag(H.box(22, 18, 22, 30, 0, 11, H.M(0x6f8f6a, {roughness:0.6}), root), 't2'); [-6, 0, 6].forEach(function(x){ tag(H.cylZ(1.4, 8, 30 + x, 0, 26, H.M(0x9a6b4a), root), 't2'); });
+  H.plate('T2 10/0.4 kV', 30, 7, 30, -10, 23, '#e6edf5', null, root);
+  /* 低压电缆 → 楼 */
+  tag(H.wire([[42, 0, 10], [80, 0, 4], [130, 0, 4], [150, 0, 12]], 1.6, H.M(0x2b2f34), root), 'lv');
+  tag(H.box(50, 40, 60, 160, 0, 30, H.M(0xd9d2c5, {roughness:0.9}), root), 'bld');
+  for(let r=0;r<3;r++) for(let c=0;c<2;c++) tag(H.box(10, 1, 8, 150 + c*20, -20.5, 14 + r*16, H.M(0xffe9b0, {emissive:0xffc65a, emissiveIntensity:0.6}), root), 'bld');
+  H.plate('380/220 V', 30, 7, 100, -8, 8, '#7cc4ff', null, root);
+  H.plate('35 kV', 18, 7, -170, -12, 74, '#ff8a80', null, root); H.plate('10 kV', 18, 7, -45, -18, 72, '#ff8a80', null, root);
+  /* 电流点：沿整条链 */
+  const P = K.dots(28, K.curM, H.poly([[-200, 0, 64], [-170, 0, 64], [-130, 0, 40], [-114, 0, 44], [-70, 0, 67], [-20, 0, 67], [24, 0, 44], [30, 0, 30], [42, 0, 10], [80, 0, 4], [130, 0, 4], [150, 0, 12]]));
+  return {
+    labels:[['hv35', -170, 0, 70], ['t1', -120, 0, 44], ['hv10', -45, 0, 70], ['t2', 30, 0, 30], ['lv', 100, 0, 6], ['bld', 160, 0, 62]],
+    tick:function(dt, k){ K.flow(P, true, 0.05/k, dt); return true; }
+  };
+  }}, opt); };
+})();

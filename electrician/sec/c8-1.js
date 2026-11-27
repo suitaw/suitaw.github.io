@@ -71,6 +71,12 @@ ELEC.reg({
     <b>点链条上的任意一级，看它是干什么的。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">一条链：从 35 kV 到你家</div>
+    <div class="k3d-v" id="gc3d"></div>
+    <div class="ctrl" id="gc3c"></div>
+    <div class="k3d-info" id="gc3info">点每一段看它是多少伏、是谁的活。地上<b>红色那块</b>是高压（低压电工证管不着），<b>蓝色那块</b>才是你的。</div>
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="nums three">
@@ -972,6 +978,12 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 输电链 */
+let GC3 = null;
+if(window.E3D){
+  E3D.gridChain($('gc3d'), { onInfo:function(p){ if(p) $('gc3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ GC3 = a; });
+  $('gc3c').innerHTML = E3D.controlsHTML(null, [['oblique','斜着看'], ['front','正面']]); E3D.bindControls($('gc3c'), function(){ return GC3; });
+}
 ElecNav.init({ch:8, sec:'8.1'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
