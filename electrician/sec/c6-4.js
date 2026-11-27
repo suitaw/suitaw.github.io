@@ -207,6 +207,12 @@ ELEC.reg({
     <b>切一种看。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">看一遍怎么包</div>
+    <div class="k3d-v" id="tp64"></div>
+    <div class="ctrl"><div class="btns"><button class="btn" id="tp220">220 V 线路</button><button class="btn" id="tp380">380 V 线路</button></div></div>
+    <div class="k3d-info" id="tp64info">点一种线路，看黄蜡带和绝缘胶带一层一层包上去：<b>起点在距接头两根带宽的完整绝缘层上</b>，每圈压住前一圈一半。</div>
+  </div>
+  <div class="card">
     <canvas id="cv3"></canvas>
     <div class="ctrl">
       <div class="btns" id="s4k">
@@ -744,6 +750,15 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 包缠 */
+let TP64 = null;
+const TPN = {wax:'黄蜡带', tape:'绝缘胶带'};
+if(window.E3D){
+  E3D.tape($('tp64'), { onLayer:function(i, n){ $('tp64info').innerHTML = i < n ? '正在包第 <b>'+(i+1)+' / '+n+'</b> 层（'+(i % 2 ? '往回包' : '往前包')+'），每圈压前一圈一半。' : '包好了：两端都盖过原绝缘层两根带宽，没有裸露的铜。'; },
+    onInfo:function(p){ if(p) $('tp64info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ TP64 = a; });
+  $('tp220').addEventListener('click', function(){ if(TP64) TP64.play('220'); });
+  $('tp380').addEventListener('click', function(){ if(TP64) TP64.play('380'); });
+}
 ElecNav.init({ch:6, sec:'6.4'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();

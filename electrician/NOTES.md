@@ -2726,3 +2726,4 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - `E3D.splice`（6.2 第 1 屏）：单股 X 形绞接 6 步（剥线/X 相交/绞 2.5 圈/扳直/左尾贴绕 6 圈/右尾贴绕 6 圈），每步重建 TubeGeometry（helix 函数）；api.step(n)、api.cur()（别用 getter：viewer 用 Object.assign 合并会复制成死值）。
 - `E3D.ring`（6.3 第 1、2 屏）：硬导线接线环（mm）；mode 'steps' 5 步 / 'bad' 合格+四种不合格（short/overlap/long/big）；环绕圆心 (x0,−R) 走＝俯视顺时针（第一版画成逆时针，已改）；螺钉头、垫片半透明。
 - `E3D.transformer`（2.6 第 1 屏）：口字形叠片铁芯、一次/二次绕组圈数跟 S1.n1/100、n2/50 成比例（变了就重建）、磁通蓝点贴铁芯正面来回换向、二次灯 + U₂ 字牌。
+- `E3D.tape`（6.4 第 4 屏）：螺旋带子（BufferGeometry，节距＝半个带宽，drawRange 控制包到哪），起止各离接头 2 带宽；220＝黄蜡 1+胶带 1，380＝黄蜡 2+胶带 2，层间往返。

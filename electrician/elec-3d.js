@@ -2625,3 +2625,53 @@ E3D.transformer = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 绝缘恢复：包缠法（6.4 第 4 屏，书 P119~120）══════════════
+   从距接头两根带宽的完整绝缘层开始，每圈压前一圈一半（节距 = 1/2 带宽），包到另一端两根带宽处；下一层反着往回包。
+   220 V：黄蜡带 1 层 + 绝缘胶带 1 层；380 V：黄蜡带 2 层 + 绝缘胶带 2 层（书上 2~3 层，这里按 2）。api.play('220'|'380') */
+(function(){
+'use strict';
+const PARTS = { core:['接头（线芯）', '绞接好的接头，裸露的铜。', '接头'], ins:['原绝缘层', '<b>包缠必须从完整的绝缘层开始</b>，起点离接头两根带宽。', '绝缘层'],
+  wax:['黄蜡带（或涤纶薄膜带）', '先包它：耐压、防潮。', '黄蜡带'], tape:['绝缘胶带（黑）', '外层再包它：粘得牢，护住里面的黄蜡带。', '绝缘胶带'] };
+const W = 7, J = 11;                          /* 带宽（示意）、接头半长 */
+E3D.tape = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 0], view:{th:0.25, ph:1.2, r:88},
+  presets:{front:[1, 0, 0, 0.0001, 110], side:[0, 1, 0, -Math.PI/2, 110]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  const red = H.M(0xd42f2f, {roughness:0.55}), cu = H.M(0xc77a3f, {metalness:0.85, roughness:0.3});
+  [[-62, -J], [J, 62]].forEach(function(a){ const g = new T.CylinderGeometry(1.7, 1.7, a[1]-a[0], 20); g.rotateZ(Math.PI/2); const m = tag(new T.Mesh(g, red), 'ins'); m.position.x = (a[0]+a[1])/2; root.add(m); });
+  const jg = new T.CylinderGeometry(1.3, 1.3, 2*J, 14); jg.rotateZ(Math.PI/2); root.add(tag(new T.Mesh(jg, cu), 'core'));
+  [-1, 1].forEach(function(s){ const pts = []; for(let i=0;i<=120;i++){ const t = i/120, a = t*6*Math.PI*2; pts.push(new T.Vector3(s*(3 + t*7), Math.cos(a)*1.6, Math.sin(a)*1.6)); }
+    root.add(tag(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 160, 0.55, 8, false), cu), 'core')); });
+  /* 一条胶带：沿 x 螺旋的带子，节距 W/2（压一半）；drawRange 控制包到哪 */
+  function ribbon(x0, x1, r, col, key){
+    const turns = Math.abs(x1 - x0)/(W/2), seg = Math.ceil(turns*28), pos = [], idx = [];
+    for(let i=0;i<=seg;i++){ const t = i/seg, a = t*turns*Math.PI*2, xc = x0 + (x1 - x0)*t, y = Math.cos(a)*r, z = Math.sin(a)*r;
+      pos.push(xc - W/2, y, z, xc + W/2, y, z); if(i < seg){ const b = i*2; idx.push(b, b+1, b+2, b+1, b+3, b+2); } }
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const m = tag(new T.Mesh(g, H.M(col, {roughness:0.6, side:T.DoubleSide, transparent:col === 0xd9c27a, opacity:0.85})), key); root.add(m);
+    g.setDrawRange(0, 0); return {m:m, g:g, n:idx.length};
+  }
+  let layers = [], plan = null, li = 0, prog = 0;
+  function clear(){ layers.forEach(function(l){ root.remove(l.m); l.g.dispose(); }); layers = []; }
+  const api = {
+    play:function(v){ clear(); const S = -J - 2*W, E = J + 2*W;
+      const seq = v === '380' ? ['wax', 'wax', 'tape', 'tape'] : ['wax', 'tape'];
+      plan = seq.map(function(k, i){ const r = 2.3 + i*0.45, fwd = i % 2 === 0; return ribbon(fwd ? S : E, fwd ? E : S, r, k === 'wax' ? 0xd9c27a : 0x1d1f22, k); });
+      layers = plan; li = 0; prog = 0; if(opt.onLayer) opt.onLayer(0, seq.length, seq[0]); K.S.dirty = true; },
+    stop:function(){ clear(); plan = null; K.S.dirty = true; }
+  };
+  return {
+    labels:[['ins', -45, 0, 2], ['core', 0, 0, 2.5]],
+    api:api,
+    tick:function(dt, k){
+      if(!plan || li >= plan.length) return false;
+      prog = Math.min(1, prog + dt/(2.6*k)); const L = plan[li];
+      L.g.setDrawRange(0, Math.floor(L.n*prog/6)*6);
+      if(prog >= 1){ li++; prog = 0; if(opt.onLayer) opt.onLayer(li, plan.length, null); }
+      return true;
+    }
+  };
+  }}, opt); };
+})();
