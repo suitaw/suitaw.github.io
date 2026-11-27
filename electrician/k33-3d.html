@@ -112,6 +112,9 @@ const FR_PINS = [];
 const DEVICES = [
   {id:'mt', tag:'电能表', kind:'meter', x:30, y:20, w:150, h:186,
    terminals:[{id:'mt-1',label:'1',x:27,y:170},{id:'mt-2',label:'2',x:59,y:170},{id:'mt-3',label:'3',x:91,y:170},{id:'mt-4',label:'4',x:123,y:170}]},
+  /* 11-27 他说：电能表右边那条端子排是电能表进出线过一下。上排跟电能表出厂接好，盘内线接下排 */
+  {id:'mb', tag:'电能表接线排', kind:'mbt', x:206, y:150, w:132, h:56,
+   terminals:[1,2,3,4].map(function(i){ return {id:'mb-'+i, label:'', x:18+32*(i-1), y:42}; })},
   {id:'src', tag:'电源进线', kind:'src', x:36, y:452,   /* 11-27 他说照板子放左下角、接地排上面 */ w:112, h:56,
    terminals:[{id:'src-l',label:'L',x:20,y:15},{id:'src-pe',label:'PE',x:56,y:15},{id:'src-n',label:'N',x:92,y:15}]},
   {id:'tube', tag:'日光灯', kind:'tube', x:200, y:12, w:250, h:112, terminals:[]},
@@ -138,6 +141,7 @@ const DEVICES = [
 const TPOS = {};
 DEVICES.forEach(function(d){ const s=d.s||1; d.W=d.w*s; d.H=d.h*s; d.terminals.forEach(function(t){ TPOS[t.id]={x:d.x+t.x*s,y:d.y+t.y*s,device:d.id,label:t.label}; }); });
 const TLABEL = {
+  'mb-1':'电能表接线排 1（进火）','mb-2':'电能表接线排 2（出火）','mb-3':'电能表接线排 3（进零）','mb-4':'电能表接线排 4（出零）',
   'mt-1':'电能表 1（火线1·进）','mt-2':'电能表 2（火线2·出）','mt-3':'电能表 3（零线1·进）','mt-4':'电能表 4（零线2·出）',
   'src-l':'电源进线 L','src-pe':'电源进线 PE','src-n':'电源进线 N（第3孔）',
   'qf1-ni':'空开① 上方 N（第1孔）','qf1-li':'空开① 上方 L（第2孔）','qf1-no':'空开① 下方 N','qf1-lo':'空开① 下方 L',
@@ -150,7 +154,7 @@ const TLABEL = {
 };
 /* 分组照便签重写版的 6 组 + 地线 */
 const GROUPS = {
-  1:['电能表进出线','电能表 1 进火、2 出火、3 进零、4 出零：1 ← 进线 L，3 ← 进线 N（第 3 孔）；2 → 空开① 上方 L（第 2 孔），4 → 空开① 上方 N（第 1 孔）'],
+  1:['电能表进出线','电能表接线排（上排跟电能表出厂接好）：1 进火、2 出火、3 进零、4 出零。1 ← 电源进线 L，3 ← 电源进线 N；2 → 空开① 上方 L，4 → 空开① 上方 N'],
   2:['空开① 分给 ②③','空开① 下方 L、N → 空开② 上方；再从空开② 上方 L、N 跳线到空开③ 上方'],
   3:['空开② → 插座','空开② 下方 L → 插座 L（右），N → 插座 N（左）。插座「左零右火上接地」'],
   4:['空开③ 火 → 双控 → 灯泡','空开③ 下方 L → 双控① L（公共端）；① L1—② L1、① L2—② L2 两根联络线；双控② L → 灯具端子排 4（灯泡红线）'],
@@ -159,10 +163,10 @@ const GROUPS = {
   7:['地线（推测）','电源进线 PE → 接地排，接地排 → 插座 PE。⚠ 便签里没有地线（你当时还没接），这两根是按常规补的']
 };
 const WIRES = [
-  {id:1, from:'src-l', to:'mt-1',  group:1, waypoints:[[216,226],[47,226]]},
-  {id:2, from:'src-n', to:'mt-3',  group:1, waypoints:[[288,238],[111,238]]},
-  {id:3, from:'mt-2',  to:'qf1-li',group:1, waypoints:[[79,254],[96,254]]},
-  {id:4, from:'mt-4',  to:'qf1-ni',group:1, waypoints:[[143,266],[60,266]]},
+  {id:1, from:'src-l', to:'mb-1',  group:1, waypoints:[[216,226],[47,226]]},
+  {id:2, from:'src-n', to:'mb-3',  group:1, waypoints:[[288,238],[111,238]]},
+  {id:3, from:'mb-2',  to:'qf1-li',group:1, waypoints:[[79,254],[96,254]]},
+  {id:4, from:'mb-4',  to:'qf1-ni',group:1, waypoints:[[143,266],[60,266]]},
   {id:5, from:'qf1-lo',to:'qf2-li',group:2, waypoints:[[96,460],[128,460],[128,280],[196,280]]},
   {id:6, from:'qf1-no',to:'qf2-ni',group:2, waypoints:[[60,468],[122,468],[122,273],[160,273]]},
   {id:7, from:'qf2-li',to:'qf3-li',group:2, waypoints:[[196,287],[332,287]]},
@@ -189,6 +193,7 @@ const SPEC = {
   src:['src-l','src-n'],
   coils:[{id:'el',a:'lt-4',b:'lt-3',name:'白炽灯'},{id:'fl',a:'lt-2',b:'lt-1',name:'日光灯'},{id:'xs',a:'xs-l',b:'xs-n',name:'插座'}],
   contacts:[
+    {a:'mb-1',b:'mt-1',by:'fix'},{a:'mb-2',b:'mt-2',by:'fix'},{a:'mb-3',b:'mt-3',by:'fix'},{a:'mb-4',b:'mt-4',by:'fix'},
     {a:'mt-1',b:'mt-2',by:'fix'},{a:'mt-3',b:'mt-4',by:'fix'},{a:'pe-1',b:'pe-2',by:'fix'},{a:'pe-2',b:'pe-3',by:'fix'},
     {a:'qf1-li',b:'qf1-lo',by:'qf1'},{a:'qf1-ni',b:'qf1-no',by:'qf1'},
     {a:'qf2-li',b:'qf2-lo',by:'qf2'},{a:'qf2-ni',b:'qf2-no',by:'qf2'},
@@ -641,6 +646,16 @@ DEVICES.forEach(function(d){
     label('1 进火  2 出火  3 进零  4 出零', x+w/2, y+138, 30.4, 6, '#5b6470', null, true);
     rbox(x+8, y+150, w-16, 32, 0, 20, MAT.dark, 3);                    /* 接线盒 */
   }
+  if(d.kind==='mbt'){                                                   /* 电能表接线排：4 位，上排出厂线接电能表，下排接盘内线 */
+    rbox(x, y, w, h, 0, 16, MAT.cream, 2);
+    [1,2,3].forEach(function(k){ box(x+32*k+2, y, 1, h, 0, 17, MAT.grey); });
+    const mt = dev('mt'), MN = ['1 进火','2 出火','3 进零','4 出零'];
+    [0,1,2,3].forEach(function(i){ const tx = x+18+32*i; screw(tx, y+14, 16, 4.8);
+      label(MN[i], tx, y+28, 16.4, 8, i<2 ? '#b8282a' : '#1c5fb8', null, false, true);
+      const mp = TPOS['mt-'+(i+1)], lx = x-8-3*i, ly = mt.y+mt.H+8+3*i;
+      tube(path3([[mp.x, mp.y],[mp.x, ly],[lx, ly],[lx, y+14],[tx, y+14]], 22.6, 18.6, 30+i*2, null, null), 1.6, M(0x22262b, {roughness:0.5}), 5).castShadow = false; });
+    label(d.tag, x+w+44, y+h/2, 0.4, 13, '#1f2328');
+  }
   if(d.kind==='src'){                                                   /* 电源进线端子排：上排接盘里，下排接试车台来的电源线 */
     rbox(x, y, w, h, 0, 16, MAT.cream, 2);
     [1,2].forEach(function(k){ box(x+w*k/3-0.5, y, 1, h, 0, 17, MAT.grey); });
@@ -765,11 +780,11 @@ DEVICES.forEach(function(d){
     });
   }
   d.terminals.forEach(function(t){
-    const z = {tb:30, km:38, fr:30, meter:20, src:16, lterm:18, mcb2:34, pebar:7, socket:20, sw:20}[d.kind] ?? 34;
+    const z = {tb:30, km:38, fr:30, meter:20, src:16, mbt:16, lterm:18, mcb2:34, pebar:7, socket:20, sw:20}[d.kind] ?? 34;
     TZ[t.id] = z + 2.6;
     if(d.kind==='km'){ screw(x+t.x, y+t.y, 38, 5); label(t.label, x+t.x, y+(t.y<75 ? 44 : 106), 86.4, 12, '#1c6fd6'); }
     if(d.kind==='fr'){ screw(x+t.x, y+t.y, 30, 5); label(t.label, x+t.x-18, y+t.y, 30.4, 12, '#fff', '#2a2e33'); }
-    if(['meter','src','lterm','mcb2','pebar','socket','sw'].indexOf(d.kind)>=0){ screw(x+t.x, y+t.y, z, d.kind==='mcb2' ? 5.6 : 4.8);
+    if(['meter','src','mbt','lterm','mcb2','pebar','socket','sw'].indexOf(d.kind)>=0){ screw(x+t.x, y+t.y, z, d.kind==='mcb2' ? 5.6 : 4.8);
       if(t.label && d.kind!=='lterm') label(t.label, x+t.x+(d.kind==='src' ? 13 : 0), y+t.y+(d.kind==='src' ? 0 : d.kind==='mcb2' && t.y>60 ? -12 : d.kind==='meter' ? -14 : d.kind==='src' ? -10 : 10), z+0.4, 6.5, d.kind==='meter' ? '#dfe3e8' : '#33383f', null, true); }
   });
   PARENT = PARENT0;
@@ -905,6 +920,7 @@ WIRES.forEach(function(w){
 /* 自己接线用：每个端子一个点击靶（放大了的隐形球）+ 一个蓝圈标记「这儿能接」 */
 const TERMS = {};
 Object.keys(TPOS).forEach(function(id){
+  if(/^mt-/.test(id)) return;   /* 电能表端子出厂接到接线排上了，盘内线接接线排下排 */
   const t=TPOS[id], pos=V(t.x, t.y, TZ[id]+1.5);
   const mark = new THREE.Mesh(new THREE.TorusGeometry(6.2, 1.1, 8, 24), new THREE.MeshBasicMaterial({color:0x1c6fd6, transparent:true, opacity:0.7, toneMapped:false}));
   mark.position.copy(pos); mark.visible=false; root.add(mark);
@@ -1647,7 +1663,7 @@ const XPARTS = {qf2p:{name:'两极空开（2 只）', fits:['qf1','qf3']}, rcd:{
   qf3p:{name:'三极断路器', fits:[], bad:SHN.qf3p[4]}, rcd300:{name:'漏电模块 300mA', fits:[], bad:SHN.rcd300[4]}, km:{name:'接触器', fits:[], bad:SHN.km[4]}};
 /* 线：相线红、零线蓝、地线黄绿，都 2.5；黑 1.0 是电动盘控制线用的 */
 const WK = {R:['红 2.5', 0xd42f2f, 2.6], B:['蓝 2.5', 0x1c6dd0, 2.6], PE:['黄绿 2.5', 0x8fbf2f, 2.6], K:['黑 1.0', 0x22262b, 2.0]};
-function wcls(id){ return /pe/.test(id) ? 'PE' : /(-n[io]?|^mt-[34]|^lt-[13])$/.test(id) || id==='src-n' ? 'B' : 'R'; }
+function wcls(id){ return /pe/.test(id) ? 'PE' : /(-n[io]?|^mt-[34]|^mb-[34]|^lt-[13])$/.test(id) || id==='src-n' ? 'B' : 'R'; }
 function wkWant(a, b){ const x = wcls(a), y = wcls(b); return [x==='PE' || y==='PE' ? 'PE' : x==='B' || y==='B' ? 'B' : 'R']; }
 const SPLICE = ['剥去两根线头的绝缘层（约 3 cm）', '两线头交叉，互相缠绕 6～8 圈（绞合）', '用绝缘胶布半叠包两层（绝缘处理）'];
 const PROBE0 = ['lS','nS','gS'];                                        /* 开始操作时验的：操作台三孔（单相 L、N、PE） */
