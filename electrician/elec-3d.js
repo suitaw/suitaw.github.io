@@ -1734,3 +1734,90 @@ E3D.testPen = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 兆欧表（摇表）测电动机绕组对外壳的绝缘（3.8）══════════════
+   L 夹绕组端子 U1、E 夹机壳。摇把转速：0 / 60 / 120 r/min（额定 120，摇满 1 分钟读）。
+   电机：good 好的（几百 MΩ，指针到 ∞ 附近）/ damp 受潮（0.3 MΩ，在 0.5 线左边）/ short 绕组碰壳（0）。
+   表盘左 0 右 ∞（同 c3-8.js，各厂家画法有出入）；指针位置 = R/(R+1)（示意刻度）。慢摇时测试电压不够、指针晃 —— 不能读。 */
+(function(){
+'use strict';
+const PARTS = {
+  meter: ['兆欧表（摇表）', '里面是一台手摇发电机，摇起来发出 500 V 直流去测绝缘 —— 万用表那几伏的电池测不出高压下会不会漏电。', '兆欧表'],
+  crank: ['摇把', '<b>额定 120 转/分</b>，摇满 1 分钟再读。慢了发出的电压不够，读数不准。', '摇把'],
+  dial:  ['表盘', '左 0 右 ∞（各厂家画法有出入）。<b>低压设备判据：≥ 0.5 MΩ</b>（红线）。', '表盘'],
+  tL:    ['L 端（线路）', '接被测的导体 —— 这里夹电动机绕组的 U1 端子。', 'L 端'],
+  tE:    ['E 端（接地）', '接设备外壳 / 地。', 'E 端'],
+  motor: ['被测电动机', '测的是绕组和外壳之间的绝缘。<b>测之前必须断电</b>，测完要放电（第 4 屏）。', '电动机'],
+  leak:  ['泄漏电流（示意）', '500 V 加在绝缘两边，好的绝缘只漏过去微安级的电流；受潮、破损的漏得多 —— 表就是按这个算电阻的。', '泄漏电流']
+};
+const RVAL = {good:500, damp:0.3, short:0};
+E3D.megger = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[-2, -6, 24], view:{th:0.15, ph:0.85, r:370},
+  presets:{front:[1, 0, 0, Math.PI/2, 340], side:[0, 1, 0, -Math.PI/2, 340]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  /* 摇表：棕黑色机箱 + 表盘 + 指针 + 摇把 + 三个端子 */
+  const MX = -55;
+  tag(H.box(70, 90, 40, MX, 0, 20, H.M(0x3b2a22, {roughness:0.6}), root), 'meter');
+  const dc = document.createElement('canvas'); dc.width = 512; dc.height = 300; const dg = dc.getContext('2d');
+  (function(){ dg.fillStyle = '#f3efe3'; dg.fillRect(0, 0, 512, 300); dg.strokeStyle = '#222'; dg.lineWidth = 4;
+    dg.beginPath(); dg.arc(256, 280, 210, Math.PI*1.15, Math.PI*1.85); dg.stroke();
+    dg.font = '600 34px system-ui'; dg.fillStyle = '#222'; dg.textAlign = 'center';
+    [[0, '0'], [0.5, '0.5'], [1, '1'], [5, '5'], [100, '100'], [1e9, '∞']].forEach(function(a){ const p = a[0]/(a[0]+1), ang = Math.PI*1.15 + p*Math.PI*0.7;
+      dg.fillText(a[1], 256 + Math.cos(ang)*250, 280 + Math.sin(ang)*250 + 12); dg.beginPath(); dg.moveTo(256 + Math.cos(ang)*200, 280 + Math.sin(ang)*200); dg.lineTo(256 + Math.cos(ang)*222, 280 + Math.sin(ang)*222); dg.stroke(); });
+    const p5 = 0.5/1.5, a5 = Math.PI*1.15 + p5*Math.PI*0.7; dg.strokeStyle = '#c62828'; dg.lineWidth = 7;
+    dg.beginPath(); dg.moveTo(256 + Math.cos(a5)*150, 280 + Math.sin(a5)*150); dg.lineTo(256 + Math.cos(a5)*225, 280 + Math.sin(a5)*225); dg.stroke();
+    dg.fillStyle = '#333'; dg.font = '600 30px system-ui'; dg.fillText('MΩ', 256, 200); dg.font = '500 24px system-ui'; dg.fillText('500 V', 256, 236); })();
+  const dtex = new T.CanvasTexture(dc); dtex.colorSpace = T.SRGBColorSpace;
+  const dialMesh = tag(new T.Mesh(new T.PlaneGeometry(56, 33), new T.MeshBasicMaterial({map:dtex, toneMapped:false})), 'dial');
+  dialMesh.position.set(MX, 18, 40.2); root.add(dialMesh);
+  const needle = new T.Group(); needle.position.set(MX, 18 - 33/2 + 33*(20/300), 40.6); root.add(needle);
+  tag(H.box(0.8, 24, 0.4, 0, 12, 0, M.blk, needle), 'dial');
+  /* 摇把：在机箱右侧，绕 x 轴转 */
+  const crank = new T.Group(); crank.position.set(MX + 36, -20, 20); root.add(crank);
+  tag(H.cylZ(4, 3, 0, 0, 0, M.zinc, crank), 'crank'); crank.children[0].rotation.y = Math.PI/2;
+  tag(H.box(3, 20, 3, 4, 10, 0, M.zinc, crank), 'crank'); tag(H.box(10, 4, 4, 9, 20, 0, M.blk, crank), 'crank');
+  /* 端子 L E G */
+  [['L', MX - 18, 0xc0392b], ['E', MX, 0x24272b], ['G', MX + 18, 0x24272b]].forEach(function(a){
+    tag(H.cylZ(3.2, 5, a[1], -34, 42, H.M(a[2], {roughness:0.4}), root), a[0] === 'L' ? 'tL' : a[0] === 'E' ? 'tE' : 'meter');
+    H.plate(a[0], 5, 5, a[1], -26, 40.3, '#f3efe3', null, root); });
+  /* 电动机：机座 + 地脚 + 接线盒 + U1 端子 */
+  const mo = H.M(0x4f6f8f, {roughness:0.55, metalness:0.3});
+  const mg = new T.CylinderGeometry(22, 22, 50, 28); mg.rotateZ(Math.PI/2);
+  const mbody = tag(new T.Mesh(mg, mo), 'motor'); mbody.position.set(50, 0, 26); root.add(mbody);
+  tag(H.box(44, 50, 4, 50, 0, 2, mo, root), 'motor');
+  tag(H.box(18, 18, 10, 50, 0, 52, mo, root), 'motor');
+  tag(H.cylZ(2, 6, 50, 0, 59, M.brass, root), 'motor'); H.plate('U1', 7, 4, 50, 6, 57.2, '#e6edf5', null, root);
+  tag(H.cylZ(2.6, 3, 70, 22, 5.5, M.zinc, root), 'motor');                                    /* 地脚螺钉（E 夹这里） */
+  /* 两根测试线：L（红）→ U1；E（黑）→ 地脚 */
+  H.wire([[MX - 18, -34, 45], [MX - 18, -56, 48], [0, -56, 60], [40, -24, 70], [50, 0, 66], [50, 0, 62]], 1.0, H.M(0xc0392b, {roughness:0.5}), root);   /* 往前绕，别横穿表盘 */
+  H.wire([[MX, -34, 45], [MX, -46, 30], [20, -40, 10], [70, 22, 12], [70, 22, 8]], 1.0, M.blk, root);
+  const leakP = K.dots(10, K.curM, H.poly([[MX - 18, -34, 45], [MX - 18, -56, 48], [0, -56, 60], [40, -24, 70], [50, 0, 66], [50, 0, 50], [50, 10, 30], [70, 22, 8], [70, 22, 12], [20, -40, 10], [MX, -46, 30], [MX, -34, 45]]));
+  leakP.a.forEach(function(m){ tag(m, 'leak'); });
+  const st = {rpm:0, motor:'good', ang:0, needle:0, t:0};
+  function reading(){ const R = RVAL[st.motor];
+    if(st.rpm === 0) return {msg:'没摇。指针停在哪都不算数。点「额定 120 转」摇起来。', R:null};
+    if(st.rpm < 100) return {msg:'<b>摇得太慢</b>（60 转）：发出的电压不够 500 V，指针晃、读数偏 —— 不能读。要匀速摇到 <b>120 转/分</b>。', R:null};
+    if(R >= 100) return {msg:'指针稳在 ∞ 附近：几百 MΩ，<b>远大于 0.5 MΩ，绝缘良好</b>。', R:R};
+    if(R > 0) return {msg:'<b>'+R+' MΩ，在 0.5 MΩ 红线左边 —— 不合格</b>。多半是受潮：烘干后再测；还不行就要修。', R:R};
+    return {msg:'<b>指针打到 0：绕组碰壳</b>（绝缘击穿）。这台电机通电外壳就带电，绝对不能用。', R:R}; }
+  function update(){ if(opt.onRead) opt.onRead(reading(), st); K.S.dirty = true; }
+  update();
+  return {
+    labels:[['meter', MX - 30, 30, 30], ['dial', MX, 24, 41], ['crank', MX + 45, -10, 20, crank], ['tL', MX - 18, -34, 45], ['tE', MX, -34, 45], ['motor', 50, -22, 30], ['leak', 50, 0, 45]],
+    press:function(k){ if(k === 'crank'){ st.rpm = st.rpm ? 0 : 120; update(); return true; } return false; },
+    api:{ st:st, set:function(o){ Object.assign(st, o); update(); } },
+    tick:function(dt, k){
+      st.t += dt;
+      st.ang += st.rpm/60*2*Math.PI*dt/k*0.5; crank.rotation.x = st.ang;          /* 摇把画面按一半速度转 */
+      const R = RVAL[st.motor];
+      let target = st.rpm === 0 ? st.needle : (R >= 1e3 ? 1 : R/(R+1));
+      if(st.rpm > 0 && st.rpm < 100) target = target*0.7 + 0.12*Math.sin(st.t*5) + 0.08;   /* 慢摇：晃、偏 */
+      st.needle += (target - st.needle) * Math.min(1, dt*3/k);
+      needle.rotation.z = (0.35 - 0.7*st.needle)*Math.PI;                          /* 左 0 右 ∞：0 → 偏左 63°，1 → 偏右 63° */
+      K.flow(leakP, st.rpm >= 100 && R < 100, 0.15/k, dt);
+      return true;
+    }
+  };
+  }}, opt); };
+})();

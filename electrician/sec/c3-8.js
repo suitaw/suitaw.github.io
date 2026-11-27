@@ -83,6 +83,18 @@ ELEC.reg({
     <b>切两种转速看输出电压。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">动手摇一摇</div>
+    <div class="k3d-v" id="mg3d"></div>
+    <div class="ctrl">
+      <div class="rowlab">摇把（也可以点模型上的摇把）</div>
+      <div class="btns" id="mgR"><button class="btn sm on" data-r="0">停</button><button class="btn sm" data-r="60">慢摇 60 r/min</button><button class="btn sm" data-r="120">额定 120 r/min</button></div>
+      <div class="rowlab">被测电动机</div>
+      <div class="btns" id="mgM"><button class="btn sm on" data-m="good">好的</button><button class="btn sm" data-m="damp">受潮</button><button class="btn sm" data-m="short">绕组碰壳</button></div>
+    </div>
+    <div class="ctrl" id="mg3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="mg3info"></div>
+  </div>
+  <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
       <div class="btns" id="s2k">
@@ -850,6 +862,20 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 摇表 */
+let MG3 = null;
+function mgRead(r, st){
+  document.querySelectorAll('#mgR .btn').forEach(function(b){ b.classList.toggle('on', +b.dataset.r === st.rpm); });
+  document.querySelectorAll('#mgM .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.m === st.motor); });
+  $('mg3info').innerHTML = r.msg;
+}
+if(window.E3D){
+  E3D.megger($('mg3d'), { onRead:mgRead, onInfo:function(p, k){ if(p && k !== 'crank') $('mg3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ MG3 = a; });
+  $('mg3c').innerHTML = E3D.controlsHTML();
+  E3D.bindControls($('mg3c'), function(){ return MG3; });
+  $('mgR').addEventListener('click', function(e){ const b = e.target.closest('[data-r]'); if(b && MG3) MG3.set({rpm:+b.dataset.r}); });
+  $('mgM').addEventListener('click', function(e){ const b = e.target.closest('[data-m]'); if(b && MG3) MG3.set({motor:b.dataset.m}); });
+}
 ElecNav.init({ch:3, sec:'3.8'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();

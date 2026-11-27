@@ -2714,3 +2714,4 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - `E3D.clamp`（3.7 第 2 屏）：两芯线 L 红 N 蓝沿 x，钳口在 yz 平面、表整体沿 y 滑到所钳导线；jaw open/closed/gap、which L/N/LN；读数 10.0/9.2/0.00 同 c3-7.js 口径；蓝点＝钳口磁通（净电流≠0 才有）。PlaneGeometry 朝 +x 且字头朝 +z：rotateX(π/2) 再 rotateZ(π/2)。
 - `E3D.testPen`（3.5 第 1 屏）：三孔插座（左 N 右 L 上 PE）+ 剖开氖管验电笔 + 手指 + 人体柱 + 绝缘垫；只有 L 孔 + 抵住笔尾 + 没站垫子才亮，电流点 孔→笔→手→人→地；0.22 mA 同 c3-5.js。点插座孔＝换孔（hitMesh）。
 - 截图缺零件：关 KHR_parallel_shader_compile 试过（renderer.extensions.has 已为 false）**照样缺**，已撤回。他真机截的 2.1/2.2 是完整的，倾向于是 AutoDL 无头截图环境问题，未确认。
+- `E3D.megger`（3.8 第 2 屏）：摇表（表盘 canvas 贴图，左 0 右 ∞，指针 R/(R+1)，0.5 MΩ 红线）+ 电动机；L 红线夹 U1、E 黑线夹地脚；rpm 0/60/120（60 指针晃，不能读）；motor good 500/damp 0.3/short 0；受潮/碰壳时有泄漏电流点。
