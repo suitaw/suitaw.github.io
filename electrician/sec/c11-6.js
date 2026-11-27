@@ -218,6 +218,23 @@ ELEC.reg({
     <b>点按钮操作看看 —— 特别试试从正转直接按反转。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">动手试：两台接触器 + 一台电动机</div>
+    <div class="k3d-v" id="fr3dd"></div>
+    <div class="ctrl">
+      <div class="btns"><button class="btn" id="frF">SB1 正转</button><button class="btn" id="frR">SB2 反转</button><button class="btn" id="frS">SB3 停止</button></div>
+      <div class="btns"><button class="btn sm on" id="frL">互锁：装着</button></div>
+    </div>
+    <div class="ctrl" id="frc" style="padding-top:0"></div>
+    <div class="k3d-info" id="frinfo"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验</div>
+    ① 按「正转」：左边 KM1 吸合，电动机轴头的红白盘往一个方向转。<br>
+    ② 正转着直接按「反转」：<b>没反应</b> —— 互锁挡住了。先停，再反转：右边 KM2 吸合，盘反着转。看 KM2 下面出线：<b>第一相、第三相交叉了</b>。<br>
+    ③ 点「互锁：装着」把互锁拆掉，正转着再按反转：两台一起合上 —— L1、L3 直接短路，电弧、跳闸。
+    <span class="sub">点任意零件看名字。真柜子里绝不能拆互锁，这里只是演示为什么非要它。</span>
+  </div>
+  <div class="card">
     <canvas id="cv3"></canvas>
     <div class="ctrl">
       <div class="btns" id="s4k">
@@ -838,6 +855,19 @@ function pick(id, st, fn){
   });
 }
 pick('s1k', S1, function(){ S1.t = 0; note1(); });
+/* 3D 正反转 */
+let FR6 = null;
+if(window.E3D){
+  E3D.fwdRev($('fr3dd'), { onState:function(s){ $('frinfo').innerHTML = s.msg || '按「正转」开始。'; $('frL').textContent = s.lock ? '互锁：装着' : '互锁：拆掉了'; $('frL').classList.toggle('on', s.lock);
+      $('frF').classList.toggle('on', s.km1); $('frR').classList.toggle('on', s.km2); },
+    onInfo:function(p){ if(p) $('frinfo').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ FR6 = a; });
+  $('frc').innerHTML = E3D.controlsHTML(null, [['oblique','正上方'], ['front','正面'], ['side','侧面']]);
+  E3D.bindControls($('frc'), function(){ return FR6; });
+  $('frF').addEventListener('click', function(){ if(FR6) FR6.fwd(); });
+  $('frR').addEventListener('click', function(){ if(FR6) FR6.rev(); });
+  $('frS').addEventListener('click', function(){ if(FR6) FR6.stop(); });
+  $('frL').addEventListener('click', function(){ if(FR6) FR6.lock(!FR6.st.lock); });
+}
 pick('s2k', S2, function(){ note2(); draw2(); });
 pick('s3k', S3, function(){ note3(); draw3(); });
 $('s4k').addEventListener('click', function(e){

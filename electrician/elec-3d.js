@@ -1940,3 +1940,82 @@ E3D.faultLab = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 正反转（11.6）：两台接触器 KM1 正转、KM2 反转 + 电动机 ══════════════
+   主电路：L1 L2 L3 同时接到两台的上端；KM1 下端 2/4/6 直接 → U V W；KM2 下端把 L1、L3 对调（2→W、6→U）。
+   自带状态：km1、km2、lock（互锁开着？）。没互锁时两台一起合上＝L1、L3 经两台接触器直接短路 → 电弧 + QF 跳闸。
+   opt.onState({km1, km2, lock, msg}) */
+(function(){
+'use strict';
+const OX = 46;
+E3D.fwdRev = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:Object.assign({}, E3D._PARTS_KM, {
+    km1:['KM1 正转接触器', '下端出线直接接电动机 U V W —— 相序 L1 L2 L3。', 'KM1 正转'],
+    km2:['KM2 反转接触器', '下端出线<b>把 L1、L3 对调</b>后再接电动机 —— 相序反了，电动机就反转。', 'KM2 反转'],
+    motor:['电动机', '看轴头那块红白圆盘的转向。', '电动机'],
+    swap:['对调的两根线', 'KM2 出来的第一相和第三相交叉 —— 就这一个交叉让电动机反转。', '两相对调']
+  }),
+  center:[0, -36, 40], view:{th:0, ph:0.62, r:460},
+  presets:{front:[1, 0, 0, Math.PI/2, 440], side:[0, 1, 0, -Math.PI/2, 420]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  function sub(x){ const g = new T.Group(); g.position.x = x; root.add(g); const sh = new T.Group(); sh.position.x = x; K.shell.add(sh);
+    return E3D._kmBuild(Object.assign({}, K, {root:g, shell:sh}), {}, E3D._CT_KM); }
+  const A = sub(-OX), B = sub(OX);
+  H.plate('KM1 正转', 26, 6, -OX, 56, 0.4, '#e6edf5', null, root); H.plate('KM2 反转', 26, 6, OX, 56, 0.4, '#e6edf5', null, root);
+  /* 主电路导线 */
+  const PHM = [0xe0a92e, 0x3fa845, 0xcf4436].map(function(c){ return H.M(c, {roughness:0.5}); });
+  const PX = [-27, -13, 1];
+  PX.forEach(function(px, i){
+    const zb = 88 + i*3, yb = 70 + i*5;                                         /* 上方三根母线 */
+    H.wire([[-OX-40, yb, zb], [OX+40, yb, zb]], 1.2, PHM[i], root);
+    [-OX, OX].forEach(function(ox){ H.wire([[ox+px, yb, zb], [ox+px, 47, zb], [ox+px, 33, 79]], 1.1, PHM[i], root); });
+  });
+  /* 电动机：在下面；接线盒三个端子 U V W */
+  const MY = -120;
+  const mo = H.M(0x4f6f8f, {roughness:0.55, metalness:0.3});
+  const mg = new T.CylinderGeometry(26, 26, 60, 28); mg.rotateZ(Math.PI/2);
+  const mb = tag(new T.Mesh(mg, mo), 'motor'); mb.position.set(0, MY, 28); root.add(mb);
+  tag(H.box(50, 40, 4, 0, MY, 2, mo, root), 'motor'); tag(H.box(20, 20, 10, 0, MY, 58, mo, root), 'motor');
+  const shaft = new T.Group(); shaft.position.set(42, MY, 28); root.add(shaft);
+  const sg = new T.CylinderGeometry(3, 3, 20, 12); sg.rotateZ(Math.PI/2); shaft.add(tag(new T.Mesh(sg, M.steel), 'motor'));
+  const dg = new T.CylinderGeometry(12, 12, 2, 24); dg.rotateZ(Math.PI/2);
+  const disc = tag(new T.Mesh(dg, M.white), 'motor'); disc.position.x = 10; shaft.add(disc);
+  const half = tag(H.box(2.4, 12, 24, 10, 6, 0, H.M(0xc0392b), shaft), 'motor');
+  const UVW = [[-7, 'U'], [0, 'V'], [7, 'W']];
+  UVW.forEach(function(u){ tag(H.cylZ(1.8, 4, u[0], MY, 64, M.brass, root), 'motor'); H.plate(u[1], 4, 4, u[0], MY+6, 63.2, '#e6edf5', null, root); });
+  /* KM1 出线：2→U 4→V 6→W；KM2 出线：2→W 4→V 6→U（交叉） */
+  const outA = [[0, 0], [1, 1], [2, 2]], outB = [[0, 2], [1, 1], [2, 0]];
+  function outWire(ox, map, key){ map.forEach(function(p){ const px = PX[p[0]], ux = UVW[p[1]][0], zz = 80 - p[0]*3;
+    const w = H.wire([[ox+px, -33, 79], [ox+px, -50, zz], [ox+px*0.5 + (ux - (ox+px*0.5))*0.6, -75 - p[0]*4, zz], [ux, MY+2, 70], [ux, MY, 66]], 1.1, PHM[p[0]], root);
+    if(key) tag(w, key); }); }
+  outWire(-OX, outA, null); outWire(OX, outB, 'swap');
+  const flM = new T.MeshBasicMaterial({color:0xcfe4ff, toneMapped:false, transparent:true, opacity:0, blending:T.AdditiveBlending, depthWrite:false});
+  const arcs = [-OX, OX].map(function(ox){ const m = new T.Mesh(new T.SphereGeometry(10, 14, 12), flM); m.position.set(ox-13, 0, 66); root.add(m); return m; });
+  const st = {km1:false, km2:false, lock:true, arc:0, rot:0, msg:''};
+  function emit(){ if(opt.onState) opt.onState({km1:st.km1, km2:st.km2, lock:st.lock, msg:st.msg}); K.S.dirty = true; }
+  function short(){ st.km1 = st.km2 = false; st.arc = 1; st.msg = '<b style="color:var(--err)">两台同时吸合 —— L1、L3 经两台接触器直接短路！</b>电弧烧触点，总开关跳闸。这就是为什么必须有互锁。'; }
+  const api = {
+    st:st,
+    fwd:function(){ if(st.km2){ if(st.lock){ st.msg = '<b>按了没反应</b>：KM2 正吸合着，它的常闭 21-22 串在 KM1 线圈那一路、断开着（电气互锁）。先按停止。'; emit(); return; } st.km1 = true; short(); emit(); return; }
+      st.km1 = true; st.msg = 'KM1 吸合：相序 L1 L2 L3 → <b>正转</b>。'; emit(); },
+    rev:function(){ if(st.km1){ if(st.lock){ st.msg = '<b>按了没反应</b>：KM1 正吸合着，它的常闭 21-22 串在 KM2 线圈那一路、断开着（电气互锁）。先按停止。'; emit(); return; } st.km2 = true; short(); emit(); return; }
+      st.km2 = true; st.msg = 'KM2 吸合：L1、L3 对调了 → <b>反转</b>。'; emit(); },
+    stop:function(){ st.km1 = st.km2 = false; st.msg = '停了。'; emit(); },
+    lock:function(b){ st.lock = b; st.msg = b ? '互锁装上了。' : '<b>互锁拆掉了</b>（危险演示）：现在正转时再按反转试试。'; emit(); }
+  };
+  emit();
+  const lab = function(l, ox){ return [l[0], l[1]+ox, l[2], l[3], l[4]]; };
+  return {
+    labels:[lab(['carrier', 0, 7, 88, A.mov], -OX), ['motor', 0, MY-28, 40], ['swap', OX-20, -70, 80]],
+    api:api,
+    tick:function(dt, k){
+      A.api.set(st.km1); B.api.set(st.km2);
+      st.arc = Math.max(0, st.arc - dt/(0.6*k)); flM.opacity = st.arc; arcs.forEach(function(m){ m.visible = st.arc > 0.01; m.scale.setScalar(0.5 + st.arc); });
+      const w = st.km1 ? 1 : st.km2 ? -1 : 0;
+      st.rot += w*2.2*dt/k; shaft.rotation.x = st.rot;
+      return A.tick(dt, k) | B.tick(dt, k) | (w !== 0) | (st.arc > 0);
+    }
+  };
+  }}, opt); };
+})();
