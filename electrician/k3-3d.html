@@ -30,6 +30,9 @@ h1{font-size:19px;margin:10px 0 2px}
 .box ol,.box ul{margin:0;padding-left:20px}
 .box li{margin:3px 0}
 .box .m{color:var(--mut);font-size:12.5px}
+.pile{border-top:1px solid var(--line);padding:8px 0 4px}
+.pile b{font-size:14px}.pile .t{color:var(--mut);font-size:12.5px}
+.pile svg{display:block;width:100%;height:auto;margin-top:4px}
 </style>
 </head>
 <body>
@@ -37,22 +40,22 @@ h1{font-size:19px;margin:10px 0 2px}
 <h1>K3 实操 · 3D 接线板</h1>
 <p class="sub">看线 · 自己接线 · 通电试车 · 考场模拟</p>
 <div class="grid">
-  <a class="card" href="k33-3d.html?v=1127u">
+  <a class="card" href="k33-3d.html?v=1127v">
     <div class="top"><span class="k">K31-02</span><span class="n">19 根</span></div>
     <div class="name">电能表照明设备接线</div>
     <div class="desc"><b style="color:#c76a00">新规</b> · 照考场照明盘实拍：3 个空开自己装、线走线槽；考场按新讲义 9 步，试灯 + 测插座</div>
   </a>
-  <a class="card" href="k31-3d.html?v=1127u">
+  <a class="card" href="k31-3d.html?v=1127v">
     <div class="top"><span class="k">K31-03</span><span class="n">27 根</span></div>
     <div class="name">单向连续、点动接线</div>
     <div class="desc"><b style="color:#c76a00">新规</b> · 照考场电动盘实拍：自己装元件、主电路也自己接、线走线槽；考场按新讲义 9 步</div>
   </a>
-  <a class="card" href="k34-3d.html?v=1127u">
+  <a class="card" href="k34-3d.html?v=1127v">
     <div class="top"><span class="k">K31-04</span><span class="n">42 根</span></div>
     <div class="name">带电流互感器的电动机接线</div>
     <div class="desc"><b style="color:#c76a00">新规</b> · 照考场互感器盘实拍：主线穿互感器也自己接，电流表要穿对、二次线接对才摆；考场按新讲义 9 步 + 口述三相电流</div>
   </a>
-  <a class="card" href="k32-3d.html?v=1127u">
+  <a class="card" href="k32-3d.html?v=1127v">
     <div class="top"><span class="k">K31-05</span><span class="n">37 根</span></div>
     <div class="name">正反转运行电路</div>
     <div class="desc"><b style="color:#c76a00">新规</b> · 照考场正反转盘实拍：KM1、KM2 并排，自己装元件、主电路换相也自己接；考场按新讲义 9 步</div>
@@ -66,15 +69,47 @@ h1{font-size:19px;margin:10px 0 2px}
     <li><b>对着下面的数数够再接</b>，缺了多了马上知道。<b>先接长线</b>：长线能借短一点的路，短线没得借。</li>
     <li>拿不准就先接一头，顺着线槽走到另一头比一下。长了把多的盘进线槽，短了换一根，别硬拉。</li>
   </ol>
-  <h2 style="margin-top:10px">每块盘各要几根（短 / 中 / 长）</h2>
-  <ul>
-    <li><b>K31-02 照明</b>（19 根）：红 7/2/2，蓝 2/1/4，黄绿 0/1/0</li>
-    <li><b>K31-03 点动连续</b>（27 根）：黄 2/2/1，绿 2/2/2，红 2/2/2，黑 5/4/1</li>
-    <li><b>K31-04 互感器</b>（42 根）：黄 1/4/1，绿 1/5/1，红 1/5/1，黑 3/8/11</li>
-    <li><b>K31-05 正反转</b>（37 根）：黄 2/4/1，绿 3/2/3，红 3/2/3，黑 5/6/3</li>
-  </ul>
+  <h2 style="margin-top:12px">每块盘分好是这样</h2>
+  <p class="m" style="margin:0 0 6px">怎么看：一行是一种颜色，从左到右是短（一拃左右）、中、长（跨大半块盘）三堆；线越长画得越长，几根就画几根，右边写 ×几。分完把手里的线堆跟图对一对。</p>
+  <div id="piles"></div>
   <p class="m" style="margin:6px 0 0">按网页里的布局沿线槽算的，考场板子元件位置不完全一样，长短按实物稍调；总根数和颜色是准的。黄绿红根数不一样：4、5 号熔断器的控制电源线用绿、红。每块盘点「自己接」也能看到本盘的数。</p>
 </div>
 <p class="note">编号按 11-27 新版实操讲义。四块盘都已改成新规（照考场实拍、元件自己装、全部线自己接、新讲义考场流程）。</p>
+<script>
+/* 11-27 他要「每个盘整个图」：按颜色 × 短中长画成分好的线堆。数和 3D 页 WIRE_SUM 同源（t_len2.mjs 算的），改了板子要同步 */
+(function(){
+  const B = [
+    ['K31-02 照明', 19, [['红','#d42f2f',7,2,2],['蓝','#1c6dd0',2,1,4],['黄绿','pe',0,1,0]]],
+    ['K31-03 点动连续', 27, [['黄','#e0a92e',2,2,1],['绿','#3fa845',2,2,2],['红','#cf4436',2,2,2],['黑','#2b2f36',5,4,1]]],
+    ['K31-04 互感器', 42, [['黄','#e0a92e',1,4,1],['绿','#3fa845',1,5,1],['红','#cf4436',1,5,1],['黑','#2b2f36',3,8,11]]],
+    ['K31-05 正反转', 37, [['黄','#e0a92e',2,4,1],['绿','#3fa845',3,2,3],['红','#cf4436',3,2,3],['黑','#2b2f36',5,6,3]]]
+  ];
+  const LEN = [32, 58, 80], X0 = [42, 106, 196], GAP = 5, W = 316;   /* 每堆右边留 24 写 ×几（×11 两位数要更宽） */
+  function wire(x, y, L, c){
+    const lug = '<rect x="'+(x-3)+'" y="'+(y-2)+'" width="5" height="4" rx="1" fill="#9aa3ad"/><rect x="'+(x+L-2)+'" y="'+(y-2)+'" width="5" height="4" rx="1" fill="#9aa3ad"/>';
+    if(c==='pe') return '<line x1="'+x+'" y1="'+y+'" x2="'+(x+L)+'" y2="'+y+'" stroke="#e0c22e" stroke-width="3" stroke-linecap="round"/><line x1="'+x+'" y1="'+y+'" x2="'+(x+L)+'" y2="'+y+'" stroke="#3fa845" stroke-width="3" stroke-dasharray="5 5"/>'+lug;
+    return '<line x1="'+x+'" y1="'+y+'" x2="'+(x+L)+'" y2="'+y+'" stroke="'+c+'" stroke-width="3" stroke-linecap="round"/>'+lug;
+  }
+  let h = '';
+  B.forEach(function(b){
+    let y = 18, g = '';
+    g += ['短','中','长'].map(function(t, k){ return '<text x="'+(X0[k]+LEN[k]/2)+'" y="11" font-size="11" fill="#5b6470" text-anchor="middle">'+t+'</text>'; }).join('');
+    b[2].forEach(function(r){
+      const n = Math.max(r[2], r[3], r[4]), rh = Math.max(16, n*GAP+10);
+      g += '<text x="0" y="'+(y+rh/2+4)+'" font-size="12" font-weight="600" fill="#1f2328">'+r[0]+'</text>';
+      [2,3,4].forEach(function(k, j){
+        const c = r[k];
+        if(!c){ g += '<text x="'+(X0[j]+LEN[j]/2)+'" y="'+(y+rh/2+4)+'" font-size="11" fill="#b0b7c0" text-anchor="middle">—</text>'; return; }
+        const top = y + (rh - (c-1)*GAP)/2 - 2;
+        for(let i=0;i<c;i++) g += wire(X0[j]+2, top+i*GAP, LEN[j], r[1]);
+        g += '<text x="'+(X0[j]+LEN[j]+7)+'" y="'+(y+rh/2+4)+'" font-size="11.5" font-weight="600" fill="#1f2328">×'+c+'</text>';
+      });
+      y += rh + 6;
+    });
+    h += '<div class="pile"><b>'+b[0]+'</b> <span class="t">共 '+b[1]+' 根</span><svg viewBox="0 0 '+W+' '+y+'" role="img" aria-label="'+b[0]+' 分线图">'+g+'</svg></div>';
+  });
+  document.getElementById('piles').innerHTML = h;
+})();
+</script>
 </body>
 </html>
