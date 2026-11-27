@@ -2231,9 +2231,18 @@ function resize(){
 /* ══ 点击 ══ 我的监听要先于 OrbitControls 注册：按住按钮时先把转镜头关掉 */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function shown(o){ for(let p=o.parent; p; p=p.parent) if(!p.visible) return false; return true; }   /* 没装上的元件（藏着）上的按钮、开关点不到 */
+/* 11-27 他说点接线端子老误触熔断器盒、空开手柄：端子能接线时，手指 26px 以内有端子就算点端子（按钮盒照常优先） */
+const _tv = new THREE.Vector3();
+function nearTerm(e){ let best = null, bd = 26*26;
+  for(const id in TERMS){ const p = TERMS[id].pick; if(p.userData.off || !shown(p)) continue;
+    p.getWorldPosition(_tv).project(camera); const dx = (_tv.x+1)/2*W-e.clientX, dy = (1-_tv.y)/2*H-e.clientY, d = dx*dx+dy*dy;
+    if(d<bd){ bd = d; best = p.userData.act; } }
+  return best; }
 function hit(e){
   ndc.set(e.clientX/W*2-1, -(e.clientY/H*2-1)); ray.setFromCamera(ndc, camera);
   const hs = ray.intersectObjects(picks, false).filter(function(h){ return !h.object.userData.off && shown(h.object); });
+  const nt = nearTerm(e);
+  if(nt && !(hs.length && hs[0].object.userData.act.type==='btn')) return nt;
   if(!hs.length) return null;
   const hard = hs.filter(function(h){ return h.object.userData.act.type!=='wire'; });   /* 按钮/开关优先于线 */
   return (hard[0] && hard[0].distance < hs[0].distance+60 ? hard[0] : hs[0]).object.userData.act;
