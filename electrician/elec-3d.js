@@ -2697,3 +2697,74 @@ E3D.tape = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 串电阻减压起动（11.3）：KM1 + 电阻器 R1~R3 + KM2（短接电阻）+ 电动机 ══════════════
+   L1 L2 L3 → KM1 → R1~R3 → 电动机 U V W；KM2 并在电阻两头。按起动：KM1 合（经电阻，降压限流，电阻发热）→ KT 倒数 → KM2 合（电阻被短接，全压）。
+   opt.onState({phase, left, msg}) */
+(function(){
+'use strict';
+const OX = 48, MY = -130, RY = -60;
+E3D.resStart = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:Object.assign({}, E3D._PARTS_KM, {
+    km1:['KM1', '起动接触器：电源经它、再经三只电阻送到电动机。', 'KM1'],
+    km2:['KM2', '运行接触器：<b>并在电阻两头</b>，一吸合就把电阻短接，电动机拿到全压。', 'KM2'],
+    res:['起动电阻 R1~R3', '串在每一相里分掉一部分电压，起动电流就小了。<b>起动时它发热</b>（电能变成热），所以只能短时间用，起动完必须短接掉。', '起动电阻'],
+    motor:['电动机', '', '电动机']
+  }),
+  center:[0, -50, 40], view:{th:0, ph:0.6, r:480},
+  presets:{front:[1, 0, 0, Math.PI/2, 460], side:[0, 1, 0, -Math.PI/2, 430]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  function sub(x){ const g = new T.Group(); g.position.x = x; root.add(g); const sh = new T.Group(); sh.position.x = x; K.shell.add(sh);
+    return E3D._kmBuild(Object.assign({}, K, {root:g, shell:sh}), {}, E3D._CT_KM); }
+  const A = sub(-OX), B = sub(OX);
+  H.plate('KM1 起动', 26, 6, -OX, 56, 0.4, '#e6edf5', null, root); H.plate('KM2 短接', 26, 6, OX, 56, 0.4, '#e6edf5', null, root);
+  const PHM = [0xe0a92e, 0x3fa845, 0xcf4436].map(function(c){ return H.M(c, {roughness:0.5}); }), PX = [-27, -13, 1];
+  /* 三只电阻：瓷管 + 电阻丝（发热变红） */
+  const resM = [];
+  PX.forEach(function(px, i){ const x = px*1.6;
+    const g = new T.CylinderGeometry(4, 4, 34, 18); const tube = tag(new T.Mesh(g, H.M(0xe8e2d2, {roughness:0.6})), 'res'); tube.position.set(x, RY, 20); root.add(tube);
+    const wm = H.M(0x9a6b4a, {metalness:0.6, roughness:0.4, emissive:0x000000}); resM.push(wm);
+    const sp = tag(H.spring(4.4, 9, 30, 0.45, wm), 'res'); sp.rotation.x = -Math.PI/2; sp.position.set(x, RY + 15, 20); root.add(sp);
+    H.plate('R' + (i+1), 6, 4, x, RY, 30, '#2a2e33', null, root); });
+  /* 母线 → KM1 上端；KM1 下端 → 电阻上头；电阻下头 → 电动机；KM2 上端接电阻上头、下端接电阻下头 */
+  PX.forEach(function(px, i){ const zb = 88 + i*3, yb = 70 + i*5, rx = px*1.6;
+    H.wire([[-OX-40, yb, zb], [-OX+40, yb, zb]], 1.2, PHM[i], root);
+    H.wire([[-OX+px, yb, zb], [-OX+px, 47, zb], [-OX+px, 33, 79]], 1.1, PHM[i], root);
+    H.wire([[-OX+px, -33, 79], [-OX+px, -42, 60], [rx, RY+22, 30], [rx, RY+17, 22]], 1.0, PHM[i], root);
+    H.wire([[rx, RY+22, 30], [OX+px, 40, 86], [OX+px, 33, 79]], 1.0, PHM[i], root);
+    H.wire([[rx, RY-17, 22], [rx, RY-24, 30], [OX+px, -45, 82], [OX+px, -33, 79]], 1.0, PHM[i], root);
+    H.wire([[rx, RY-24, 30], [rx*0.4 - 7 + i*7, MY+2, 70], [-7 + i*7, MY, 66]], 1.0, PHM[i], root); });
+  /* 电动机 */
+  const mo = H.M(0x4f6f8f, {roughness:0.55, metalness:0.3});
+  const mg = new T.CylinderGeometry(26, 26, 60, 28); mg.rotateZ(Math.PI/2);
+  const mb = tag(new T.Mesh(mg, mo), 'motor'); mb.position.set(0, MY, 28); root.add(mb); tag(H.box(20, 20, 10, 0, MY, 58, mo, root), 'motor');
+  const shaft = new T.Group(); shaft.position.set(42, MY, 28); root.add(shaft);
+  const dg = new T.CylinderGeometry(12, 12, 2, 24); dg.rotateZ(Math.PI/2); shaft.add(tag(new T.Mesh(dg, M.white), 'motor')); tag(H.box(2.4, 12, 24, 0, 6, 0, H.M(0xc0392b), shaft), 'motor');
+  /* 电流点：起动时经电阻，运行时经 KM2 */
+  const viaR = PX.map(function(px, i){ const rx = px*1.6; return K.dots(10, K.curM, H.poly([[-OX+px, 33, 79], [-OX+px, -33, 79], [-OX+px, -42, 60], [rx, RY+22, 30], [rx, RY+17, 22], [rx, RY-17, 22], [rx, RY-24, 30], [-7 + i*7, MY, 66]])); });
+  const viaB = PX.map(function(px, i){ const rx = px*1.6; return K.dots(10, K.curM, H.poly([[rx, RY+22, 30], [OX+px, 40, 86], [OX+px, 33, 79], [OX+px, -33, 79], [OX+px, -45, 82], [rx, RY-24, 30], [-7 + i*7, MY, 66]])); });
+  const DELAY = 4, st = {phase:'stop', left:0, heat:0, spd:0, rot:0};
+  function emit(){ const msg = st.phase === 'start' ? '<b>减压起动</b>：KM1 吸合，电经过三只电阻（电阻分掉一部分电压，发热），起动电流小了。时间继电器 KT 倒数 '+Math.max(0, Math.ceil(st.left))+' 秒……'
+      : st.phase === 'run' ? '<b>全压运行</b>：KT 到点，KM2 吸合，把电阻<b>短接</b>了 —— 电流改走 KM2，电阻不再过电、慢慢凉下来。' : '停着。按「起动」看一遍。';
+    if(opt.onState) opt.onState({phase:st.phase, left:st.left, msg:msg}); K.S.dirty = true; }
+  const api = { st:st, start:function(){ if(st.phase !== 'stop') return; st.phase = 'start'; st.left = DELAY; emit(); }, stop:function(){ st.phase = 'stop'; emit(); } };
+  emit();
+  let lastSec = -1;
+  return {
+    labels:[['km1', -OX, 0, 96], ['km2', OX, 0, 96], ['res', 0, RY, 26], ['motor', 0, MY-26, 40]],
+    api:api,
+    tick:function(dt, k){
+      const d = dt/k;
+      if(st.phase === 'start'){ st.left -= d; const s = Math.ceil(st.left); if(s !== lastSec){ lastSec = s; emit(); } if(st.left <= 0){ st.phase = 'run'; emit(); } }
+      A.api.set(st.phase !== 'stop'); B.api.set(st.phase === 'run');
+      st.heat += ((st.phase === 'start' ? 1 : 0) - st.heat) * Math.min(1, d*(st.phase === 'start' ? 0.8 : 0.4));
+      resM.forEach(function(m){ m.emissive.setHex(0xff0000); m.emissiveIntensity = st.heat*1.5; });
+      const tgt = st.phase === 'start' ? 1.2 : st.phase === 'run' ? 2.6 : 0; st.spd += (tgt - st.spd) * Math.min(1, d*1.2); st.rot += st.spd*d; shaft.rotation.x = st.rot;
+      viaR.forEach(function(g){ K.flow(g, st.phase === 'start' && A.api.coil.t > 0.9, 0.1/k, dt); });
+      viaB.forEach(function(g){ K.flow(g, st.phase === 'run' && B.api.coil.t > 0.9, 0.1/k, dt); });
+      return A.tick(dt, k) | B.tick(dt, k) | (st.spd > 0.01) | (st.heat > 0.01) | (st.phase !== 'stop');
+    }
+  };
+  }}, opt); };
+})();

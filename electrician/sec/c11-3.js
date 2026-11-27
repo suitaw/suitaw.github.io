@@ -173,6 +173,20 @@ ELEC.reg({
     <b>点「起动」看整个过程。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">动手起动一次</div>
+    <div class="k3d-v" id="rs3d"></div>
+    <div class="ctrl"><div class="btns"><button class="btn big" id="rsGo">按 SB 起动</button><button class="btn" id="rsStop">停止</button></div></div>
+    <div class="ctrl" id="rs3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="rs3info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">盯住两处</div>
+    ① 按起动：左边 KM1 吸合，橙色电流<b>穿过中间三只电阻</b>才到电动机 —— 电阻丝发红（发热），电动机慢慢转起来。<br>
+    ② 倒计时到 0：右边 KM2 吸合，电流改走 KM2，<b>绕过电阻</b>直接到电动机 —— 全压，转快了，电阻慢慢凉。<br>
+    跟星三角不一样：这里 KM1 和 KM2 是<b>一起吸着</b>的（叠加），星三角是一个断了另一个才能合（顶替）。
+    <span class="sub">延时这里设 4 秒（实际看电机大小）。点任意零件看名字。</span>
+  </div>
+  <div class="card">
     <canvas id="cv2"></canvas>
     <div class="ctrl">
       <div class="btns" id="s3k">
@@ -928,6 +942,15 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 串电阻起动 */
+let RS3 = null;
+if(window.E3D){
+  E3D.resStart($('rs3d'), { onState:function(e){ $('rs3info').innerHTML = e.msg; }, onInfo:function(p){ if(p) $('rs3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ RS3 = a; });
+  $('rs3c').innerHTML = E3D.controlsHTML(null, [['oblique','正上方'], ['front','正面'], ['side','侧面']]);
+  E3D.bindControls($('rs3c'), function(){ return RS3; });
+  $('rsGo').addEventListener('click', function(){ if(RS3) RS3.start(); });
+  $('rsStop').addEventListener('click', function(){ if(RS3) RS3.stop(); });
+}
 ElecNav.init({ch:11, sec:'11.3'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
