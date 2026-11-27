@@ -953,7 +953,7 @@ WIRES.forEach(function(w){
   ferrule(mesh, pts[0], pts[1]); ferrule(mesh, pts[pts.length-1], pts[pts.length-2]);
   const pick = tube(pts, 9, new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false})); pick.castShadow=false;
   pick.userData.act = {type:'wire', id:w.id}; picks.push(pick);
-  CW.push({w:w, mesh:mesh, mat:mat, base:w.color, pick:pick, ends:[pts[0], pts[pts.length-1]]});
+  CW.push({w:w, mesh:mesh, mat:mat, base:w.color, pick:pick, ends:[pts[0], pts[pts.length-1]], dirs:[outDir(pts, false), outDir(pts, true)]});
 });
 /* 自己接线用：每个端子一个点击靶（放大了的隐形球）+ 一个蓝圈标记「这儿能接」 */
 const TERMS = {};
@@ -1124,6 +1124,9 @@ function shortName(id){
   return TLABEL[id] || id;
 }
 const TAGS = {};
+/* 线从这一头出去的方向（板面 xy，忽略刚出端子时往上抬的那段） */
+function outDir(pts, back){ const L = back ? pts.slice().reverse() : pts, a = L[0];
+  for(let k=1;k<L.length;k++){ const dx = L[k].x-a.x, dy = L[k].y-a.y; if(dx*dx+dy*dy > 16) return [dx, dy]; } return [0, -1]; }
 function tagOf(id){
   if(TAGS[id]) return TAGS[id];
   const c = document.createElement('canvas'), g = c.getContext('2d'), F = 56, text = shortName(id);
@@ -1316,6 +1319,8 @@ function refresh(){
     const sp = tagOf(id), up = TPOS[ids[1-i]] ? TPOS[id].y <= TPOS[ids[1-i]].y : true;     /* 两头一上一下错开，别互相压着 */
     sp.visible = true; sp.position.copy(rp[i]); sp.position.z += 6;
     sp.center.set(0.5, (up || ids.length===1) ? -0.55 : 1.55);
+    const dd = s && !hw && !UI.pend && s.dirs && s.dirs[i];          /* 11-27 他说名字牌挡线：线从端子往哪边出，名字牌就放反方向 */
+    if(dd){ if(Math.abs(dd[1]) >= Math.abs(dd[0])) sp.center.set(0.5, dd[1] > 0 ? 1.6 : -0.6); else sp.center.set(dd[0] > 0 ? 1.06 : -0.06, 0.5); }
     const hgt = 19/H*2*Math.tan(camera.fov/2*Math.PI/180);   /* 标签字高 19 像素（11-26 他嫌 30 太大挡画面） */ sp.scale.set(hgt*sp.userData.ar, hgt, 1);
   });
   const exW = EX.on && EX.phase==='wire', exT = EX.on && EX.phase==='trial';
@@ -1490,7 +1495,7 @@ function exAddWire(a, b, wk){
   const mesh = tube(pts, K[2], mat); ferrule(mesh, pts[0], pts[1]); ferrule(mesh, pts[pts.length-1], pts[pts.length-2]);
   const pick = tube(pts, 9, new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
   pick.castShadow = false; pick.userData.act = {type:'wire', id:w.id}; picks.push(pick);
-  XW.push({w:w, mesh:mesh, mat:mat, base:K[1], pick:pick, ends:[pts[0], pts[pts.length-1]], x:true});
+  XW.push({w:w, mesh:mesh, mat:mat, base:K[1], pick:pick, ends:[pts[0], pts[pts.length-1]], dirs:[outDir(pts, false), outDir(pts, true)], x:true});
   setActive(EX.wires.slice()); return w;
 }
 function exDelWire(id){
