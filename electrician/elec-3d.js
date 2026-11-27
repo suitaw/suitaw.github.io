@@ -200,6 +200,9 @@ function make(T, el, spec, opt){
     flow:function(g, on, sp, dt){ g.ph = (g.ph + dt*sp)%1; g.a.forEach(function(m, i){ m.visible = on; if(on) g.path(g.ph + i/g.n, m.position); }); }
   };
   const B = spec.build(K);
+  /* 关掉视锥裁剪：电动机的定子/转子在斜视角下被误判「不在镜头里」整个不画（11-28 截图抓到，关掉就好）；
+     之前偶尔「少半个模型」多半也是它。场景都很小，全画也不费事 */
+  root.traverse(function(m){ if(m.isMesh) m.frustumCulled = false; });
   /* 预编译：电流点、闪光这些平时隐藏的东西第一次出现时才编着色器，那一帧会少画东西（截图抓到过半个模型）。
      开场先全部显示编一遍，再恢复 */
   (function(){ const hid = []; root.traverse(function(m){ if(m.isMesh && !m.visible){ hid.push(m); m.visible = true; } });
@@ -268,6 +271,7 @@ function make(T, el, spec, opt){
   });
 
   /* 每帧 */
+  const noCull = function(m){ if(m.isMesh) m.frustumCulled = false; };
   let last = performance.now(), visible = true;
   new IntersectionObserver(function(es){ visible = es[0].isIntersecting; }).observe(el);
   function tick(now){
@@ -275,7 +279,7 @@ function make(T, el, spec, opt){
     const dt = Math.min(0.05, (now-last)/1000); last = now;
     if(!visible || !el.clientWidth) return;
     const busy = B.tick ? B.tick(dt, st.slow ? 4 : 1) : false;
-    if(busy || S.dirty){ S.renderer.render(S.scene, S.cam); placeLabels(); S.dirty = false; }
+    if(busy || S.dirty){ root.traverse(noCull); S.renderer.render(S.scene, S.cam); placeLabels(); S.dirty = false; }   /* 后来才生成的网格（绕组、表笔线）也要关裁剪 */
   }
   S.size(); requestAnimationFrame(tick);
 
@@ -1412,6 +1416,87 @@ E3D.breaker = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
       const flowing = st.on && st.x > 0.05;
       paths.forEach(function(g){ K.flow(g, flowing, (0.05 + 0.04*Math.min(st.x, 3))/k, dt); });
       if(!st.on && st.cause === 'hot' && st.th < TRIP*0.85){ st.cause = ''; emit(); }
+      return true;
+    }
+  };
+  }}, opt); };
+})();
+
+/* ══════════════ 三相异步电动机（剖开看）══════════════
+   轴沿 x 方向躺着。定子铁芯带槽、三相绕组按相色（黄绿红）；鼠笼转子；风扇；接线盒。
+   旋转磁场：定子里一圈蓝色箭头（2p 个，N/S 交替），按同步转速 n₀＝60f/p 转；转子按 n＝n₀(1−s) 转，s＝4%（同页面）。
+   画面转速按 1/50 放慢；转子上的白色标记会一点点落后于磁场 —— 「异步」。opt.state() → {p, f}；api.reverse() 调换两相 */
+(function(){
+'use strict';
+const PARTS = {
+  frame:  ['机座（外壳）', '铸铁或铝，外面一圈散热筋；底下有地脚。', '机座'],
+  stator: ['定子铁芯', '硅钢片叠成的一个圆筒，内圈开槽放绕组。<b>不转</b>。', '定子铁芯'],
+  wind:   ['三相定子绕组', '三组线圈（U/V/W，这里按相色黄绿红）在圆周上错开 120° 放。通上三相电，合起来就是一个<b>旋转磁场</b>。', '定子绕组'],
+  field:  ['旋转磁场（示意）', '看不见的东西，这里用蓝箭头画出来：箭头指的是 N 极。它的转速叫<b>同步转速 n₀ = 60f / p</b>。', '旋转磁场'],
+  rotor:  ['鼠笼转子', '铁芯外圈嵌着一根根导条，两头用端环短接，像个松鼠笼。旋转磁场扫过导条感应出电流，电流在磁场里受力 —— 转子就被拖着转。', '鼠笼转子'],
+  mark:   ['转子上的标记（白条）', '盯住它和蓝箭头：它<b>总比磁场慢一点</b>，越落越远。要是追上了，导条就不再切割磁场、不再有电流、也就没有力 —— 所以永远追不上，叫「异步」。', '转子标记'],
+  shaft:  ['转轴', '把力矩传出去带负载。', '转轴'],
+  fan:    ['风扇', '装在后面，跟着轴转，给机座吹风散热。', '风扇'],
+  tbox:   ['接线盒', '三相绕组的六个头都引到这里（第 3 屏讲星形、三角形怎么接）。', '接线盒'],
+  housing:['端盖', '']
+};
+E3D.motor = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 42], view:{th:0.75, ph:1.15, r:290},
+  presets:{front:[0, 1, 0, -Math.PI/2, 240], side:[1, 0, 0, Math.PI/2, 290]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag;
+  const AX = new T.Group(); AX.position.set(0, 0, 42); root.add(AX);          /* 轴心；里面的东西都绕 x 轴 */
+  const cyl = function(r, len, mat, x, seg){ const g = new T.CylinderGeometry(r, r, len, seg||32); g.rotateZ(Math.PI/2); const m = new T.Mesh(g, mat); m.position.x = x||0; return m; };
+  /* 机座 + 散热筋 + 地脚 + 端盖（剖开半透明） */
+  const iron = H.M(0x4f6f8f, {roughness:0.55, metalness:0.3, transparent:true});
+  const fr = tag(cyl(40, 70, iron), 'frame'); fr.position.z = 42; shell.add(fr);
+  for(let i=0;i<16;i++){ const a = i/16*Math.PI*2, f = tag(H.box(66, 2, 6, 0, 0, 0, iron, shell), 'frame'); f.position.set(0, Math.cos(a)*42, 42 + Math.sin(a)*42); f.rotation.x = a; }
+  [-37, 37].forEach(function(x){ const e = tag(cyl(40, 4, iron, x), 'housing'); e.position.z = 42; shell.add(e); });
+  [-24, 24].forEach(function(x){ tag(H.box(14, 70, 4, x, 0, 2, iron, root), 'frame'); tag(H.box(10, 6, 34, x, 30, 18, iron, root), 'frame'); tag(H.box(10, 6, 34, x, -30, 18, iron, root), 'frame'); });
+  tag(H.box(26, 26, 12, 0, 0, 88, iron, shell), 'tbox');
+  /* 定子铁芯：圆环带 24 个槽（挤出） */
+  const NS = 24, sh = new T.Shape(); sh.absarc(0, 0, 35, 0, Math.PI*2, false);
+  const hole = new T.Path(); hole.absarc(0, 0, 20, 0, Math.PI*2, true); sh.holes.push(hole);
+  const sg = new T.ExtrudeGeometry(sh, {depth:50, bevelEnabled:false, curveSegments:48}); sg.translate(0, 0, -25); sg.rotateY(Math.PI/2);
+  AX.add(tag(new T.Mesh(sg, H.M(0x7d858d, {metalness:0.6, roughness:0.45})), 'stator'));
+  /* 槽里的绕组：第 i 槽属于哪一相（极对数改了也照这个排法画，示意） */
+  const PHC = [0xe0a92e, 0x3fa845, 0xcf4436].map(function(c){ return H.M(c, {roughness:0.45, metalness:0.3}); });
+  const wind = new T.Group(); AX.add(wind);
+  function layWindings(p){ while(wind.children.length) wind.remove(wind.children[0]);
+    const per = Math.max(1, Math.round(NS/(6*p)));
+    for(let i=0;i<NS;i++){ const a = (i+0.5)/NS*Math.PI*2, ph = Math.floor(i/per) % 3;
+      const m = tag(H.box(54, 4.2, 4.2, 0, 0, 0, PHC[ph], wind), 'wind'); m.position.set(0, Math.cos(a)*22.5, Math.sin(a)*22.5); m.rotation.x = a; } }
+  /* 转子：铁芯 + 导条 + 端环 + 白标记 */
+  const rotor = new T.Group(); AX.add(rotor);
+  rotor.add(tag(cyl(18.5, 50, H.M(0x8e969e, {metalness:0.6, roughness:0.4})), 'rotor'));
+  const alu = H.M(0xc9ced3, {metalness:0.85, roughness:0.3});
+  for(let i=0;i<18;i++){ const a = i/18*Math.PI*2, b = tag(H.box(52, 2.2, 2.2, 0, 0, 0, alu, rotor), 'rotor'); b.position.set(0, Math.cos(a)*18.2, Math.sin(a)*18.2); b.rotation.x = a; }
+  [-26, 26].forEach(function(x){ const rg = new T.TorusGeometry(17.5, 1.6, 8, 32); rg.rotateY(Math.PI/2); const r = tag(new T.Mesh(rg, alu), 'rotor'); r.position.x = x; rotor.add(r); });
+  const mk = tag(H.box(53, 2, 4, 0, 0, 19.5, M.white, rotor), 'mark');
+  rotor.add(tag(cyl(4, 120, M.steel), 'shaft'));
+  /* 风扇（后面，跟轴转） */
+  const fan = new T.Group(); fan.position.x = -46; rotor.add(fan);
+  for(let i=0;i<8;i++){ const a = i/8*Math.PI*2, b = tag(H.box(3, 4, 30, 0, 0, 0, H.M(0x2b2f34, {roughness:0.6}), fan), 'fan'); b.position.set(0, Math.cos(a)*15, Math.sin(a)*15); b.rotation.x = a; }
+  /* 旋转磁场：2p 个箭头（N 往外、S 往里），放在定子前端面 */
+  const field = new T.Group(); field.position.x = 27; AX.add(field);
+  const arrM = K.sigM;
+  function layField(p){ while(field.children.length) field.remove(field.children[0]);
+    for(let i=0;i<2*p;i++){ const a = i/(2*p)*Math.PI*2, g = new T.Group(); g.rotation.x = a; field.add(g);
+      const out = i % 2 === 0;
+      const sh = tag(new T.Mesh(new T.CylinderGeometry(0.9, 0.9, 10, 8), arrM), 'field'); sh.position.y = 13; g.add(sh);
+      const cn = tag(new T.Mesh(new T.ConeGeometry(2.6, 5, 12), arrM), 'field'); cn.position.y = out ? 20 : 6; cn.rotation.x = out ? 0 : Math.PI; g.add(cn);
+      if(out){ const lab = H.plate('N', 5, 5, 0, 0, 0, '#4fb4ff', null, g); lab.position.set(0.5, 25, 0); lab.rotation.y = Math.PI/2; } } }
+  let curP = 0;
+  const st = {th0:0, th:0, dir:1};
+  return {
+    labels:[['frame', 0, -40, 70], ['stator', 0, 0, 77], ['wind', 26, 16, 58], ['field', 27, 0, 62], ['rotor', 10, -14, 56], ['mark', -10, 0, 62], ['shaft', 58, 0, 42], ['fan', -48, 0, 60], ['tbox', 0, 0, 95]],
+    api:{ reverse:function(){ st.dir = -st.dir; return st.dir; }, st:st },
+    tick:function(dt, k){
+      const s = opt.state ? opt.state() : {p:2, f:50};
+      if(s.p !== curP){ curP = s.p; layWindings(curP); layField(curP); }
+      const n0 = 60*s.f/s.p, n = n0*0.96, VIS = 1/50;                         /* 画面放慢 50 倍 */
+      st.th0 += st.dir * n0/60*2*Math.PI*VIS * dt/k; st.th += st.dir * n/60*2*Math.PI*VIS * dt/k;
+      field.rotation.x = st.th0; rotor.rotation.x = st.th;
       return true;
     }
   };

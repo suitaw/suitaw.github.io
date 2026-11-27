@@ -22,7 +22,7 @@ ELEC.reg({
     所以叫「异步」。<b>拖滑杆改极对数和频率，看转速怎么变。</b>
   </div>
   <div class="card">
-    <canvas id="cv0"></canvas>
+    <div class="k3d-v" id="mo3d"></div>
     <div class="ctrl">
       <div class="rowlab">极对数 p　<b id="s1plab">2 对极（4 极电机）</b></div>
       <input type="range" id="s1p" min="1" max="4" step="1" value="2">
@@ -34,8 +34,22 @@ ELEC.reg({
         <div class="num"><div class="k">转差率<br>s</div><div class="v" id="s1c">4%</div></div>
       </div>
     </div>
+    <div class="ctrl" style="padding-top:0"><div class="btns"><button class="btn" id="moRev">调换两相（反转）</button></div></div>
+    <div class="ctrl" id="mo3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="mo3info"></div>
   </div>
   <div class="note" id="n0"></div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验</div>
+    点<b>「对着轴看」</b>：蓝箭头是<b>旋转磁场</b>的 N 极，转子上的<b>白条</b>跟着它转 —— 盯一会儿，白条<b>一点点落在后面</b>，永远追不上。<br>
+    把<b>极对数</b>拖大：箭头变多、转得变慢（n₀ = 60f / p）。把<b>频率</b>拖低：也变慢 —— 变频器调速就是调这个 f。<br>
+    点<b>「调换两相」</b>：磁场倒过来转，转子跟着反转 —— 正反转控制（11.6 节）就是用两个接触器把任意两相对调。
+    <span class="sub">画面转速放慢了 50 倍。点任意零件看名字；「剖开外壳」切换机座透明。</span>
+  </div>
+  <div class="card">
+    <canvas id="cv0"></canvas>
+  </div>
+
 
   <div class="note" style="margin-top:10px">
     <div class="st">同步转速：一个只跟两件事有关的数</div>
@@ -450,6 +464,17 @@ function note1(){
         '因为极对数只能是整数。</span>');
 }
 $('s1p').addEventListener('input', function(){ S1.p = +this.value; note1(); });
+/* 3D 电动机 */
+let MO3 = null;
+const MO3I = '点模型上任意零件看它叫什么。<b>蓝箭头＝旋转磁场，白条＝转子上的标记</b>。';
+$('mo3info').innerHTML = MO3I;
+$('mo3c').innerHTML = window.E3D ? E3D.controlsHTML(null, [['oblique','斜着看'], ['front','对着轴看'], ['side','侧面']]) : '';
+if(window.E3D){
+  E3D.motor($('mo3d'), { state:function(){ return {p:S1.p, f:S1.f}; }, onInfo:function(p){ $('mo3info').innerHTML = p ? '<b>'+p[0]+'</b>：'+p[1] : MO3I; } }).then(function(a){ MO3 = a; });
+  E3D.bindControls($('mo3c'), function(){ return MO3; });
+  $('moRev').addEventListener('click', function(){ if(!MO3) return; const d = MO3.reverse(); this.classList.toggle('on', d < 0);
+    $('mo3info').innerHTML = d < 0 ? '两相对调了：磁场<b>反过来</b>转，转子跟着反转。' : '换回来了：正转。'; });
+}
 $('s1f').addEventListener('input', function(){ S1.f = +this.value; note1(); });
 
 /* ================================================================
