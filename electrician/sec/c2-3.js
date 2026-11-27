@@ -85,6 +85,28 @@ ELEC.reg({
     <b>拖下面的滑杆把电流往大里调，盯住那块双金属片。</b>
   </div>
   <div class="card">
+    <div class="k3d-v" id="fr3d"></div>
+    <div class="ctrl">
+      <div class="rowlab">负载电流　<b id="fr3lab">1.0 倍额定</b>　（整定 10 A）</div>
+      <input type="range" id="fr3i" min="4" max="80" step="1" value="10">
+      <div class="btns">
+        <button class="btn" data-x="1">额定</button>
+        <button class="btn" data-x="1.5">1.5 倍过载</button>
+        <button class="btn" data-x="6">起动电流 6 倍</button>
+      </div>
+      <div id="fr3c"></div>
+    </div>
+    <div class="k3d-info" id="fr3info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验</div>
+    ① 先点<b>「1.5 倍过载」</b>，盯住三根双金属片：电热丝慢慢发红，片子一点点弯，推着白色导板走 ——
+    到头了右边的跳簧机构<b>「啪」地翻过去</b>：常闭 95-96 断开（控制回路的橙色电流点停了），复位钮弹出来。<br>
+    ② 马上点<b>复位钮</b>（模型上那个蓝色圆钮）—— 按不动，片子还没凉。等它直回来再按。<br>
+    ③ 再试<b>「起动电流 6 倍」</b>：几秒钟就跳 —— 所以起动时间长的电动机要选合适的脱扣级别。
+    <span class="sub">时间已经加快了 30 倍（同下面的平面图）。点任意零件看它叫什么、干什么用；拖动翻着看，两指拧转正。</span>
+  </div>
+  <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
       <div class="rowlab">负载电流　<b id="s2ilab">1.0 倍额定</b>　（整定值 In 假设是 10 A）</div>
@@ -664,9 +686,26 @@ function note2(){
 function setX(v){
   S2.x = v;
   const sl = $('s2i'); if(+sl.value !== Math.round(v*10)) sl.value = Math.round(v*10);
+  $('fr3i').value = Math.round(v*10); $('fr3lab').textContent = v.toFixed(1) + ' 倍额定';
   note2();
 }
 $('s2i').addEventListener('input', function(){ setX(+this.value/10); });
+
+/* 3D 热继电器（elec-3d.js）：读同一个 S2 热模型，滑杆两边同步；点模型上的复位钮＝按下面的「复位」 */
+let FR3 = null;
+const FR3I = '点模型上任意零件，这里会写它叫什么、干什么用。<b>蓝色圆钮是复位钮，跳了以后点它</b>。';
+$('fr3info').innerHTML = FR3I;
+$('fr3c').innerHTML = window.E3D ? E3D.controlsHTML() : '';
+if(window.E3D){
+  E3D.thermal($('fr3d'), {
+    state:function(){ return {x:S2.tripped ? 0 : S2.x, heat:Math.min(1, S2.th/TRIP), tripped:S2.tripped}; },
+    onReset:function(){ $('s2rs').click(); },
+    onInfo:function(p){ $('fr3info').innerHTML = p ? '<b>'+p[0]+'</b>：'+p[1] : FR3I; }
+  }).then(function(a){ FR3 = a; });
+  E3D.bindControls($('fr3c'), function(){ return FR3; });
+}
+$('fr3i').addEventListener('input', function(){ setX(+this.value/10); });
+document.querySelectorAll('#sc1 [data-x]').forEach(function(b){ b.addEventListener('click', function(){ setX(+b.dataset.x); }); });
 $('s2nm').addEventListener('click', function(){ setX(1.0); });
 $('s2ov').addEventListener('click', function(){ setX(1.5); });
 $('s2rs').addEventListener('click', function(){

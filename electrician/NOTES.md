@@ -2687,3 +2687,13 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - 颜色照站规：橙点＝电流（主电路、线圈回路），蓝点＝磁通；选中＝背面放大 1.08 的蓝描边，不改本色；主线黄绿红、控制线黑。
 - 2.2 第一屏：3D 卡插在原平面图上面，两边按钮共用 `S1.on`。
 - **验证**：容器 SwiftShader 跑不了（Shader VALIDATE_STATUS false），手机没 root 时用 AutoDL：`~/bin/km3d-shot <动作...>`（传 electrician 文件 → `/root/autodl-tmp/webgl/wgl.py` 真显卡跑 c2-2.html → 截图拉回 /sdcard/webdev/shots/）。动作：`wait:ms` `click:sel` `tap:x,y`（画布比例）`eval:js` `shot:名`（3D 卡）`vp:名` `drag:dx,dy`（从画布中心拖）。three 从 `site/three/` 本地供（路由拦截 jsdelivr）；中文字体是传上去的更纱。
+
+### elec-3d.js 改成「通用查看器 + 元件」（2026-11-27 晚，他要「其他页面也做到这个级别、多做交互、像做实验」）
+- `E3D.viewer(el, spec, opt)`：舞台、转模型（同魔方：单指翻、两指拧/平移/捏）、视角预设、剖开外壳、点零件蓝描边+说明、两边引线标注、慢放、看不见不画，全在这里。
+  元件只写 `spec = {parts, center, view, presets, build(K)}`；`build` 返回 `{labels, tick(dt,k)→在动吗, press(键)→这一下是不是「操作」, api}`。
+  `K` 给 `T/H/M(常用材质)/root/shell/tag/dots/flow/curM(橙电流)/sigM(蓝信号)`。外壳零件 `tag(...,'housing')` 并放进 `K.shell`。
+- 页面控件：`E3D.controlsHTML()` 生成「剖开/慢放/标名字 + 斜看/正面/侧面」，`E3D.bindControls(box, ()=>api)` 接上。
+- **不要显卡的冒烟测试**：`node /sdcard/webdev/e3d/smoke.mjs /sdcard/webdev/e3d/three.module.js elec-3d.js <函数名> '<动作js>'`
+  （假渲染器 + 假 DOM，跑几秒 tick，抓运行时错误；A.api / A.run(秒) / A.log）。画面还是要 AutoDL 真显卡截（`~/bin/km3d-shot`，页面写死 c2-2，别的页要改 wgl.py 的 goto）。
+- 元件：`E3D.contactor`（2.2）、`E3D.thermal`（2.3 热继电器，读页面 S2 热模型：opt.state() → {x, heat, tripped}，点复位钮 → opt.onReset）。
+  热继电器：双金属片 10 节逐节转着弯（铜色胀得多在 y+，往 y− 弯）、顶端推导板（空走 1mm）、杠杆、跳簧块 +3mm 翻过去（常闭 95-96 开、常开 97-98 合）、复位钮弹出；电热丝额定（heat 0.58）不红，过 0.62 才红。
