@@ -53,7 +53,7 @@ ELEC.reg({
     <b>拖两根滑杆看什么位置算合格。</b>
   </div>
   <div class="card">
-    <canvas id="cv0"></canvas>
+    <div class="k3d-v" id="rm3d"></div>
     <div class="ctrl">
       <div class="rowlab">距地面高度　<b id="s1hv">1.30 m</b></div>
       <input type="range" id="s1h" min="80" max="180" step="5" value="130">
@@ -65,8 +65,14 @@ ELEC.reg({
         <div class="num hi"><div class="k">这个位置</div><div class="v" id="s1c">合格</div></div>
       </div>
     </div>
+    <div class="ctrl" id="rm3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="rm3info">拖两根滑杆，看开关在墙上挪到哪儿；旁边站着一个 1.7 m 的人做参照。</div>
   </div>
   <div class="note" id="n0"></div>
+  <div class="card">
+    <canvas id="cv0"></canvas>
+  </div>
+
 
   <div class="note" style="margin-top:10px">
     <div class="st">这间房该设计成几地控制（书 P125）</div>
@@ -906,6 +912,13 @@ const st4 = new Stage('cv3', 360, 276);
 /* 屏 1 */
 function sync1(){ note1(); draw1(); }
 document.getElementById('s1h').addEventListener('input', function(e){ S1.h = +e.target.value; sync1(); });
+/* 3D 墙 + 开关 */
+let RM3 = null;
+if(window.E3D){
+  E3D.room($('rm3d'), { state:function(){ return {h:S1.h, d:S1.d}; }, onInfo:function(p){ if(p) $('rm3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ RM3 = a; });
+  $('rm3c').innerHTML = E3D.controlsHTML(null, [['oblique','斜着看'], ['front','正对墙'], ['side','侧面']]);
+  E3D.bindControls($('rm3c'), function(){ return RM3; });
+}
 document.getElementById('s1d').addEventListener('input', function(e){ S1.d = +e.target.value; sync1(); });
 
 /* 屏 2 */

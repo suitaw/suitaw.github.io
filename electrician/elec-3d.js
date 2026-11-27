@@ -2301,3 +2301,66 @@ E3D.meterLabCard = function(box, init){
     else if(b.dataset.x === 'sw') api.set({sw:!api.st.sw}); else if(b.dataset.x === 'batt') api.set({batt:!api.st.batt});
     else if(b.dataset.x === 'clr') api.clearProbes(); else if(b.dataset.x === 'fuse') api.fuse(); });
 };
+
+/* ══════════════ 开关装在哪儿（7.2）：一面带门的墙 + 开关 + 尺寸线（单位 cm）══════════════
+   书 P127：室内开关距地面 1.3 m，距门框 0.15~0.2 m。状态来自 c7-2.js 的 S1 {h 离地 cm, d 距门框 cm}。 */
+(function(){
+'use strict';
+const PARTS = {
+  sw:   ['开关', '<b>距地面 1.3 m、距门框 0.15~0.2 m</b>（书 P127）。进门伸手就够得着，又不会被门扇挡住。', '开关'],
+  door: ['门框', '开关装在<b>门开启的那一侧旁边</b>（拉手那边），进门顺手一按。', '门框'],
+  man:  ['参照：1.7 m 的人', '看开关在他身上大概哪个高度。', '人（1.7 m）'],
+  dim:  ['尺寸线', '跟着下面两根滑杆变。', '尺寸'],
+  wall: ['墙', '', '墙']
+};
+E3D.room = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[70, 0, 115], view:{th:0.2, ph:1.38, r:600},
+  presets:{front:[1, 0, 0, 0.0001, 680], side:[0, 1, 0, -Math.PI/2, 680]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  const wallM = H.M(0xece7dd, {roughness:0.95});
+  /* 墙（留出门洞 x 0~90、高 205）+ 地面 */
+  tag(H.box(160, 10, 270, -80, 5, 135, wallM, root), 'wall');
+  tag(H.box(200, 10, 270, 196, 5, 135, wallM, root), 'wall');
+  tag(H.box(104, 10, 65, 45, 5, 237.5, wallM, root), 'wall');
+  tag(H.box(420, 160, 2, 60, -70, -1, H.M(0xb89a74, {roughness:0.8}), root), 'wall');
+  /* 门框 + 门扇（开着一点） */
+  const fr = H.M(0x8a6a4a, {roughness:0.6});
+  [[6, 14, 211, -3, 3, 105.5], [6, 14, 211, 93, 3, 105.5], [102, 14, 6, 45, 3, 208]].forEach(function(b){ tag(H.box(b[0], b[1], b[2], b[3], b[4], b[5], fr, root), 'door'); });
+  const leaf = new T.Group(); leaf.position.set(0, -4, 0); root.add(leaf);
+  tag(H.box(88, 4, 203, 44, 0, 101.5, H.M(0xa88660, {roughness:0.6}), leaf), 'door'); leaf.rotation.z = 0.5;
+  tag(H.box(3, 6, 12, 82, -4, 100, M.zinc, leaf), 'door');
+  /* 开关（位置跟滑杆） */
+  const sw = new T.Group(); root.add(sw);
+  tag(H.box(8.6, 2, 8.6, 0, -1, 0, H.M(0xf6f6f4, {roughness:0.35}), sw), 'sw'); tag(H.box(5, 1.5, 5, 0, -2.4, 0, H.M(0xffffff), sw), 'sw');
+  /* 1.7 m 的人（简化） */
+  const skin = H.M(0x9aa6b2, {roughness:0.8});
+  const man = new T.Group(); man.position.set(-50, -50, 0); root.add(man);   /* 站门左边，别挡开关 */
+  const body = tag(new T.Mesh(new T.CapsuleGeometry(16, 120, 6, 12).rotateX(Math.PI/2), skin), 'man'); body.position.z = 76; man.add(body);
+  const head = tag(new T.Mesh(new T.SphereGeometry(11, 16, 12), skin), 'man'); head.position.z = 159; man.add(head);
+  /* 尺寸线：离地（竖）、距门框（横） + 字牌（canvas，变了重画） */
+  const dimM = new T.MeshBasicMaterial({color:0x2f90d6, toneMapped:false});
+  const vLine = tag(new T.Mesh(new T.BoxGeometry(1.2, 1.2, 1), dimM), 'dim'); root.add(vLine);
+  const hLine = tag(new T.Mesh(new T.BoxGeometry(1, 1.2, 1.2), dimM), 'dim'); root.add(hLine);
+  function label(){ const c = document.createElement('canvas'); c.width = 256; c.height = 80; const tex = new T.CanvasTexture(c); tex.colorSpace = T.SRGBColorSpace;
+    const m = new T.Mesh(new T.PlaneGeometry(40, 12.5).rotateX(Math.PI/2), new T.MeshBasicMaterial({map:tex, transparent:true, toneMapped:false})); root.add(m);
+    return {m:m, set:function(t){ const g = c.getContext('2d'); g.clearRect(0, 0, 256, 80); g.fillStyle = 'rgba(16,24,32,.85)'; g.fillRect(0, 0, 256, 80);
+      g.fillStyle = '#7cc4ff'; g.font = '700 52px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t, 128, 42); tex.needsUpdate = true; }}; }
+  const lh = label(), ld = label();
+  let last = '';
+  return {
+    labels:[['sw', 0, 0, 0, sw], ['door', 96, 0, 150], ['man', -50, -50, 175]],
+    tick:function(dt, k){
+      const s = opt.state ? opt.state() : {h:130, d:18};
+      const key = s.h + '/' + s.d; if(key === last) return false; last = key;
+      const x = 96 + s.d + 4.3;                                           /* 门框外沿在 x=96 */
+      sw.position.set(x, -0.1, s.h);
+      vLine.scale.z = s.h; vLine.position.set(x, -3, s.h/2);
+      hLine.scale.x = s.d; hLine.position.set(96 + s.d/2, -3, s.h + 12);
+      lh.set((s.h/100).toFixed(2) + ' m'); lh.m.position.set(x + 26, -4, s.h/2);
+      ld.set((s.d/100).toFixed(2) + ' m'); ld.m.position.set(96 + s.d/2 + 6, -4, s.h + 24);
+      return true;
+    }
+  };
+  }}, opt); };
+})();
