@@ -780,7 +780,7 @@ DEVICES.forEach(function(d){
       box(x+w/2-10, y+t.y-8, 20, 16, 29.8, 1, MAT.white);              /* 号码牌 */
       if(t.label) label(t.label, x+w/2, y+t.y, 31.2, 13, '#1f2328');
     });
-    label(d.tag, x+w/2, y-30, 0.4, 13, '#33383f');   /* K31-04：端子排在左边，名字放上面（下面是按钮盒线） */
+    label(d.tag, x+w/2+22, y-30, 0.4, 13, '#33383f');   /* K31-04：名字放上面，往右挪：左边是竖线槽，会被线挡住「端」字 */
   }
   if(d.kind==='tbm'){                                                   /* 横端子排：一节一节，左三位进电源、空一位、右三位去电动机 */
     for(let k=0;k<7;k++){ rbox(x+k*30, y, 29, h, 0, 22, MAT.cream, 2); box(x+k*30+29, y, 1, h, 0, 23, MAT.grey); }
