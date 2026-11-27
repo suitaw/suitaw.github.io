@@ -1284,7 +1284,8 @@ function refresh(){
   MAINS.forEach(function(m, i){ m.mat.emissiveIntensity = run.indexOf(i)>=0 ? 0.55 : 0; });
   const s = UI.sel && wrec(UI.sel), hw = UI.hint && WIRES[UI.hint-1];
   const rp = UI.pend ? [TERMS[UI.pend].pos] : hw ? [TERMS[hw.from].pos, TERMS[hw.to].pos] : s ? s.ends : [];
-  rings.forEach(function(g, i){ g.visible = !!rp[i]; if(rp[i]){ g.position.copy(rp[i]); g.position.z += 2; } });
+  const rc = UI.pend ? 0x1c6fd6 : hw ? hw.color : s ? s.base : 0x1c6fd6;      /* 11-27 他要：选中圈跟线同色（黑线用深灰，不然看不出来） */
+  rings.forEach(function(g, i){ g.visible = !!rp[i]; if(rp[i]){ g.position.copy(rp[i]); g.position.z += 2; g.material.color.setHex(rc===0x22262b ? 0x5a616b : (rc===undefined ? 0x1c6fd6 : rc)); } });
   const ids = UI.pend ? [UI.pend] : hw ? [hw.from, hw.to] : s ? [s.w.from, s.w.to] : [];
   for(const k in TAGS) TAGS[k].visible = false;
   ids.forEach(function(id, i){
@@ -1292,7 +1293,8 @@ function refresh(){
     sp.visible = true; sp.position.copy(rp[i]); sp.position.z += 6;
     sp.center.set(0.5, (up || ids.length===1) ? -0.55 : 1.55);
     const dd = s && !hw && !UI.pend && s.dirs && s.dirs[i];          /* 11-27 他说名字牌挡线：线从端子往哪边出，名字牌就放反方向 */
-    if(dd){ if(Math.abs(dd[1]) >= Math.abs(dd[0])) sp.center.set(0.5, dd[1] > 0 ? 1.6 : -0.6); else sp.center.set(dd[0] > 0 ? 1.06 : -0.06, 0.5); }
+    if(dd){ if(Math.abs(dd[1]) >= Math.abs(dd[0])) sp.center.set(0.5, dd[1] > 0 ? 1.6 : -0.6); else sp.center.set(dd[0] > 0 ? 1.06 : -0.06, 0.5);
+      if((sp.center.x < 0 && TPOS[id].x > BW-110) || (sp.center.x > 1 && TPOS[id].x < 110)) sp.center.set(0.5, -0.6); }   /* 太靠板边：摆旁边会出屏幕，改放上面 */
     const hgt = 19/H*2*Math.tan(camera.fov/2*Math.PI/180);   /* 标签字高 19 像素（11-26 他嫌 30 太大挡画面） */ sp.scale.set(hgt*sp.userData.ar, hgt, 1);
   });
   const exW = EX.on && EX.phase==='wire', exT = EX.on && EX.phase==='trial';

@@ -115,7 +115,7 @@ const DEVICES = [
   {id:'src', tag:'电源进线', kind:'src', x:206, y:160, w:112, h:56,
    terminals:[{id:'src-l',label:'L',x:20,y:15},{id:'src-pe',label:'PE',x:56,y:15},{id:'src-n',label:'N',x:92,y:15}]},
   {id:'tube', tag:'日光灯', kind:'tube', x:200, y:12, w:250, h:112, terminals:[]},
-  {id:'lt', tag:'灯具端子排', kind:'lterm', x:470, y:92, w:70, h:118,
+  {id:'lt', tag:'灯具端子排', kind:'lterm', x:456, y:92, w:100, h:118,   /* 11-27 加宽：中间写清每一位接哪盏灯 */
    terminals:[1,2,3,4].map(function(i){ return {id:'lt-'+i, label:String(i), x:22, y:17+28*(i-1)}; })},
   {id:'el', tag:'白炽灯', kind:'lamp', x:428, y:262, w:94, h:130, terminals:[]},
   {id:'qf1', tag:'QF1 总开关', kind:'mcb2', x:124, y:266, w:76, h:136,
@@ -667,15 +667,17 @@ DEVICES.forEach(function(d){
   if(d.kind==='lterm'){                                                 /* 灯具端子排：4 位，左边接盘里线，右边出厂线去灯 */
     rbox(x, y, w, h, 0, 18, MAT.cream, 2);
     for(let i=1;i<4;i++) box(x+2, y+3+28*i, w-4, 1, 18, 1.5, MAT.grey);
-    [[0xd42f2f,'红',2],[0xd42f2f,'红',4],[0x1c6dd0,'蓝',1],[0x1c6dd0,'蓝',3]].forEach(function(a){
-      const ty = y+17+28*(a[2]-1); screw(x+52, ty, 18, 4.6);
-      const to = a[2]<=2 ? [[x+64,ty],[x+64,y-6-4*a[2]],[x-30+4*a[2],y-6-4*a[2]],[x-30+4*a[2],y-44]]     /* 1、2 → 日光灯右头灯座 */
-                         : [[x+64,ty],[x+64,y+h+14+4*a[2]],[x+36+4*a[2],y+h+14+4*a[2]],[x+36+4*a[2],y+h+34]];   /* 3、4 → 灯泡灯座 */
-      tube(path3([[x+52,ty]].concat(to), 20.6, null, 26+a[2]*2, null, null), 1.8, M(a[0], {roughness:0.5}), 5).castShadow = false;
+    /* 右列是出厂线：1、2 去日光灯灯座，3、4 去白炽灯灯座（11-27 他说分不清哪个是哪盏灯：中间写字，出厂线真连到灯座上） */
+    const tb = dev('tube'), el = dev('lamp') || dev('el'), fx = x+w-18;
+    const hx = tb.x+tb.w-30, hy = tb.y+60, ecx = el.x+el.w/2, ecy = el.y+60;
+    [[0x1c6dd0,1,'日光灯 N'],[0xd42f2f,2,'日光灯 L'],[0x1c6dd0,3,'白炽灯 N'],[0xd42f2f,4,'白炽灯 L']].forEach(function(a){
+      const ty = y+17+28*(a[1]-1); screw(fx, ty, 18, 4.6);
+      label(a[2], x+w/2+2, ty, 18.4, 10, a[0]===0x1c6dd0 ? '#1c5fb8' : '#b8282a', null, false, true);
+      const to = a[1]<=2 ? [[fx+12,ty],[fx+12,y-6-4*a[1]],[hx+4*a[1],y-6-4*a[1]],[hx+4*a[1],hy]]
+                         : [[fx+12,ty],[fx+12,y+h+8+4*a[1]],[ecx-14+8*(a[1]-3),y+h+8+4*a[1]],[ecx-14+8*(a[1]-3),ecy-26]];
+      tube(path3([[fx,ty]].concat(to), 20.6, null, 26+a[1]*2, null, null), 1.8, M(a[0], {roughness:0.5}), 5).castShadow = false;
     });
-    label(d.tag, x+w/2, y-32, 0.4, 15, '#1f2328');   /* 11-27：下面是去线槽的线，名字放上面 */
-    label('1 日光灯N  2 日光灯L', x+w/2, y-18, 0.4, 6.5, '#5b6470', null, true);
-    label('3 灯泡N  4 灯泡L', x+w/2, y-10, 0.4, 6.5, '#5b6470', null, true);
+    label(d.tag, x+w/2, y-32, 0.4, 15, '#1f2328');   /* 下面是去线槽的线，名字放上面 */
   }
   if(d.kind==='lamp'){                                                  /* 白炽灯：胶木灯座 + 玻璃泡（亮了发暖光） */
     const cx = x+w/2, cy = y+60;
@@ -1237,7 +1239,8 @@ function refresh(){
   MAINS.forEach(function(m, i){ m.mat.emissiveIntensity = run.indexOf(i)>=0 ? 0.55 : 0; });
   const s = UI.sel && wrec(UI.sel), hw = UI.hint && WIRES[UI.hint-1];
   const rp = UI.pend ? [TERMS[UI.pend].pos] : hw ? [TERMS[hw.from].pos, TERMS[hw.to].pos] : s ? s.ends : [];
-  rings.forEach(function(g, i){ g.visible = !!rp[i]; if(rp[i]){ g.position.copy(rp[i]); g.position.z += 2; } });
+  const rc = UI.pend ? 0x1c6fd6 : hw ? hw.color : s ? s.base : 0x1c6fd6;      /* 11-27 他要：选中圈跟线同色（黑线用深灰，不然看不出来） */
+  rings.forEach(function(g, i){ g.visible = !!rp[i]; if(rp[i]){ g.position.copy(rp[i]); g.position.z += 2; g.material.color.setHex(rc===0x22262b ? 0x5a616b : (rc===undefined ? 0x1c6fd6 : rc)); } });
   const ids = UI.pend ? [UI.pend] : hw ? [hw.from, hw.to] : s ? [s.w.from, s.w.to] : [];
   for(const k in TAGS) TAGS[k].visible = false;
   ids.forEach(function(id, i){
@@ -1245,7 +1248,8 @@ function refresh(){
     sp.visible = true; sp.position.copy(rp[i]); sp.position.z += 6;
     sp.center.set(0.5, (up || ids.length===1) ? -0.55 : 1.55);
     const dd = s && !hw && !UI.pend && s.dirs && s.dirs[i];          /* 11-27 他说名字牌挡线：线从端子往哪边出，名字牌就放反方向 */
-    if(dd){ if(Math.abs(dd[1]) >= Math.abs(dd[0])) sp.center.set(0.5, dd[1] > 0 ? 1.6 : -0.6); else sp.center.set(dd[0] > 0 ? 1.06 : -0.06, 0.5); }
+    if(dd){ if(Math.abs(dd[1]) >= Math.abs(dd[0])) sp.center.set(0.5, dd[1] > 0 ? 1.6 : -0.6); else sp.center.set(dd[0] > 0 ? 1.06 : -0.06, 0.5);
+      if((sp.center.x < 0 && TPOS[id].x > BW-110) || (sp.center.x > 1 && TPOS[id].x < 110)) sp.center.set(0.5, -0.6); }   /* 太靠板边：摆旁边会出屏幕，改放上面 */
     const hgt = 19/H*2*Math.tan(camera.fov/2*Math.PI/180);   /* 标签字高 19 像素（11-26 他嫌 30 太大挡画面） */ sp.scale.set(hgt*sp.userData.ar, hgt, 1);
   });
   const exW = EX.on && EX.phase==='wire', exT = EX.on && EX.phase==='trial';
