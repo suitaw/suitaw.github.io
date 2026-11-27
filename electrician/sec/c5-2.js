@@ -102,6 +102,26 @@ ELEC.reg({
     <b>点一组量一量。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">先拆开看它怎么跳闸</div>
+    <div class="k3d-v" id="qf3d"></div>
+    <div class="ctrl">
+      <div class="rowlab">负载电流（额定的几倍）</div>
+      <div class="btns" id="qfX">
+        <button class="btn sm" data-x="0.5">0.5 倍</button><button class="btn sm on" data-x="1">额定</button><button class="btn sm" data-x="1.5">1.5 倍过载</button><button class="btn sm" data-x="3">3 倍</button>
+      </div>
+      <div class="btns"><button class="btn" id="qfSw">分闸</button><button class="btn" id="qfShort">来一次短路</button></div>
+    </div>
+    <div class="ctrl" id="qf3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="qf3info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验：两种跳法</div>
+    ① 点<b>「1.5 倍过载」</b>：三片<b>双金属片</b>慢慢发热变红、往锁扣那边弯 —— 几秒后跳闸，手柄掉到 OFF。马上去扳手柄：合不上，得等它凉。<br>
+    ② 合上后点<b>「3 倍」</b>：跳得更快 —— 电流越大跳得越快（反时限）。<br>
+    ③ 点<b>「来一次短路」</b>：电磁线圈里的<b>顶针一下弹出来</b>，瞬间跳闸，灭弧栅那里闪一下电弧。
+    <span class="sub">时间按演示加快了：真的 1.5 倍过载要几十秒到几分钟。C 型＝5~10 倍额定瞬时跳，适合一般负载和电动机。</span>
+  </div>
+  <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
       <div class="btns" id="s2p">
@@ -705,6 +725,24 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 断路器（自带电：过载热脱扣、短路电磁脱扣） */
+let QF3 = null;
+const QFCAUSE = {overload:'<b style="color:var(--err)">过载跳闸</b>：双金属片热弯了推开锁扣。', short:'<b style="color:var(--err)">短路跳闸</b>：电磁脱扣器顶针瞬间弹出。', hot:'<b>合不上</b>：双金属片还没凉，锁扣扣不住。等一会儿再扳。'};
+function qfState(s){
+  $('qfSw').textContent = s.on ? '分闸' : '合闸';
+  document.querySelectorAll('#qfX .btn').forEach(function(b){ b.classList.toggle('on', +b.dataset.x === s.x); });
+  $('qf3info').innerHTML = (s.on ? '合着，电流 '+s.x+' 倍额定。' : (s.cause ? '' : '分着。')) + (QFCAUSE[s.cause] || '') +
+    '<div style="font-size:.78rem;color:var(--tx3)">双金属片热度 '+Math.round(s.heat*100)+'%（到 100% 跳）</div>';
+}
+if(window.E3D){
+  E3D.breaker($('qf3d'), { onState:qfState, onInfo:function(p, k){ if(p && k !== 'handle') $('qf3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ QF3 = a; });
+  $('qf3c').innerHTML = E3D.controlsHTML();
+  E3D.bindControls($('qf3c'), function(){ return QF3; });
+  $('qfX').addEventListener('click', function(e){ const b = e.target.closest('[data-x]'); if(b && QF3) QF3.setX(+b.dataset.x); });
+  $('qfSw').addEventListener('click', function(){ if(QF3) QF3.toggle(); });
+  $('qfShort').addEventListener('click', function(){ if(QF3) QF3.short(); });
+  setInterval(function(){ if(QF3 && document.getElementById('qf3info')) qfState({on:QF3.st.on, cause:QF3.st.cause, x:QF3.st.x, heat:Math.min(1, QF3.st.th/(1.13*1.13))}); }, 500);
+}
 ElecNav.init({ch:5, sec:'5.2'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();

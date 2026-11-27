@@ -1307,3 +1307,113 @@ E3D.selfHold = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 小型断路器 DZ47 / C 型，三极（剖开看）══════════════
+   每一极：上端子 → 静触点 → 动触点（铰在里面，跟手柄联动）→ 软铜辫 → 电磁线圈（短路瞬时脱扣）→ 双金属片（过载延时脱扣）→ 下端子。
+   触点旁边是灭弧栅片。电自己算（不靠页面）：
+     过载：热量 dθ/dt = (x² − θ)/τ，τ 按演示放快（x＝电流/额定）；θ ≥ 1.13²（约 1.13 倍额定的约定不脱扣/1.45 倍约定脱扣之间取）就跳
+     短路：x ≥ 5（C 型 5~10 倍额定瞬时脱扣）→ 立刻跳
+   opt.onState({on, tripped, cause, heat, x}) */
+(function(){
+'use strict';
+const PARTS = {
+  handle: ['手柄', '往上＝合，往下＝分。跳闸以后它自己掉到「分」。<b>点它扳一下</b>（跳了以后要等双金属片凉下来才合得上）。', '手柄'],
+  fix:    ['静触点', '连着上端子。', '静触点'],
+  mov:    ['动触点', '跟手柄联动。跳闸时被弹簧一下拉开。', '动触点'],
+  chute:  ['灭弧栅片', '一叠钢片。触点拉开时的电弧被吸进来、切成好几段，很快就熄了。', '灭弧栅'],
+  coil:   ['电磁脱扣器（线圈 + 顶针）', '管<b>短路</b>：电流一下到额定的 5~10 倍（C 型），线圈吸力猛增，顶针<b>瞬间</b>弹出撞开锁扣 —— 几毫秒就跳。', '电磁脱扣'],
+  bim:    ['热脱扣器（双金属片）', '管<b>过载</b>：电流比额定大一些时慢慢发热弯曲，弯到推开锁扣才跳。电流越大跳得越快（反时限）。', '热脱扣'],
+  latch:  ['锁扣机构', '合闸时把动触点锁在闭合位置；电磁顶针或双金属片推它一下，它就脱开，弹簧把触点拉开。', '锁扣'],
+  braid:  ['软铜辫', '动触点要转，所以用软的编织铜线连。', '软铜辫'],
+  tin:    ['上端子（进线）', '电源从上面进，上进下出。', '上端子'],
+  tout:   ['下端子（出线）', '接负载。', '下端子'],
+  housing:['外壳', '']
+};
+const PX = [-18, 0, 18];
+E3D.breaker = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 36], view:{th:0.75, ph:1.05, r:230},
+  presets:{front:[1, 0, 0, Math.PI/2, 220], side:[0, 1, 0, -Math.PI/2, 200]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag;
+  const wh = H.M(0xeceef0, {roughness:0.5, transparent:true});
+  PX.forEach(function(x){
+    [[17, 80, 2, x, 0, 1], [17, 2, 60, x, 40, 30], [17, 2, 60, x, -40, 30], [1.2, 80, 60, x-8.5, 0, 30], [1.2, 80, 60, x+8.5, 0, 30]].forEach(function(b){ tag(H.box(b[0], b[1], b[2], b[3], b[4], b[5], wh, shell), 'housing'); });
+    tag(H.box(17, 44, 10, x, 0, 64, wh, shell), 'housing');                       /* 前面凸起那一段（手柄在这里） */
+  });
+  const poles = [];
+  PX.forEach(function(x){
+    /* 端子（箱式夹头） */
+    tag(H.box(10, 10, 10, x, 33, 22, M.zinc, root), 'tin'); tag(H.cylZ(2.6, 3, x, 33, 72, M.zinc, root), 'tin');
+    tag(H.box(10, 10, 10, x, -33, 22, M.zinc, root), 'tout'); tag(H.cylZ(2.6, 3, x, -33, 72, M.zinc, root), 'tout');
+    /* 静触点：上端子 → 往下伸 */
+    tag(H.box(4, 22, 2, x, 18, 30, M.cu, root), 'fix'); tag(H.cylZ(2, 1, x, 8, 31.4, M.ag, root), 'fix');
+    /* 灭弧栅片：触点后面一叠 */
+    for(let i=0;i<7;i++) tag(H.box(11, 1, 12, x, 0 + i*2.2 - 10 + 12, 14, M.steel, root), 'chute');
+    /* 动触点：铰在 (y -4, z 44)，臂伸到 (y 8, z 32) */
+    const piv = new T.Group(); piv.position.set(x, -4, 44); root.add(piv);
+    const arm = tag(H.box(3, 3, 17, 0, 6, -6, M.cu, piv), 'mov'); arm.rotation.x = -0.79;
+    tag(H.cylZ(2, 1, 0, 12, -12.4, M.ag, piv), 'mov');
+    /* 软铜辫 → 电磁线圈 → 双金属片 → 下端子 */
+    H.wire([[x, -4, 44], [x+3, -10, 40], [x, -14, 34]], 0.9, H.M(0xb87333, {metalness:0.6, roughness:0.6}), root);
+    const cg = new T.CylinderGeometry(4.5, 4.5, 12, 18); const coil = tag(new T.Mesh(cg, M.winding), 'coil'); coil.position.set(x, -14, 26); root.add(coil);
+    const pin = new T.Group(); pin.position.set(x, -14, 26); root.add(pin);
+    tag(H.box(1.4, 6, 1.4, 0, 8, 0, M.steel, pin), 'coil');                       /* 顶针：平时缩在线圈里 */
+    const bm = H.M(0xb08a5a, {metalness:0.7, roughness:0.4, emissive:0x000000});
+    const bg = new T.Group(); bg.position.set(x, -26, 14); root.add(bg);
+    tag(H.box(6, 1.6, 22, 0, 0, 11, bm, bg), 'bim');
+    H.wire([[x, -14, 20], [x, -24, 14], [x, -28, 14], [x, -33, 18]], 0.8, M.cu, root);
+    /* 锁扣（白塑料小块） */
+    const lt = tag(H.box(8, 4, 4, x, -10, 48, M.white, root), 'latch');
+    poles.push({piv:piv, pin:pin, bg:bg, bm:bm, lt:lt});
+  });
+  /* 手柄：三极连在一起（横杆），绕 x 轴转 */
+  const hd = new T.Group(); hd.position.set(0, 0, 66); root.add(hd);
+  tag(H.box(50, 6, 16, 0, 0, 8, H.M(0x2b2f34, {roughness:0.5}), hd), 'handle');
+  H.plate('ON', 7, 4, 32, 18, 69.2, '#e6edf5', null, root); H.plate('OFF', 8, 4, 32, -18, 69.2, '#e6edf5', null, root);
+  /* 电流 + 电弧 */
+  const PH = [0xe0a92e, 0x3fa845, 0xcf4436].map(function(c){ return H.M(c, {roughness:0.5}); });
+  PX.forEach(function(x, i){ H.wire([[x, 33, 22], [x, 52, 22]], 1.5, PH[i], root); H.wire([[x, -33, 22], [x, -52, 22]], 1.5, PH[i], root); });
+  const paths = PX.map(function(x){ return K.dots(10, K.curM, H.poly([[x, 52, 22], [x, 33, 26], [x, 18, 30], [x, 8, 32], [x, -4, 44], [x, -14, 34], [x, -14, 20], [x, -26, 14], [x, -28, 26], [x, -33, 22], [x, -52, 22]])); });
+  const arcM = new T.MeshBasicMaterial({color:0xcfe4ff, toneMapped:false, transparent:true, opacity:0, blending:T.AdditiveBlending, depthWrite:false});
+  const arcs = PX.map(function(x){ const m = new T.Mesh(new T.SphereGeometry(3.5, 12, 10), arcM); m.position.set(x, 8, 26); root.add(m); return m; });
+  /* 电 */
+  const TAU = 20, TRIP = 1.13*1.13;                                     /* 演示用：1.5 倍约 5 秒跳、3 倍约 1 秒，真的是几十秒到几分钟 */
+  const st = {on:true, x:1, th:1, tripped:false, cause:'', arc:0, pin:0, a:0};
+  function emit(){ if(opt.onState) opt.onState({on:st.on, tripped:st.tripped, cause:st.cause, heat:Math.min(1, st.th/TRIP), x:st.x}); }
+  function trip(cause){ if(!st.on) return; st.on = false; st.tripped = true; st.cause = cause; st.arc = 1; if(cause === 'short') st.pin = 1; emit(); }
+  const api = {
+    st:st,
+    toggle:function(){ if(st.on){ st.on = false; st.tripped = false; st.cause = ''; if(st.x > 0.05) st.arc = 0.7; }
+      else { if(st.th > TRIP*0.85){ st.cause = 'hot'; emit(); return; } st.on = true; st.tripped = false; st.cause = ''; } emit(); K.S.dirty = true; },
+    setX:function(x){ st.x = x; if(st.on && x >= 5) trip('short'); emit(); },
+    short:function(){ st.x = 20; if(st.on) trip('short'); else emit(); }
+  };
+  emit();
+  return {
+    labels:[['handle', 0, 0, 80, hd], ['fix', 18, 18, 31], ['mov', 18, 2, 40], ['chute', 0, 12, 14], ['coil', 18, -14, 31], ['bim', -18, -26, 30], ['latch', 18, -10, 50], ['tin', -18, 33, 28], ['tout', 0, -33, 28]],
+    press:function(k){ if(k === 'handle'){ api.toggle(); return true; } return false; },
+    api:api,
+    tick:function(dt, k){
+      const I = st.on ? st.x : 0;
+      st.th += (I*I - st.th)/TAU * dt/k;
+      if(st.on && st.th >= TRIP) trip('overload');
+      const h = Math.min(1, st.th/TRIP);
+      st.a += ((st.on ? 0 : 1) - st.a) * Math.min(1, dt*(st.on ? 10 : 25)/k);
+      hd.rotation.x = 0.55 - 1.1*st.a;                                      /* 上＝合，下＝分 */
+      st.arc = Math.max(0, st.arc - dt/(0.3*k)); st.pin = Math.max(0, st.pin - dt/(0.5*k));
+      arcM.opacity = st.arc; arcs.forEach(function(m){ m.visible = st.arc > 0.01; m.scale.setScalar(0.6 + st.arc*1.4); });
+      poles.forEach(function(p){
+        p.piv.rotation.x = 0.55*st.a;                                       /* 动触点张开 */
+        p.pin.position.z = 26 + 10*st.pin;                                  /* 顶针弹出撞锁扣 */
+        p.bg.rotation.x = 0.4*h;                                            /* 双金属片受热往锁扣那边弯 */
+        p.bm.emissive.setHex(0xff0000); p.bm.emissiveIntensity = Math.pow(Math.max(0, (h-0.82)/0.18), 1.5)*1.4;   /* 额定时 h≈0.78，不红 */
+        p.lt.position.y = -10 + (st.tripped ? 2.5 : 0);
+      });
+      const flowing = st.on && st.x > 0.05;
+      paths.forEach(function(g){ K.flow(g, flowing, (0.05 + 0.04*Math.min(st.x, 3))/k, dt); });
+      if(!st.on && st.cause === 'hot' && st.th < TRIP*0.85){ st.cause = ''; emit(); }
+      return true;
+    }
+  };
+  }}, opt); };
+})();
