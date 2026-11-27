@@ -176,7 +176,7 @@ ELEC.reg({
     <b>切一下看连接片怎么动。</b>
   </div>
   <div class="card">
-    <canvas id="cv2"></canvas>
+    <div class="k3d-v" id="tb3d"></div>
     <div class="ctrl">
       <div class="btns" id="s3k">
         <button class="btn on" data-k="0">星形 Y</button>
@@ -188,8 +188,22 @@ ELEC.reg({
         <div class="num hi"><div class="k">相对功率</div><div class="v" id="s3c">1 倍</div></div>
       </div>
     </div>
+    <div class="ctrl" id="tb3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="tb3info"></div>
   </div>
   <div class="note" id="n2"></div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">对着实物看</div>
+    同一种颜色是同一相绕组的两个头（黄 U1-U2、绿 V1-V2、红 W1-W2）。<b>切星形 / 三角形，看三片铜连接片怎么挪</b>：<br>
+    星形：上排三颗（W2 U2 V2）被横着连成一点 —— 三相绕组的尾巴接在一起，就是星点。<br>
+    三角形：三片竖着放，U1 接 W2、V1 接 U2、W1 接 V2 —— 一相的头接下一相的尾，首尾相连围成一圈。<br>
+    上下两排<b>故意错开一位</b>，就是为了让三角形的连接片能竖着直接放。
+    <span class="sub">现场改接法：断电、打开盒盖、拧下螺母挪连接片。改之前看铭牌允许哪种接法（第 2 屏）。</span>
+  </div>
+  <div class="card">
+    <canvas id="cv2"></canvas>
+  </div>
+
 
   <div class="note" style="margin-top:10px">
     <div class="st">端子为什么那样排</div>
@@ -464,6 +478,15 @@ function note1(){
         '因为极对数只能是整数。</span>');
 }
 $('s1p').addEventListener('input', function(){ S1.p = +this.value; note1(); });
+/* 3D 接线盒（第 3 屏） */
+let TB3 = null;
+const TB3I = '点模型上任意零件看它叫什么。<b>切上面的星形 / 三角形，看铜连接片怎么挪</b>。';
+$('tb3info').innerHTML = TB3I;
+$('tb3c').innerHTML = window.E3D ? E3D.controlsHTML(null, [['oblique','斜着看'], ['front','正面']]) : '';
+if(window.E3D){
+  E3D.termBox($('tb3d'), { state:function(){ return {d:S3.d}; }, onInfo:function(p){ $('tb3info').innerHTML = p ? '<b>'+p[0]+'</b>：'+p[1] : TB3I; } }).then(function(a){ TB3 = a; });
+  E3D.bindControls($('tb3c'), function(){ return TB3; });
+}
 /* 3D 电动机 */
 let MO3 = null;
 const MO3I = '点模型上任意零件看它叫什么。<b>蓝箭头＝旋转磁场，白条＝转子上的标记</b>。';
@@ -674,6 +697,7 @@ function note3(){
 document.getElementById('s3k').addEventListener('click', function(e){
   const b = e.target.closest('.btn'); if(!b) return;
   S3.d = b.dataset.k === '1';
+
   document.querySelectorAll('#s3k .btn').forEach(function(t){
     t.classList.toggle('on', (t.dataset.k === '1') === S3.d);
   });

@@ -1502,3 +1502,60 @@ E3D.motor = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 电动机接线盒：六个接线柱 + 三片连接片（星形 / 三角形）══════════════
+   国标排法：上排 W2 U2 V2，下排 U1 V1 W1（上下错开一位，正好让三角形的连接片竖着放）。
+   星形：上排三颗用两片连接片横着连成一点（星点），电源接下排。三角形：三片竖着连 U1-W2、V1-U2、W1-V2。
+   opt.state() → {d 三角形?}；连接片换位置时先抬起、平移、再放下 */
+(function(){
+'use strict';
+const PARTS = {
+  stud:  ['接线柱', '每相绕组两个头：U1-U2、V1-V2、W1-W2。上排是「尾」、下排是「头」。', '接线柱'],
+  link:  ['连接片（铜）', '<b>摆法决定接法</b>：横着把上排三颗连起来是星形，竖着三片是三角形。', '连接片'],
+  lead:  ['绕组引出线', '电机里面三组绕组的六个头。同一种颜色是同一相绕组的两头。', '绕组引线'],
+  cable: ['电源进线 L1 L2 L3', '接在下排 U1 V1 W1。', '电源进线'],
+  box:   ['接线盒底座', '绝缘板。', '接线盒'],
+  housing:['盒盖', '']
+};
+const COLS = {U:0xe0a92e, V:0x3fa845, W:0xcf4436};
+const TOP = [['W2', -20], ['U2', 0], ['V2', 20]], BOT = [['U1', -20], ['V1', 0], ['W1', 20]];
+E3D.termBox = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[0, -4, 8], view:{th:0.0, ph:0.6, r:185},
+  presets:{front:[1, 0, 0, Math.PI/2, 175], side:[0, 1, 0, -Math.PI/2, 175]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag;
+  tag(H.box(70, 56, 4, 0, 0, 2, H.M(0x3a2e26, {roughness:0.6}), root), 'box');
+  [[70, 2, 18, 0, 29, 9], [70, 2, 18, 0, -29, 9], [2, 56, 18, -36, 0, 9], [2, 56, 18, 36, 0, 9]].forEach(function(b){ tag(H.box(b[0], b[1], b[2], b[3], b[4], b[5], H.M(0x4f6f8f, {transparent:true}), shell), 'housing'); });
+  const pos = {};
+  TOP.concat(BOT).forEach(function(t){ const y = t[0].slice(-1) === '2' ? 10 : -10, x = t[1]; pos[t[0]] = [x, y];
+    tag(H.cylZ(2.4, 12, x, y, 10, M.brass, root), 'stud'); tag(H.cylZ(4, 2, x, y, 14.5, M.zinc, root), 'stud');
+    H.plate(t[0], 9, 4, y > 0 ? x : x + 8.5, y + (y > 0 ? 8 : -4), 4.2, '#e6edf5', null, root);   /* 下排的字挪到柱子右边，别被进线压住 */
+    const c = COLS[t[0][0]];
+    H.wire([[x, y, 4.5], [x + (y > 0 ? 4 : -4), y*1.6, 4.5], [x*1.3, y*2.6, 4.5]], 1.1, H.M(c, {roughness:0.5}), root); });
+  root.traverse(function(m){ if(m.isMesh && m.geometry.type === 'TubeGeometry') m.userData.part = m.userData.part || 'lead'; });
+  /* 电源进线：L1 L2 L3 接下排（黄绿红） */
+  [['U1', 0xe0a92e], ['V1', 0x3fa845], ['W1', 0xcf4436]].forEach(function(a){ const p = pos[a[0]];
+    tag(H.wire([[p[0], p[1], 15.5], [p[0], p[1]-10, 18], [p[0], -40, 18]], 1.4, H.M(a[1], {roughness:0.5}), root), 'cable'); });
+  /* 三片连接片 */
+  const links = [0, 1, 2].map(function(){ const g = new T.Group(); root.add(g); tag(H.box(6, 24, 1.6, 0, 0, 0, M.cu, g), 'link'); return g; });
+  function target(d){
+    if(d) return [['U1', 'W2'], ['V1', 'U2'], ['W1', 'V2']].map(function(p){ const a = pos[p[0]], b = pos[p[1]]; return {x:(a[0]+b[0])/2, y:(a[1]+b[1])/2, rz:Math.atan2(b[0]-a[0], b[1]-a[1])*-1, len:Math.hypot(b[0]-a[0], b[1]-a[1])}; });
+    /* 星形：两片横着连上排三颗，第三片放在旁边不用 */
+    return [{x:-10, y:10, rz:Math.PI/2, len:20}, {x:10, y:10, rz:Math.PI/2, len:20}, {x:44, y:-4, rz:0, len:20, spare:true}];
+  }
+  const st = {d:null, t:1, from:null, to:null};
+  return {
+    labels:[['stud', -20, 10, 16], ['link', 0, 10, 18, null], ['lead', -26, 26, 5], ['cable', 0, -30, 18]],
+    tick:function(dt, k){
+      const s = opt.state ? opt.state() : {d:false};
+      if(s.d !== st.d){ st.from = st.d === null ? null : target(st.d); st.to = target(s.d); st.d = s.d; st.t = st.from ? 0 : 1; }
+      st.t = Math.min(1, st.t + dt/(1.1*k));
+      const e = st.t, lift = Math.sin(Math.PI*e)*14;
+      links.forEach(function(g, i){ const a = st.from ? st.from[i] : st.to[i], b = st.to[i];
+        g.position.set(a.x + (b.x-a.x)*e, a.y + (b.y-a.y)*e, 15.6 + (st.from ? lift : 0));
+        g.rotation.z = a.rz + (b.rz-a.rz)*e; g.scale.y = (a.len + (b.len-a.len)*e)/24 * 1.15; });
+      return st.t < 1;
+    }
+  };
+  }}, opt); };
+})();
