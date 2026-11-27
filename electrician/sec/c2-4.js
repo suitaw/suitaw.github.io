@@ -156,6 +156,17 @@ ELEC.reg({
     <b>原理都一样：某个性质跟着变，再把它变成电信号。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">实物上手：三种电阻式传感器</div>
+    <div class="k3d-v" id="sn24"></div>
+    <div class="ctrl">
+      <div class="btns" id="sn24S"><button class="btn sm on" data-s="ntc">热敏</button><button class="btn sm" data-s="ldr">光敏</button><button class="btn sm" data-s="hum">湿敏</button></div>
+      <div class="rowlab">温度　<b id="sn24Tv">25 ℃</b></div><input type="range" id="sn24T" min="0" max="60" value="25">
+      <div class="rowlab">光照　<b id="sn24Ev">100 lx</b></div><input type="range" id="sn24E" min="5" max="500" value="100">
+      <div class="rowlab">湿度　<b id="sn24Hv">50 %RH</b></div><input type="range" id="sn24H" min="20" max="90" value="50">
+    </div>
+    <div class="k3d-info" id="sn24info"></div>
+  </div>
+  <div class="card">
     <canvas id="cv2"></canvas>
     <div class="ctrl">
       <div class="btns" id="s3p">
@@ -905,6 +916,16 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 传感器（同 5.4 的实验台） */
+let SN24 = null;
+if(window.E3D){
+  E3D.sensorLab($('sn24'), { onRead:function(r, st){ document.querySelectorAll('#sn24S .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.s === st.sel); });
+      $('sn24info').innerHTML = '万用表读 <b>'+r.txt+'</b> —— 被测的东西（温度、光、湿度）一变，阻值就跟着变：它把「不是电」的东西变成了电信号。'; },
+    onInfo:function(p, k){ if(p && !/^(ntc|ldr|hum)$/.test(k)) $('sn24info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ SN24 = a; });
+  $('sn24S').addEventListener('click', function(e){ const b = e.target.closest('[data-s]'); if(b && SN24) SN24.set({sel:b.dataset.s}); });
+  [['sn24T', 'T', 'sn24Tv', ' ℃'], ['sn24E', 'E', 'sn24Ev', ' lx'], ['sn24H', 'RH', 'sn24Hv', ' %RH']].forEach(function(a){
+    $(a[0]).addEventListener('input', function(){ const v = +this.value; $(a[2]).textContent = v + a[3]; if(SN24){ const o = {}; o[a[1]] = v; SN24.set(o); } }); });
+}
 ElecNav.init({ch:2, sec:'2.4'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
