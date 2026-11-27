@@ -169,7 +169,7 @@ ELEC.reg({
     然后 —— <b>点「来一次停电」，看来电之后各自发生了什么。</b>
   </div>
   <div class="card">
-    <canvas id="cv2"></canvas>
+    <div class="k3d-v" id="sh3d"></div>
     <div class="ctrl">
       <div class="btns">
         <button class="btn big" id="s3cut">来一次停电</button>
@@ -179,8 +179,22 @@ ELEC.reg({
         <button class="btn" id="s3stop">按 SB2 停止</button>
       </div>
     </div>
+    <div class="ctrl" id="sh3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="sh3info"></div>
   </div>
   <div class="note" id="n2"></div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验：盯住橙色电流走哪条路</div>
+    ① 先按 <b>SB2 停止</b>，再<b>按一下 SB1 起动</b>：按下那一瞬间，电从 SB1 走进线圈；接触器一吸合，
+    电流马上改走<b>自锁触点 13-14</b>（右边那根线）—— 所以 SB1 弹回去了，线圈照样有电。<br>
+    ② 点<b>「来一次停电」</b>：电源灯灭，接触器释放，13-14 也断开。来电以后 —— <b>它不会自己吸合</b>，非得有人再按 SB1。<br>
+    这就是<b>失压保护</b>：停电后来电，机器不会突然自己转起来伤人。
+    <span class="sub">下面的平面图左边是闸刀直接带电动机（来电就转），右边就是这台接触器。点任意零件看名字。</span>
+  </div>
+  <div class="card">
+    <canvas id="cv2"></canvas>
+  </div>
+
 
   <div class="note" style="margin-top:10px">
     <div class="st bad">这叫失压保护（也叫零压保护、欠压释放）</div>
@@ -759,6 +773,21 @@ function note3(){
         '<span class="sub">点「按 SB1 起动」把它开起来。</span>';
   }
   $('n2').innerHTML = h;
+}
+/* 3D 自锁 / 失压保护 */
+let SH3 = null;
+const SH3I = '点模型上任意零件看它叫什么。<b>点绿按钮＝按 SB1 起动，点红按钮＝按 SB2 停止</b>。';
+$('sh3info').innerHTML = SH3I;
+$('sh3c').innerHTML = window.E3D ? E3D.controlsHTML() : '';
+if(window.E3D){
+  E3D.selfHold($('sh3d'), {
+    state:function(){ return {power:S3.power, km:S3.km}; },
+    onStart:function(){ $('s3start').click(); }, onStop:function(){ $('s3stop').click(); },
+    onInfo:function(p, kk){ if(p && kk !== 'sb1' && kk !== 'sb2') $('sh3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; }
+  }).then(function(a){ SH3 = a; });
+  E3D.bindControls($('sh3c'), function(){ return SH3; });
+  $('s3start').addEventListener('click', function(){ if(SH3) SH3.tap('sb1'); });
+  $('s3stop').addEventListener('click', function(){ if(SH3) SH3.tap('sb2'); });
 }
 $('s3cut').addEventListener('click', function(){
   S3.power = false; S3.km = false; S3.phase = 'off'; S3.t = 1.6; note3();

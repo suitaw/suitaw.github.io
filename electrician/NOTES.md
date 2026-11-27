@@ -2705,3 +2705,4 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - `E3D.meterLab`（3.6a 第 2 屏）：表 + 电路板（电池/开关/灯/T1~T4），点测点放表笔（先红后黑，viewer 新增 `B.hitMesh(网格)` 钩子拿到点的是哪根柱子），点旋钮/插孔/开关/电池直接改状态；读数全在 `elec-meterlab.js` 的 `MLab.read(st)`（3 节点小求解器，口径同 3.6a 文案）。烧保险后立刻按新状态重算；换保险管时收回表笔（不然一装又烧）。viewer 的 onInfo 现在多传一个零件键 `(p, k)`，可操作零件别用简介覆盖读数说明。
 - `E3D.kmTest`（5.3 第 2 屏检测台）：接触器本体抽成 `kmBuild(K, opt, CT)`（`E3D._kmBuild`），接触器加 `press(b)`＝手按触点架强制吸合（线圈没电，`st.man`）。端子螺钉按位置认名字（userData.tp），读数 `resist()`：A1-A2 1.694 kΩ（书 P84）、主触头/13-14 不按 OL 按下 0、21-22 反过来；故障 coilOpen/coilShort/weld/burnt，「抽一只来查」随机、隐藏判语直到揭晓。表只有 Ω 2k（显示 kΩ 三位小数）和通断。
 - `E3D.controlsHTML(id, views)` 第一个参数是占位，自定义视角名要传第二个参数（犯过一次）。
+- `E3D.selfHold`（2.2 第 3 屏自锁/失压保护）：kmBuild + SB1（绿常开）SB2（红常闭）+ 电源 L/N；两条电流点：按 SB1 那一下走 SB1、吸合后走 13-14 自锁线。读 S3 {power, km}；页面按钮点了调 api.tap 让 3D 按钮动。

@@ -1241,3 +1241,69 @@ E3D.kmTest = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 自锁 / 失压保护（2.2 第 3 屏）：接触器 + 起动按钮 SB1 + 停止按钮 SB2 ══════════════
+   控制回路：L → SB2（常闭）→ ┬ SB1（常开）──┬→ A1 线圈 A2 → N
+                              └ KM 13-14 ────┘（自锁：松开 SB1 以后靠它接着通）
+   状态来自页面 c2-2.js 的 S3：opt.state() → {power, km}；点按钮 → opt.onStart / opt.onStop；页面按钮按下时调 api.tap('sb1'|'sb2') 让按钮动一下 */
+(function(){
+'use strict';
+const BX = -84;
+E3D.selfHold = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:Object.assign({}, E3D._PARTS_KM, {
+    sb1:['起动按钮 SB1（常开，绿）', '按下去接通，<b>手一松就弹回断开</b>。它只负责「起个头」。<b>点它按一下</b>。', 'SB1 起动'],
+    sb2:['停止按钮 SB2（常闭，红）', '平时是通的，按下去断开 —— 线圈一断电，自锁也跟着断。<b>点它按一下</b>。', 'SB2 停止'],
+    ano:['自锁触点 13-14（辅助常开）', '<b>并在 SB1 两头</b>。接触器一吸合它就闭合，替 SB1 把线圈这一路接着通上 —— 所以松开 SB1 电动机照转。这就叫<b>自锁</b>。<br>停电时接触器一释放，它也断开；来电后<b>没人按 SB1，线圈就不会自己得电</b> —— 这就是<b>失压保护</b>。', '自锁 13-14'],
+    pwr:['控制电源 L / N', '点「来一次停电」看它断电再来电。', '电源 L/N']
+  }),
+  center:[-30, 0, 36], view:{th:0.0, ph:0.7, r:330},
+  presets:{front:[1, 0, 0, Math.PI/2, 380], side:[0, 1, 0, -Math.PI/2, 340]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  const B = E3D._kmBuild(K, {}, E3D._CT_KM);
+  /* 两个按钮：盒子 + 帽（绿/红）+ 左右两颗端子 */
+  function button(y, col, key){ const g = new T.Group(); g.position.set(BX, y, 0); root.add(g);
+    tag(H.box(24, 24, 20, 0, 0, 10, H.M(0xd9dde1, {roughness:0.5}), g), key);
+    const cap = new T.Group(); cap.position.z = 20; g.add(cap);
+    tag(H.cylZ(8, 6, 0, 0, 3, H.M(col, {roughness:0.4}), cap), key);
+    [-9, 9].forEach(function(dx){ tag(H.cylZ(2.4, 2, dx, -9, 20.5, M.zinc, g), key); });
+    return cap; }
+  const cap1 = button(-22, 0x2e9e4f, 'sb1'), cap2 = button(22, 0xc23b32, 'sb2');
+  H.plate('SB1 起动', 16, 4.4, BX, -38, 0.4, '#e6edf5', null, root); H.plate('SB2 停止', 16, 4.4, BX, 38, 0.4, '#e6edf5', null, root);
+  /* 电源端子 L / N（灯亮表示有电） */
+  const lampM = H.M(0x3a3f45, {emissive:0x000000});
+  [[66, 'L'], [-66, 'N']].forEach(function(a){ tag(H.box(14, 10, 8, BX, a[0], 4, M.blk, root), 'pwr'); tag(H.cylZ(2.6, 2, BX, a[0], 9, M.zinc, root), 'pwr');
+    H.plate(a[1], 5, 5, BX - 11, a[0], 0.4, '#e6edf5', null, root); });
+  const pl = tag(H.cylZ(3, 3, BX + 14, 66, 2, lampM, root), 'pwr');
+  /* 控制线（黑）：L→SB2 左；SB2 右→节点 X；X→SB1 左；X→13；SB1 右→14；14→A1；A2→N */
+  const w = function(p){ H.wire(p, 0.8, M.blk, root); };
+  const Lp = [BX, 66, 11], S2i = [BX-9, 13, 21], S2o = [BX+9, 13, 21], S1i = [BX-9, -31, 21], S1o = [BX+9, -31, 21];
+  const X = [BX+20, 13, 26], T13 = [15, 33, 77], T14 = [15, -33, 77], A1 = [26, 46, 45], A2 = [-26, -46, 45], Np = [BX, -66, 11];
+  w([Lp, [BX-9, 66, 24], S2i]);
+  w([S2o, X]); w([X, [BX+20, -8, 26], [BX-9, -8, 26], S1i]);
+  w([X, [BX+20, 52, 60], [15, 52, 82], T13]);
+  w([S1o, [BX+20, -31, 30], [-40, -56, 82], [15, -56, 82], T14]);
+  w([T14, [40, -33, 82], [40, 46, 50], A1]);
+  w([A2, [-26, -66, 30], [BX+12, -66, 20], Np]);
+  const head = [Lp, [BX-9, 66, 24], S2i, S2o, X], tail = [T14, [40, -33, 82], [40, 46, 50], A1, [0, 0, 20], A2, [-26, -66, 30], [BX+12, -66, 20], Np];
+  const startP = K.dots(16, K.curM, H.poly(head.concat([[BX+20, -8, 26], [BX-9, -8, 26], S1i, S1o, [BX+20, -31, 30], [-40, -56, 82], [15, -56, 82]], tail)));
+  const holdP = K.dots(16, K.curM, H.poly(head.concat([[BX+20, 52, 60], [15, 52, 82], T13, [15, 0, 70]], tail)));
+  const st = {p1:0, p2:0};
+  return {
+    labels:[['sb1', BX, -22, 30], ['sb2', BX, 22, 30], ['ano', 15, 4, 69], ['coilT', 26, 46, 47], ['pwr', BX, 66, 10], ['carrier', 0, 7, 88, B.mov]],
+    press:function(k){ if(k === 'sb1' && opt.onStart){ st.p1 = 1; opt.onStart(); return true; } if(k === 'sb2' && opt.onStop){ st.p2 = 1; opt.onStop(); return true; } return false; },
+    api:{ tap:function(k){ st[k === 'sb1' ? 'p1' : 'p2'] = 1; K.S.dirty = true; } },
+    tick:function(dt, k){
+      const s = opt.state ? opt.state() : {power:true, km:false};
+      const on = s.power && s.km;
+      B.api.set(on);
+      st.p1 = Math.max(0, st.p1 - dt*2/k); st.p2 = Math.max(0, st.p2 - dt*2/k);
+      cap1.position.z = 20 - 4*Math.min(1, st.p1*3); cap2.position.z = 20 - 4*Math.min(1, st.p2*3);
+      lampM.emissive.setHex(0xffc65a); lampM.emissiveIntensity = s.power ? 1.2 : 0;
+      K.flow(startP, s.power && st.p1 > 0.3, 0.12/k, dt);                  /* 按住 SB1 的那一下：电从 SB1 走 */
+      K.flow(holdP, on && B.api.coil.t > 0.6, 0.12/k, dt);                  /* 吸合以后：电从自锁触点 13-14 走 */
+      return B.tick(dt, k) || st.p1 > 0 || st.p2 > 0 || on;
+    }
+  };
+  }}, opt); };
+})();
