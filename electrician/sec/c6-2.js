@@ -69,6 +69,15 @@ ELEC.reg({
     <b>切一种直径看该缠多长。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">一步一步看：单股 X 形绞接</div>
+    <div class="k3d-v" id="sp3d"></div>
+    <div class="ctrl">
+      <div class="btns"><button class="btn" id="spPrev">上一步</button><button class="btn big" id="spNext">下一步</button><button class="btn sm" id="spPlay">自动播放</button></div>
+    </div>
+    <div class="ctrl" id="sp3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="sp3info"></div>
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="btns" id="s1k">
@@ -759,6 +768,17 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 分步：单股 X 形绞接（书 P110~111） */
+let SP3 = null, spT = null;
+if(window.E3D){
+  E3D.splice($('sp3d'), { onStep:function(n, t){ $('sp3info').innerHTML = '<div style="font-size:.78rem;color:var(--tx3)">第 '+(n+1)+' / 6 步</div>'+t; } }).then(function(a){ SP3 = a; });
+  $('sp3c').innerHTML = E3D.controlsHTML(null, [['oblique','斜着看'], ['front','正面'], ['side','顺着线看']]);
+  E3D.bindControls($('sp3c'), function(){ return SP3; });
+  $('spNext').addEventListener('click', function(){ if(SP3) SP3.step(SP3.cur() + 1); });
+  $('spPrev').addEventListener('click', function(){ if(SP3) SP3.step(SP3.cur() - 1); });
+  $('spPlay').addEventListener('click', function(){ if(!SP3) return; if(spT){ clearInterval(spT); spT = null; this.textContent = '自动播放'; return; }
+    SP3.step(0); this.textContent = '停'; const b = this; spT = setInterval(function(){ if(SP3.cur() >= SP3.steps - 1){ clearInterval(spT); spT = null; b.textContent = '自动播放'; return; } SP3.step(SP3.cur() + 1); }, 1600); });
+}
 ElecNav.init({ch:6, sec:'6.2'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();

@@ -2444,3 +2444,58 @@ E3D.building = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 单股 X 形绞接（6.2，书 P110~111 图 6-14）：分步演示 ══════════════
+   ① 剥好两根线（线芯 + 红色绝缘层）② X 形相交 ③ 互相绞 2~3 圈 ④ 扳直 ⑤ 左线芯在右边贴绕 6 圈 ⑥ 右线芯在左边贴绕 6 圈、剪掉多余
+   线芯直径按 1.6 mm（单位 mm）。api.step(n) 换步骤（重建线芯几何），opt.onStep(n, 文字) */
+(function(){
+'use strict';
+const PARTS = {
+  core:  ['线芯（铜）', '单股硬线。', '线芯'],
+  insA:  ['绝缘层（左线）', '剥掉的长度要够绕，绕好以后离绝缘层不能留太长的裸线。', '绝缘层'],
+  insB:  ['绝缘层（右线）', '', '绝缘层']
+};
+const R = 0.8, STEPS = [
+  '① 两根线各剥出一段线芯（长度够绕就行，书上没给死数）。',
+  '② 两根线芯在中间 <b>X 形相交</b>。',
+  '③ 互相<b>绞绕 2~3 圈</b>。',
+  '④ 把两根线芯的尾巴<b>扳直</b>，跟主线垂直。',
+  '⑤ 固定一端，左边的尾巴在右边主线上<b>紧贴缠绕 6 圈左右</b>。',
+  '⑥ 右边的尾巴在左边主线上同样<b>贴绕 6 圈</b>，剪掉多余线芯、钳平。<b>两根线规格必须相同</b>。'
+];
+E3D.splice = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 0], view:{th:0.3, ph:1.15, r:95},
+  presets:{front:[1, 0, 0, 0.0001, 110], side:[0, 1, 0, -Math.PI/2, 110]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  const cu = H.M(0xc77a3f, {metalness:0.85, roughness:0.3}), red = H.M(0xd42f2f, {roughness:0.55});
+  const ins = function(x0, x1, key){ const g = new T.CylinderGeometry(1.7, 1.7, Math.abs(x1-x0), 20); g.rotateZ(Math.PI/2); const m = tag(new T.Mesh(g, red), key); m.position.x = (x0+x1)/2; root.add(m); };
+  ins(-70, -30, 'insA'); ins(30, 70, 'insB');
+  let cores = [];
+  function tube(pts){ const v = pts.map(function(p){ return new T.Vector3(p[0], p[1], p[2]); });
+    const m = tag(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(v, false, 'catmullrom', 0.2), Math.max(32, v.length*6), R, 10, false), cu), 'core'); root.add(m); cores.push(m); }
+  function helix(axisFrom, axisTo, turns, rad, phase){ const pts = [], n = Math.max(12, turns*18);
+    for(let i=0;i<=n;i++){ const t = i/n, a = phase + t*turns*Math.PI*2, x = axisFrom + (axisTo-axisFrom)*t; pts.push([x, Math.cos(a)*rad, Math.sin(a)*rad]); } return pts; }
+  function build(n){
+    cores.forEach(function(m){ root.remove(m); m.geometry.dispose(); }); cores = [];
+    /* 左线芯从 x=-30 出来，右线芯从 x=30 出来 */
+    if(n === 0){ tube([[-30, 0, 0], [-4, 0, 0]]); tube([[30, 0, 0], [4, 0, 0]]); return; }
+    if(n === 1){ tube([[-30, 0, 0], [-10, 0, 0], [6, 8, 0], [14, 14, 0]]); tube([[30, 0, 0], [10, 0, 0], [-6, 8, 2], [-14, 14, 2]]); return; }
+    if(n === 2 || n === 3){ /* 绞 2.5 圈：两根绕着同一根轴（x 从 -6 到 6） */
+      const a = [[-30, 0, 0], [-10, 0, 0]].concat(helix(-6, 6, 2.5, R*1.1, 0)), b = [[30, 0, 0], [10, 0, 0]].concat(helix(6, -6, 2.5, R*1.1, Math.PI));
+      if(n === 2){ a.push([10, 6, 0], [14, 14, 0]); b.push([-10, 6, 0], [-14, 14, 0]); }
+      else { a.push([8, 2, 0], [8, 18, 0]); b.push([-8, 2, 0], [-8, 18, 0]); }
+      tube(a); tube(b); return; }
+    /* ⑤⑥：尾巴绕到对面主线上 6 圈 */
+    const a = [[-30, 0, 0], [-10, 0, 0]].concat(helix(-6, 6, 2.5, R*1.1, 0)), b = [[30, 0, 0], [10, 0, 0]].concat(helix(6, -6, 2.5, R*1.1, Math.PI));
+    a.push.apply(a, helix(8, 8 + 6*R*2.1, 6, R*2.05, Math.PI/2));            /* 左尾在右主线上贴绕 6 圈 */
+    if(n === 4){ b.push([-8, 2, 0], [-8, 18, 0]); }
+    else b.push.apply(b, helix(-8, -8 - 6*R*2.1, 6, R*2.05, -Math.PI/2));    /* 右尾在左主线上贴绕 6 圈 */
+    tube(a); tube(b);
+  }
+  let cur = -1;
+  const api = { step:function(n){ n = Math.max(0, Math.min(STEPS.length-1, n)); cur = n; build(n); if(opt.onStep) opt.onStep(n, STEPS[n]); K.S.dirty = true; }, cur:function(){ return cur; }, steps:STEPS.length };
+  api.step(0);
+  return { labels:[['core', -20, 0, 2], ['insA', -50, 0, 2]], api:api, tick:function(){ return false; } };
+  }}, opt); };
+})();

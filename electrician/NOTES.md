@@ -2723,3 +2723,4 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - `E3D.meterLabCard(容器, 开局状态)`：整张万用表实验卡（3D+档位/插孔/开关/电池按钮+说明），3.6b 第 1 屏 {batt:false, dial:'ohm'}、第 2 屏 {batt:false, dial:'beep'} 用它；页面里写 `<div class="ml-card" data-init="{...}">`。meterLab 支持 opt.init。5.6 第 2 屏复用 E3D.megger。
 - `E3D.room`（7.2 第 1 屏，单位 cm）：带门洞的墙、门框外沿 x=96、开关位置跟 S1 {h, d}，蓝色尺寸线 + canvas 字牌；1.7 m 参照人站门左边。
 - `E3D.building`（8.4 第 1 屏）：3 层×2 户 + 楼道灯 + 电梯；故障 mainAll/main/floor/house；点配电箱＝测进线/出线有没有电（hitMesh），窗户亮灭判范围；页面「接到报修电话」随机出题、揭晓。
+- `E3D.splice`（6.2 第 1 屏）：单股 X 形绞接 6 步（剥线/X 相交/绞 2.5 圈/扳直/左尾贴绕 6 圈/右尾贴绕 6 圈），每步重建 TubeGeometry（helix 函数）；api.step(n)、api.cur()（别用 getter：viewer 用 Object.assign 合并会复制成死值）。
