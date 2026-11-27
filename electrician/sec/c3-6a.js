@@ -935,7 +935,7 @@ function mlSync(r, st){
 }
 if(window.E3D && window.MLab){
   E3D.meterLab($('ml3d'), { onRead:mlSync, onInfo:function(p, k){ if(p && !/^(tp|dial|jv|jma|ja|batt|sw)$/.test(k)) $('ml3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ ML = a; });
-  $('ml3c').innerHTML = E3D.controlsHTML([['oblique','俯视'], ['front','正上方'], ['side','侧面']]);
+  $('ml3c').innerHTML = E3D.controlsHTML(null, [['oblique','俯视'], ['front','正上方'], ['side','侧面']]);
   E3D.bindControls($('ml3c'), function(){ return ML; });
   $('mlDial').addEventListener('click', function(e){ const b = e.target.closest('[data-d]'); if(b && ML) ML.dial(b.dataset.d); });
   $('mlJack').addEventListener('click', function(e){ const b = e.target.closest('[data-j]'); if(b && ML) ML.jack(b.dataset.j); });

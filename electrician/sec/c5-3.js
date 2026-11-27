@@ -97,6 +97,31 @@ ELEC.reg({
     <b>切一种情况看看。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">检测台：一支表，一只拆下来的接触器</div>
+    <div class="k3d-v" id="kt53"></div>
+    <div class="ctrl">
+      <div class="btns" id="k53Dial">
+        <button class="btn sm" data-d="off">OFF</button><button class="btn sm on" data-d="ohm">Ω 2k 档</button><button class="btn sm" data-d="beep">通断档</button>
+      </div>
+      <div class="btns">
+        <button class="btn" id="k53Press">用手按住触点架</button><button class="btn sm" id="k53Clr">收回表笔</button>
+      </div>
+      <div class="btns">
+        <button class="btn" id="k53Rand">抽一只来查（可能是坏的）</button><button class="btn sm" id="k53Show" disabled>揭晓</button>
+      </div>
+    </div>
+    <div class="ctrl" id="k53c" style="padding-top:0"></div>
+    <div class="k3d-info" id="k53info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">照书上的顺序验一只</div>
+    ① <b>线圈</b>：红黑笔点 A1、A2（右上角和左下角那两颗）—— 好的读 <b>1.694 kΩ</b>（书 P84，380 V 线圈）。<br>
+    ② <b>主触头</b>：点 1、2 —— OL。别急着判坏，<b>点蓝色触点架按住</b>，再看：0。3-4、5-6 同样。<br>
+    ③ <b>辅助触点</b>：13-14 跟主触头一样；21-22 反过来（不按 0、按下 OL）。<br>
+    ④ 点<b>「抽一只来查」</b>：可能是好的，也可能线圈断线、匝间短路、触点粘连、触点烧坏。全量一遍，自己下结论，再点揭晓。
+    <span class="sub">端子号印在螺钉内侧。转着看可以找到 A1（右上）、A2（左下）。</span>
+  </div>
+  <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
       <div class="btns" id="s2k">
@@ -718,6 +743,40 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 检测台（elec-3d.js 的 E3D.kmTest） */
+let K53 = null, k53Fault = 'ok', k53Hidden = false;
+const K53F = {ok:'好的', coilOpen:'线圈断线（A1-A2 读 OL）', coilShort:'线圈匝间短路（A1-A2 读数接近 0）', weld:'主触头 1-2 粘连（不按也是 0）', burnt:'主触头 3-4 烧坏（按下去还是 OL）'};
+const PNAME = {'1':'主触头 L1','2':'主触头 L1','3':'主触头 L2','4':'主触头 L2','5':'主触头 L3','6':'主触头 L3','13':'辅助常开','14':'辅助常开','21':'辅助常闭','22':'辅助常闭','A1':'线圈','A2':'线圈'};
+function k53Read(r, st, pressed){
+  $('k53Press').textContent = pressed ? '松开触点架' : '用手按住触点架';
+  document.querySelectorAll('#k53Dial .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.d === st.dial); });
+  let h = '<div style="font-size:.78rem;color:var(--tx3)">红笔 '+(st.red||'—')+'　黑笔 '+(st.black||'—')+'　触点架'+(pressed ? '<b>按住了</b>' : '没按')+'</div>';
+  if(st.dial === 'off') h += '表没开，点「Ω 2k 档」。';
+  else if(!(st.red && st.black)) h += '点接触器上的端子螺钉放表笔：<b>先红后黑</b>。';
+  else if(r.R === null) h += '';
+  else if(PNAME[st.red] !== PNAME[st.black]) h += '这两颗不是一对（'+PNAME[st.red]+' / '+PNAME[st.black]+'），之间本来就不通 —— <b>先认对端子</b>（第 1 屏）。';
+  else { const nm = PNAME[st.red];
+    h += '量的是 <b>'+nm+'</b>：读 <b>'+r.lcd+' '+r.unit+'</b>'+(r.beep ? '（滴）' : '')+'。';
+    if(!k53Hidden){
+      if(nm === '线圈') h += r.R > 1999 ? ' <b style="color:var(--err)">OL：线圈断线</b>（先确认笔尖真碰到金属）。' : r.R < 50 ? ' <b style="color:var(--err)">接近 0：匝间短路</b>。' : ' 有一个具体数，正常。';
+      else if(nm === '辅助常闭') h += pressed ? ' 按下去断开，正常。' : ' 不按是通的，正常（常闭）。';
+      else h += pressed ? (r.R < 30 ? ' 按下去通了，这一对正常。' : ' <b style="color:var(--err)">按下去还是 OL：触点烧坏 / 接触不上</b>。') : (r.R < 30 ? ' <b style="color:var(--err)">不按就是 0：触点粘连</b>（烧熔粘住了）。' : ' 不按是断开的 —— 正常，但还不能下结论，<b>按住触点架再量</b>。');
+    } else h += '　（这一只的好坏要你自己判断，量完点「揭晓」）';
+  }
+  $('k53info').innerHTML = h;
+}
+if(window.E3D){
+  E3D.kmTest($('kt53'), { onRead:k53Read, onInfo:function(p, k){ if(p && !/^(coilT|term|carrier|dial)$/.test(k)) $('k53info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ K53 = a; });
+  $('k53c').innerHTML = E3D.controlsHTML(null, [['oblique','俯视'], ['front','正上方'], ['side','侧面']]);
+  E3D.bindControls($('k53c'), function(){ return K53; });
+  $('k53Dial').addEventListener('click', function(e){ const b = e.target.closest('[data-d]'); if(b && K53) K53.dial(b.dataset.d); });
+  $('k53Press').addEventListener('click', function(){ if(K53) K53.press(!K53.pressed()); });
+  $('k53Clr').addEventListener('click', function(){ if(K53) K53.clear(); });
+  $('k53Rand').addEventListener('click', function(){ if(!K53) return; const ks = Object.keys(K53F); k53Fault = ks[Math.floor(Math.random()*ks.length)];
+    k53Hidden = true; $('k53Show').disabled = false; K53.fault(k53Fault); });
+  $('k53Show').addEventListener('click', function(){ k53Hidden = false; this.disabled = true;
+    $('k53info').innerHTML = '这一只是：<b>'+K53F[k53Fault]+'</b>。'+(k53Fault === 'ok' ? '好的也要全量一遍才敢说好。' : '你量出来了吗？'); });
+}
 ElecNav.init({ch:5, sec:'5.3'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();

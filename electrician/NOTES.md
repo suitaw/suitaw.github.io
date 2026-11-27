@@ -2703,3 +2703,5 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - `E3D.rotary`（2.1 组合开关，读 S3 {k, a}；点旋钮转一档）：动触片在轴坐标里竖着＝转到 L.ang 时正对该层静触片；第 ③ 层是两段弧 + 过中心连接片（**两段弧不连就过不了电**，第一版犯过）。
 - AutoDL 上有看门狗 `/root/autodl-tmp/webgl/idle_off.sh`（setsid 起，last_use 超 40 分钟没碰就关机）；km3d-shot 和手写 ssh 截图前都要 `touch last_use`。
 - `E3D.meterLab`（3.6a 第 2 屏）：表 + 电路板（电池/开关/灯/T1~T4），点测点放表笔（先红后黑，viewer 新增 `B.hitMesh(网格)` 钩子拿到点的是哪根柱子），点旋钮/插孔/开关/电池直接改状态；读数全在 `elec-meterlab.js` 的 `MLab.read(st)`（3 节点小求解器，口径同 3.6a 文案）。烧保险后立刻按新状态重算；换保险管时收回表笔（不然一装又烧）。viewer 的 onInfo 现在多传一个零件键 `(p, k)`，可操作零件别用简介覆盖读数说明。
+- `E3D.kmTest`（5.3 第 2 屏检测台）：接触器本体抽成 `kmBuild(K, opt, CT)`（`E3D._kmBuild`），接触器加 `press(b)`＝手按触点架强制吸合（线圈没电，`st.man`）。端子螺钉按位置认名字（userData.tp），读数 `resist()`：A1-A2 1.694 kΩ（书 P84）、主触头/13-14 不按 OL 按下 0、21-22 反过来；故障 coilOpen/coilShort/weld/burnt，「抽一只来查」随机、隐藏判语直到揭晓。表只有 Ω 2k（显示 kΩ 三位小数）和通断。
+- `E3D.controlsHTML(id, views)` 第一个参数是占位，自定义视角名要传第二个参数（犯过一次）。

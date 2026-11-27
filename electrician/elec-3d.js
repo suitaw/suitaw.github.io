@@ -347,8 +347,10 @@ E3D.contactor = function(el, opt){ opt = opt||{}; const CT = opt.relay ? CT_KA :
   parts:opt.relay ? PARTS_KA : PARTS, center:[0, 2, 40], view:{th:0.4, ph:0.95, r:265},
   /* 正面＝装在盘上时你看到的那面（1/3/5 在上）；侧面＝从右边看，下面电磁铁、上面触点，看衔铁上下动最清楚 */
   presets:{front:[1, 0, 0, Math.PI/2, 250], side:[0, 1, 0, -Math.PI/2, 250]},
-  build:function(K){
-  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag, opt = K.opt;
+  build:function(K){ return kmBuild(K, opt, CT); }}, opt); };
+/* 接触器本体：K 可以是查看器给的，也可以是别的场景（检测台）给的「子 K」（root/shell 换成挪过位置的 group） */
+function kmBuild(K, opt, CT){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag;
   const PX = CT.filter(function(c){ return !c.aux; }).map(function(c){ return c.x; });   /* 主触点的 x（继电器没有） */
   const ZF = 60;                                    /* 静触点那一层的 z */
   const TRAVEL = 4;                                 /* 衔铁行程 4 mm */
@@ -452,19 +454,20 @@ E3D.contactor = function(el, opt){ opt = opt||{}; const CT = opt.relay ? CT_KA :
   const arcs = []; PX.forEach(function(x){ [10, -10].forEach(function(y){ const m = new T.Mesh(new T.SphereGeometry(2.6, 12, 10), arcM); m.position.set(x, y, 63.5); root.add(m); arcs.push(m); }); });
 
 
-  const st = {on:false, I:0, t:0, arc:0, wasMain:false, step:0, stepHold:0};
+  const st = {on:false, man:false, I:0, t:0, arc:0, wasMain:false, step:0, stepHold:0};
   return {
     labels:[['core', 15.5, -19, 18], ['coil', 21, 8, 24], ['shade', 15.5, 21, 31], ['arm', 15.5, -8, 38, mov], ['spring', 27, -4, 22],
             ['carrier', 0, 7, 88, mov]].concat(opt.relay ? [['ano', -24, 4, 69], ['anc', 8, -4, 53], ['term', -24, 33, 78], ['coilT', 26, 46, 47]]
               : [['mbr', -13, -15, 67], ['mfix', -27, 24, 60], ['ano', 15, 4, 69], ['anc', 26, -4, 53], ['term', -27, 33, 78], ['coilT', 26, 46, 47]]),
-    api:{ set:function(on){ st.on = !!on; K.S.dirty = true; }, coil:st },
+    mov:mov, api:{ set:function(on){ st.on = !!on; K.S.dirty = true; }, press:function(b){ st.man = !!b; K.S.dirty = true; }, coil:st },
     tick:function(dt, k){ let busy = false;
       /* 线圈电流：通电 0.35s 升满，断电 0.15s 掉光（都已放慢，见页面文字） */
       if(st.on && st.I<1){ st.I = Math.min(1, st.I + dt/(0.35*k)); busy = true; }
       if(!st.on && st.I>0){ st.I = Math.max(0, st.I - dt/(0.15*k)); busy = true; }
       /* 衔铁：吸力过了弹簧力才动，越近越快（气隙小吸力大）；释放靠弹簧 */
-      if(st.on && st.I>0.6 && st.t<1){ st.t = Math.min(1, st.t + dt/(0.5*k)*(0.35+1.8*st.t)); busy = true; }
-      if(!st.on && st.I<0.4 && st.t>0){ st.t = Math.max(0, st.t - dt/(0.4*k)*(0.6+0.8*st.t)); busy = true; }
+      const pull = (st.on && st.I>0.6) || st.man;                                /* man＝用手按住触点架（检测时强制吸合，线圈没电） */
+      if(pull && st.t<1){ st.t = Math.min(1, st.t + dt/((st.man ? 0.25 : 0.5)*k)*(0.35+1.8*st.t)); busy = true; }
+      if(!pull && st.I<0.4 && st.t>0){ st.t = Math.max(0, st.t - dt/(0.4*k)*(0.6+0.8*st.t)); busy = true; }
       const z = -TRAVEL*st.t; mov.position.z = z;
       rsp.forEach(function(m){ m.scale.z = (37.5+z)/37.5; });
       const d = TRAVEL*st.t;
@@ -492,7 +495,8 @@ E3D.contactor = function(el, opt){ opt = opt||{}; const CT = opt.relay ? CT_KA :
       return busy || st.I>0.05 || mainOn;
     }
   };
-  }}, opt); };
+}
+E3D._kmBuild = kmBuild; E3D._CT_KM = CT_KM; E3D._PARTS_KM = PARTS;
 })();
 
 /* ══════════════ 热继电器 NR2 / JR36 类（三相带断相保护，剖开看）══════════════
@@ -1131,6 +1135,109 @@ E3D.meterLab = function(el, opt){ return E3D.viewer(el, {
       K.flow(loopP, flowing, 0.12/k, dt);
       return flowing || lit > 0.01;
     }
+  };
+  }}, opt); };
+})();
+
+/* ══════════════ 接触器检测台（5.3）：3D 万用表（电阻/通断）+ 3D 接触器 ══════════════
+   点接触器的端子放表笔（先红后黑），点蓝色触点架＝用手按下去强制吸合（书 P84 那一招）。
+   读数口径同 c5-3.js：线圈 A1-A2 = 1.694 kΩ（书 P84 图 5-9，380 V 线圈）；主触头断开 OL、按下 0；21-22 反过来。
+   opt.fault：'ok' | 'coilOpen' 线圈断线 | 'coilShort' 匝间短路 | 'weld' 1-2 粘连 | 'burnt' 3-4 烧坏接触不上；opt.onRead(r, st) */
+(function(){
+'use strict';
+const TPOS = {'1':[-27,33], '2':[-27,-33], '3':[-13,33], '4':[-13,-33], '5':[1,33], '6':[1,-33], '13':[15,33], '14':[15,-33], '21':[26,33], '22':[26,-33]};
+const PAIRS = {'1':'P1', '2':'P1', '3':'P2', '4':'P2', '5':'P3', '6':'P3', '13':'NO', '14':'NO', '21':'NC', '22':'NC', 'A1':'C', 'A2':'C'};
+const MX = -100;                                    /* 表放在接触器左边 */
+function resist(a, b, pressed, fault){
+  if(a === b) return 0;
+  const pa = PAIRS[a], pb = PAIRS[b]; if(pa !== pb) return Infinity;
+  if(pa === 'C') return fault === 'coilOpen' ? Infinity : fault === 'coilShort' ? 0.4 : 1694;
+  if(pa === 'NC') return pressed ? Infinity : 0.05;
+  if(pa === 'P1' && fault === 'weld') return 0.05;
+  if(pa === 'P2' && fault === 'burnt') return Infinity;
+  return pressed ? 0.05 : Infinity;
+}
+E3D.kmTest = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:Object.assign({}, E3D._PARTS_KM, {
+    dial:['档位旋钮', '这台只用到 <b>Ω（2k 档）</b>和<b>通断</b>。<b>点它换档</b>。检测前接触器<b>必须断电、拆下来</b>。', '旋钮'],
+    lcd:['液晶屏', '2k 档：单位 kΩ，1.694 就是 1694 Ω；OL＝超量程（断开）。', '液晶屏'],
+    red:['红表笔', '点接触器的端子螺钉放下。', '红笔'], black:['黑表笔', '点接触器的端子螺钉放下。', '黑笔'],
+    meter:['万用表', '', '万用表'],
+    carrier:['触点架（用手按这里）', '<b>点它＝用手按住，强制吸合</b>（线圈没通电）；再点松开。不按的话主触头本来就是断开的，量出 OL 说明不了任何问题。', '触点架（按这里）']
+  }),
+  center:[-38, 0, 26], view:{th:0.0, ph:0.62, r:400},
+  presets:{front:[1, 0, 0, Math.PI/2, 380], side:[0, 1, 0, -Math.PI/2, 330]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  /* 接触器（原样） */
+  const B = E3D._kmBuild(K, {}, E3D._CT_KM);
+  /* 端子网格认名字：位置对得上的 term / coilT 螺钉 */
+  root.traverse(function(m){ if(!m.isMesh) return; const k = m.userData.part, p = m.position;
+    if(k === 'term' && m.geometry.type === 'CylinderGeometry'){ for(const n in TPOS){ if(Math.abs(TPOS[n][0]-p.x) < 0.5 && Math.abs(Math.abs(TPOS[n][1])-Math.abs(p.y)) < 0.5 && Math.sign(TPOS[n][1]) === Math.sign(p.y)) m.userData.tp = n; } }
+    if(k === 'coilT' && m.geometry.type === 'CylinderGeometry') m.userData.tp = p.y > 0 ? 'A1' : 'A2'; });
+  const TP3 = {}; for(const n in TPOS) TP3[n] = [TPOS[n][0], TPOS[n][1], 75.4]; TP3.A1 = [26, 46, 43.4]; TP3.A2 = [-26, -46, 43.4];
+  /* 表 */
+  tag(H.box(48, 104, 10, MX, 0, 5, H.M(0xe8b923, {roughness:0.6}), root), 'meter');
+  tag(H.box(42, 96, 3, MX, 0, 11, H.M(0x2d3136, {roughness:0.5}), root), 'meter');
+  const lc = document.createElement('canvas'); lc.width = 320; lc.height = 140; const lg = lc.getContext('2d');
+  const ltex = new T.CanvasTexture(lc); ltex.colorSpace = T.SRGBColorSpace;
+  const lcd = tag(new T.Mesh(new T.PlaneGeometry(34, 15), new T.MeshBasicMaterial({map:ltex, toneMapped:false})), 'lcd'); lcd.position.set(MX, 34, 12.6); root.add(lcd);
+  const DI = ['off', 'ohm', 'beep'], DL = {off:'OFF', ohm:'Ω 2k', beep:'通断'}, DA = function(i){ return -0.9 + i*0.9; };
+  const dial = new T.Group(); dial.position.set(MX, 2, 12.5); root.add(dial);
+  tag(H.cylZ(13, 4, 0, 0, 1, M.blk, dial), 'dial'); tag(H.box(3, 14, 2, 0, 6, 3.6, M.white, dial), 'dial');
+  DI.forEach(function(d, i){ const a = DA(i); H.plate(DL[d], 10, 3.6, MX + Math.sin(a)*19, 2 + Math.cos(a)*19, 12.6, '#e6edf5', null, root); });
+  const JC = [MX+6, -44], JV = [MX+18, -44];
+  tag(H.cylZ(3.4, 1, JC[0], JC[1], 12.6, H.M(0x111214), root), 'meter'); tag(H.cylZ(3.4, 1, JV[0], JV[1], 12.6, H.M(0xb02a2a), root), 'meter');
+  H.plate('COM', 9, 3.4, JC[0], JC[1]+7, 12.6, '#e6edf5', null, root); H.plate('VΩ', 9, 3.4, JV[0], JV[1]+7, 12.6, '#e6edf5', null, root);
+  const st = {dial:'ohm', red:null, black:null, next:'red', fault:opt.fault || 'ok'};
+  function probe(col, key){ const g = new T.Group(); root.add(g); const pm = H.M(col, {roughness:0.5});
+    const b = new T.CylinderGeometry(1.8, 1.8, 26, 12); b.rotateX(Math.PI/2);
+    const body = tag(new T.Mesh(b, pm), key); body.position.z = 17; g.add(body);
+    const tip = new T.Mesh(new T.CylinderGeometry(0.5, 0.5, 6, 8).rotateX(Math.PI/2), M.zinc); tip.position.z = 1; g.add(tip);
+    return {g:g, m:pm, lead:null}; }
+  const pr = {red:probe(0xc0392b, 'red'), black:probe(0x24272b, 'black')};
+  const REST = {red:[MX+30, -64], black:[MX+20, -64]};
+  function placeProbe(k){ const p = pr[k], at = st[k];
+    if(at){ const q = TP3[at]; p.g.position.set(q[0] + (k === 'red' ? -1.2 : 1.2), q[1], q[2]); p.g.rotation.set(0, k === 'red' ? -0.3 : 0.3, 0); }
+    else { const q = REST[k]; p.g.position.set(q[0], q[1], 2); p.g.rotation.set(Math.PI/2.2, 0, 0); }
+    const from = k === 'black' ? JC : JV, to = p.g.position;
+    if(p.lead){ root.remove(p.lead); p.lead.geometry.dispose(); }
+    const a = new T.Vector3(from[0], from[1], 13), bb = new T.Vector3(to.x, to.y, to.z + 30), mid = a.clone().lerp(bb, 0.5); mid.z = Math.max(a.z, bb.z) + 10;
+    p.lead = new T.Mesh(new T.TubeGeometry(new T.QuadraticBezierCurve3(a, mid, bb), 24, 0.9, 6, false), p.m); root.add(p.lead); }
+  let ac = null;
+  function beep(){ try{ ac = ac || new (window.AudioContext || window.webkitAudioContext)(); const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = 2700; g.gain.value = 0.06; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.35); }catch(e){} }
+  function read(){
+    const pressed = B.api.coil.man, out = {lcd:'', unit:'', beep:false, R:null};
+    if(st.dial === 'off') return out;
+    if(!(st.red && st.black)){ out.lcd = 'OL'; out.unit = st.dial === 'ohm' ? 'kΩ' : ''; return out; }
+    const R = resist(st.red, st.black, pressed, st.fault); out.R = R;
+    if(st.dial === 'ohm'){ out.unit = 'kΩ'; out.lcd = R > 1999 ? 'OL' : (R/1000).toFixed(3); }
+    else { out.beep = R < 30; out.lcd = R > 1999 ? 'OL' : R.toFixed(0); }
+    return out;
+  }
+  function drawLcd(r){ lg.fillStyle = '#9fb59a'; lg.fillRect(0, 0, 320, 140); lg.fillStyle = '#1b2219';
+    lg.textAlign = 'right'; lg.textBaseline = 'middle'; lg.font = '700 84px ui-monospace,monospace'; lg.fillText(r.lcd, 300, 78);
+    lg.textAlign = 'left'; lg.font = '600 30px system-ui,sans-serif'; lg.fillText(r.unit || '', 12, 28); if(r.beep) lg.fillText('·)))', 12, 118);
+    ltex.needsUpdate = true; }
+  let lastKey = '';
+  function update(force){
+    const r = read(), key = [st.dial, st.red, st.black, B.api.coil.man, st.fault].join();
+    drawLcd(r); dial.rotation.z = -DA(DI.indexOf(st.dial)); placeProbe('red'); placeProbe('black');
+    if(key !== lastKey || force){ if(r.beep && key !== lastKey) beep(); lastKey = key; if(opt.onRead) opt.onRead(r, st, B.api.coil.man); }
+    K.S.dirty = true; }
+  update(true);
+  const labels = B.labels.filter(function(l){ return /^(coilT|term|carrier|mbr|ano|anc)$/.test(l[0]); }).concat([['dial', MX, 2, 16], ['lcd', MX, 34, 13]]);
+  return {
+    labels:labels,
+    hitMesh:function(m){ if(m.userData.tp){ const k = st.next; st[k] = m.userData.tp; st.next = k === 'red' ? 'black' : 'red'; update(); return true; } return false; },
+    press:function(k){
+      if(k === 'carrier'){ B.api.press(!B.api.coil.man); setTimeout(update, 350); return true; }
+      if(k === 'dial'){ st.dial = DI[(DI.indexOf(st.dial)+1) % DI.length]; update(); return true; }
+      return false; },
+    api:{ st:st, update:update, pressed:function(){ return B.api.coil.man; }, dial:function(d){ st.dial = d; update(); }, press:function(b){ B.api.press(b); setTimeout(update, 350); },
+          fault:function(f){ st.fault = f; st.red = st.black = null; st.next = 'red'; B.api.press(false); update(true); }, clear:function(){ st.red = st.black = null; st.next = 'red'; update(); } },
+    tick:function(dt, k){ return B.tick(dt, k); }
   };
   }}, opt); };
 })();
