@@ -2768,3 +2768,52 @@ E3D.resStart = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 钢丝钳（3.1 第 1 屏）：钳口 / 齿口 / 刀口 / 铡口 + 绝缘柄 ══════════════
+   平放在桌上（xy 平面），铆钉在原点，钳头朝 +x，钳柄朝 −x。两半各绕铆钉转开。部位说法照书上原文（c3-1.js）。 */
+(function(){
+'use strict';
+const PARTS = {
+  jaw:   ['钳口', '<b>弯绞导线</b>。用的时候<b>钳口朝内</b>，便于控制切的部位。', '钳口'],
+  teeth: ['齿口', '<b>紧固或拧松螺母</b>。', '齿口'],
+  edge:  ['刀口', '<b>修剪导线</b>，也可以<b>拔取铁钉</b>。', '刀口'],
+  shear: ['铡口', '在铆钉旁边：<b>铡切较硬的导线或金属丝</b>。', '铡口'],
+  grip:  ['绝缘柄', '钳柄外有绝缘套，<b>耐压 500 V</b>（考点）。<b>绝不能当锤子敲</b> —— 绝缘套一裂就不保命了。', '绝缘柄'],
+  rivet: ['铆钉（轴）', '', '铆钉']
+};
+E3D.pliers = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[2, 0, 4], view:{th:0.15, ph:0.55, r:175},
+  presets:{front:[1, 0, 0, 0.0001, 210], side:[0, 1, 0, -Math.PI/2, 210]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  const steel = H.M(0x8e969e, {metalness:0.85, roughness:0.35}), dark = H.M(0x5d646b, {metalness:0.8, roughness:0.45});
+  const grip = H.M(0xd42f2f, {roughness:0.6}), grip2 = H.M(0xe0a92e, {roughness:0.6});
+  function half(sg){ const g = new T.Group(); root.add(g); const y = function(v){ return sg*v; };
+    tag(H.box(18, 4.5, 7, 37, y(2.8), 3.5, steel, g), 'jaw');                                        /* 钳口：扁平夹持面 */
+    for(let i=0;i<6;i++) tag(H.box(0.8, 0.6, 7.2, 30 + i*3, y(0.6), 3.5, dark, g), 'jaw');           /* 钳口的横纹 */
+    tag(H.box(10, 7, 7, 22, y(4.5), 3.5, steel, g), 'teeth');                                        /* 齿口：带齿的弧形缺口 */
+    for(let i=0;i<4;i++) tag(H.box(1.2, 1.4, 7.2, 18.5 + i*2.4, y(1.6), 3.5, dark, g), 'teeth');
+    const e = tag(H.box(10, 3, 7, 11, y(2.2), 3.5, steel, g), 'edge'); e.rotation.z = sg*0.12;      /* 刀口：斜的刃 */
+    tag(H.box(10, 1, 7.2, 11, y(0.7), 3.5, H.M(0xd0d6dc, {metalness:0.95, roughness:0.2}), g), 'edge');
+    tag(H.box(8, 9, 7, 0, y(5.5), 3.5, steel, g), 'shear');                                          /* 铡口那一块（铆钉两侧） */
+    tag(H.box(4, 2, 7.4, 2, y(10.5), 3.5, dark, g), 'shear');
+    /* 钳柄（钢）+ 绝缘套（红，尾部黄） */
+    /* 钳子是交叉的：这一半的钳口在 +sg 边，手柄在 −sg 边（张开钳口时手柄也分开） */
+    const yh = function(v){ return -sg*v; };
+    const pts = [[-4, 6], [-20, 9], [-60, 12], [-100, 13]].map(function(p){ return new T.Vector3(p[0], yh(p[1]), 3.5); });
+    g.add(tag(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 40, 3.2, 10, false), steel), 'grip'));
+    const sp = [[-18, 9], [-60, 12.2], [-104, 13.2]].map(function(p){ return new T.Vector3(p[0], yh(p[1]), 3.5); });
+    const sl = tag(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(sp), 40, 5.2, 14, false), grip), 'grip'); g.add(sl);
+    const tail = tag(new T.Mesh(new T.SphereGeometry(5.6, 14, 10), grip2), 'grip'); tail.position.set(-105, yh(13.2), 3.5); g.add(tail);
+    return g; }
+  const A = half(1), B = half(-1);
+  tag(H.cylZ(4, 9, 0, 0, 3.5, dark, root), 'rivet');
+  H.plate('500 V', 14, 5, -60, 20, 9, '#e6edf5', null, root);
+  const st = {open:0, tgt:0};
+  return {
+    labels:[['jaw', 40, 6, 8, A], ['teeth', 22, 8, 8, A], ['edge', 11, 4, 8, A], ['shear', 0, 10, 8, A], ['grip', -70, -16, 9, A]],
+    api:{ toggle:function(){ st.tgt = st.tgt ? 0 : 1; K.S.dirty = true; return st.tgt; } },
+    tick:function(dt, k){ st.open += (st.tgt - st.open) * Math.min(1, dt*6/k); A.rotation.z = 0.28*st.open; B.rotation.z = -0.28*st.open; return Math.abs(st.tgt - st.open) > 0.002; }
+  };
+  }}, opt); };
+})();

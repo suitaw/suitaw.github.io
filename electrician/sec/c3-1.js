@@ -71,6 +71,12 @@ ELEC.reg({
     <b>点画布上的任意一处。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">拿起来看：点钳子上的每个部位</div>
+    <div class="k3d-v" id="pl3d"></div>
+    <div class="ctrl"><div class="btns"><button class="btn" id="plOpen">张开 / 合上</button><button class="btn sm" id="plLbl">标出名字</button></div></div>
+    <div class="k3d-info" id="pl3info">点钳头上的部位：钳口、齿口、刀口、铡口；再点红色的绝缘柄。</div>
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="nums three">
@@ -923,6 +929,13 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 钢丝钳 */
+let PL3 = null, plL = false;
+if(window.E3D){
+  E3D.pliers($('pl3d'), { onInfo:function(p){ if(p) $('pl3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ PL3 = a; });
+  $('plOpen').addEventListener('click', function(){ if(PL3) PL3.toggle(); });
+  $('plLbl').addEventListener('click', function(){ if(!PL3) return; plL = !plL; this.classList.toggle('on', plL); PL3.labels(plL); });
+}
 ElecNav.init({ch:3, sec:'3.1'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
