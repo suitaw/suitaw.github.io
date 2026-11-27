@@ -2019,3 +2019,75 @@ E3D.fwdRev = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 双控照明（7.1）：墙上两个双控开关 + 天花板一盏灯 ══════════════
+   相线 L → SA1 的公共端 COM → （上 / 下）联络线 → SA2 的同一侧 → SA2 的 COM → 灯 → 零线 N。
+   两个开关拨在同一侧（a===b）灯亮。墙 = 模型 y=0 的竖面（x 横、z 高），剖开看墙里的线。
+   状态来自页面 c7-1.js 的 S2 {a, b}；点开关 → opt.onFlip('a'|'b') */
+(function(){
+'use strict';
+const PARTS = {
+  sa1:  ['SA1 双控开关（进门）', '<b>点它拨一下</b>。双控开关三个端子：公共端 COM（L）、L1、L2，里面一片动触片要么搭 L1 要么搭 L2。', 'SA1 进门'],
+  sa2:  ['SA2 双控开关（床头）', '<b>点它拨一下</b>。跟 SA1 一样的开关，COM 接到灯。', 'SA2 床头'],
+  trav: ['两根联络线', '两个双控开关的 L1 接 L1、L2 接 L2。电从哪一根过，看两个开关拨在哪一边。', '联络线'],
+  lamp: ['灯', '两个开关拨在<b>同一边</b>（都搭上、或都搭下）就有一根联络线是通的，灯亮。', '灯'],
+  wl:   ['相线 L（红）', '<b>开关必须接在相线上</b>（7.1 第 1 屏）：关了灯，灯头上就不带电。', '相线 L'],
+  wn:   ['零线 N（蓝）', '直接接到灯，不经过开关。', '零线 N'],
+  wall: ['墙', '', '墙'],
+  housing:['墙面', '']
+};
+const SX = {a:-55, b:55}, SZ = 40;
+E3D.twoWay = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 55], view:{th:0, ph:1.45, r:300},
+  presets:{front:[1, 0, 0, 0.0001, 290], side:[0, 1, 0, -Math.PI/2, 290]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag;
+  /* 墙面（剖开半透明）+ 天花板 */
+  tag(H.box(200, 4, 120, 0, -2, 60, H.M(0xe9e4da, {roughness:0.9, transparent:true}), shell), 'housing');
+  tag(H.box(200, 60, 3, 0, 26, 121, H.M(0xf4f1ea, {roughness:0.9}), root), 'wall');
+  /* 线：L 红从左边进，N 蓝；联络线两根（灰白）；SA2 COM → 灯（红） */
+  const red = H.M(0xd42f2f, {roughness:0.5}), blue = H.M(0x1c6dd0, {roughness:0.5}), grey = H.M(0xcfd3d8, {roughness:0.5});
+  const Y = 4;                                                    /* 墙里的线在墙面后面一点 */
+  tag(H.wire([[-100, Y, 110], [-55, Y, 110], [-55, Y, SZ+8]], 0.9, red, root), 'wl');
+  tag(H.wire([[-46, Y, SZ+5], [-46, Y, 70], [46, Y, 70], [46, Y, SZ+5]], 0.9, grey, root), 'trav');
+  tag(H.wire([[-46, Y, SZ-5], [-46, Y, 12], [46, Y, 12], [46, Y, SZ-5]], 0.9, grey, root), 'trav');
+  tag(H.wire([[55, Y, SZ+8], [55, Y, 100], [6, Y, 116], [6, 20, 118]], 0.9, red, root), 'wl');
+  tag(H.wire([[-100, Y+3, 104], [-6, Y+3, 112], [-6, 20, 118]], 0.9, blue, root), 'wn');
+  H.plate('L', 6, 6, -96, -1, 112, '#d42f2f', null, root); H.plate('N', 6, 6, -96, -1, 100, '#1c6dd0', null, root);
+  /* 开关：面板 + 翘板（绕 x 轴摆）+ 墙里的三个端子 + 动触片 */
+  const sw = {};
+  ['a', 'b'].forEach(function(k){ const x = SX[k], key = k === 'a' ? 'sa1' : 'sa2';
+    tag(H.box(22, 3, 22, x, -4, SZ, H.M(0xf6f6f4, {roughness:0.35}), root), key);
+    const rk = new T.Group(); rk.position.set(x, -6, SZ); root.add(rk);
+    tag(H.box(14, 3, 14, 0, -1, 0, H.M(0xffffff, {roughness:0.3}), rk), key);
+    [[0, SZ], [9, SZ+5], [9, SZ-5]].forEach(function(t){ const tx = k === 'a' ? x + t[0] : x - t[0];
+      tag(H.box(3, 3, 3, tx, Y, t[1], M.brass, root), key); });
+    const arm = new T.Group(); arm.position.set(x, Y, SZ); root.add(arm);
+    tag(H.box(10, 1.2, 1.6, (k === 'a' ? 5 : -5), 0, 0, M.cu, arm), key);
+    H.plate(k === 'a' ? 'SA1 进门' : 'SA2 床头', 20, 5, x, -6, SZ - 17, '#3a3f45', null, root);
+    sw[k] = {rk:rk, arm:arm}; });
+  /* 灯 */
+  tag(H.cylZ(6, 3, 0, 20, 118, M.white, root), 'lamp');
+  const glass = H.M(0xfff4d6, {roughness:0.1, transparent:true, opacity:0.6, emissive:0x000000});
+  const bulb = tag(new T.Mesh(new T.SphereGeometry(9, 20, 16), glass), 'lamp'); bulb.position.set(0, 20, 105); root.add(bulb);
+  const lt = new T.PointLight(0xffd27a, 0, 260); lt.position.set(0, 0, 100); root.add(lt);
+  /* 电流点：两条可能的路（上联络线 / 下联络线） */
+  const head = [[-100, Y, 110], [-55, Y, 110], [-55, Y, SZ]], tail = [[55, Y, SZ], [55, Y, 100], [6, Y, 116], [6, 20, 118], [0, 20, 105], [-6, 20, 118], [-6, Y+3, 112], [-100, Y+3, 104]];
+  const up = K.dots(18, K.curM, H.poly(head.concat([[-46, Y, SZ+5], [-46, Y, 70], [46, Y, 70], [46, Y, SZ+5]], tail)));
+  const dn = K.dots(18, K.curM, H.poly(head.concat([[-46, Y, SZ-5], [-46, Y, 12], [46, Y, 12], [46, Y, SZ-5]], tail)));
+  return {
+    labels:[['sa1', -55, -6, SZ+12], ['sa2', 55, -6, SZ+12], ['trav', 0, Y, 70], ['lamp', 0, 20, 96], ['wl', -80, Y, 110], ['wn', -80, Y+3, 104]],
+    press:function(k){ if((k === 'sa1' || k === 'sa2') && opt.onFlip){ opt.onFlip(k === 'sa1' ? 'a' : 'b'); return true; } return false; },
+    tick:function(dt, kk){
+      const s = opt.state ? opt.state() : {a:0, b:0};
+      ['a', 'b'].forEach(function(k){ const tgt = s[k] ? -0.28 : 0.28;
+        sw[k].rk.rotation.x += (tgt - sw[k].rk.rotation.x) * Math.min(1, dt*14/kk);
+        sw[k].arm.rotation.y += ((s[k] ? 1 : -1)*(k === 'a' ? 0.5 : -0.5) - sw[k].arm.rotation.y) * Math.min(1, dt*14/kk); });
+      const on = s.a === s.b;
+      glass.emissive.setHex(0xffc65a); glass.emissiveIntensity = on ? 3.2 : 0; glass.opacity = on ? 0.95 : 0.6; lt.intensity = on ? 4000 : 0;
+      K.flow(up, on && s.a === 0, 0.08/kk, dt); K.flow(dn, on && s.a === 1, 0.08/kk, dt);
+      return true;
+    }
+  };
+  }}, opt); };
+})();

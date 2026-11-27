@@ -2717,3 +2717,4 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - `E3D.megger`（3.8 第 2 屏）：摇表（表盘 canvas 贴图，左 0 右 ∞，指针 R/(R+1)，0.5 MΩ 红线）+ 电动机；L 红线夹 U1、E 黑线夹地脚；rpm 0/60/120（60 指针晃，不能读）；motor good 500/damp 0.3/short 0；受潮/碰壳时有泄漏电流点。
 - `E3D.faultLab`（9.4 第 1 屏排故台）：竖排 L→FU2→1→SB2→2→SB1(并 13-14)→3→KM 线圈→4→FR 95-96→N；故障 fu/sb2/sb1/coil/fr；solve()：吸合时 L~3 为 220、4~N 为 0；没吸合时从 L 往下到第一个断点都是 220、从 N 往上到最后一个断点都是 0（线圈没电流两头同电位）。node 验过五种故障的 L/1/2/3/4 对 N 读数；coil 断线和正常的读数一样，靠「不吸合」区分。
 - `E3D.fwdRev`（11.6 第 4 屏）：两台 kmBuild 放在子 group（x=∓46，子 K 换 root/shell）+ 电动机（轴头红白盘看转向）；KM2 出线 2→W、6→U 交叉；lock=false 时两台同吸 → 判短路、全断 + 电弧。复用接触器的写法：`E3D._kmBuild(Object.assign({}, K, {root:g, shell:sh}), {}, E3D._CT_KM)`。
+- `E3D.twoWay`（7.1 第 2 屏双控）：墙＝模型 y=0 竖面；L 红进 SA1 COM，上/下两根灰色联络线，SA2 COM → 灯 → N 蓝；a===b 灯亮，电流点走对应那根联络线；读 S2 {a,b}，点开关 → 页面按钮。

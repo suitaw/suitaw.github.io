@@ -115,7 +115,7 @@ ELEC.reg({
     <b>点任意一个开关看通路怎么变。</b>
   </div>
   <div class="card">
-    <canvas id="cv1"></canvas>
+    <div class="k3d-v" id="tw3d"></div>
     <div class="ctrl">
       <div class="btns" id="s2b">
         <button class="btn sm" data-w="a">拨 SA1（进门那个）</button>
@@ -127,6 +127,17 @@ ELEC.reg({
         <div class="num hi"><div class="k">灯</div><div class="v" id="s2d">亮</div></div>
       </div>
     </div>
+    <div class="ctrl" id="tw3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="tw3info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验</div>
+    点墙上任意一个开关（或下面的按钮）：<b>灯每拨一次就翻一次</b>，不管拨的是哪一个。<br>
+    点「剖开外壳」后看墙里：橙点从红色相线进来，走的是<b>上联络线还是下联络线</b>，取决于两个开关拨在哪一边 —— 两个拨在同一边才有一条是通的。
+    <span class="sub">点任意零件看名字。开关接在相线（红）上，灯另一头接零线（蓝）。</span>
+  </div>
+  <div class="card">
+    <canvas id="cv1"></canvas>
   </div>
   <div class="note" id="n1"></div>
 
@@ -856,6 +867,17 @@ st2.cv.addEventListener('click', function(ev){
   const p = st2.pick(ev); if(p[1] < 56 || p[1] > 166) return;
   flip2(p[0] < 172 ? 'a' : 'b');
 });
+/* 3D 双控照明 */
+let TW3 = null;
+const TW3I = '点墙上的开关拨一下。点「剖开外壳」看墙里的线。';
+$('tw3info').innerHTML = TW3I;
+$('tw3c').innerHTML = window.E3D ? E3D.controlsHTML(null, [['oblique','正对墙'], ['side','侧面']]) : '';
+if(window.E3D){
+  E3D.twoWay($('tw3d'), { state:function(){ return {a:S2.a, b:S2.b}; },
+    onFlip:function(w){ const b = document.querySelector('#s2b [data-w="'+w+'"]'); if(b) b.click(); },
+    onInfo:function(p, k){ if(p && k !== 'sa1' && k !== 'sa2') $('tw3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ TW3 = a; });
+  E3D.bindControls($('tw3c'), function(){ return TW3; });
+}
 document.getElementById('s2b').addEventListener('click', function(e){
   const t = e.target.closest('.btn'); if(!t) return; flip2(t.dataset.w);
 });
