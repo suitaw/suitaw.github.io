@@ -1821,3 +1821,122 @@ E3D.megger = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 控制回路排故台（9.4）：L → FU2 → SB2 → SB1(并 KM 13-14) → KM 线圈 → FR 95-96 → N ══════════════
+   竖着排（像原理图）：节点 L、1、2、3、4、N。随机藏一个断点，症状都是「按起动没反应」。
+   用万用表交流电压档量：线圈没得电时，跟 L 连着的点都是 220 V、跟 N 连着的点都是 0 —— 跨在断开的那个元件两头读 220。
+   opt.onRead(r, st)。故障：fu 熔断器熔断 / sb2 停止按钮常闭接触不良 / sb1 起动按钮按不通 / coil 线圈断线 / fr 热继电器跳了 */
+(function(){
+'use strict';
+const PARTS = {
+  fu:   ['控制回路熔断器 FU2', '护着控制回路。熔断了整条控制回路就没电。', 'FU2'],
+  sb2:  ['停止按钮 SB2（常闭）', '平时通，按下断。触点氧化、接触不良也会让回路断。', 'SB2 停止'],
+  sb1:  ['起动按钮 SB1（常开）', '<b>点它＝按住 / 松开</b>。排故时要一直按着它量（或者用手按住接触器试）。', 'SB1 起动'],
+  hold: ['自锁触点 KM 13-14', '并在 SB1 两头，吸合以后接替 SB1。', '自锁 13-14'],
+  km:   ['接触器线圈 KM（A1-A2）', '回路通了它就吸合（蓝色触点架往下动）。线圈断线就吸不了。', 'KM 线圈'],
+  fr:   ['热继电器常闭 FR 95-96', '过载跳了它就断开，要按复位。', 'FR 95-96'],
+  tp:   ['测点（端子）', '<b>点它放表笔</b>，先红后黑。旁边的数字是线号：同一个号的端子是同一根线连着的。', '测点'],
+  pwr:  ['控制电源 L / N（220 V）', '', '电源'],
+  housing:['', '']
+};
+const YS = {L:84, '1':54, '2':24, '3':-6, '4':-38, N:-70};      /* 各节点的 y */
+const EL = [['fu', 'L', '1', 69], ['sb2', '1', '2', 39], ['sb1', '2', '3', 9], ['km', '3', '4', -22], ['fr', '4', 'N', -54]];
+const MX = -78;
+E3D.faultLab = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[-30, 6, 10], view:{th:0, ph:0.42, r:330},
+  presets:{front:[1, 0, 0, Math.PI/2, 320], side:[0, 1, 0, -Math.PI/2, 300]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  tag(H.box(110, 190, 3, 6, 7, -1.5, H.M(0x5a6068, {roughness:0.85}), root), 'housing');
+  const TP = {};                                                  /* 测点 → 坐标 */
+  function screw(name, x, y){ const m = tag(H.cylZ(2.6, 3, x, y, 14, M.zinc, root), 'tp'); m.userData.tp = name; TP[name+'@'+x+','+y] = [x, y, 16]; return m; }
+  const shapes = {
+    fu:  function(y){ tag(H.box(16, 22, 12, 0, y, 6, H.M(0xf1efe8, {roughness:0.4}), root), 'fu'); tag(H.box(10, 12, 3, 0, y, 13, H.M(0xc9b27a), root), 'fu'); },
+    sb2: function(y){ tag(H.box(18, 18, 10, 0, y, 5, H.M(0xd9dde1), root), 'sb2'); tag(H.cylZ(6, 5, 0, y, 12.5, H.M(0xc23b32, {roughness:0.4}), root), 'sb2'); },
+    sb1: function(y){ tag(H.box(18, 18, 10, 0, y, 5, H.M(0xd9dde1), root), 'sb1'); },
+    km:  function(y){ tag(H.box(30, 24, 14, 0, y, 7, H.M(0xb9bec4, {roughness:0.5}), root), 'km'); },
+    fr:  function(y){ tag(H.box(26, 20, 12, 0, y, 6, H.M(0x2b2f34, {roughness:0.5}), root), 'fr'); tag(H.cylZ(3, 3, 8, y+4, 13.5, M.carrier, root), 'fr'); }
+  };
+  EL.forEach(function(e){ shapes[e[0]](e[3]); H.plate(PARTS[e[0]][2], 18, 4.4, 30, e[3], 0.4, '#e6edf5', null, root); });
+  const sb1cap = new T.Group(); sb1cap.position.set(0, 9, 10); root.add(sb1cap); tag(H.cylZ(6, 5, 0, 0, 2.5, H.M(0x2e9e4f, {roughness:0.4}), sb1cap), 'sb1');
+  const kmCar = new T.Group(); kmCar.position.set(0, -22, 14); root.add(kmCar); tag(H.box(10, 8, 4, 0, 0, 2, M.carrier, kmCar), 'km');
+  /* 自锁触点 13-14：在 SB1 右边，跨节点 2、3 */
+  tag(H.box(12, 16, 10, 22, 9, 5, H.M(0xb9bec4), root), 'hold'); H.plate('13-14', 12, 3.6, 22, 9, 10.2, '#2b2f34', null, root);
+  /* 端子：每个元件上下各一颗；电源 L、N 各一颗；13-14 两颗 */
+  const nodeXY = {L:[[0, 84]], N:[[0, -70]], '1':[], '2':[], '3':[], '4':[]};
+  EL.forEach(function(e){ nodeXY[e[1]].push([0, e[3]+12]); nodeXY[e[2]].push([0, e[3]-12]); });
+  nodeXY['2'].push([22, 20]); nodeXY['3'].push([22, -2]);
+  Object.keys(nodeXY).forEach(function(n){ nodeXY[n].forEach(function(p){ screw(n, p[0], p[1]); H.plate(n, 5, 4, p[0]-7, p[1], 16.2, '#ffd27a', null, root); }); });
+  tag(H.box(14, 10, 8, 0, 92, 4, M.blk, root), 'pwr'); tag(H.box(14, 10, 8, 0, -78, 4, M.blk, root), 'pwr');
+  /* 导线（黑）：同一个节点的端子之间 */
+  Object.keys(nodeXY).forEach(function(n){ const ps = nodeXY[n]; for(let i=1;i<ps.length;i++) H.wire([[ps[i-1][0], ps[i-1][1], 16], [ps[i-1][0]+(ps[i][0]?11:0), (ps[i-1][1]+ps[i][1])/2, 18], [ps[i][0], ps[i][1], 16]], 0.7, M.blk, root); });
+  /* 表（交流电压档） */
+  tag(H.box(44, 92, 9, MX, 10, 4.5, H.M(0xe8b923, {roughness:0.6}), root), 'housing');
+  tag(H.box(38, 84, 2, MX, 10, 10, H.M(0x2d3136), root), 'housing');
+  const lc = document.createElement('canvas'); lc.width = 320; lc.height = 140; const lg = lc.getContext('2d');
+  const ltex = new T.CanvasTexture(lc); ltex.colorSpace = T.SRGBColorSpace;
+  const lcd = new T.Mesh(new T.PlaneGeometry(32, 14), new T.MeshBasicMaterial({map:ltex, toneMapped:false})); lcd.position.set(MX, 40, 11.2); root.add(lcd);
+  H.plate('V~ 750', 18, 4, MX, 22, 11.2, '#e6edf5', null, root);
+  const JC = [MX+6, -26], JV = [MX+16, -26];
+  tag(H.cylZ(3, 1, JC[0], JC[1], 11.2, H.M(0x111214), root), 'housing'); tag(H.cylZ(3, 1, JV[0], JV[1], 11.2, H.M(0xb02a2a), root), 'housing');
+  function probe(col, key){ const g = new T.Group(); root.add(g); const pm = H.M(col, {roughness:0.5});
+    const b = new T.CylinderGeometry(1.6, 1.6, 22, 12); b.rotateX(Math.PI/2); const body = new T.Mesh(b, pm); body.position.z = 14; g.add(body);
+    const tip = new T.Mesh(new T.CylinderGeometry(0.45, 0.45, 5, 8).rotateX(Math.PI/2), M.zinc); tip.position.z = 1; g.add(tip); return {g:g, m:pm, lead:null}; }
+  const pr = {red:probe(0xc0392b), black:probe(0x24272b)};
+  const st = {fault:'ok', pressed:false, energized:false, red:null, black:null, redXY:null, blackXY:null, next:'red'};
+  function placeProbe(k){ const p = pr[k], xy = st[k+'XY'];
+    if(xy){ p.g.position.set(xy[0] + (k === 'red' ? -1 : 1), xy[1], 16); p.g.rotation.set(0, k === 'red' ? -0.3 : 0.3, 0); }
+    else { p.g.position.set(MX + (k === 'red' ? 30 : 20), -52, 2); p.g.rotation.set(Math.PI/2.2, 0, 0); }
+    const from = k === 'black' ? JC : JV, to = p.g.position;
+    if(p.lead){ root.remove(p.lead); p.lead.geometry.dispose(); }
+    const a = new T.Vector3(from[0], from[1], 12), b = new T.Vector3(to.x, to.y, to.z + 24), mid = a.clone().lerp(b, 0.5); mid.z = Math.max(a.z, b.z) + 8;
+    p.lead = new T.Mesh(new T.TubeGeometry(new T.QuadraticBezierCurve3(a, mid, b), 24, 0.8, 6, false), p.m); root.add(p.lead); }
+  /* 电：哪些元件是通的 */
+  function closed(e){ const f = st.fault;
+    if(e === 'fu') return f !== 'fu'; if(e === 'sb2') return f !== 'sb2'; if(e === 'fr') return f !== 'fr'; if(e === 'km') return f !== 'coil';
+    if(e === 'sb1') return (st.pressed && f !== 'sb1') || st.energized; return true; }
+  function solve(){
+    /* 先看能不能吸合（自锁要先吸合才算，所以先不算 13-14） */
+    const save = st.energized; st.energized = false;
+    const can = EL.every(function(e){ return closed(e[0]); });
+    st.energized = can || (save && EL.every(function(e){ return e[0] === 'sb1' || closed(e[0]); }));
+    /* 节点电位：没吸合时，跟 L 连着的 220、跟 N 连着的 0（线圈没电流、两头同电位，当导线算）；吸合时线圈两头差 220 */
+    const order = ['L', '1', '2', '3', '4', 'N'], V = {};
+    if(st.energized){ order.forEach(function(n, i){ V[n] = i <= 3 ? 220 : 0; }); return V; }
+    let i = 0; V.L = 220; for(i=0;i<EL.length;i++){ if(!closed(EL[i][0])) break; V[EL[i][2]] = 220; }
+    let j; V.N = 0; for(j=EL.length-1;j>=0;j--){ if(!closed(EL[j][0])) break; V[EL[j][1]] = 0; }
+    order.forEach(function(n){ if(V[n] === undefined) V[n] = 0; });
+    return V;
+  }
+  function drawLcd(t){ lg.fillStyle = '#9fb59a'; lg.fillRect(0, 0, 320, 140); lg.fillStyle = '#1b2219';
+    lg.textAlign = 'right'; lg.textBaseline = 'middle'; lg.font = '700 84px ui-monospace,monospace'; lg.fillText(t, 300, 78);
+    lg.textAlign = 'left'; lg.font = '600 30px system-ui'; lg.fillText('V~', 12, 28); ltex.needsUpdate = true; }
+  function update(){
+    const V = solve();
+    const r = {V:V, v:(st.red && st.black) ? Math.abs(V[st.red] - V[st.black]) : null, energized:st.energized};
+    drawLcd(r.v === null ? '0' : String(Math.round(r.v)));
+    placeProbe('red'); placeProbe('black');
+    if(opt.onRead) opt.onRead(r, st);
+    K.S.dirty = true;
+  }
+  update();
+  const api = {
+    st:st, update:update,
+    press:function(b){ st.pressed = b; update(); },
+    fault:function(f){ st.fault = f; st.energized = false; st.pressed = false; st.red = st.black = st.redXY = st.blackXY = null; st.next = 'red'; update(); },
+    clear:function(){ st.red = st.black = st.redXY = st.blackXY = null; st.next = 'red'; update(); },
+    stop:function(){ st.energized = false; st.pressed = false; update(); }
+  };
+  return {
+    labels:[['fu', 0, 69, 14], ['sb2', 0, 39, 15], ['sb1', 0, 9, 15, null], ['hold', 22, 9, 12], ['km', 0, -22, 16], ['fr', 0, -54, 14], ['pwr', 0, 92, 9]],
+    hitMesh:function(m){ if(m.userData.tp){ const k = st.next; st[k] = m.userData.tp; st[k+'XY'] = [m.position.x, m.position.y]; st.next = k === 'red' ? 'black' : 'red'; update(); return true; } return false; },
+    press:function(k){ if(k === 'sb1'){ api.press(!st.pressed); return true; } if(k === 'sb2'){ api.stop(); return true; } return false; },
+    api:api,
+    tick:function(dt, k){
+      sb1cap.position.z = st.pressed ? 7 : 10;
+      kmCar.position.z += ((st.energized ? 11 : 14) - kmCar.position.z) * Math.min(1, dt*12/k);
+      return Math.abs(kmCar.position.z - (st.energized ? 11 : 14)) > 0.01;
+    }
+  };
+  }}, opt); };
+})();

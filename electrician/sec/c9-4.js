@@ -66,6 +66,25 @@ ELEC.reg({
     <b>点「下一步」走一遍。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">排故台：按起动没反应，拿表找出断在哪</div>
+    <div class="k3d-v" id="fl3d" style="aspect-ratio:1/1.25"></div>
+    <div class="ctrl">
+      <div class="btns"><button class="btn big" id="flPress">按住 SB1 起动</button></div>
+      <div class="btns"><button class="btn" id="flRand">出一道题（藏一个故障）</button><button class="btn sm" id="flShow" disabled>揭晓</button><button class="btn sm" id="flClr">收回表笔</button></div>
+    </div>
+    <div class="ctrl" id="fl3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="fl3info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">电压法，四步</div>
+    ① 点「出一道题」。<b>按住 SB1</b> —— 接触器不吸合（蓝色触点架不动）。<br>
+    ② 黑笔放在 <b>N</b>（最下面那颗），红笔从 <b>L</b> 开始往下一颗一颗点：L、1、2、3、4。<br>
+    ③ 读数从 <b>220 变成 0</b> 的那一段，断点就在这两个号之间的元件上。<br>
+    ④ 想确认就把两支笔<b>跨在那个元件两头</b>：断开的元件两头读 220，好的读 0。<br>
+    <b>特例</b>：3 号 220、4 号 0，可接触器就是不吸 —— 线圈两头有电却不动，就是线圈断了。
+    <span class="sub">同一个线号的端子是一根线连着的，量哪颗都一样。量的时候<b>手别碰金属</b>，这是带电测量。</span>
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="btns">
@@ -742,6 +761,26 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 排故台 */
+let FL3 = null, flHidden = false;
+const FLF = {fu:'控制回路熔断器 FU2 熔断了（L-1 断）', sb2:'停止按钮 SB2 常闭触点接触不良（1-2 断）', sb1:'起动按钮 SB1 按下去不通（2-3 断）', coil:'接触器线圈断线（3-4 断）', fr:'热继电器跳了，95-96 断开（4-N 断）'};
+function flRead(r, st){
+  $('flPress').textContent = st.pressed ? '松开 SB1' : '按住 SB1 起动';
+  let h = '<div style="font-size:.78rem;color:var(--tx3)">红笔 '+(st.red||'—')+'　黑笔 '+(st.black||'—')+'　SB1 '+(st.pressed ? '<b>按着</b>' : '没按')+'　接触器 '+(r.energized ? '<b>吸合了</b>' : '没吸合')+'</div>';
+  if(r.v === null) h += st.pressed ? '按着 SB1 呢。点端子放表笔：<b>先红后黑</b>（建议黑笔先放 N）。' : '先<b>按住 SB1</b>，再拿表量。';
+  else h += '读数 <b>'+Math.round(r.v)+' V</b>（'+st.red+' 对 '+st.black+'）' + (r.v > 100 ? '：这两点之间有电压差 —— 中间有东西断开着，或者隔着线圈。' : '：两点同电位 —— 中间是通的（或者都没电）。');
+  if(r.energized && st.fault === 'ok') h += '<br>接触器吸合了，回路是好的。';
+  $('fl3info').innerHTML = h;
+}
+if(window.E3D){
+  E3D.faultLab($('fl3d'), { onRead:flRead, onInfo:function(p, k){ if(p && !/^(tp|sb1|sb2)$/.test(k)) $('fl3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ FL3 = a; });
+  $('fl3c').innerHTML = E3D.controlsHTML(null, [['oblique','正上方'], ['front','正面'], ['side','侧面']]);
+  E3D.bindControls($('fl3c'), function(){ return FL3; });
+  $('flPress').addEventListener('click', function(){ if(FL3) FL3.press(!FL3.st.pressed); });
+  $('flClr').addEventListener('click', function(){ if(FL3) FL3.clear(); });
+  $('flRand').addEventListener('click', function(){ if(!FL3) return; const ks = Object.keys(FLF); FL3.fault(ks[Math.floor(Math.random()*ks.length)]); flHidden = true; $('flShow').disabled = false; });
+  $('flShow').addEventListener('click', function(){ if(!FL3) return; this.disabled = true; flHidden = false; $('fl3info').innerHTML = '藏的故障是：<b>'+FLF[FL3.st.fault]+'</b>。你量出来的断点在哪一段？'; });
+}
 ElecNav.init({ch:9, sec:'9.4'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
