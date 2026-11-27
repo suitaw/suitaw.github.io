@@ -2869,3 +2869,48 @@ E3D.gridChain = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 电动机安装方式（10.3 第 1 屏）：IM B3 / B5 / B35 / V1 / V3（书 P186 图 10-11）══════════════ */
+(function(){
+'use strict';
+const INFO = {B3:'<b>B3：有底座；不直连安装法兰盘</b>。卧式（轴线水平），地脚螺栓固定在底座上 —— 最常见。',
+  B5:'<b>B5：无底座；有直连安装法兰盘</b>。卧式，靠端盖上的法兰盘直接拴在机器上。',
+  B35:'<b>B35：有底座，有直连安装法兰盘</b>。卧式，两种都有。',
+  V1:'<b>V1：无底座，传动轴伸向下</b>。立式（轴线竖直），法兰盘在下面。',
+  V3:'<b>V3：无底座，传动轴伸向上</b>。立式，法兰盘在上面。'};
+const PARTS = { body:['电动机', '', '电动机'], foot:['底座（地脚）', '有底座的才能用地脚螺栓固定在基础上。', '底座'],
+  flange:['法兰盘', '端盖上的一圈带孔的盘 —— 直接拴在被带动的机器上。', '法兰盘'], shaft:['传动轴（轴伸）', '', '轴伸'] };
+E3D.mountTypes = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 40], view:{th:0.55, ph:1.15, r:260},
+  presets:{front:[1, 0, 0, 0.0001, 240], side:[0, 1, 0, -Math.PI/2, 240]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  const mo = H.M(0x4f6f8f, {roughness:0.55, metalness:0.3});
+  const g = new T.Group(); root.add(g);                                           /* 电动机本体（轴沿 +x），整体可以竖起来 */
+  const bg = new T.CylinderGeometry(24, 24, 56, 28); bg.rotateZ(Math.PI/2); g.add(tag(new T.Mesh(bg, mo), 'body'));
+  for(let i=0;i<14;i++){ const a = i/14*Math.PI*2, f = tag(H.box(52, 1.6, 4, 0, 0, 0, mo, g), 'body'); f.position.set(0, Math.cos(a)*25, Math.sin(a)*25); f.rotation.x = a; }
+  tag(H.box(18, 18, 10, 0, 0, 29, mo, g), 'body');
+  const sg = new T.CylinderGeometry(3.5, 3.5, 26, 14); sg.rotateZ(Math.PI/2); const sh = tag(new T.Mesh(sg, M.steel), 'shaft'); sh.position.x = 41; g.add(sh);
+  const feet = new T.Group(); g.add(feet);
+  [-16, 16].forEach(function(x){ tag(H.box(10, 56, 4, x, 0, -26, mo, feet), 'foot'); tag(H.box(10, 8, 10, x, 20, -21, mo, feet), 'foot'); tag(H.box(10, 8, 10, x, -20, -21, mo, feet), 'foot'); });
+  const flange = new T.Group(); flange.position.x = 29; g.add(flange);
+  const fg = new T.CylinderGeometry(32, 32, 3, 32); fg.rotateZ(Math.PI/2); flange.add(tag(new T.Mesh(fg, H.M(0x5d7d9d, {roughness:0.5, metalness:0.3})), 'flange'));
+  for(let i=0;i<4;i++){ const a = i/4*Math.PI*2 + Math.PI/4, hg = new T.CylinderGeometry(2.2, 2.2, 3.4, 10); hg.rotateZ(Math.PI/2); const h = new T.Mesh(hg, M.blk); h.position.set(0, Math.cos(a)*27, Math.sin(a)*27); flange.add(h); }
+  tag(H.box(160, 120, 2, 0, 0, -1, H.M(0x5d6670, {roughness:0.9}), root), 'body');
+  const lab = (function(){ const c = document.createElement('canvas'); c.width = 256; c.height = 96; const tex = new T.CanvasTexture(c); tex.colorSpace = T.SRGBColorSpace;
+    const m = new T.Mesh(new T.PlaneGeometry(40, 15).rotateX(Math.PI/2), new T.MeshBasicMaterial({map:tex, transparent:true, toneMapped:false})); m.position.set(-38, -46, 4); root.add(m);
+    return function(t){ const x = c.getContext('2d'); x.clearRect(0, 0, 256, 96); x.fillStyle = 'rgba(16,24,32,.85)'; x.fillRect(0, 0, 256, 96); x.fillStyle = '#7cc4ff'; x.font = '700 60px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('IM ' + t, 128, 50); tex.needsUpdate = true; }; })();
+  let cur = 'B3', tq = new T.Quaternion(), tz = 30;
+  const api = { show:function(k){ cur = k; lab(k); feet.visible = k === 'B3' || k === 'B35'; flange.visible = k !== 'B3';
+      /* 卧式：轴水平；V1：轴朝下（绕 y 转 +90°，+x → −z）；V3：轴朝上 */
+      tq.setFromAxisAngle(new T.Vector3(0, 1, 0), k === 'V1' ? Math.PI/2 : k === 'V3' ? -Math.PI/2 : 0);
+      tz = k === 'V1' ? 72 : k === 'V3' ? 30 : 30;
+      if(opt.onShow) opt.onShow(k, INFO[k]); K.S.dirty = true; }, cur:function(){ return cur; } };
+  api.show('B3');
+  return {
+    labels:[['foot', -16, -28, -24, g], ['flange', 29, 0, 34, g], ['shaft', 50, 0, 4, g]],
+    api:api,
+    tick:function(dt, k){ g.quaternion.slerp(tq, Math.min(1, dt*6/k)); g.position.z += (tz - g.position.z)*Math.min(1, dt*6/k); return g.quaternion.angleTo(tq) > 0.002 || Math.abs(tz - g.position.z) > 0.05; }
+  };
+  }}, opt); };
+})();

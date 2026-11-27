@@ -85,6 +85,11 @@ ELEC.reg({
     <b>选一种看它长什么样、什么时候用。</b>
   </div>
   <div class="card">
+    <div class="k3d-v" id="mt3d"></div>
+    <div class="ctrl"><div class="btns" id="mtK"><button class="btn sm on" data-k="B3">B3</button><button class="btn sm" data-k="B5">B5</button><button class="btn sm" data-k="B35">B35</button><button class="btn sm" data-k="V1">V1</button><button class="btn sm" data-k="V3">V3</button></div></div>
+    <div class="k3d-info" id="mt3info"></div>
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="btns" id="s1k">
@@ -907,6 +912,14 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 安装方式 */
+let MT3 = null;
+if(window.E3D){
+  E3D.mountTypes($('mt3d'), { onShow:function(k, t){ $('mt3info').innerHTML = t + '<div style="font-size:.78rem;color:var(--tx3);margin-top:4px">IM＝国际通用的安装方式代号；B＝卧式（轴线水平），V＝立式（轴线竖直）。</div>';
+      document.querySelectorAll('#mtK .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.k === k); }); },
+    onInfo:function(p){ if(p && p[1]) $('mt3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ MT3 = a; });
+  $('mtK').addEventListener('click', function(e){ const b = e.target.closest('[data-k]'); if(b && MT3) MT3.show(b.dataset.k); });
+}
 ElecNav.init({ch:10, sec:'10.3'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
