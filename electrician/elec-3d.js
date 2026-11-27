@@ -333,13 +333,22 @@ const PARTS = {
 };
 
 
-E3D.contactor = function(el, opt){ return E3D.viewer(el, {
-  parts:PARTS, center:[0, 2, 40], view:{th:0.4, ph:0.95, r:265},
+/* 触点配置：接触器＝三对主触点 + 13-14 常开 + 21-22 常闭；opt.relay＝中间继电器，四副一样的小触点（同 c2-3.js 的 ROWS） */
+const CT_KM = [{x:-27, lbl:['1/L1','2/T1']}, {x:-13, lbl:['3/L2','4/T2']}, {x:1, lbl:['5/L3','6/T3']},
+               {x:15, aux:true, lbl:['13NO','14NO']}, {x:26, aux:true, nc:true, lbl:['21NC','22NC']}];
+const CT_KA = [{x:-24, aux:true, lbl:['13','14']}, {x:-8, aux:true, lbl:['23','24']}, {x:8, aux:true, nc:true, lbl:['31','32']}, {x:24, aux:true, lbl:['43','44']}];
+const PARTS_KA = Object.assign({}, PARTS, {
+  ano:['常开触点（动合）', '线圈没电时断开，吸合后闭合。中间继电器四副触点一样大，都只能过几安培 —— 它管的是<b>信号</b>，不带电动机。', '常开触点'],
+  anc:['常闭触点 31-32（动断）', '线圈没电时闭合，吸合后断开，比常开<b>先</b>动。', '常闭触点'],
+  carrier:['触点架（连杆）', '把衔铁和四副动触点连成一体，<b>一个线圈同时带动四路输出</b> —— 一个信号变成好几路互不干扰的信号，这就是「中间」继电器的用处。', '触点架']
+});
+E3D.contactor = function(el, opt){ opt = opt||{}; const CT = opt.relay ? CT_KA : CT_KM; return E3D.viewer(el, {
+  parts:opt.relay ? PARTS_KA : PARTS, center:[0, 2, 40], view:{th:0.4, ph:0.95, r:265},
   /* 正面＝装在盘上时你看到的那面（1/3/5 在上）；侧面＝从右边看，下面电磁铁、上面触点，看衔铁上下动最清楚 */
   presets:{front:[1, 0, 0, Math.PI/2, 250], side:[0, 1, 0, -Math.PI/2, 250]},
   build:function(K){
   const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag, opt = K.opt;
-  const PX = [-27, -13, 1], AX = [15, 26];          /* 三相、辅助常开、辅助常闭 的 x */
+  const PX = CT.filter(function(c){ return !c.aux; }).map(function(c){ return c.x; });   /* 主触点的 x（继电器没有） */
   const ZF = 60;                                    /* 静触点那一层的 z */
   const TRAVEL = 4;                                 /* 衔铁行程 4 mm */
 
@@ -395,17 +404,16 @@ E3D.contactor = function(el, opt){ return E3D.viewer(el, {
   tag(H.box(68, 8, 6, 0, 0, 44.5, M.carrier, mov), 'carrier');                  /* 下横梁：坐在衔铁上 */
   [-32, 32].forEach(function(x){ tag(H.box(3, 8, 28.5, x, 0, 61.75, M.carrier, mov), 'carrier'); });   /* 两根立柱（在三相外侧，不挡触点） */
   tag(H.box(68, 8, 4, 0, 0, 74, M.carrier, mov), 'carrier');                    /* 上横梁：常开桥经触点弹簧挂在它下面 */
-  tag(H.box(4, 6, 6, AX[1], 0, 50.5, M.carrier, mov), 'carrier');              /* 常闭桥的托座 */
+  CT.forEach(function(c){ if(c.nc) tag(H.box(4, 6, 6, c.x, 0, 50.5, M.carrier, mov), 'carrier'); });   /* 常闭桥的托座 */
   tag(H.box(14, 14, 11, 0, 0, 81.5, M.carrier, mov), 'carrier');                /* 露头 */
-  H.plate('KM', 9, 5, 0, 0, 87.1, '#ffffff', null, mov);
+  H.plate(opt.relay ? 'KA' : 'KM', 9, 5, 0, 0, 87.1, '#ffffff', null, mov);
 
   const PH = [0xe0a92e, 0x3fa845, 0xcf4436];        /* 国标三相线色 黄 绿 红 */
-  const lbl = [['1/L1','2/T1'], ['3/L2','4/T2'], ['5/L3','6/T3'], ['13NO','14NO'], ['21NC','22NC']];
   const poles = [];                                  /* 每对触点：{x, nc, br(桥), spr(触点弹簧)} */
 
   /* 静触点铜排 + 端子 */
-  PX.concat(AX).forEach(function(x, i){
-    const aux = i>=3, nc = i===4, w = aux ? 4 : 6;
+  CT.forEach(function(c, i){
+    const x = c.x, aux = !!c.aux, nc = !!c.nc, w = aux ? 4 : 6;
     [1, -1].forEach(function(sg){
       tag(H.box(w, 24, 2, x, sg*20, 60, M.cu, root), 'mfix');                       /* 平的一段 y ±8~32 */
       tag(H.box(w, 2, 13, x, sg*32, 66.5, M.cu, root), 'mfix');                     /* 立起来接端子 */
@@ -413,7 +421,7 @@ E3D.contactor = function(el, opt){ return E3D.viewer(el, {
       tag(H.box(aux ? 8 : 10, 9, 0.8, x, sg*33, 72.4, M.zinc, root), 'term');      /* 压线板 */
       tag(H.cylZ(aux ? 2.4 : 3.2, 2.6, x, sg*33, 74, M.zinc, root), 'term');        /* 螺钉 */
       const sl = H.box(aux ? 3.4 : 4.6, 0.7, 0.6, x, sg*33, 75.4, M.blk, root); sl.rotation.z = 0.4;
-      H.plate(lbl[i][sg>0 ? 0 : 1], aux ? 9.5 : 11, 3.4, x, sg*26.3, 72.15, '#1f2328', null, root);   /* 印在螺钉内侧，外侧要走线 */
+      H.plate(c.lbl[sg>0 ? 0 : 1], aux ? 9.5 : 11, 3.4, x, sg*26.3, 72.15, '#1f2328', null, root);   /* 印在螺钉内侧，外侧要走线 */
     });
     /* 动触点桥 */
     const br = new T.Group(); root.add(br);
@@ -431,7 +439,7 @@ E3D.contactor = function(el, opt){ return E3D.viewer(el, {
   /* 外接导线：主电路按相色，控制线黑 */
   const cabMat = PH.map(function(c){ return H.M(c, {roughness:0.5}); });
   PX.forEach(function(x, i){ [1, -1].forEach(function(sg){ H.wire([[x, sg*33, 76.5], [x, sg*33, 79], [x, sg*47, 79]], 1.7, cabMat[i], root); }); });
-  AX.forEach(function(x){ [1, -1].forEach(function(sg){ H.wire([[x, sg*33, 75.5], [x, sg*33, 78], [x, sg*46, 78]], 0.9, M.blk, root); }); });
+  CT.forEach(function(c){ if(c.aux) [1, -1].forEach(function(sg){ H.wire([[c.x, sg*33, 75.5], [c.x, sg*33, 78], [c.x, sg*46, 78]], 0.9, M.blk, root); }); });
   [[26, 46], [-26, -46]].forEach(function(c){ const sg = c[1]>0 ? 1 : -1; H.wire([[c[0], c[1], 43.5], [c[0], c[1], 46], [c[0], c[1]+sg*12, 46]], 0.9, M.blk, root); });
 
 
@@ -446,7 +454,8 @@ E3D.contactor = function(el, opt){ return E3D.viewer(el, {
   const st = {on:false, I:0, t:0, arc:0, wasMain:false, step:0, stepHold:0};
   return {
     labels:[['core', 15.5, -19, 18], ['coil', 21, 8, 24], ['shade', 15.5, 21, 31], ['arm', 15.5, -8, 38, mov], ['spring', 27, -4, 22],
-            ['carrier', 0, 7, 88, mov], ['mbr', -13, -15, 67], ['mfix', -27, 24, 60], ['ano', 15, 4, 69], ['anc', 26, -4, 53], ['term', -27, 33, 78], ['coilT', 26, 46, 47]],
+            ['carrier', 0, 7, 88, mov]].concat(opt.relay ? [['ano', -24, 4, 69], ['anc', 8, -4, 53], ['term', -24, 33, 78], ['coilT', 26, 46, 47]]
+              : [['mbr', -13, -15, 67], ['mfix', -27, 24, 60], ['ano', 15, 4, 69], ['anc', 26, -4, 53], ['term', -27, 33, 78], ['coilT', 26, 46, 47]]),
     api:{ set:function(on){ st.on = !!on; K.S.dirty = true; }, coil:st },
     tick:function(dt, k){ let busy = false;
       /* 线圈电流：通电 0.35s 升满，断电 0.15s 掉光（都已放慢，见页面文字） */
@@ -879,6 +888,92 @@ E3D.rotary = function(el, opt){ return E3D.viewer(el, {
       let any = false;
       paths.forEach(function(g, i){ const o = settled && on(i, s.k); any = any || o; K.flow(g, o, 0.15/kk, dt); });
       return moving || any;
+    }
+  };
+  }}, opt); };
+})();
+
+/* ══════════════ 空气阻尼式时间继电器 JS7-A（剖开看）══════════════
+   上：电磁铁（线圈 + 静铁芯 + 衔铁），衔铁一吸合就压瞬动微动开关；
+   中：活塞杆，被塔形弹簧往上推，但下面的橡皮气囊只能从调节螺钉的小孔慢慢进气 → 活塞慢慢走 → 走到头压延时微动开关。
+   状态来自页面 c2-3.js 的 S3：opt.state() → {on 线圈, mode 0 通电延时/1 断电延时, prog 0~1, acted 延时触点动了?, counting} */
+(function(){
+'use strict';
+const PARTS = {
+  coil:   ['线圈 KT', '通电 → 吸衔铁。跟接触器一样是电磁铁。', '线圈'],
+  core:   ['静铁芯', '线圈通电后变成电磁铁。', '静铁芯'],
+  arm:    ['衔铁', '线圈一通电立刻被吸过去（不延时），同时放开活塞杆、压下瞬动开关。', '衔铁'],
+  rod:    ['活塞杆', '衔铁放开它以后，塔形弹簧把它往上推；可它下面连着气囊，<b>气进得慢，它就走得慢</b> —— 延时就是这么来的。', '活塞杆'],
+  tower:  ['塔形弹簧', '推活塞杆的动力。', '塔形弹簧'],
+  bag:    ['橡皮气囊（气室）', '活塞往上走要把气囊拉大，空气只能从调节螺钉旁的<b>小孔</b>慢慢进来。断电时气从排气阀一下排掉，所以复位很快。', '气囊'],
+  screw:  ['调节螺钉（延时旋钮）', '拧进去小孔变小 → 进气更慢 → 延时更长。<b>页面上的「延时设定」滑杆就是在拧它</b>。精度不高（误差可达 ±10%～20%），要精确用电子式。', '调节螺钉'],
+  swi:    ['瞬动微动开关', '衔铁一动它就动，<b>不延时</b>（原理图上画成普通触点）。', '瞬动开关'],
+  swd:    ['延时微动开关', '活塞杆走到头才压下它 —— <b>延时触点</b>（原理图上触点带「降落伞」记号）。', '延时开关'],
+  lever:  ['杠杆', '活塞杆顶端带着它，走到头去压延时开关。', '杠杆'],
+  housing:['底座', '绝缘底座。']
+};
+const RX = 0, ROD0 = -6, ROD_UP = 7;              /* 活塞杆 x；顶端起始 y；行程 */
+
+E3D.timer = function(el, opt){ return E3D.viewer(el, {
+  parts:PARTS, center:[0, 4, 14], view:{th:0.35, ph:1.0, r:215},
+  presets:{front:[1, 0, 0, Math.PI/2, 200], side:[0, 1, 0, -Math.PI/2, 200]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag, opt = K.opt;
+  tag(H.box(70, 96, 3, 0, 4, 1.5, H.M(0x3a2e26, {roughness:0.6, transparent:true}), shell), 'housing');
+  /* 电磁铁（在上面，y 32~46）：静铁芯 + 线圈；衔铁在它下面，通电往上吸 4mm */
+  [-8, 8].forEach(function(x){ tag(H.box(5, 16, 10, x, 40, 9, M.steel, root), 'core'); });
+  tag(H.box(26, 4, 10, 0, 48, 9, M.steel, root), 'core');
+  const cg = new T.CylinderGeometry(7, 7, 12, 20); cg.rotateZ(Math.PI/2);
+  [-8, 8].forEach(function(x){ const m = tag(new T.Mesh(cg, M.winding), 'coil'); m.position.set(x, 40, 9); m.scale.set(1, 1, 1); m.rotation.z = Math.PI/2; root.add(m); });
+  const arm = new T.Group(); root.add(arm);
+  tag(H.box(26, 4, 10, 0, 29, 9, M.steel2, arm), 'arm');
+  tag(H.box(16, 3, 3, 18, 27, 9, M.zinc, arm), 'arm'); tag(H.box(4, 6, 3, 24, 28, 9, M.zinc, arm), 'arm');   /* 拨片：伸到右边，往上顶瞬动开关 */
+  /* 活塞杆 + 杠杆（一起往上走） */
+  const rod = new T.Group(); root.add(rod);
+  tag(H.cylZ(1.6, 1, 0, 0, 0, M.zinc, rod), 'rod');                                  /* 占位，下面换成竖杆 */
+  rod.children[0].visible = false;
+  const rg = new T.CylinderGeometry(1.6, 1.6, 30, 12);
+  const rm = tag(new T.Mesh(rg, M.zinc), 'rod'); rm.position.set(RX, ROD0-15, 9); rod.add(rm);
+  tag(H.box(26, 3, 3, -12, ROD0, 9, M.brass, rod), 'lever');                        /* 杠杆往左伸，去压延时开关 */
+  /* 塔形弹簧：套在活塞杆上（y 方向） */
+  const tw = tag(H.spring(4, 7, 14, 0.5, M.spr), 'tower'); tw.rotation.x = Math.PI/2; tw.position.set(RX, -30, 9); root.add(tw);
+  /* 气囊：圆鼓（黑橡胶）+ 盖 + 调节螺钉 */
+  const bagG = new T.CylinderGeometry(15, 15, 10, 28); const bag = tag(new T.Mesh(bagG, H.M(0x1d1f22, {roughness:0.85})), 'bag'); bag.position.set(RX, -38, 9); root.add(bag);
+  tag(H.box(34, 4, 16, RX, -45, 9, M.blk, root), 'bag');
+  const scr = new T.Group(); scr.position.set(RX+14, -38, 18); root.add(scr);
+  tag(H.cylZ(3.2, 3, 0, 0, 0, M.brass, scr), 'screw'); tag(H.box(5.2, 0.8, 0.6, 0, 0, 1.7, M.blk, scr), 'screw');
+  /* 两个微动开关：瞬动在右上、延时在左边 */
+  function micro(x, y, k){ const g = new T.Group(); g.position.set(x, y, 9); g.rotation.z = Math.PI; root.add(g);   /* 倒装：按钮朝下，被下面往上走的东西顶 */
+    tag(H.box(12, 18, 10, 0, 0, 0, M.blk, g), k);
+    const btn = new T.Group(); g.add(btn); tag(H.box(3, 4, 3, 0, 10, 0, M.white, btn), k);
+    [-3, 3].forEach(function(dx){ tag(H.box(1.2, 1, 6, dx, -9.5, -4, M.brass, g), k); });
+    return btn; }
+  const bi = micro(24, 44, 'swi'), bd = micro(-22, 12, 'swd');
+  H.plate('瞬动', 10, 3.6, 24, 44, 14.2, '#dfe3e8', null, root);
+  H.plate('延时', 10, 3.6, -22, 12, 14.2, '#dfe3e8', null, root);
+  /* 电流：线圈回路、瞬动触点回路、延时触点回路；气流：调节螺钉 → 气囊（蓝点） */
+  const coilP = K.dots(6, K.curM, H.poly([[-30, 52, 6], [-8, 47, 6], [-8, 33, 6], [8, 33, 6], [8, 47, 6], [30, 52, 6]]));
+  const swiP = K.dots(5, K.curM, H.poly([[21, 64, 5], [21, 52, 5], [27, 52, 5], [27, 64, 5]]));
+  const swdP = K.dots(5, K.curM, H.poly([[-25, 32, 5], [-25, 20, 5], [-19, 20, 5], [-19, 32, 5]]));
+  const airP = K.dots(5, K.sigM, H.poly([[RX+22, -30, 22], [RX+14, -38, 20], [RX+8, -38, 14], [RX, -38, 12]]));
+  const st = {arm:0, rod:0};
+  return {
+    labels:[['coil', -8, 40, 16], ['core', 8, 48, 14], ['arm', -10, 29, 14, arm], ['rod', 2, -18, 11, rod], ['lever', -20, ROD0, 11, rod], ['tower', 5, -24, 9],
+            ['bag', -12, -38, 14], ['screw', 14, -38, 22], ['swi', 24, 44, 15], ['swd', -22, 12, 15]],
+    tick:function(dt, k){
+      const s = opt.state ? opt.state() : {on:false, mode:0, prog:0, acted:false};
+      st.arm += ((s.on ? 1 : 0) - st.arm) * Math.min(1, dt*14/k);
+      arm.position.y = 4*st.arm;
+      bi.position.y = -2.5*st.arm;                                                   /* 瞬动：跟衔铁走（开关倒装，本地 −y＝往开关里按） */
+      const rt = s.mode === 0 ? (s.on ? s.prog : 0) : (s.on ? 1 : (s.acted ? 1 - s.prog : 0));
+      st.rod += (rt - st.rod) * Math.min(1, dt*(rt < st.rod && s.mode === 0 ? 14 : 30)/k);   /* 断电复位快（排气阀） */
+      rod.position.y = ROD_UP*st.rod;
+      bag.scale.y = 1 + 0.35*st.rod;                                                  /* 气囊被拉大 */
+      bd.position.y = s.acted ? -2.5 : 0;
+      scr.rotation.z = -(s.set||5)*0.6;                                             /* 滑杆拧螺钉：延时越长拧得越深 */
+      K.flow(coilP, s.on, 0.4/k, dt); K.flow(swiP, s.on, 0.4/k, dt); K.flow(swdP, !!s.acted, 0.4/k, dt);
+      K.flow(airP, !!s.counting, 0.25/k, dt);
+      return true;
     }
   };
   }}, opt); };

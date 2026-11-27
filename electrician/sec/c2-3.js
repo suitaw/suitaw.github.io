@@ -19,7 +19,7 @@ ELEC.reg({
     <b>点下面的按钮合一下 SB，看右边四组触点。</b>
   </div>
   <div class="card">
-    <canvas id="cv0"></canvas>
+    <div class="k3d-v" id="ka3d"></div>
     <div class="ctrl">
       <div class="btns">
         <button class="btn big" id="s1on">合上按钮 SB</button>
@@ -30,8 +30,21 @@ ELEC.reg({
         <div class="num hi"><div class="k">每对触点<br>能过多大电流</div><div class="v">5 A 左右</div></div>
       </div>
     </div>
+    <div class="ctrl" id="ka3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="ka3info"></div>
   </div>
   <div class="note" id="n0"></div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验</div>
+    合上 SB，看这台<b>中间继电器 KA</b>：里面跟接触器一模一样 —— 线圈、铁芯、衔铁、触点架 ——
+    只是<b>没有那三座大的主触点</b>，换成四副一样大小的小触点：13-14、23-24、43-44 常开，31-32 常闭。<br>
+    一个线圈动，四副触点<b>同时</b>换状态（常闭先断、常开后合）。下面平面图的四列，就是这四副。
+    <span class="sub">点「侧面」看衔铁上下动；点任意零件看名字。触点只能过几安培，所以它不能直接带电动机。</span>
+  </div>
+  <div class="card">
+    <canvas id="cv0"></canvas>
+  </div>
+
 
   <div class="note" style="margin-top:10px">
     <div class="st">跟接触器比，差在哪</div>
@@ -193,7 +206,7 @@ ELEC.reg({
     <b>先选一种类型，再给线圈通电，看那两列触点谁先动。</b>
   </div>
   <div class="card">
-    <canvas id="cv2"></canvas>
+    <div class="k3d-v" id="kt3d"></div>
     <div class="ctrl">
       <div class="btns" id="s3m">
         <button class="btn on" data-k="0">通电延时型</button>
@@ -211,8 +224,22 @@ ELEC.reg({
         <div class="num hi"><div class="k">瞬动触点</div><div class="v" id="s3c">断</div></div>
       </div>
     </div>
+    <div class="ctrl" id="kt3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="kt3info"></div>
   </div>
   <div class="note" id="n2"></div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验（书上那种空气阻尼式 JS7-A，剖开看）</div>
+    ① 通电延时型，给线圈通电：衔铁<b>立刻</b>吸上去，右上的<b>瞬动开关</b>马上被顶下；
+    下面的活塞杆却是<b>慢慢</b>往上走 —— 蓝点是空气从调节螺钉的小孔一点点漏进气囊。走到头，杠杆顶下左边的<b>延时开关</b>。<br>
+    ② 把延时设定拖长，螺钉拧得更深，再通电一次：活塞走得更慢。<br>
+    ③ 断电：气从排气阀一下排掉，活塞<b>立刻</b>落回去。
+    <span class="sub">断电延时型的电磁铁是反着装的，这里活塞的快慢照它的规律走。点任意零件看名字。</span>
+  </div>
+  <div class="card">
+    <canvas id="cv2"></canvas>
+  </div>
+
 
   <div class="note" style="margin-top:10px">
     <div class="st">两种类型，先分清哪一头在计时</div>
@@ -502,6 +529,17 @@ function note1(){
       '<span class="sub">点上面的按钮，看四组触点是不是一起动。</span>';
 }
 $('s1on').addEventListener('click', function(){ S1.on = !S1.on; note1(); });
+/* 3D 中间继电器（接触器模型的 relay 版），跟 SB 联动 */
+let KA3 = null;
+const KA3I = '点模型上任意零件看它叫什么。四副小触点：<b>13-14、23-24、43-44 常开，31-32 常闭</b>。';
+$('ka3info').innerHTML = KA3I;
+$('ka3c').innerHTML = window.E3D ? E3D.controlsHTML() : '';
+if(window.E3D){
+  E3D.contactor($('ka3d'), { relay:true, onInfo:function(p){ $('ka3info').innerHTML = p ? '<b>'+p[0]+'</b>：'+p[1] : KA3I; } })
+    .then(function(a){ KA3 = a; if(a) a.set(S1.on); });
+  E3D.bindControls($('ka3c'), function(){ return KA3; });
+}
+$('s1on').addEventListener('click', function(){ if(KA3) KA3.set(S1.on); });
 
 /* ================================================================
    场景 2：热继电器 —— 双金属片受热弯曲
@@ -879,6 +917,18 @@ function note3(){
   $('n2').innerHTML = h;
 }
 $('s3on').addEventListener('click', function(){ S3.on = !S3.on; note3(); });
+/* 3D 空气阻尼式时间继电器：读 S3 的计时 */
+let KT3 = null;
+const KT3I = '点模型上任意零件看它叫什么。<b>上：电磁铁；中：活塞杆；下：气囊和调节螺钉</b>。';
+$('kt3info').innerHTML = KT3I;
+$('kt3c').innerHTML = window.E3D ? E3D.controlsHTML() : '';
+if(window.E3D){
+  E3D.timer($('kt3d'), {
+    state:function(){ return {on:S3.on, mode:S3.mode, prog:s3Prog(), acted:s3Acted(), counting:s3Counting(), set:S3.set}; },
+    onInfo:function(p){ $('kt3info').innerHTML = p ? '<b>'+p[0]+'</b>：'+p[1] : KT3I; }
+  }).then(function(a){ KT3 = a; });
+  E3D.bindControls($('kt3c'), function(){ return KT3; });
+}
 $('s3s').addEventListener('input', function(){ S3.set = +this.value/10; note3(); });
 document.getElementById('s3m').addEventListener('click', function(e){
   const b = e.target.closest('.btn'); if(!b) return;

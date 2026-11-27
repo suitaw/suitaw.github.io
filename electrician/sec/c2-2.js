@@ -106,6 +106,19 @@ ELEC.reg({
     </div>
   </div>
   <div class="note" id="n1"></div>
+  <div class="card" style="margin-top:10px">
+    <div class="k3d-v" id="km3d2"></div>
+    <div class="ctrl" id="km3d2c"></div>
+    <div class="k3d-info" id="km3d2info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">对着实物看：上面原理图的四列，在接触器身上是哪几副</div>
+    上面按钮通电，这台接触器跟着动。点「侧面」最清楚：
+    <b>主触点</b>是上排三座铜桥（1-2、3-4、5-6），<b>辅助常开 13-14</b>、<b>辅助常闭 21-22</b> 是右边两座窄的。<br>
+    盯住右边两座：通电时<b>常闭先离开</b>（衔铁空走 1 mm 就拉开它），<b>常开后碰上</b>（走 2.5 mm 才合）——
+    「先断后合」是结构保证的，所以用它们做互锁不会出现两路同时通的一瞬间。
+    <span class="sub">点「慢放」看得更清楚；点任意零件看它的名字和用途。</span>
+  </div>
 
   <div class="note" style="margin-top:10px">
     <div class="st warn">「常开 / 常闭」说的是线圈<u>没</u>通电时的样子</div>
@@ -593,6 +606,17 @@ function note2(){
       '这就是国标里动断（常闭）触点的画法。<b>认图时先找这一横。</b>';
 }
 $('s2on').addEventListener('click', function(){ S2.on = !S2.on; note2(); });
+/* 第 2 屏也放一台 3D 接触器，跟原理图的通电按钮联动 */
+let KM32 = null;
+const KM32I = '点模型上任意零件看它叫什么。右边窄的两座是辅助触点：<b>13-14 常开、21-22 常闭</b>。';
+$('km3d2info').innerHTML = KM32I;
+$('km3d2c').innerHTML = window.E3D ? E3D.controlsHTML() : '';
+if(window.E3D){
+  E3D.contactor($('km3d2'), { onInfo:function(p){ $('km3d2info').innerHTML = p ? '<b>'+p[0]+'</b>：'+p[1] : KM32I; } })
+    .then(function(a){ KM32 = a; if(a) a.set(S2.on); });
+  E3D.bindControls($('km3d2c'), function(){ return KM32; });
+}
+$('s2on').addEventListener('click', function(){ if(KM32) KM32.set(S2.on); });
 
 /* ================================================================
    场景 3：失压保护
