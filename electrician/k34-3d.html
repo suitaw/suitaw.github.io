@@ -130,11 +130,13 @@ const DEVICES = [
   /* 11-27 晚 他说：按钮盒左边那条竖端子排就是接按钮的。右列出厂接按钮盒，盘内控制线接左列 */
   {id:'tb', tag:'端子排（接按钮）', kind:'tb', x:406, y:404, w:62, h:212, s:1.0,
    terminals:[1,2,3,4,5,6,7,8].map(function(i){ return {id:'tb-'+i, label:String(i), x:14, y:22+24*(i-1)}; })},
-  /* 横端子排右段：电流表接线（背面出厂接到仪表箱的三只电流表）*/
-  {id:'tbs', tag:'电流表接线', kind:'tbh', pairs:['A相','B相','C相'], x:244, y:682, w:180, h:40, s:1.0,
-   terminals:[1,2,3].reduce(function(o,i){ return o.concat([{id:'am'+i+'-1',label:'1',x:15+60*(i-1),y:12},{id:'am'+i+'-2',label:'2',x:45+60*(i-1),y:12}]); }, [])},
+  /* 横端子排右段：电流表接线。上排接互感器 S1/S2，下排接线去仪表箱电流表插孔；同一节上下排是通的（11-27 晚 照实拍：仪表箱也要自己接） */
+  {id:'tbs', tag:'电流表接线', kind:'tbh', x:244, y:682, w:180, h:52, s:1.0,
+   terminals:[1,2,3].reduce(function(o,i){ const P='ABC'[i-1], a=15+60*(i-1), b=45+60*(i-1);
+     return o.concat([{id:'am'+i+'-1',label:P+'1',x:a,y:11},{id:'am'+i+'-2',label:P+'2',x:b,y:11},{id:'ab'+i+'-1',label:'',x:a,y:41},{id:'ab'+i+'-2',label:'',x:b,y:41}]); }, [])},
   /* 仪表箱：电压表在上 + 三只电流表竖排（指针在 ANIM.meters 里转），接线在背面 */
-  {id:'amp', tag:'仪表', kind:'amp', x:412, y:30, w:132, h:318, terminals:[]},
+  {id:'amp', tag:'仪表', kind:'amp', x:412, y:30, w:132, h:318,   /* 每只电流表左边两个插孔：上 1、下 2 */
+   terminals:[1,2,3].reduce(function(o,i){ return o.concat([{id:'mj'+i+'-1',label:'1',x:18,y:40+72*i-12},{id:'mj'+i+'-2',label:'2',x:18,y:40+72*i+12}]); }, [])},
   /* 横端子排左段：左三位进电源，空一位，右三位去电动机（pins 顺序 U V W L1 L2 L3：考场代码 P('tbm',0..2) 是 U V W） */
   {id:'tbm', tag:'接线排', kind:'tbm', x:40, y:682, w:210, h:44, s:0.9, pins:[[135,14,'U'],[165,14,'V'],[195,14,'W'],[15,14,'L1'],[45,14,'L2'],[75,14,'L3']], terminals:[]},
   {id:'pe', tag:'PE', kind:'pe', x:46, y:744, w:106, h:26, s:1.0, screws:[14,32],   /* 右端要让开 U 去电动机的线 */
@@ -160,6 +162,8 @@ const TLABEL = {
   'tb-5':'端子排5（停止·常开·不用）','tb-6':'端子排6（停止·常开·不用）','tb-7':'端子排7（停止·常闭）','tb-8':'端子排8（停止·常闭）',
   'am1-1':'电流表接线 A相 1（横端子排右段）','am1-2':'电流表接线 A相 2（横端子排右段）','am2-1':'电流表接线 B相 1（横端子排右段）','am2-2':'电流表接线 B相 2（横端子排右段）',
   'am3-1':'电流表接线 C相 1（横端子排右段）','am3-2':'电流表接线 C相 2（横端子排右段）',
+  'ab1-1':'电流表接线 A相 1 下排','ab1-2':'电流表接线 A相 2 下排','ab2-1':'电流表接线 B相 1 下排','ab2-2':'电流表接线 B相 2 下排','ab3-1':'电流表接线 C相 1 下排','ab3-2':'电流表接线 C相 2 下排',
+  'mj1-1':'仪表箱 A相电流表 插孔1（上）','mj1-2':'仪表箱 A相电流表 插孔2（下）','mj2-1':'仪表箱 B相电流表 插孔1（上）','mj2-2':'仪表箱 B相电流表 插孔2（下）','mj3-1':'仪表箱 C相电流表 插孔1（上）','mj3-2':'仪表箱 C相电流表 插孔2（下）',
   'ta1-s1':'A相互感器 S1','ta1-s2':'A相互感器 S2','ta2-s1':'B相互感器 S1','ta2-s2':'B相互感器 S2','ta3-s1':'C相互感器 S1','ta3-s2':'C相互感器 S2',
   'pe-1':'接地铜排','pe-2':'接地铜排','pe-3':'接地铜排',
   'ct-1':'A相互感器孔（主线穿过）','ct-2':'B相互感器孔（主线穿过）','ct-3':'C相互感器孔（主线穿过）',
@@ -183,9 +187,10 @@ const GROUPS = {
   8:['热继电器支路','4 号熔断器下方 → 热继电器 95，96 → 端子排 8（停止常闭）'],
   9:['线圈支路','5 号熔断器下方 → 接触器 A1；A2 → 14NO；14NO → 端子排 2'],
   10:['自锁与跳线','13NO → 端子排 1；跳线 1 — 7'],
-  11:['互感器二次侧','每相一组：互感器 S1 → 横端子排右段「电流表接线」该相 1，该相 2 → 互感器 S2（端子排背面出厂接到仪表箱），S2 → 接地铜排。二次侧一端必须接地；运行中二次侧不许开路（会感应出高压）。⚠ 这 9 根是按常规接法排的，Notion 没记逐根走法']
+  11:['互感器二次侧','每相一组：互感器 S1 → 横端子排右段「电流表接线」该相 1，该相 2 → 互感器 S2（端子排背面出厂接到仪表箱），S2 → 接地铜排。二次侧一端必须接地；运行中二次侧不许开路（会感应出高压）。⚠ 这 9 根是按常规接法排的，Notion 没记逐根走法'],
+  12:['电流表 → 仪表箱','横端子排「电流表接线」下排 → 仪表箱电流表插孔：A1 → A相表插孔 1（上），A2 → 插孔 2（下）；B、C 相同样。同一节端子上下排是通的']
 };
-/* 36 根：主电路 18 + 控制电源 2 + 控制 7 + 互感器二次 9。数组顺序＝接线顺序；线都自动走线槽（routeWire） */
+/* 42 根：主电路 18 + 控制电源 2 + 控制 7 + 互感器二次 9 + 端子排到仪表箱 6（11-27 晚加）。数组顺序＝接线顺序；线都自动走线槽（routeWire） */
 const WIRES = [];
 (function(){
   const mw = function(g, a, b){ [0,1,2].forEach(function(i){ WIRES.push({from:a[i], to:b[i], group:g, color:PH[i]}); }); };
@@ -199,14 +204,16 @@ const WIRES = [];
   [['fu4-out','fr-95',8],['fr-96','tb-8',8],['fu5-out','km-a1',9],['km-a2','km-14',9],['km-14','tb-2',9],['km-13','tb-1',10],['tb-1','tb-7',10]]
     .forEach(function(a){ WIRES.push({from:a[0], to:a[1], group:a[2], color:0x22262b}); });
   [1,2,3].forEach(function(i){ [['ta'+i+'-s1','am'+i+'-1'],['am'+i+'-2','ta'+i+'-s2'],['ta'+i+'-s2','pe-'+i]].forEach(function(a){ WIRES.push({from:a[0], to:a[1], group:11, color:0x22262b}); }); });
+  [1,2,3].forEach(function(i){ [1,2].forEach(function(k){ WIRES.push({from:'ab'+i+'-'+k, to:'mj'+i+'-'+k, group:12, color:0x22262b}); }); });
   WIRES.forEach(function(w, i){ w.id = i+1; });
 })();
 const NW = WIRES.length;
 /* 第 i 相电流表回路接通没有：S1—表1、表2—S2 都连着，且 S1、S2 没被直接短接 */
+const FIXW = [1,2,3].reduce(function(o,i){ return o.concat([{from:'am'+i+'-1',to:'ab'+i+'-1'},{from:'am'+i+'-2',to:'ab'+i+'-2'}]); }, [{from:'pe-1',to:'pe-2'},{from:'pe-2',to:'pe-3'}]);   /* 出厂就通的：端子排上下排、接地排各孔 */
 function ampLoopOk(i, ws){
   const Pn = {}; function f(x){ if(Pn[x]===undefined) Pn[x]=x; while(Pn[x]!==x){ Pn[x]=Pn[Pn[x]]; x=Pn[x]; } return x; }
-  (ws||ACTIVE).forEach(function(w){ Pn[f(w.from)] = f(w.to); });
-  return f('ta'+i+'-s1')===f('am'+i+'-1') && f('ta'+i+'-s2')===f('am'+i+'-2') && f('ta'+i+'-s1')!==f('ta'+i+'-s2');
+  (ws||ACTIVE).concat(FIXW).forEach(function(w){ Pn[f(w.from)] = f(w.to); });
+  return f('ta'+i+'-s1')===f('mj'+i+'-1') && f('ta'+i+'-s2')===f('mj'+i+'-2') && f('ta'+i+'-s1')!==f('ta'+i+'-s2');
 }
 /* 第 i 相互感器里有没有主电流：电动机在转，且这只互感器的孔（ct-i）串在接触器出线和热继之间（主线确实从孔里穿过） */
 function ctOn(i){ const m = SIM.main; if(!SIM.motor || !m) return false; const n = m.net('ct-'+i);
@@ -226,7 +233,7 @@ const SPEC = {
 };
 /* 上方 A2 跟下方 A2 是线圈同一个端子：当成一直闭合的触点 */
 SPEC.coils.forEach(function(c){ SPEC.contacts.push({a:c.id+'-a2t', b:c.id+'-a2', no:false, by:'const'}); TLABEL[c.id+'-a2t'] = c.name+' A2（上方，跟下方 A2 通）'; });
-let ACTIVE = WIRES;                 /* 仿真跑哪些线：看线时是全部 36 根，自己接时是已经接上的那几根 */
+let ACTIVE = WIRES;                 /* 仿真跑哪些线：看线时是全部 42 根，自己接时是已经接上的那几根 */
 function setActive(a){ ACTIVE = a; }
 const SW_DELAY=260, PICK=150, DROP=150, MIN_PRESS=SW_DELAY+PICK+80, STEP=10;
 const SIM = {qf:false, frTrip:false, frSet:2, fu:{}, blown:'', motor:0, phaseLoss:false, btn:{}, km:{}, tLast:0, last:null, ev:[], sup:true, noMotor:false};   /* sup：考场里试车台没送电时 QF 上口是空的 */
@@ -389,7 +396,7 @@ function makeTester(ws){
     fr:function(t){ st.fr=t; settle(); }, stick:function(id){ st.stuck[id]=true; settle(); },
     on:function(id){ return !!st.km[id]; }, get bad(){ return st.bad; }, ws:ws,
     conn:function(a, b){ const Pn = {}; function f(x){ if(Pn[x]===undefined) Pn[x]=x; while(Pn[x]!==x){ Pn[x]=Pn[Pn[x]]; x=Pn[x]; } return x; }
-      ws.concat([{from:'pe-1',to:'pe-2'},{from:'pe-2',to:'pe-3'}]).forEach(function(w){ Pn[f(w.from)] = f(w.to); }); return f(a)===f(b); } };
+      ws.concat(FIXW).forEach(function(w){ Pn[f(w.from)] = f(w.to); }); return f(a)===f(b); } };
 }
 /* 交卷时的通电检查（照 wiring-trainer K34 那 7 条）：每条从「刚合闸、谁都没吸」开始；返回 null＝前提不成立，不算 */
 const CHECKS = [
@@ -403,7 +410,7 @@ const CHECKS = [
    h:'停止的常闭 7-8 要串在回路里：8 接热继 96，7 用跳线接到 1'},
   {n:'热继动作：KM 释放', f:function(T){ T.tap('sb2'); if(!T.on('km')) return null; T.fr(true); return !T.on('km'); },
    h:'热继的 95-96 要串在回路里：95 接 4 号熔断器，96 接端子排 8'},
-  {n:'三只电流表都接在自己那相的互感器上（S1→表 1、表 2→S2）', f:function(T){ return [1,2,3].every(function(i){ return ampLoopOk(i, T.ws); }); },
+  {n:'三只电流表都接在自己那相的互感器上（S1→端子排→表插孔 1、表插孔 2→端子排→S2）', f:function(T){ return [1,2,3].every(function(i){ return ampLoopOk(i, T.ws); }); },
    h:'每相一个回路：互感器 S1 → 电流表接线柱 1，电流表接线柱 2 → 互感器 S2。A 相互感器接 A 表，别串到别的相；S1、S2 不能直接短接'},
   {n:'互感器二次侧一端接地（三只 S2 都接到接地铜排）', f:function(T){ return [1,2,3].every(function(i){ return T.conn('ta'+i+'-s2','pe-1'); }); },
    h:'二次侧要有一个接地点，防止一次侧高压串到二次侧：每只互感器的 S2 接到接地铜排'}
@@ -821,10 +828,10 @@ DEVICES.forEach(function(d){
     label('仪表箱', x+w/2, y+h-10, 10.4, 11, '#33383f');
   }
   if(d.kind==='tbh'){                                                   /* 横端子排（控制 / 电流表段）：一节一节，字写在下半截 */
-    const n = d.terminals.length, pw = w/n;
+    const n = d.terminals.filter(function(t){ return t.label; }).length, pw = w/n;
     for(let k=0;k<n;k++){ rbox(x+k*pw, y, pw-1, h, 0, 22, MAT.cream, 2); box(x+k*pw+pw-1, y, 1, h, 0, 23, MAT.grey); }
-    if(d.pairs) d.pairs.forEach(function(t, k){ label(t, x+pw*(2*k+1), y+h+9, 0.4, 10, '#33383f'); });   /* 写在下面：上面有线从线槽下来 */
-    else label(d.tag, x+w/2, y+h+9, 0.4, 10, '#33383f');
+    /* 两排的（电流表接线）：一节上下两颗螺钉，节上写 A1 A2…，不另写段名（下面是线槽） */
+    if(d.terminals.every(function(t){ return t.label; })) label(d.tag, x+w/2, y+h+9, 0.4, 10, '#33383f');
   }
 
   if(d.kind==='sb'){                                                    /* LA4-3H 按钮盒：圆角壳 + 镀铬护圈 + 按钮帽 */
@@ -851,14 +858,14 @@ DEVICES.forEach(function(d){
     });
   }
   d.terminals.forEach(function(t){
-    const z = {tb:30, tbh:22, km:38, fr:30, ct:12, amp:14, pe:7}[d.kind] ?? 34;
+    const z = {tb:30, tbh:22, km:38, fr:30, ct:12, amp:14.6, pe:7}[d.kind] ?? 34;
     TZ[t.id] = z + 2.6;
     if(d.kind==='km'){ screw(x+t.x, y+t.y, 38, 5); if(/-a2t$/.test(t.id)) label(t.label, x+t.x+17, y+t.y+2, 86.4, 11, '#1c6fd6'); else label(t.label, x+t.x, y+(t.y<75 ? 44 : 106), 86.4, 12, '#1c6fd6'); }
     if(d.kind==='fr'){ screw(x+t.x, y+t.y, 30, 5); label(t.label, x+t.x-18, y+t.y, 30.4, 12, '#fff', '#2a2e33'); }
     if(d.kind==='ct'){ screw(x+t.x, y+t.y, 12, 3.6); label(t.label, x+t.x, y+t.y-7, 12.4, 4.5, '#fff', null, true); }
-    if(d.kind==='amp'){ screw(x+t.x, y+t.y, 14, 4); label(t.label, x+t.x, y+t.y-7, 14.4, 5, '#1f2328', null, true); }
+    if(d.kind==='amp'){ label(t.label, x+t.x+12, y+t.y, 10.4, 7, '#33383f', null, true); }   /* 写在插孔右边：左边出线 */   /* 插孔已经画了，不再画螺钉 */
     if(d.kind==='pe'){ screw(x+t.x, y+t.y, 7, 5); }
-    if(d.kind==='tbh'){ screw(x+t.x, y+t.y, 22, 5); label(t.label, x+t.x, y+t.y+16, 22.4, 10, '#1f2328', null, false, true); }
+    if(d.kind==='tbh'){ screw(x+t.x, y+t.y, 22, 5); if(t.label) label(t.label, x+t.x, y+t.y+15, 22.4, 9, '#1f2328', null, false, true); }
 
   });
   PARENT = PARENT0;
@@ -950,10 +957,11 @@ const MAIN_RUN = { km:[0,1,2] };
 })();
 /* ══ 线槽 ══ 照片：四周一圈 + 层间两条横槽 + 竖端子排左边一条竖槽。槽宽 24、深 22，上面敞口，两壁是一排梳齿（线从齿缝里进出） */
 const DUCTS = {
-  H:[{y:18, x0:24, x1:388}, {y:166, x0:24, x1:388}, {y:364, x0:24, x1:388}, {y:536, x0:24, x1:388}, {y:652, x0:24, x1:548}],
-  V:[{x:24, y0:18, y1:768}, {x:388, y0:18, y1:652}]   /* 左竖槽延到接地排旁：S2 接地线从这儿下去，不压横端子排 */
+  H:[{y:18, x0:24, x1:388}, {y:166, x0:24, x1:388}, {y:364, x0:24, x1:388}, {y:536, x0:24, x1:388}, {y:652, x0:24, x1:548}, {y:752, x0:240, x1:548}],
+  V:[{x:24, y0:18, y1:768}, {x:388, y0:18, y1:652}, {x:548, y0:652, y1:752}]   /* 右下一段：电流表接线下排去仪表箱的线走这儿 */   /* 左竖槽延到接地排旁：S2 接地线从这儿下去，不压横端子排 */
 };
 const DUCT_D = 22;
+[1,2,3].forEach(function(i){ [1,2].forEach(function(k){ TPOS['ab'+i+'-'+k].exit = 'D'; TPOS['am'+i+'-'+k].exit = 'U'; TPOS['mj'+i+'-'+k].exit = 'L'; }); });
 ['pe-1','pe-2','pe-3'].forEach(function(id){ TPOS[id].exit = 'L'; });   /* 接地排在左下：线往左出、进左竖槽 */
 (function(){
   /* 槽底深灰、两壁下半截实心、上半截梳齿（浅灰近白）：俯视时读得出是一条槽，不像虚线框 */
@@ -1088,7 +1096,7 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
   wire('gM', '电动机地线（接到盘上 PE）', PEC, [[PEX[1],PEY],[PEX[1],798],[240,798],[240,MOT.y+6]], PEZ, 10, 30);
   [0,1,2].forEach(function(i){
     XT['m'+cid[i]] = {name:'电动机'+cn[i]+'线 → 接线排 '+'UVW'[i], meshes:[]};       /* 管子用主电路那三段（下面登记）*/
-    wire('p'+cid[i], '电源'+cn[i]+'线 → 接线排 L'+(i+1), PH[i], [[LX[i],LY],[LX[i],728+3*i],[232+3*i,728+3*i],[232+3*i,758+3*i],[JX[i],758+3*i],[JX[i],BY+2]], 24.6, null, 50+i*4);
+    wire('p'+cid[i], '电源'+cn[i]+'线 → 接线排 L'+(i+1), PH[i], [[LX[i],LY],[LX[i],728+3*i],[232+3*i,728+3*i],[232+3*i,774+3*i],[JX[i],774+3*i],[JX[i],BY+2]], 24.6, null, 50+i*4);
     wire('s'+cid[i], '电源'+cn[i]+'线另一端 → 试车台 L'+(i+1)+' 插孔', PH[i], [[JX[i],BY+2],[JX[i],BY+12],[JX[i],JY]], null, 45, 50+i*4);
   });
   /* 能点的位置：接线点 + 验电点 */
@@ -1455,7 +1463,7 @@ function sig(){ const b=SIM.btn; return [SIM.qf,SIM.frTrip,SIM.blown,SIM.motor,S
    K31 材料里没写手套、没写最后报告「操作完毕」，所以这两样不判。
    先盘内接线（随便接，接错了合闸就出真后果），再走外部接线 → 送电验电 → 试车 → 断电拆线。 */
 const EX = {on:false};
-const XW = [];                 /* 考场里接的、不在标准 36 根里的线（现造管子）*/
+const XW = [];                 /* 考场里接的、不在标准 42 根里的线（现造管子）*/
 const LSX = 'elec_k34_3d_exam2';
 const CON_ORDER = ['gA','gM','mY','mG','mR','pY','pG','pR','sY','sG','sR'];
 const DIS_ORDER = ['sY','sG','sR','pY','pG','pR','mY','mG','mR','gM','gA'];   /* K31：插孔黄绿红 → 接线排电源线黄绿红 → 电机线黄绿红 → 电机地线 → 电源箱地线 */
