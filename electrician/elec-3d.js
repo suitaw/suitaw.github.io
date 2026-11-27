@@ -13,6 +13,7 @@ const css = `
 .k3d-v{position:relative;width:100%;aspect-ratio:1/1.02;border-radius:10px;overflow:hidden;background:var(--canvas);touch-action:none}
 .k3d-v canvas{display:block;width:100%;height:100%}
 .k3d-v .k3d-ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:.85rem}
+.k3d-ln{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .k3d-lb{position:absolute;left:0;top:0;pointer-events:none;font-size:11px;line-height:1;padding:3px 6px;border-radius:9px;white-space:nowrap;
   background:rgba(12,16,20,.78);color:#e6edf5;border:1px solid rgba(255,255,255,.18);transform:translate(-50%,-50%)}
 html.light .k3d-lb,[data-theme=light] .k3d-lb{background:rgba(255,255,255,.9);color:#242a31;border-color:rgba(0,0,0,.15)}
@@ -79,23 +80,30 @@ function envMap(T, renderer){
   return rt.texture;
 }
 
-/* 转镜头：单指拖转、两指捏合缩放、滚轮缩放；拖动超过 6px 不算点击 */
-function orbit(T, cam, el, target, onChange){
-  const st = {th:0.62, ph:1.12, r:250, r0:250, th0:0.62, ph0:1.12}, pts = new Map();
-  let pinch0 = 0, r0 = 0, moved = 0;
-  function apply(){ const sp = Math.sin(st.ph);
-    cam.position.set(target.x + st.r*sp*Math.sin(st.th), target.y + st.r*Math.cos(st.ph), target.z + st.r*sp*Math.cos(st.th));
-    cam.lookAt(target); onChange(); }
+/* 转模型（同魔方练习页的手感）：镜头不动，模型绕自己的中心转；拖动时绕「屏幕上垂直于手指方向」那根轴转（左乘），
+   哪个角度都能到、不会卡住。两指捏合 / 滚轮缩放；拖动超过 6px 不算点击 */
+function trackball(T, cam, el, pivot, onChange){
+  const st = {r:265, r0:265, q0:new T.Quaternion()}, pts = new Map(), q = new T.Quaternion(), ax = new T.Vector3();
+  let pinch0 = 0, rp = 0, moved = 0;
+  function apply(){ cam.position.set(0, 0, st.r); cam.lookAt(0, 0, 0); onChange(); }
   el.addEventListener('pointerdown', function(e){ el.setPointerCapture(e.pointerId); pts.set(e.pointerId, {x:e.clientX, y:e.clientY}); moved = 0;
-    if(pts.size===2){ const a = [...pts.values()]; pinch0 = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y); r0 = st.r; } });
+    if(pts.size===2){ const a = [...pts.values()]; pinch0 = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y); rp = st.r; } });
   el.addEventListener('pointermove', function(e){ const p = pts.get(e.pointerId); if(!p) return;
     const dx = e.clientX-p.x, dy = e.clientY-p.y; p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx)+Math.abs(dy);
-    if(pts.size===1){ st.th -= dx*0.008; st.ph = Math.min(2.9, Math.max(0.25, st.ph - dy*0.008)); apply(); }
-    else if(pts.size===2){ const a = [...pts.values()], d = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y); st.r = Math.min(520, Math.max(110, r0*pinch0/d)); apply(); } });
+    if(pts.size===1){ const L = Math.hypot(dx, dy); if(!L) return;
+      ax.set(dy/L, dx/L, 0); q.setFromAxisAngle(ax, L*0.008); pivot.quaternion.premultiply(q); onChange(); }
+    else if(pts.size===2){ const a = [...pts.values()], d = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y); st.r = Math.min(520, Math.max(110, rp*pinch0/d)); apply(); } });
   function up(e){ pts.delete(e.pointerId); }
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   el.addEventListener('wheel', function(e){ e.preventDefault(); st.r = Math.min(520, Math.max(110, st.r*(1+e.deltaY*0.001))); apply(); }, {passive:false});
-  return {apply:apply, moved:function(){ return moved; }, reset:function(){ st.th = st.th0; st.ph = st.ph0; st.r = st.r0; apply(); }, st:st};
+  return {apply:apply, moved:function(){ return moved; }, st:st,
+    /* 摆到「镜头在球坐标 (th, ph) 看过来」的样子：算出那台镜头的朝向，模型转它的逆 */
+    setView:function(th, ph, r, keep){ const o = new T.Object3D(), sp = Math.sin(ph);
+      o.position.set(sp*Math.sin(th), Math.cos(ph), sp*Math.cos(th)); o.up.set(0, 1, 0); o.lookAt(0, 0, 0);
+      /* Object3D.lookAt 对非镜头是让 +z 朝目标；镜头要 -z 朝目标，所以再绕 y 转半圈 */
+      o.quaternion.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), Math.PI));
+      pivot.quaternion.copy(o.quaternion).invert(); if(r) st.r = r; if(keep){ st.q0.copy(pivot.quaternion); st.r0 = st.r; } apply(); },
+    reset:function(){ pivot.quaternion.copy(st.q0); st.r = st.r0; apply(); }};
 }
 
 /* 搭舞台：渲染器、镜头、灯光、只在需要时画（省电） */
@@ -115,7 +123,7 @@ function stage(T, el){
   return S;
 }
 
-window.E3D = {loadThree:loadThree, mk:mk, stage:stage, orbit:orbit, addCss:addCss};
+window.E3D = {loadThree:loadThree, mk:mk, stage:stage, trackball:trackball, addCss:addCss};
 })();
 
 /* ══════════════ 交流接触器 CJX2s-0911（剖开看） ══════════════
@@ -146,14 +154,16 @@ E3D.contactor = function(el, opt){
   opt = opt||{};
   E3D.addCss();
   el.innerHTML = '<div class="k3d-ld">正在加载 3D 模型…</div>';
-  return E3D.loadThree().then(function(T){ return (E3D.last = E3D._finish(build(T, el, opt))); }, function(){
-    el.innerHTML = '<div class="k3d-ld">3D 模型没加载出来（要联网）。下面的平面图一样能看。</div>'; return null; });
+  return E3D.loadThree().then(function(T){ return (E3D.last = E3D._finish(build(T, el, opt))); }).catch(function(e){
+    console.warn('E3D', e);
+    el.innerHTML = '<div class="k3d-ld">3D 模型没加载出来（要联网，浏览器要支持 WebGL）。下面的平面图一样能看。</div>'; return null; });
 };
 
 function build(T, el, opt){
   el.innerHTML = '';
   const H = E3D.mk(T), S = E3D.stage(T, el), scene = S.scene;
-  const root = new T.Group(); root.rotation.x = -Math.PI/2; scene.add(root);   /* 平躺：底板朝下，衔铁往下吸（跟平面图同一个方向） */
+  const pivot = new T.Group(); scene.add(pivot);                                /* 转的是它（绕模型中心） */
+  const root = new T.Group(); root.rotation.x = -Math.PI/2; root.position.set(0, -40, 2); pivot.add(root);   /* 平躺：底板朝下，衔铁往下吸（跟平面图同一个方向） */
   const hit = [];                                   /* 能点的零件 */
   function tag(m, k){ m.userData.part = k; hit.push(m); return m; }
 
@@ -237,7 +247,7 @@ function build(T, el, opt){
   tag(H.box(14, 14, 11, 0, 0, 81.5, MAT.carrier, mov), 'carrier');                /* 露头 */
   H.plate('KM', 9, 5, 0, 0, 87.1, '#ffffff', null, mov);
   root.userData = {mov:mov};
-  return {T:T, H:H, S:S, root:root, hit:hit, MAT:MAT, PX:PX, AX:AX, ZF:ZF, TRAVEL:TRAVEL, shell:shell, shellMats:shellMats, mov:mov, el:el, opt:opt, PARTS:PARTS, winding:winding};
+  return {T:T, H:H, S:S, root:root, pivot:pivot, hit:hit, MAT:MAT, PX:PX, AX:AX, ZF:ZF, TRAVEL:TRAVEL, shell:shell, shellMats:shellMats, mov:mov, el:el, opt:opt, PARTS:PARTS, winding:winding};
 }
 E3D._PARTS = PARTS; E3D._buildBase = build;
 })();
@@ -299,9 +309,8 @@ E3D._finish = function(C){
   const arcs = []; C.PX.forEach(function(x){ [10, -10].forEach(function(y){ const m = new T.Mesh(new T.SphereGeometry(2.6, 12, 10), arcM); m.position.set(x, y, 63.5); root.add(m); arcs.push(m); }); });
 
   /* ── 镜头 ── */
-  const tgt = new T.Vector3(0, 40, -2);
-  const orb = E3D.orbit(T, S.cam, S.renderer.domElement, tgt, function(){ S.dirty = true; });
-  orb.st.th = orb.st.th0 = 0.4; orb.st.ph = orb.st.ph0 = 0.95; orb.st.r = orb.st.r0 = 265; orb.apply();
+  const orb = E3D.trackball(T, S.cam, S.renderer.domElement, C.pivot, function(){ S.dirty = true; });
+  orb.setView(0.4, 0.95, 265, true);
 
   /* ── 状态 ── */
   const st = {on:false, I:0, t:0, slow:false, cut:true, labels:false, sel:null, arc:0, wasMain:false, step:0, stepHold:0};
@@ -314,20 +323,30 @@ E3D._finish = function(C){
   const v3 = new T.Vector3();
   const SHORT = {mfix:'静触点', mbr:'动触点（桥）', ano:'辅助常开', anc:'辅助常闭', coilT:'线圈端子', term:'接线端子', arm:'衔铁', carrier:'触点架'};
   lbEls.forEach(function(d, i){ const k = LB[i][0]; if(SHORT[k]) d.textContent = SHORT[k]; });
+  /* 标注：名字牌排在左右两边，用引线指到零件上，不压模型（他 11-27 要的） */
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'k3d-ln'); el.appendChild(svg);
   function placeLabels(){
-    const w = el.clientWidth, h = el.clientHeight, put = [];
+    const w = el.clientWidth, h = el.clientHeight, side = [[], []];
     LB.forEach(function(l, i){ const d = lbEls[i]; const show = st.labels || st.sel===l[0];
       d.style.display = show ? '' : 'none'; if(!show) return;
       v3.set(l[1], l[2], l[3] + (l[4] ? mov.position.z : 0)).applyMatrix4(root.matrixWorld).project(S.cam);
-      put.push({d:d, x:(v3.x+1)/2*w, y:(1-v3.y)/2*h, w:d.offsetWidth||60, h:d.offsetHeight||18, hot:st.sel===l[0]}); });
-    /* 避让：按 y 排，跟已放好的重叠就往下挪一格（选中的那个优先不动） */
-    put.sort(function(a, b){ return (b.hot - a.hot) || (a.y - b.y); });
-    const done = [];
-    put.forEach(function(r){
-      for(let n=0;n<12;n++){ const hitR = done.find(function(o){ return Math.abs(o.x-r.x) < (o.w+r.w)/2+2 && Math.abs(o.y-r.y) < (o.h+r.h)/2+2; });
-        if(!hitR) break; r.y = hitR.y + (hitR.h+r.h)/2 + 3; }
-      r.x = Math.min(w - r.w/2 - 2, Math.max(r.w/2 + 2, r.x));
-      done.push(r); r.d.style.left = r.x+'px'; r.d.style.top = r.y+'px'; r.d.classList.toggle('hot', r.hot); });
+      const ax = (v3.x+1)/2*w, ay = (1-v3.y)/2*h;
+      side[ax < w/2 ? 0 : 1].push({d:d, ax:ax, ay:ay, y:ay, w:d.offsetWidth||60, h:d.offsetHeight||20, hot:st.sel===l[0]}); });
+    let lines = '';
+    side.forEach(function(arr, k){
+      arr.sort(function(p, q){ return p.ay - q.ay; });
+      const gap = 4, top = 8, bot = h - 8;
+      arr.forEach(function(r, i){ const prev = arr[i-1]; r.y = Math.max(r.ay, top + r.h/2); if(prev) r.y = Math.max(r.y, prev.y + (prev.h+r.h)/2 + gap); });
+      for(let i=arr.length-1;i>=0;i--){ const r = arr[i], nx = arr[i+1]; r.y = Math.min(r.y, nx ? nx.y - (nx.h+r.h)/2 - gap : bot - r.h/2); }
+      arr.forEach(function(r){
+        const cx = k ? w - 6 - r.w/2 : 6 + r.w/2, ex = k ? w - 6 - r.w : 6 + r.w;
+        r.d.style.left = cx+'px'; r.d.style.top = r.y+'px'; r.d.classList.toggle('hot', r.hot);
+        const c = r.hot ? 'var(--acc)' : 'var(--tx3)';
+        lines += '<polyline points="'+ex+','+r.y+' '+(ex + (k ? -8 : 8))+','+r.y+' '+r.ax+','+r.ay+'" fill="none" stroke="'+c+'" stroke-width="1.2"/>'+
+                 '<circle cx="'+r.ax+'" cy="'+r.ay+'" r="2.6" fill="'+c+'" stroke="var(--card)" stroke-width="1"/>';
+      });
+    });
+    svg.innerHTML = lines;
   }
 
   function setCut(b){ st.cut = b;
@@ -408,7 +427,7 @@ E3D._finish = function(C){
     cut:function(b){ setCut(b); }, slow:function(b){ st.slow = !!b; },
     labels:function(b){ st.labels = !!b; S.dirty = true; }, reset:function(){ orb.reset(); select(null); },
     state:st,
-    view:function(th, ph, r){ orb.st.th = th; orb.st.ph = ph; if(r) orb.st.r = r; orb.apply(); }   /* 调试/截图用 */
+    view:function(th, ph, r){ orb.setView(th, ph, r); }   /* 调试/截图用 */
   };
 };
 })();
