@@ -2914,3 +2914,82 @@ E3D.mountTypes = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 传感器实验台（5.4 第 1 屏「变量法」）：NTC 热敏 / 光敏 / 湿敏 + 万用表 Ω 档 ══════════════
+   曲线照 c5-4.js（按书上实测点反解）：NTC R=350·exp(3950·(1/T−1/298.15))；湿敏 R=2945·exp(−0.0272·RH)；光敏 R=5·(100/E)^0.65 kΩ。
+   api.set({sel 'ntc'|'ldr'|'hum', T ℃, E lx, RH %})；opt.onRead({R, txt}) */
+(function(){
+'use strict';
+const PARTS = {
+  ntc: ['热敏电阻（NTC）', '常温 25 ℃ 左右量出 <b>350 Ω</b> 上下算正常；一加热阻值<b>变小</b> —— 负温度系数（NTC）。', '热敏电阻'],
+  ldr: ['光敏电阻', '亮的时候阻值小，暗的时候大：一般光照 <b>5.00 kΩ</b>，暗处 <b>14.00 kΩ</b>（书上实测）。', '光敏电阻'],
+  hum: ['湿敏电阻', '湿度越大阻值越小：一般湿度 <b>756 Ω</b>，明显加湿后 <b>334 Ω</b>（书上实测）。', '湿敏电阻'],
+  heat:['电烙铁（加热）', '靠近热敏电阻给它加温。', '加热'],
+  lamp:['台灯', '照着光敏电阻。', '台灯'],
+  meter:['万用表（Ω 档）', '传感器没有「标准值」 —— <b>改变它该感知的条件，看阻值动不动</b>。动了就是好的。', '万用表']
+};
+const POS = {ntc:[-20, 10], ldr:[20, 10], hum:[60, 10]};
+E3D.sensorLab = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[12, -6, 10], view:{th:0, ph:0.62, r:300},
+  presets:{front:[1, 0, 0, Math.PI/2, 280], side:[0, 1, 0, -Math.PI/2, 280]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  tag(H.box(130, 70, 3, 22, 5, 1.5, H.M(0x2f5d3a, {roughness:0.7}), root), 'meter');
+  /* NTC：小珠子 + 两根腿；旁边一支电烙铁（头发红） */
+  const ntcM = H.M(0x6b3b2a, {roughness:0.4});
+  const bead = tag(new T.Mesh(new T.SphereGeometry(3.2, 16, 12), ntcM), 'ntc'); bead.position.set(-20, 10, 14); root.add(bead);
+  [-1.5, 1.5].forEach(function(dx){ tag(H.box(0.6, 0.6, 11, -20 + dx, 10, 8, M.zinc, root), 'ntc'); });
+  const iron = new T.Group(); iron.position.set(-36, 22, 16); root.add(iron);
+  const ig = new T.CylinderGeometry(1.2, 2.4, 26, 12); ig.rotateZ(Math.PI/2); const tipM = H.M(0x9aa0a6, {metalness:0.8, roughness:0.4, emissive:0x000000});
+  const tipMesh = tag(new T.Mesh(ig, tipM), 'heat'); tipMesh.position.x = 0; iron.add(tipMesh);
+  const hg = new T.CylinderGeometry(4, 4, 30, 14); hg.rotateZ(Math.PI/2); const hd = tag(new T.Mesh(hg, H.M(0xc0392b)), 'heat'); hd.position.x = -26; iron.add(hd);
+  iron.rotation.z = -0.5;
+  /* 光敏：圆片 + 蛇形纹；上面一盏台灯 */
+  tag(H.cylZ(5, 2, 20, 10, 13, H.M(0xd9c27a, {roughness:0.4}), root), 'ldr');
+  for(let i=0;i<4;i++) tag(H.box(7, 0.5, 0.3, 20, 7.5 + i*1.7, 14.2, H.M(0x8b3a2a), root), 'ldr');
+  [-1.5, 1.5].forEach(function(dx){ tag(H.box(0.6, 0.6, 11, 20 + dx, 10, 7, M.zinc, root), 'ldr'); });
+  tag(H.cylZ(2, 40, 34, 26, 22, M.blk, root), 'lamp'); tag(H.box(4, 4, 22, 28, 20, 42, M.blk, root), 'lamp');
+  const shadeG = new T.ConeGeometry(9, 10, 20, 1, true); shadeG.rotateX(Math.PI); const shade = tag(new T.Mesh(shadeG, H.M(0x2b2f34, {side:T.DoubleSide})), 'lamp'); shade.position.set(22, 14, 48); root.add(shade);
+  const bulbM = H.M(0xfff4d6, {emissive:0x000000}); const bulb = tag(new T.Mesh(new T.SphereGeometry(3.5, 12, 10), bulbM), 'lamp'); bulb.position.set(22, 14, 44); root.add(bulb);
+  const lt = new T.PointLight(0xffe2a8, 0, 120); lt.position.set(22, 14, 42); root.add(lt);
+  /* 湿敏：方片 + 梳状电极；上方的水雾点 */
+  tag(H.box(10, 10, 1.5, 60, 10, 13, H.M(0x3a6f8f, {roughness:0.4}), root), 'hum');
+  for(let i=0;i<4;i++) tag(H.box(8, 0.5, 0.3, 60, 6.5 + i*2.3, 13.9, M.ag, root), 'hum');
+  [-1.5, 1.5].forEach(function(dx){ tag(H.box(0.6, 0.6, 11, 60 + dx, 10, 7, M.zinc, root), 'hum'); });
+  const mist = K.dots(14, K.sigM, function(t, out){ const a = t*Math.PI*2*3; return (out||new T.Vector3()).set(60 + Math.cos(a)*7, 10 + Math.sin(a)*7, 16 + (t*24)%24); });
+  /* 万用表（简化：机身 + 液晶 + 两根表笔线夹到所选传感器的两根腿） */
+  const MX = -2, MYY = -24;
+  tag(H.box(40, 30, 8, MX, MYY, 4, H.M(0xe8b923), root), 'meter'); tag(H.box(34, 24, 1.5, MX, MYY, 8.6, H.M(0x2d3136), root), 'meter');
+  const lc = document.createElement('canvas'); lc.width = 320; lc.height = 140; const lg = lc.getContext('2d');
+  const ltex = new T.CanvasTexture(lc); ltex.colorSpace = T.SRGBColorSpace;
+  const lcd = new T.Mesh(new T.PlaneGeometry(26, 11.4), new T.MeshBasicMaterial({map:ltex, toneMapped:false})); lcd.position.set(MX, MYY + 3, 9.5); root.add(lcd);
+  let leads = [];
+  function placeLeads(sel){ leads.forEach(function(m){ root.remove(m); m.geometry.dispose(); }); leads = [];
+    const p = POS[sel]; [[-1.5, 0xc0392b, MX + 8], [1.5, 0x24272b, MX - 8]].forEach(function(a){
+      const v = [new T.Vector3(a[2], MYY - 10, 9), new T.Vector3((a[2] + p[0])/2, MYY - 4, 22), new T.Vector3(p[0] + a[0], p[1], 4)];
+      const m = new T.Mesh(new T.TubeGeometry(new T.QuadraticBezierCurve3(v[0], v[1], v[2]), 24, 0.7, 6, false), H.M(a[1])); root.add(m); leads.push(m); }); }
+  const st = {sel:'ntc', T:25, E:100, RH:50};
+  function R(){ if(st.sel === 'ntc') return 350*Math.exp(3950*(1/(st.T + 273.15) - 1/298.15));
+    if(st.sel === 'hum') return 2945*Math.exp(-0.0272*st.RH); return 5000*Math.pow(100/st.E, Math.log(2.8)/Math.log(5)); }   /* 指数取 ln2.8/ln5：20 lx 正好 14.00 kΩ（页面 2D 用的 0.65 会读 14.23） */
+  function fmt(r){ return r >= 1000 ? {v:(r/1000).toFixed(2), u:'kΩ'} : {v:r.toFixed(0), u:'Ω'}; }
+  function update(){ const r = R(), f = fmt(r);
+    lg.fillStyle = '#9fb59a'; lg.fillRect(0, 0, 320, 140); lg.fillStyle = '#1b2219'; lg.textAlign = 'right'; lg.textBaseline = 'middle';
+    lg.font = '700 80px ui-monospace,monospace'; lg.fillText(f.v, 300, 78); lg.textAlign = 'left'; lg.font = '600 30px system-ui'; lg.fillText(f.u, 12, 28); ltex.needsUpdate = true;
+    placeLeads(st.sel); if(opt.onRead) opt.onRead({R:r, txt:f.v + ' ' + f.u}, st); K.S.dirty = true; }
+  const api = { st:st, set:function(o){ Object.assign(st, o); update(); } };
+  update();
+  return {
+    labels:[['ntc', -20, 10, 18], ['ldr', 20, 10, 16], ['hum', 60, 10, 16], ['heat', -40, 26, 20], ['lamp', 22, 14, 54], ['meter', MX, MYY, 10]],
+    hitMesh:function(m){ const k = m.userData.part; if(k === 'ntc' || k === 'ldr' || k === 'hum'){ api.set({sel:k}); return true; } return false; },
+    api:api,
+    tick:function(dt, k){
+      const hot = Math.max(0, Math.min(1, (st.T - 25)/35));
+      tipM.emissive.setHex(0xff2000); tipM.emissiveIntensity = hot*1.6; iron.position.x = -36 + hot*8;
+      const lit = Math.max(0, Math.min(1, Math.log10(st.E)/Math.log10(500)));
+      bulbM.emissive.setHex(0xffc65a); bulbM.emissiveIntensity = lit*2.2; lt.intensity = lit*1800;
+      K.flow(mist, st.RH > 60, 0.08/k, dt); K.sigM.opacity = Math.min(1, (st.RH - 55)/25);
+      return st.RH > 60;
+    }
+  };
+  }}, opt); };
+})();

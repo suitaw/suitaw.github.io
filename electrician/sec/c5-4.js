@@ -45,6 +45,17 @@ ELEC.reg({
     <b>拖下面的滑杆改变温度试试。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">实验台：改条件，看阻值动不动</div>
+    <div class="k3d-v" id="sn3d"></div>
+    <div class="ctrl">
+      <div class="btns" id="snSel"><button class="btn sm on" data-s="ntc">量热敏</button><button class="btn sm" data-s="ldr">量光敏</button><button class="btn sm" data-s="hum">量湿敏</button></div>
+      <div class="rowlab">温度　<b id="snTv">25 ℃</b></div><input type="range" id="snT" min="0" max="60" value="25">
+      <div class="rowlab">光照　<b id="snEv">100 lx</b></div><input type="range" id="snE" min="5" max="500" value="100">
+      <div class="rowlab">湿度　<b id="snHv">50 %RH</b></div><input type="range" id="snH" min="20" max="90" value="50">
+    </div>
+    <div class="k3d-info" id="sn3info"></div>
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="btns" id="s1k">
@@ -679,6 +690,18 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 传感器实验台 */
+let SN3 = null;
+const SNN = {ntc:'热敏电阻', ldr:'光敏电阻', hum:'湿敏电阻'};
+if(window.E3D){
+  E3D.sensorLab($('sn3d'), { onRead:function(r, st){ document.querySelectorAll('#snSel .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.s === st.sel); });
+      const cond = st.sel === 'ntc' ? st.T + ' ℃' : st.sel === 'ldr' ? st.E + ' lx' : st.RH + ' %RH';
+      $('sn3info').innerHTML = '表笔夹在<b>'+SNN[st.sel]+'</b>上：'+cond+' 时读 <b>'+r.txt+'</b>。拖对应的滑杆改条件 —— 阻值跟着动，就说明它是好的。'; },
+    onInfo:function(p, k){ if(p && !/^(ntc|ldr|hum)$/.test(k)) $('sn3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ SN3 = a; });
+  $('snSel').addEventListener('click', function(e){ const b = e.target.closest('[data-s]'); if(b && SN3) SN3.set({sel:b.dataset.s}); });
+  [['snT', 'T', 'snTv', ' ℃'], ['snE', 'E', 'snEv', ' lx'], ['snH', 'RH', 'snHv', ' %RH']].forEach(function(a){
+    $(a[0]).addEventListener('input', function(){ const v = +this.value; $(a[2]).textContent = v + a[3]; if(SN3){ const o = {}; o[a[1]] = v; SN3.set(o); } }); });
+}
 ElecNav.init({ch:5, sec:'5.4'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
