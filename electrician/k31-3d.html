@@ -63,7 +63,7 @@ ol.steps li.bad{color:#c0392b}
 <div class="top">
   <a class="blink" id="back" href="k3-3d.html">‹ 返回</a><span class="sp"></span>
   <span class="views">
-    <button id="home" hidden>复原</button><button id="rot">3D 看</button><button id="fs">全屏</button>
+    <button id="home" hidden>复原</button><button id="rot">3D 看</button><button id="fs">全屏</button><button id="snd">🔊</button>
   </span>
 </div>
 <div class="bot">
@@ -74,7 +74,7 @@ ol.steps li.bad{color:#c0392b}
     <span class="grp" id="rowE1" hidden><button id="edel">撤销</button><button id="eclr">全拆</button><button id="edone">接线完成</button></span>
     <span class="grp" id="rowE2" hidden><button id="ehand">右手</button><button id="etool">指认</button><button id="epen">验电笔</button><button id="eglove">摘手套</button><button id="erep">报告</button><button id="esub">交卷</button></span>
     <span class="sp"></span>
-    <button id="mode">自己接</button><button id="exam">考场</button><button id="snd">🔊</button>
+    <button id="mode">自己接</button><button id="exam">考场</button>
   </div>
 </div>
 <div id="ov"><div id="menu"></div></div>
@@ -1289,7 +1289,7 @@ function exRows(){
   g('rowV').hidden = EX.on || UI.wire; g('rowW').hidden = EX.on || !UI.wire;
   g('rowE1').hidden = !(EX.on && EX.phase==='wire'); g('rowE2').hidden = !(EX.on && EX.phase==='trial');
   g('mode').hidden = EX.on; g('mode').style.display = EX.on ? 'none' : '';
-  g('exam').style.display = EX.on ? 'none' : ''; g('snd').style.display = EX.on && EX.phase==='trial' ? 'none' : '';
+  g('exam').style.display = EX.on ? 'none' : '';
   g('back').textContent = EX.on ? '‹ 退出考场' : '‹ 返回';
   document.querySelector('#rowM .sp').style.display = EX.on && EX.phase==='trial' ? 'none' : '';   /* 试车阶段 6 个按钮铺满一行 */
 }
