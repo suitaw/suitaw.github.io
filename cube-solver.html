@@ -906,6 +906,7 @@
   .pzStage>canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   .pzBar{position:absolute;left:12px;right:12px;top:9px;z-index:2;display:flex;align-items:center;gap:8px;pointer-events:none}
   .pzBar~.flip [data-f=u]{top:50px}   /* 练习页顶上压着计时行，往下让一格 */
+  #pPr.started #prFlip:not(.side) [data-f=u]{top:50px}   /* 三阶练习页同理（计时行中间有手动秒表） */
   .pzBar b{font-size:20px;font-family:ui-monospace,Menlo,monospace}
   .pzBar .pzN{margin-left:auto;font-size:13px;color:var(--dim)}
   .pzSw{pointer-events:auto;padding:4px 10px;min-height:30px;font-size:12.5px;border-radius:999px;
@@ -1219,6 +1220,7 @@
     </div></div>
     <div id="prBar">
       <span id="prTimeWrap"><b id="prTime">0:00</b>用时</span>
+      <button id="prSw" class="pzSw">▶ 手动计时</button>
       <span><b id="prCount">0</b>步</span>
     </div>
   </div>
@@ -4003,6 +4005,21 @@ function prUpdate(){
   $('prTime').textContent = fmtT(prElapsed + (prT0 ? Date.now()-prT0 : 0));
   $('prCount').textContent = prCount;
 }
+// 手动秒表（App 0.0.21）：拿实物魔方练时自己掐，跟上面自动计时互不相干、不记成绩。点开始 / 点停 / 点清零
+let prSwT0 = 0, prSwMs = -1, prSwTick = 0;
+function prSwShow(){
+  const run = prSwT0 !== 0, ms = run ? Date.now() - prSwT0 : prSwMs, el = $('prSw');
+  const f = t => Math.floor(t/60000) + ':' + String(Math.floor(t/1000)%60).padStart(2,'0') + '.' + String(Math.floor(t/10)%100).padStart(2,'0');
+  el.textContent = run ? '■ ' + f(ms) : ms >= 0 ? '↺ ' + f(ms) : '▶ 手动计时';
+  el.classList.toggle('run', run);
+}
+$('prSw').onclick = () => {
+  const t = Date.now();
+  if(prSwT0){ prSwMs = t - prSwT0; prSwT0 = 0; clearInterval(prSwTick); prSwTick = 0; }
+  else if(prSwMs >= 0) prSwMs = -1;
+  else { prSwT0 = t; prSwTick = setInterval(prSwShow, 50); }
+  prSwShow();
+};
 function prStartClock(){
   // 教程借着这块魔方的时候不计时：那会儿是在看讲解、跟着比划，不是在练一局
   if(tuMode || prT0) return;
@@ -6541,7 +6558,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-10-11 20:54';
+const BUILD = '2026-11-27 20:33';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
