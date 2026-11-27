@@ -167,6 +167,12 @@ ELEC.reg({
     这五条是书上图 9-16 的提示说明，<b>一字不差都是可以拿去检查的判据</b>。
     <b>点一条看它管什么、违反了会怎样。</b>
   </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">对照 3D 实物练：你的 K3 考场盘</div>
+    布局、线槽、横平竖直、导线不交叉、端子不压绝缘层 —— 这几条在 <b>K3 实操 3D 接线板</b>上都能亲手接一遍：
+    元件已经按考场照片摆好，你自己一根一根接，接完通电试车，还能进考场模式。
+    <div class="btns" style="margin-top:8px"><a class="btn" href="k3-3d.html">打开 K3 实操 3D 接线板 ›</a></div>
+  </div>
   <div class="card">
     <canvas id="cv2"></canvas>
     <div class="ctrl">
