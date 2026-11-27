@@ -200,7 +200,11 @@ function make(T, el, spec, opt){
     flow:function(g, on, sp, dt){ g.ph = (g.ph + dt*sp)%1; g.a.forEach(function(m, i){ m.visible = on; if(on) g.path(g.ph + i/g.n, m.position); }); }
   };
   const B = spec.build(K);
-  hit.forEach(function(m){ if(m.userData.part!=='housing') m.material = m.material.clone(); });   /* 点中描边不连带别的零件 */
+  /* 预编译：电流点、闪光这些平时隐藏的东西第一次出现时才编着色器，那一帧会少画东西（截图抓到过半个模型）。
+     开场先全部显示编一遍，再恢复 */
+  (function(){ const hid = []; root.traverse(function(m){ if(m.isMesh && !m.visible){ hid.push(m); m.visible = true; } });
+    try{ S.renderer.compile(S.scene, S.cam); }catch(e){} hid.forEach(function(m){ m.visible = false; }); })();
+  /* 选中是套一层描边网格，不改零件材质 —— 所以元件可以放心改自己材质的颜色（发热变红等），不用复制 */
 
   /* 镜头 / 转动 */
   const orb = E3D.trackball(T, S.cam, S.renderer.domElement, pivot, function(){ S.dirty = true; });
@@ -282,6 +286,7 @@ function make(T, el, spec, opt){
     preset:function(k){ if(k==='oblique') return orb.reset();
       const p = (spec.presets||{})[k]; if(!p) return;
       orb.goTo(new T.Quaternion().setFromAxisAngle(new T.Vector3(p[0], p[1], p[2]), p[3]), p[4]||spec.view.r); },
+    _K:K,   /* 调试用 */
     pose:function(){ return pivot.quaternion.toArray().map(function(v){ return +v.toFixed(4); }).concat(+orb.st.r.toFixed(1)); }   /* 测试用 */
   };
   return Object.assign(api, B.api||{});
@@ -462,7 +467,7 @@ E3D.contactor = function(el, opt){ return E3D.viewer(el, {
       if(st.wasMain && !mainOn) st.arc = 1;                                     /* 刚断开：拉弧 */
       st.wasMain = mainOn;
       if(st.arc>0){ st.arc = Math.max(0, st.arc - dt/(0.25*k)); busy = true; }
-      arcM.opacity = st.arc*0.95; arcs.forEach(function(a){ a.scale.setScalar(0.6+st.arc); });
+      arcM.opacity = st.arc*0.95; arcs.forEach(function(a){ a.visible = st.arc > 0.01; a.scale.setScalar(0.6+st.arc); });
       let s = 0;
       if(st.on){ s = st.t<0.02 ? 1 : (mainOn ? 3 : 2); st.stepHold = 0; }
       else if(st.I>0 || st.t>0){ s = 4; st.stepHold = 1.2*k; }
@@ -589,7 +594,7 @@ E3D.thermal = function(el, opt){ return E3D.viewer(el, {
       const heat = Math.max(0, Math.min(1, s.heat)), ang = heat*0.62;                 /* 双金属片总弯曲角（满热约 35°，比实物夸张几倍才看得见），逐节均分 */
       bims.forEach(function(segs){ segs.forEach(function(g, j){ if(j) g.rotation.y = ang/SEG; }); });
       const glow = Math.pow(Math.max(0, (heat-0.62)/0.38), 1.5)*1.6;              /* 额定电流下热量稳在 58%，不能红（会被看成出事）；过了才开始红 */
-      heatMats.forEach(function(m){ m.emissive.setHex(0xff3a1a); m.emissiveIntensity = glow; });   /* 红＝热（危险色），不用橙（橙只给电流） */
+      heatMats.forEach(function(m){ m.emissive.setHex(0xff0000); m.emissiveIntensity = glow; });   /* 红＝热（危险色），不用橙（橙只给电流） */
       /* 顶端位移 ≈ 弧长×角度/2 → 推导板（先空走 1mm 间隙）；跳了以后导板停在那，机构自己锁住 */
       const tip = SEG*SL*ang/2;
       guide.position.x = Math.max(0, tip-1);
@@ -601,6 +606,104 @@ E3D.thermal = function(el, opt){ return E3D.viewer(el, {
       mainP.forEach(function(g){ K.flow(g, live, (0.05 + 0.05*s.x)/k, dt); });
       K.flow(ctlP, st.tr < 0.5, 0.25/k, dt);
       return true;
+    }
+  };
+  }}, opt); };
+})();
+
+/* ══════════════ 闸刀开关 HK2（开启式负荷开关，两极）══════════════
+   瓷底板 + 静插座（铜夹子）+ 触刀（铰链在下面）+ 熔丝 + 胶盖。上进下出。
+   状态全来自页面（c2-1.js 的 S1）：opt.state() → {on, I 电流 A, fuse 熔丝好的?, heat 0~1, top 电源接上端?}；点刀/手柄 → opt.onToggle() */
+(function(){
+'use strict';
+const PARTS = {
+  base:   ['瓷底座', '绝缘的底板，所有零件都装在它上面。瓷不导电、耐热、不怕电弧烤。', '瓷底座'],
+  clip:   ['静插座', '固定不动的一对铜夹片，刀插进去被夹紧＝接通。夹不紧会发热，老闸刀插座发黑就是这么来的。', '静插座'],
+  blade:  ['触刀', '会动的铜刀，<b>铰链在下面</b>，往上扳出来＝断开。<b>点它就是扳一下</b>。', '触刀'],
+  handle: ['手柄（绝缘）', '把两把刀连在一起同时动，人手只碰这根绝缘杆。<b>点它也能扳</b>。', '手柄'],
+  fuse:   ['熔丝', '铅锡合金细丝，电流超过额定值就发热熔断 —— 这台闸刀<b>唯一的保护</b>。断了要换同规格的，<b>不许拿铜丝代替</b>。', '熔丝'],
+  tin:    ['进线端子（上）', '<b>电源必须接上面</b>：这样拉闸以后，刀、熔丝、出线全都不带电，换熔丝才安全。', '进线端子'],
+  tout:   ['出线端子（下）', '接负载。', '出线端子'],
+  hinge:  ['铰链座', '刀绕着它转。它和下面的熔丝连在一起。', '铰链座'],
+  housing:['胶盖', '盖住带电部分，防手指碰到，也挡一下拉闸时的电弧。<b>不许不盖胶盖用</b>。']
+};
+const PX = [-14, 14], ZH = 14, LEN = 44;          /* 两极 x（左相线 L 右零线 N）；铰链高度；刀长 */
+
+E3D.knife = function(el, opt){ return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 12], view:{th:0.5, ph:0.95, r:250},
+  presets:{front:[1, 0, 0, Math.PI/2, 240], side:[0, 1, 0, -Math.PI/2, 240]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, shell = K.shell, tag = K.tag, opt = K.opt;
+  const porc = H.M(0xf1efe8, {roughness:0.3}), lead = H.M(0xb9bcc0, {metalness:0.7, roughness:0.4, emissive:0x000000});
+  tag(H.box(64, 116, 6, 0, 0, 3, porc, root), 'base');
+  const blades = [], fuses = [], live = [];
+  PX.forEach(function(x, i){
+    /* 进线端子（上）+ 静插座 */
+    tag(H.box(10, 9, 0.8, x, 48, 6.4, M.zinc, root), 'tin'); tag(H.cylZ(3, 2.6, x, 48, 8, M.zinc, root), 'tin');
+    tag(H.box(4, 16, 1.2, x, 38, 6.6, M.cu, root), 'clip');
+    [-2.6, 2.6].forEach(function(dx){ tag(H.box(1, 9, 14, x+dx, 30, 13, M.brass, root), 'clip'); });
+    /* 铰链座 + 触刀（绕铰链转） */
+    tag(H.box(9, 6, 10, x, -16, 11, M.brass, root), 'hinge'); tag(H.cylZ(1.4, 1, x, -16, 16.5, M.zinc, root), 'hinge');
+    const piv = new T.Group(); piv.position.set(x, -16, ZH); root.add(piv);
+    const bm = H.M(0xc77a3f, {metalness:0.85, roughness:0.32, emissive:0x000000});
+    tag(H.box(2.6, LEN+4, 8, 0, LEN/2, 0, bm, piv), 'blade');
+    blades.push(piv); live.push(bm);
+    /* 熔丝：铰链座 → 下面两颗柱之间 → 出线端子 */
+    tag(H.box(4, 8, 1.2, x, -24, 6.6, M.cu, root), 'hinge');
+    [-28, -42].forEach(function(y){ tag(H.cylZ(2.4, 6, x, y, 9, M.zinc, root), 'fuse'); });
+    const fg = new T.Group(); root.add(fg);
+    const fa = tag(H.wire([[x, -28, 11], [x+1.5, -32, 10.2], [x+1.8, -35, 10]], 0.45, lead, fg), 'fuse');
+    const fb = tag(H.wire([[x+1.8, -35, 10], [x+1.5, -38, 10.2], [x, -42, 11]], 0.45, lead, fg), 'fuse');
+    fuses.push({a:fa, b:fb, m:lead});
+    tag(H.box(4, 10, 1.2, x, -48, 6.6, M.cu, root), 'tout');
+    tag(H.box(10, 9, 0.8, x, -52, 6.4, M.zinc, root), 'tout'); tag(H.cylZ(3, 2.6, x, -52, 8, M.zinc, root), 'tout');
+    H.plate(i ? 'N' : 'L', 5, 4, x, 55, 6.2, '#3a3f45', null, root);
+  });
+  /* 手柄：横杆连两把刀的前端 + 竖握把（跟着第一把刀转） */
+  const hd = new T.Group(); blades[0].add(hd);
+  tag(H.box(PX[1]-PX[0]+8, 4, 5, (PX[1]-PX[0])/2, LEN-2, 6, M.blk, hd), 'handle');
+  tag(H.box(6, 5, 16, (PX[1]-PX[0])/2, LEN-2, 14, M.blk, hd), 'handle');
+  /* 导线：L 红 N 蓝（同照明盘规矩），上进下出 */
+  const red = H.M(0xd42f2f, {roughness:0.5}), blue = H.M(0x1c6dd0, {roughness:0.5});
+  PX.forEach(function(x, i){ const m = i ? blue : red;
+    H.wire([[x, 48, 10.5], [x, 48, 12], [x, 66, 12]], 1.5, m, root); H.wire([[x, -52, 10.5], [x, -52, 12], [x, -70, 12]], 1.5, m, root); });
+  /* 胶盖：上下两块，中间留缝给刀转（剖开时半透明） */
+  tag(H.box(62, 34, 2, 0, 33, 26, M.dark, shell), 'housing'); tag(H.box(62, 40, 2, 0, -36, 22, M.dark, shell), 'housing');
+  [[2, 34, 20, -31, 33, 16], [2, 34, 20, 31, 33, 16], [2, 40, 16, -31, -36, 14], [2, 40, 16, 31, -36, 14]].forEach(function(b){ tag(H.box(b[0], b[1], b[2], b[3], b[4], b[5], M.dark, shell), 'housing'); });
+
+  /* 电流：L 往下走、N 往上回 */
+  const paths = PX.map(function(x, i){ const p = [[x, 66, 12], [x, 48, 10], [x, 38, 7.5], [x, 30, 12], [x, 26, ZH], [x, -16, ZH], [x, -24, 7.5], [x, -28, 11], [x+1.8, -35, 10], [x, -42, 11], [x, -48, 7.5], [x, -52, 10], [x, -70, 12]];
+    return K.dots(12, K.curM, H.poly(i ? p.reverse() : p)); });
+  /* 电弧 / 熔断闪光 */
+  const flM = new T.MeshBasicMaterial({color:0xcfe4ff, toneMapped:false, transparent:true, opacity:0, blending:T.AdditiveBlending, depthWrite:false});
+  const arcs = PX.map(function(x){ const m = new T.Mesh(new T.SphereGeometry(3.2, 12, 10), flM); m.position.set(x, 30, 13); root.add(m); return m; });
+  const pops = PX.map(function(x){ const m = new T.Mesh(new T.SphereGeometry(3.2, 12, 10), flM.clone()); m.position.set(x+1.8, -35, 10); root.add(m); return m; });
+
+  const st = {a:1, wasOn:false, arc:0, pop:0, wasFuse:true, t:0};
+  return {
+    labels:[['tin', -14, 48, 10], ['clip', 14, 30, 20], ['blade', -14, 10, 18], ['handle', 0, 42, 22], ['hinge', 14, -16, 16], ['fuse', -14, -35, 11], ['tout', 14, -52, 10], ['base', 24, 6, 6]],
+    press:function(k){ if((k==='blade' || k==='handle') && opt.onToggle){ opt.onToggle(); return true; } return false; },
+    tick:function(dt, k){
+      const s = opt.state ? opt.state() : {on:false, I:0, fuse:true, heat:0, top:true};
+      st.t += dt;
+      const ta = s.on ? 0 : 1;                                     /* 0＝合上（平躺插进插座），1＝拉开（扬起 70°） */
+      st.a += (ta - st.a) * Math.min(1, dt*8/k);
+      blades.forEach(function(b){ b.rotation.x = st.a*1.22; });
+      if(st.wasOn && !s.on && s.I > 0.1) st.arc = 1;               /* 带负载拉闸：插座口拉弧 */
+      st.wasOn = s.on && s.fuse;
+      if(st.wasFuse && !s.fuse) st.pop = 1;                        /* 熔丝刚断：闪一下 */
+      st.wasFuse = s.fuse;
+      st.arc = Math.max(0, st.arc - dt/(0.3*k)); st.pop = Math.max(0, st.pop - dt/(0.4*k));
+      flM.opacity = st.arc*0.9; arcs.forEach(function(m){ m.visible = st.arc > 0.01; m.scale.setScalar(0.5+st.arc); });
+      pops.forEach(function(m){ m.visible = st.pop > 0.01; m.material.opacity = st.pop*0.95; m.scale.setScalar(0.5+st.pop*1.5); });
+      fuses.forEach(function(f){ f.a.visible = f.b.visible = s.fuse;
+        f.m.emissive.setHex(0xff0000); f.m.emissiveIntensity = Math.pow(Math.max(0, s.heat), 1.5)*1.8; });   /* 过载发热变红 */
+      /* 拉闸后刀还带电（电源接下端）＝危险：刀一闪一闪发红 */
+      const danger = !s.on && !s.top && s.fuse;
+      live.forEach(function(m){ m.emissive.setHex(0xff2020); m.emissiveIntensity = danger ? 0.35 + 0.3*Math.sin(st.t*6) : 0; });
+      const on = s.on && s.fuse && s.I > 0.05 && st.a < 0.05;
+      paths.forEach(function(g){ K.flow(g, on, (0.06 + s.I*0.006)/k, dt); });
+      return on || danger || st.arc > 0 || st.pop > 0 || s.heat > 0.01 || Math.abs(ta - st.a) > 0.002;
     }
   };
   }}, opt); };

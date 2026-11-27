@@ -19,7 +19,7 @@ ELEC.reg({
     然后把负载电流往大里拖，看那根熔丝什么时候断。
   </div>
   <div class="card">
-    <canvas id="cv0"></canvas>
+    <div class="k3d-v" id="qs3d"></div>
     <div class="ctrl">
       <div class="btns">
         <button class="btn big" id="s1sw">合闸</button>
@@ -34,8 +34,21 @@ ELEC.reg({
         <button class="btn" data-w="0">电源接下端（错）</button>
       </div>
     </div>
+    <div class="ctrl" id="qs3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="qs3info"></div>
   </div>
   <div class="note" id="n0"></div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验</div>
+    ① <b>点那把刀</b>（或黑色手柄）合闸，看橙色电流从上端子进、穿过刀和熔丝、从下端子出。<br>
+    ② 把负载电流拖过 <b>15 A</b>：熔丝慢慢发红，然后「啪」一下熔断，电流停了。点<b>「换新熔丝」</b>再来。<br>
+    ③ 切到<b>「电源接下端（错）」</b>再拉闸：刀<b>一闪一闪发红</b> —— 闸拉开了，刀还带着电，这时候伸手换熔丝就触电。
+    <span class="sub">点任意零件看它叫什么；「剖开外壳」切换胶盖。</span>
+  </div>
+  <div class="card">
+    <canvas id="cv0"></canvas>
+  </div>
+
 
   <div class="note" style="margin-top:10px">
     <div class="st">拆开看：身上就这几个零件</div>
@@ -868,6 +881,19 @@ function note4(){
    绑定
    ================================================================ */
 $('s1sw').addEventListener('click', toggle1);
+/* 3D 闸刀（elec-3d.js）：读 S1，点刀/手柄＝合闸拉闸 */
+let QS3 = null;
+const QS3I = '点模型上任意零件看它叫什么、干什么用。<b>点刀或黑手柄就是扳一下</b>。';
+$('qs3info').innerHTML = QS3I;
+$('qs3c').innerHTML = window.E3D ? E3D.controlsHTML() : '';
+if(window.E3D){
+  E3D.knife($('qs3d'), {
+    state:function(){ return {on:S1.on, I:(S1.on && S1.fuse) ? S1.load : 0, fuse:S1.fuse, heat:S1.heat, top:S1.top}; },
+    onToggle:toggle1,
+    onInfo:function(p){ $('qs3info').innerHTML = p ? '<b>'+p[0]+'</b>：'+p[1] : QS3I; }
+  }).then(function(a){ QS3 = a; });
+  E3D.bindControls($('qs3c'), function(){ return QS3; });
+}
 $('s1fx').addEventListener('click', function(){ S1.fuse = true; S1.heat = 0; note1(); });
 $('s1i').addEventListener('input', function(e){ S1.load = +e.target.value; note1(); });
 document.getElementById('s1wire').addEventListener('click', function(e){
