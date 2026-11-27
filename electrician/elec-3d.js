@@ -110,7 +110,11 @@ function trackball(T, cam, el, pivot, onChange){
       /* Object3D.lookAt 对非镜头是让 +z 朝目标；镜头要 -z 朝目标，所以再绕 y 转半圈 */
       o.quaternion.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), Math.PI));
       pivot.quaternion.copy(o.quaternion).invert(); if(r) st.r = r; if(keep){ st.q0.copy(pivot.quaternion); st.r0 = st.r; } apply(); },
-    reset:function(){ pivot.quaternion.copy(st.q0); st.r = st.r0; apply(); }};
+    reset:function(){ this.goTo(st.q0, st.r0); },
+    /* 平滑转到某个姿态（0.45s） */
+    goTo:function(qt, r){ const q1 = pivot.quaternion.clone(), r1 = st.r, t0 = performance.now();
+      (function step(now){ const k = Math.min(1, (now-t0)/450), e = k<.5 ? 2*k*k : 1-Math.pow(-2*k+2, 2)/2;
+        pivot.quaternion.slerpQuaternions(q1, qt, e); st.r = r1 + ((r||r1)-r1)*e; apply(); if(k<1) requestAnimationFrame(step); })(t0); }};
 }
 
 /* 搭舞台：渲染器、镜头、灯光、只在需要时画（省电） */
@@ -435,6 +439,12 @@ E3D._finish = function(C){
     labels:function(b){ st.labels = !!b; S.dirty = true; }, reset:function(){ orb.reset(); select(null); },
     state:st,
     view:function(th, ph, r){ orb.setView(th, ph, r); },
+    /* 视角：斜看＝初始；正面＝装在盘上时你看到的那面（1/3/5 在上）；侧面＝从右边看，下面电磁铁、上面触点，看衔铁上下动最清楚 */
+    preset:function(k){ if(k==='oblique') return orb.reset();
+      const q = new T.Quaternion();
+      if(k==='front') q.setFromAxisAngle(new T.Vector3(1, 0, 0), Math.PI/2);
+      if(k==='side') q.setFromAxisAngle(new T.Vector3(0, 1, 0), -Math.PI/2);
+      orb.goTo(q, 250); },
     pose:function(){ return C.pivot.quaternion.toArray().map(function(v){ return +v.toFixed(4); }).concat(+orb.st.r.toFixed(1)); }   /* 测试用 */   /* 调试/截图用 */
   };
 };

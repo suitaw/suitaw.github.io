@@ -27,7 +27,11 @@ ELEC.reg({
         <button class="btn sm on" id="km3dCut">剖开外壳</button>
         <button class="btn sm" id="km3dSlow">慢放</button>
         <button class="btn sm" id="km3dLbl">标出名字</button>
-        <button class="btn sm" id="km3dRst">摆正</button>
+      </div>
+      <div class="btns" id="km3dView">
+        <button class="btn sm on" data-v="oblique">斜着看</button>
+        <button class="btn sm" data-v="front">正面</button>
+        <button class="btn sm" data-v="side">侧面</button>
       </div>
     </div>
     <div class="k3d-info" id="km3dInfo"></div>
@@ -35,7 +39,7 @@ ELEC.reg({
   <div class="note" style="margin:10px 0">
     <div class="st">怎么看这个模型</div>
     这是一台 CJX2 系列交流接触器（K3 实操盘上用的就是这一类），<b>外壳剖成半透明</b>，里面的零件都是真实结构。
-    <b>单指拖</b>转着看，<b>两指捏</b>放大，<b>点任意零件</b>下面会写它叫什么、干什么用。<br>
+    <b>单指拖</b>翻着看，<b>两指拧</b>能在屏幕里转正、<b>两指捏</b>放大，<b>「侧面」</b>看衔铁上下动最清楚，<b>点任意零件</b>下面会写它叫什么、干什么用。<br>
     <b>橙色小点＝电流</b>，<b>蓝色小点＝铁芯里的磁通</b>。
     <span class="sub">动作已经放慢了：真的接触器从通电到触点合上大约只要十几到几十毫秒（不同型号不一样），肉眼根本看不清。</span>
   </div>
@@ -487,7 +491,8 @@ $('s1on').addEventListener('click', function(){ if(KM3) KM3.set(S1.on); });
   let v = b[2];
   $(b[0]).addEventListener('click', function(){ v = !v; this.classList.toggle('on', v); if(KM3) KM3[b[1]](v); });
 });
-$('km3dRst').addEventListener('click', function(){ if(KM3) KM3.reset(); });
+$('km3dView').addEventListener('click', function(e){ const b = e.target.closest('[data-v]'); if(!b || !KM3) return;
+  this.querySelectorAll('[data-v]').forEach(function(x){ x.classList.toggle('on', x===b); }); KM3.preset(b.dataset.v); });
 
 /* ================================================================
    场景 2：四种触点（原理图画法）
