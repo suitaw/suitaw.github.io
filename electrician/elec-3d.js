@@ -2463,21 +2463,38 @@ const R = 0.8, STEPS = [
   '⑤ 固定一端，左边的尾巴在右边主线上<b>紧贴缠绕 6 圈左右</b>。',
   '⑥ 右边的尾巴在左边主线上同样<b>贴绕 6 圈</b>，剪掉多余线芯、钳平。<b>两根线规格必须相同</b>。'
 ];
-E3D.splice = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+const STEPS_T = [
+  '① 主线中间剥出一段线芯，支线剥出端头。',
+  '② 支线线芯和主线线芯<b>中心十字相交</b>。',
+  '③ 支线按<b>顺时针</b>方向紧靠主线线芯缠绕，<b>6~8 圈</b>。',
+  '④ 用钢丝钳剪掉剩余的支线线芯，<b>钳平接口</b>。（书 P106 图 6-10）'
+];
+E3D.splice = function(el, opt){ opt = opt||{}; const TK = opt.kind === 'T'; return E3D.viewer(el, {
   parts:PARTS, center:[0, 0, 0], view:{th:0.3, ph:1.15, r:95},
   presets:{front:[1, 0, 0, 0.0001, 110], side:[0, 1, 0, -Math.PI/2, 110]},
   build:function(K){
   const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
   const cu = H.M(0xc77a3f, {metalness:0.85, roughness:0.3}), red = H.M(0xd42f2f, {roughness:0.55});
   const ins = function(x0, x1, key){ const g = new T.CylinderGeometry(1.7, 1.7, Math.abs(x1-x0), 20); g.rotateZ(Math.PI/2); const m = tag(new T.Mesh(g, red), key); m.position.x = (x0+x1)/2; root.add(m); };
-  ins(-70, -30, 'insA'); ins(30, 70, 'insB');
+  if(TK){ ins(-70, -14, 'insA'); ins(14, 70, 'insA'); const g = new T.CylinderGeometry(1.7, 1.7, 36, 20); const m = tag(new T.Mesh(g, red), 'insB'); m.position.y = 40; root.add(m); }
+  else { ins(-70, -30, 'insA'); ins(30, 70, 'insB'); }
   let cores = [];
   function tube(pts){ const v = pts.map(function(p){ return new T.Vector3(p[0], p[1], p[2]); });
     const m = tag(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(v, false, 'catmullrom', 0.2), Math.max(32, v.length*6), R, 10, false), cu), 'core'); root.add(m); cores.push(m); }
   function helix(axisFrom, axisTo, turns, rad, phase){ const pts = [], n = Math.max(12, turns*18);
     for(let i=0;i<=n;i++){ const t = i/n, a = phase + t*turns*Math.PI*2, x = axisFrom + (axisTo-axisFrom)*t; pts.push([x, Math.cos(a)*rad, Math.sin(a)*rad]); } return pts; }
+  function buildT(n){
+    tube([[-14, 0, 0], [14, 0, 0]]);                                       /* 主线线芯（中间剥开那段） */
+    if(n === 0){ tube([[0, 22, 0], [0, 6, 0]]); return; }
+    if(n === 1){ tube([[0, 22, 0], [0, 2, 0], [0, -2*R, 0], [0, -6, 0]]); return; }
+    /* 支线从上面下来，贴着主线顺时针绕 7 圈（往 +x 走） */
+    const pts = [[0, 22, 0], [0, 4, 0]].concat(helix(0, 7*R*2.1, 7, R*2.05, Math.PI/2));
+    if(n === 2) pts.push([7*R*2.1 + 2, -2, 4], [7*R*2.1 + 4, -6, 8]);
+    tube(pts);
+  }
   function build(n){
     cores.forEach(function(m){ root.remove(m); m.geometry.dispose(); }); cores = [];
+    if(TK) return buildT(n);
     /* 左线芯从 x=-30 出来，右线芯从 x=30 出来 */
     if(n === 0){ tube([[-30, 0, 0], [-4, 0, 0]]); tube([[30, 0, 0], [4, 0, 0]]); return; }
     if(n === 1){ tube([[-30, 0, 0], [-10, 0, 0], [6, 8, 0], [14, 14, 0]]); tube([[30, 0, 0], [10, 0, 0], [-6, 8, 2], [-14, 14, 2]]); return; }
@@ -2494,7 +2511,8 @@ E3D.splice = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
     tube(a); tube(b);
   }
   let cur = -1;
-  const api = { step:function(n){ n = Math.max(0, Math.min(STEPS.length-1, n)); cur = n; build(n); if(opt.onStep) opt.onStep(n, STEPS[n]); K.S.dirty = true; }, cur:function(){ return cur; }, steps:STEPS.length };
+  const SS = TK ? STEPS_T : STEPS;
+  const api = { step:function(n){ n = Math.max(0, Math.min(SS.length-1, n)); cur = n; build(n); if(opt.onStep) opt.onStep(n, SS[n]); K.S.dirty = true; }, cur:function(){ return cur; }, steps:SS.length };
   api.step(0);
   return { labels:[['core', -20, 0, 2], ['insA', -50, 0, 2]], api:api, tick:function(){ return false; } };
   }}, opt); };

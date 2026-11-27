@@ -126,6 +126,12 @@ ELEC.reg({
     <b>截面积小的还要先打一个扣结。</b><b>切一种看。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">一步一步看：单股 T 形连接</div>
+    <div class="k3d-v" id="spT3d"></div>
+    <div class="ctrl"><div class="btns"><button class="btn" id="spTPrev">上一步</button><button class="btn big" id="spTNext">下一步</button></div></div>
+    <div class="k3d-info" id="spT3info"></div>
+  </div>
+  <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
       <div class="btns" id="s2k">
@@ -768,6 +774,13 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 分步：单股 T 形（书 P106） */
+let SPT = null;
+if(window.E3D){
+  E3D.splice($('spT3d'), { kind:'T', onStep:function(n, t){ $('spT3info').innerHTML = '<div style="font-size:.78rem;color:var(--tx3)">第 '+(n+1)+' / 4 步</div>'+t; } }).then(function(a){ SPT = a; });
+  $('spTNext').addEventListener('click', function(){ if(SPT) SPT.step(SPT.cur() + 1); });
+  $('spTPrev').addEventListener('click', function(){ if(SPT) SPT.step(SPT.cur() - 1); });
+}
 /* 3D 分步：单股 X 形绞接（书 P110~111） */
 let SP3 = null, spT = null;
 if(window.E3D){
