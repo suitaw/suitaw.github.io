@@ -112,7 +112,7 @@ const FR_PINS = [];
 const DEVICES = [
   {id:'mt', tag:'电能表', kind:'meter', x:30, y:20, w:150, h:186,
    terminals:[{id:'mt-1',label:'1',x:27,y:170},{id:'mt-2',label:'2',x:59,y:170},{id:'mt-3',label:'3',x:91,y:170},{id:'mt-4',label:'4',x:123,y:170}]},
-  {id:'src', tag:'电源进线', kind:'src', x:206, y:160, w:112, h:56,
+  {id:'src', tag:'电源进线', kind:'src', x:36, y:452,   /* 11-27 他说照板子放左下角、接地排上面 */ w:112, h:56,
    terminals:[{id:'src-l',label:'L',x:20,y:15},{id:'src-pe',label:'PE',x:56,y:15},{id:'src-n',label:'N',x:92,y:15}]},
   {id:'tube', tag:'日光灯', kind:'tube', x:200, y:12, w:250, h:112, terminals:[]},
   {id:'lt', tag:'灯具端子排', kind:'lterm', x:456, y:92, w:100, h:118,   /* 11-27 加宽：中间写清每一位接哪盏灯 */
@@ -124,15 +124,15 @@ const DEVICES = [
    terminals:[{id:'qf2-ni',label:'N',x:20,y:14},{id:'qf2-li',label:'L',x:56,y:14},{id:'qf2-no',label:'N',x:20,y:122},{id:'qf2-lo',label:'L',x:56,y:122}]},
   {id:'qf3', tag:'QF3 照明', kind:'mcb2', x:328, y:266, w:76, h:136,
    terminals:[{id:'qf3-ni',label:'N',x:20,y:14},{id:'qf3-li',label:'L',x:56,y:14},{id:'qf3-no',label:'N',x:20,y:122},{id:'qf3-lo',label:'L',x:56,y:122}]},
-  {id:'pe', tag:'接地排', kind:'pebar', x:14, y:474, w:92, h:30,
+  {id:'pe', tag:'接地排', kind:'pebar', x:40, y:530, w:92, h:30,
    terminals:[{id:'pe-1',label:'',x:16,y:15},{id:'pe-2',label:'',x:46,y:15},{id:'pe-3',label:'',x:76,y:15}]},
-  {id:'xs', tag:'五孔插座', kind:'socket', x:116, y:454, s:1.05, w:100, h:130,
+  {id:'xs', tag:'五孔插座', kind:'socket', x:156, y:454, s:0.95, w:100, h:130,
    terminals:[{id:'xs-n',label:'N',x:22,y:16},{id:'xs-pe',label:'PE',x:50,y:16},{id:'xs-l',label:'L',x:78,y:16}]},
-  {id:'s1', tag:'双控① S1', kind:'sw', two:true, x:228, y:454, s:1.05, w:100, h:130,
+  {id:'s1', tag:'双控① S1', kind:'sw', two:true, x:258, y:454, s:0.95, w:100, h:130,
    terminals:[{id:'s1-l1',label:'L1',x:22,y:16},{id:'s1-l',label:'L',x:50,y:16},{id:'s1-l2',label:'L2',x:78,y:16}]},
-  {id:'s2', tag:'双控② S2', kind:'sw', two:true, x:340, y:454, s:1.05, w:100, h:130,
+  {id:'s2', tag:'双控② S2', kind:'sw', two:true, x:360, y:454, s:0.95, w:100, h:130,
    terminals:[{id:'s2-l1',label:'L1',x:22,y:16},{id:'s2-l',label:'L',x:50,y:16},{id:'s2-l2',label:'L2',x:78,y:16}]},
-  {id:'s3', tag:'单控 S3', kind:'sw', x:452, y:454, s:1.05, w:100, h:130,
+  {id:'s3', tag:'单控 S3', kind:'sw', x:462, y:454, s:0.95, w:100, h:130,
    terminals:[{id:'s3-l1',label:'L1',x:34,y:16},{id:'s3-l',label:'L',x:66,y:16}]}
 ];
 const TPOS = {};
@@ -645,7 +645,7 @@ DEVICES.forEach(function(d){
     rbox(x, y, w, h, 0, 16, MAT.cream, 2);
     [1,2].forEach(function(k){ box(x+w*k/3-0.5, y, 1, h, 0, 17, MAT.grey); });
     [20,56,92].forEach(function(o){ screw(x+o, y+42, 16, 5.6); });
-    label(d.tag, x+w+36, y+h/2, 0.4, 15, '#1f2328');   /* 下面是线槽，名字写右边 */
+    label(d.tag, x+w/2, y+h+10, 0.4, 13, '#1f2328');
   }
   if(d.kind==='tube'){                                                  /* H 型四针日光灯：灯架 + 两根并排灯管（一头连通）+ 镇流器 */
     rbox(x, y+28, w, 50, 0, 10, PL(0xf2f2ee, 0.4, {metalness:0.2}), 4);
@@ -821,8 +821,8 @@ const MAINS = [], MOT_SEG = 0, MAIN_RUN = {};
 /* 20 根线：相线红、零线蓝、地线黄绿 */
 /* ══ 线槽 ══ 照片：导轨上下两条横槽，两头竖槽连起来。槽宽 24、深 22，上面敞口，两壁是一排梳齿（线从齿缝里进出） */
 const DUCTS = {
-  H:[{y:146, x0:192, x1:330}, {y:236, x0:20, x1:548}, {y:430, x0:20, x1:548}],
-  V:[{x:192, y0:146, y1:236}, {x:20, y0:236, y1:430}, {x:548, y0:236, y1:430}]
+  H:[{y:236, x0:20, x1:548}, {y:430, x0:20, x1:548}],
+  V:[{x:20, y0:236, y1:560}, {x:548, y0:236, y1:430}]
 };
 const DUCT_D = 22;
 (function(){
@@ -888,6 +888,7 @@ function routeWire(a, b, id){
 }
 function wirePts(a, b, id, za, zb){ const r = routeWire(a, b, id); return path3(r.p2, za, zb, r.lane, dev(TPOS[a].device), dev(TPOS[b].device)); }
 ['lt-1','lt-2','lt-3','lt-4'].forEach(function(id){ TPOS[id].exit = 'L'; });   /* 灯具端子排右边是出厂线，盘内线一律从左边出 */
+['pe-1','pe-2','pe-3'].forEach(function(id){ TPOS[id].exit = 'L'; });   /* 接地排在进线排下面：线往左出、进左边竖线槽 */
 const CW = [], used = {};
 WIRES.forEach(function(w){
   const a=TPOS[w.from], b=TPOS[w.to];
@@ -954,8 +955,8 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
     (XT[id] = XT[id] || {name:name, meshes:[]}).meshes.push(m);
   }
   [0,1,2].forEach(function(i){
-    const lane = 220+4*i, ex = 554+5*i;   /* 进线排在电能表右边：沿线槽上沿往右，贴右边下来，从上面插进试车台插孔 */
-    wire(cid[i]+'P', cn[i]+'一头 → 盘上电源进线端子', JC[i], [[SXs[i],SY],[SXs[i],lane],[ex,lane],[ex,BY-14+4*i],[jx[i],BY-14+4*i],[jx[i],BY+2]], SZ, null, 60+i*4);
+    const ly = 514+3*i, gx = 146+3*i, dy = 604+4*i;   /* 进线排在左下：从进线排和接地排中间横出、插座左边的缝下去、再到试车台 */
+    wire(cid[i]+'P', cn[i]+'一头 → 盘上电源进线端子', JC[i], [[SXs[i],SY],[SXs[i],ly],[gx,ly],[gx,dy],[jx[i],dy],[jx[i],BY+2]], SZ, null, 60+i*4);
     wire(cid[i]+'S', cn[i]+'另一头 → 试车台插孔', JC[i], [[jx[i],BY+2],[jx[i],BY+12],[jx[i],JY]], null, 45, 60+i*4);
   });
   /* 能点的位置：接线点 + 验电点 */
