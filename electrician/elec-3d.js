@@ -2364,3 +2364,83 @@ E3D.room = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 一栋楼的停电排查（8.4）══════════════
+   3 层 × 每层 2 户 + 每层楼道灯 + 电梯。配电：总配电箱 → 每层楼层箱（只管住户）→ 每户户内箱；楼道灯、电梯走公共回路（从总箱直接出）。
+   故障：main 总箱出线断（全楼黑）/ floor 某层楼层箱（该层两户黑，楼道灯、电梯照常）/ house 某一户（只它黑）。
+   点配电箱＝拿表测一下：报「进线有电 / 出线有电」。opt.onCheck(msg) */
+(function(){
+'use strict';
+const PARTS = {
+  main:  ['总配电箱', '整栋楼的电从这里分出去：住户一路一路上楼，楼道灯、电梯走公共回路。<b>点它测一下</b>。', '总配电箱'],
+  floor: ['楼层配电箱', '这一层两户的电从这里分。<b>点它测一下</b>。', '楼层箱'],
+  house: ['户内配电箱', '这一户自己的总开关、漏保都在这里。<b>点它测一下</b>。', '户内箱'],
+  win:   ['住户窗户', '亮着＝这户有电。', '窗户'],
+  corr:  ['楼道灯（公共照明）', '公共回路供电，跟住户不是一路。<b>先看它</b>：它亮，说明上一级是好的。', '楼道灯'],
+  lift:  ['电梯', '也走公共回路。', '电梯'],
+  bld:   ['楼', '', '楼']
+};
+const FL = 3, W = 60, D = 40, FH = 36;
+E3D.building = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[8, -14, 52], view:{th:0.3, ph:1.2, r:430},
+  presets:{front:[1, 0, 0, 0.0001, 320], side:[0, 1, 0, -Math.PI/2, 300]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  tag(H.box(220, 160, 2, 0, -20, -1, H.M(0x6b7a5a, {roughness:0.9}), root), 'bld');
+  const wallM = H.M(0xd9d2c5, {roughness:0.9});
+  const wins = [], corrs = [], houses = [], floors = [];
+  for(let f=0;f<FL;f++){ const z0 = f*FH;
+    tag(H.box(W*2+20, D, FH-1, 0, 0, z0 + FH/2, wallM, root), 'bld');
+    [-1, 1].forEach(function(sd){ const wm = H.M(0x2a3138, {roughness:0.2, emissive:0x000000});
+      const w = tag(H.box(22, 1, 14, sd*38, -D/2 - 0.4, z0 + FH/2 + 2, wm, root), 'win'); w.userData.f = f; w.userData.sd = sd; wins.push({m:wm, f:f, sd:sd});
+      const hb = tag(H.box(7, 2, 9, sd*58, -D/2 - 1, z0 + 10, H.M(0xeceef0), root), 'house'); hb.userData.f = f; hb.userData.sd = sd; houses.push(hb); });
+    const cm = H.M(0xfff4d6, {roughness:0.2, emissive:0x000000});
+    const c = tag(H.box(10, 1, 6, 0, -D/2 - 0.4, z0 + FH/2 + 6, cm, root), 'corr'); c.userData.f = f; corrs.push(cm);
+    const fb = tag(H.box(8, 2, 10, 0, -D/2 - 1, z0 + 9, H.M(0xb9bec4), root), 'floor'); fb.userData.f = f; floors.push(fb);
+    H.plate((f+1) + ' 层', 12, 5, -76, -D/2 - 1, z0 + FH/2, '#e6edf5', null, root);
+  }
+  tag(H.box(W*2+24, D+4, 4, 0, 0, FL*FH + 2, H.M(0x8d939a), root), 'bld');
+  /* 电梯（右侧竖井 + 指示灯） */
+  tag(H.box(18, 18, FL*FH + 10, W + 22, 0, (FL*FH + 10)/2, H.M(0xa9b0b8, {roughness:0.6}), root), 'lift');
+  const liftM = H.M(0xfff4d6, {emissive:0x000000}); tag(H.box(6, 1, 4, W + 22, -9.5, FL*FH, liftM, root), 'lift');
+  /* 总配电箱：楼前地上 */
+  const mainBox = tag(H.box(18, 10, 24, -40, -D/2 - 30, 12, H.M(0x8d939a, {roughness:0.5}), root), 'main');
+  H.plate('总配电箱', 22, 5, -40, -D/2 - 35.5, 26, '#e6edf5', null, root);
+  const st = {fault:null, at:{f:0, sd:1}};
+  function powered(kind, f, sd){ const F = st.fault, a = st.at;
+    if(F === 'main') return kind === 'pub' ? true : false;
+    if(kind === 'pub') return true;
+    if(F === 'floor' && f === a.f) return false;
+    if(F === 'house' && f === a.f && sd === a.sd) return false;
+    return true; }
+  /* 「总箱住户出线断」：公共回路照常 —— 范围判断用；全楼黑的情况用 mainAll */
+  function check(kind, f, sd){
+    if(kind === 'main'){ const allOut = st.fault === 'mainAll';
+      return allOut ? '总配电箱：<b>进线就没电</b> —— 问题在上一级（变压器、进楼电缆），报供电部门。' : (st.fault === 'main' ? '总配电箱：进线有电，<b>住户那一路出线没电</b> —— 故障就在总箱这一路（开关跳了 / 熔断器断了 / 接头烧了）。' : '总配电箱：进线有电，各路出线都有电。往下一级查。'); }
+    if(kind === 'floor'){ const inOk = st.fault !== 'main' && st.fault !== 'mainAll', outOk = inOk && !(st.fault === 'floor' && f === st.at.f);
+      return (f+1)+' 层楼层箱：进线'+(inOk ? '有电' : '<b>没电</b>（上一级的事）')+'，出线'+(outOk ? '有电' : '<b>没电</b>')+'。' + (inOk && !outOk ? ' —— <b>故障就在这只楼层箱</b>。' : ''); }
+    const inOk = powered('house', f, sd) || (st.fault === 'house' && f === st.at.f && sd === st.at.sd);
+    const outOk = powered('house', f, sd);
+    return (f+1)+' 层'+(sd < 0 ? '左' : '右')+'户户内箱：进线'+(inOk ? '有电' : '<b>没电</b>（上一级的事）')+'，出线'+(outOk ? '有电' : '<b>没电</b>')+'。' + (inOk && !outOk ? ' —— <b>故障在这户自己的箱子里</b>（总开关、漏保跳了，或者有短路漏电）。' : '');
+  }
+  const api = {
+    st:st,
+    quiz:function(){ const r = Math.random(), f = Math.floor(Math.random()*FL), sd = Math.random() < 0.5 ? -1 : 1;
+      st.fault = r < 0.2 ? 'mainAll' : r < 0.4 ? 'main' : r < 0.7 ? 'floor' : 'house'; st.at = {f:f, sd:sd}; K.S.dirty = true; return st.fault; },
+    clear:function(){ st.fault = null; K.S.dirty = true; }
+  };
+  return {
+    labels:[['main', -40, -D/2 - 30, 26], ['floor', 0, -D/2 - 1, 15], ['house', 58, -D/2 - 1, 16], ['corr', 0, -D/2, FH/2 + 8], ['lift', W + 22, 0, FL*FH + 8], ['win', -38, -D/2, FH/2 + 10]],
+    hitMesh:function(m){ const k = m.userData.part;
+      if(k === 'main' || k === 'floor' || k === 'house'){ if(opt.onCheck) opt.onCheck(check(k, m.userData.f, m.userData.sd)); return true; } return false; },
+    api:api,
+    tick:function(dt, k){
+      const all = st.fault === 'mainAll';
+      wins.forEach(function(w){ const on = !all && powered('house', w.f, w.sd); w.m.color.setHex(on ? 0xffe9b0 : 0x2a3138); w.m.emissive.setHex(0xffc65a); w.m.emissiveIntensity = on ? 0.9 : 0; });
+      corrs.forEach(function(m){ m.emissive.setHex(0xffc65a); m.emissiveIntensity = all ? 0 : 1.4; });
+      liftM.emissive.setHex(0xffc65a); liftM.emissiveIntensity = all ? 0 : 1.4;
+      return false;
+    }
+  };
+  }}, opt); };
+})();

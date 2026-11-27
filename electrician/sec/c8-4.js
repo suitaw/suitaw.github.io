@@ -62,6 +62,22 @@ ELEC.reg({
     书上图 8-31 给了三种情况，各走各的路。<b>点一种看该从哪儿查起。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">出一道题：这栋楼哪儿停电了？</div>
+    <div class="k3d-v" id="bd3d"></div>
+    <div class="ctrl">
+      <div class="btns"><button class="btn big" id="bdQ">接到报修电话（出一道题）</button></div>
+      <div class="btns"><button class="btn sm" id="bdA" disabled>揭晓</button><button class="btn sm" id="bdR">全部恢复</button></div>
+    </div>
+    <div class="ctrl" id="bd3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="bd3info">点「接到报修电话」。先<b>看</b>：哪几户窗户黑了？楼道灯、电梯还亮吗？再<b>点配电箱</b>测一下。</div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">按书上的顺序想</div>
+    ① <b>全楼都黑，楼道灯、电梯也灭了</b> → 总配电箱或更上一级。<br>
+    ② <b>楼道灯、电梯亮着，只有住户黑</b> → 公共回路是好的，查住户那几路：一整层黑 → 楼层箱；只有一户黑 → 那户自己的箱子。<br>
+    ③ 点配电箱「测一下」：<b>进线有电、出线没电</b>，故障就在这只箱子；进线就没电，往上一级找。
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="btns" id="s1k">
@@ -776,6 +792,19 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 一栋楼排查 */
+let BD3 = null;
+const BDA = {mainAll:'上一级停电（进楼电缆 / 变压器）：全楼连公共照明都黑了', main:'总配电箱住户那一路断了：住户全黑，公共照明、电梯亮着', floor:'某一层的楼层配电箱：那一层两户都黑', house:'某一户自己的户内配电箱：只有它黑'};
+if(window.E3D){
+  E3D.building($('bd3d'), { onCheck:function(m){ $('bd3info').innerHTML = m; }, onInfo:function(p, k){ if(p && !/^(main|floor|house)$/.test(k)) $('bd3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ BD3 = a; });
+  $('bd3c').innerHTML = E3D.controlsHTML(null, [['oblique','斜着看'], ['front','正面'], ['side','侧面']]);
+  E3D.bindControls($('bd3c'), function(){ return BD3; });
+  $('bdQ').addEventListener('click', function(){ if(!BD3) return; BD3.quiz(); $('bdA').disabled = false;
+    $('bd3info').innerHTML = '报修：「家里没电了！」—— 先别急着拿表。<b>看一眼整栋楼</b>：哪些窗户黑了？楼道灯、电梯呢？然后点配电箱测。'; });
+  $('bdA').addEventListener('click', function(){ if(!BD3) return; const s = BD3.st; this.disabled = true;
+    $('bd3info').innerHTML = '答案：<b>'+BDA[s.fault]+'</b>' + (s.fault === 'floor' || s.fault === 'house' ? '（'+(s.at.f+1)+' 层'+(s.fault === 'house' ? (s.at.sd < 0 ? '左户' : '右户') : '')+'）' : '') + '。'; });
+  $('bdR').addEventListener('click', function(){ if(BD3) BD3.clear(); $('bdA').disabled = true; $('bd3info').innerHTML = '全部恢复了。'; });
+}
 ElecNav.init({ch:8, sec:'8.4'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();

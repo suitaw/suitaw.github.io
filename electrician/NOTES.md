@@ -2722,3 +2722,4 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - `E3D.starDelta`（11.4 第 3 屏）：KMY（下端星点铜排）+ KM△（下端→V1 W1 U1）两台 kmBuild + 电动机接线盒六头；L1L2L3 直接到 U1V1W1；U2V2W2 并到两台上端；start → star（5 演示秒倒计时）→ delta；数字卡显示 220/380 V。
 - `E3D.meterLabCard(容器, 开局状态)`：整张万用表实验卡（3D+档位/插孔/开关/电池按钮+说明），3.6b 第 1 屏 {batt:false, dial:'ohm'}、第 2 屏 {batt:false, dial:'beep'} 用它；页面里写 `<div class="ml-card" data-init="{...}">`。meterLab 支持 opt.init。5.6 第 2 屏复用 E3D.megger。
 - `E3D.room`（7.2 第 1 屏，单位 cm）：带门洞的墙、门框外沿 x=96、开关位置跟 S1 {h, d}，蓝色尺寸线 + canvas 字牌；1.7 m 参照人站门左边。
+- `E3D.building`（8.4 第 1 屏）：3 层×2 户 + 楼道灯 + 电梯；故障 mainAll/main/floor/house；点配电箱＝测进线/出线有没有电（hitMesh），窗户亮灭判范围；页面「接到报修电话」随机出题、揭晓。
