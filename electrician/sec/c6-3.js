@@ -47,6 +47,12 @@ ELEC.reg({
     <b>弯这个环有三个尺寸要卡。</b><b>一步一步点下去。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">一步一步看：弯一个接线环</div>
+    <div class="k3d-v" id="rg3d"></div>
+    <div class="ctrl"><div class="btns"><button class="btn" id="rgPrev">上一步</button><button class="btn big" id="rgNext">下一步</button></div></div>
+    <div class="k3d-info" id="rg3info"></div>
+  </div>
+  <div class="card">
     <canvas id="cv0"></canvas>
     <div class="ctrl">
       <div class="btns" id="s1k">
@@ -96,6 +102,12 @@ ELEC.reg({
     书上专门画了一张「合格与不合格」的对照图。<b>这四种全是肉眼可判的</b>，
     而且处理方式都一样：<b>剪掉，重新加工</b>。
     <b>切一种看它会出什么事。</b>
+  </div>
+  <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">合格的和四种不合格的，套在螺钉上比一比</div>
+    <div class="k3d-v" id="rb3d"></div>
+    <div class="ctrl"><div class="btns" id="rbK"><button class="btn sm on" data-k="ok">合格</button><button class="btn sm" data-k="short">环圈不足</button><button class="btn sm" data-k="overlap">环圈重叠</button><button class="btn sm" data-k="long">露出过长</button><button class="btn sm" data-k="big">环圈过大</button></div></div>
+    <div class="k3d-info" id="rb3info"></div>
   </div>
   <div class="card">
     <canvas id="cv1"></canvas>
@@ -780,6 +792,15 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 接线环（分步 + 四种不合格） */
+let RG3 = null, RB3 = null;
+if(window.E3D){
+  E3D.ring($('rg3d'), { onStep:function(n, t){ $('rg3info').innerHTML = '<div style="font-size:.78rem;color:var(--tx3)">第 '+(n+1)+' / 5 步</div>'+t; } }).then(function(a){ RG3 = a; });
+  $('rgNext').addEventListener('click', function(){ if(RG3) RG3.step(RG3.cur() + 1); });
+  $('rgPrev').addEventListener('click', function(){ if(RG3) RG3.step(RG3.cur() - 1); });
+  E3D.ring($('rb3d'), { mode:'bad', onStep:function(k, t){ $('rb3info').innerHTML = t; document.querySelectorAll('#rbK .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.k === k); }); } }).then(function(a){ RB3 = a; });
+  $('rbK').addEventListener('click', function(e){ const b = e.target.closest('[data-k]'); if(b && RB3) RB3.show(b.dataset.k); });
+}
 ElecNav.init({ch:6, sec:'6.3'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();

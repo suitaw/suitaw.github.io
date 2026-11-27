@@ -2517,3 +2517,53 @@ E3D.splice = function(el, opt){ opt = opt||{}; const TK = opt.kind === 'T'; retu
   return { labels:[['core', -20, 0, 2], ['insA', -50, 0, 2]], api:api, tick:function(){ return false; } };
   }}, opt); };
 })();
+
+/* ══════════════ 硬导线接线环（6.3，书 P115~116）══════════════
+   单位 mm，线芯直径按 1.4。环内径 3.5~4 mm → 中心线半径约 2.6；线芯露到圆环约 5 mm。
+   opt.mode：'steps'（分步：剥线/弯折/成环/剪齐/套螺钉）或 'bad'（合格 + 四种不合格：short 圈不足、overlap 重叠、long 露太长、big 过大）。 */
+(function(){
+'use strict';
+const PARTS = { core:['线芯', '', '线芯'], ins:['绝缘层', '', '绝缘层'], screw:['螺钉 + 垫片', '接线环<b>顺时针</b>套上去 —— 拧紧螺钉时环越拧越紧，逆时针会被拧得张开。', '螺钉'] };
+const STEPS = ['① 剥出线芯。', '② 左手捏住导线，钳子<b>在距绝缘层 5 mm 处</b>夹紧、弯折。', '③ 钳住线头往回扭，把线芯弯成一个<b>圆环</b>。',
+  '④ 剪掉多余线芯：<b>线芯露出到圆圈约 5 mm</b>，<b>插口（环内径）3.5~4 mm</b>。', '⑤ 环<b>顺时针</b>套在螺钉上（跟拧紧方向一致），垫片压住、拧紧。'];
+const BAD = {ok:['合格', '露 5 mm、内径 3.5~4 mm、圆环正好闭合。'], short:['环圈不足', '环没合拢 —— <b>连接不牢固，易诱发短路</b>。剪掉重做。'],
+  overlap:['环圈重叠', '绕多了叠在一起 —— 压不平，<b>接触不良</b>。剪掉重做。'], long:['连接线露出过长', '绝缘层到环之间裸线太长 —— <b>有漏电危险</b>。剪掉重做。'],
+  big:['环圈过大', '螺钉压不住整圈 —— <b>接触不良，甚至有短路危险</b>。剪掉重做。']};
+E3D.ring = function(el, opt){ opt = opt||{}; const BADM = opt.mode === 'bad'; return E3D.viewer(el, {
+  parts:PARTS, center:[6, 0, 0], view:{th:0, ph:0.45, r:62},
+  presets:{front:[1, 0, 0, 0.0001, 60], side:[0, 1, 0, -Math.PI/2, 60]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  const cu = H.M(0xc77a3f, {metalness:0.85, roughness:0.3}), red = H.M(0xd42f2f, {roughness:0.55});
+  const ig = new T.CylinderGeometry(1.5, 1.5, 34, 20); ig.rotateZ(Math.PI/2); const insM = tag(new T.Mesh(ig, red), 'ins'); insM.position.x = -17; root.add(insM);
+  const screw = new T.Group(); root.add(screw);
+  const ghost = H.M(0xc9ced3, {metalness:0.6, roughness:0.35, transparent:true, opacity:0.32, depthWrite:false});   /* 螺钉头、垫片半透明，不然把环全盖住 */
+  tag(H.cylZ(1.75, 6, 0, 0, -1, M.zinc, screw), 'screw'); tag(H.cylZ(4.2, 0.6, 0, 0, 1.4, ghost, screw), 'screw'); tag(H.cylZ(3.6, 1.6, 0, 0, 2.6, ghost, screw), 'screw');
+  let cores = [];
+  function tube(pts, rad){ const v = pts.map(function(p){ return new T.Vector3(p[0], p[1], p[2]||0); });
+    const m = tag(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(v, false, 'catmullrom', 0.3), Math.max(40, v.length*8), rad||0.7, 10, false), cu), 'core'); root.add(m); cores.push(m); }
+  /* 圆环：线从左边沿 +x 来，在 (x0,0) 处是圆的最高点，绕圆心 (x0, −R) 顺时针转（从上往下看 —— 跟拧螺钉的方向一致） */
+  function ring(x0, R, turns){ const p = [[0, 0, 0], [x0, 0, 0]], n = Math.ceil(turns*40);
+    for(let i=1;i<=n;i++){ const a = i/n*turns*Math.PI*2; p.push([x0 + R*Math.sin(a), -R + R*Math.cos(a), (turns > 1.05 ? i/n*1.3 : 0)]); } return p; }
+  function build(k){
+    cores.forEach(function(m){ root.remove(m); m.geometry.dispose(); }); cores = [];
+    let sx = null, sy = null;
+    if(!BADM){
+      if(k === 0) tube([[0, 0, 0], [22, 0, 0]]);
+      else if(k === 1) tube([[0, 0, 0], [5, 0, 0], [5.6, 0.6, 0], [6, 2, 0], [6, 16, 0]]);
+      else if(k === 2) tube(ring(5, 2.6, 1.02).concat([[5 + 0.5, -0.2, 0], [12, 4, 0], [16, 6, 0]]));
+      else { tube(ring(5, 2.6, 0.98)); sx = 5; sy = 2.6; }
+      screw.visible = k >= 4;
+    } else {
+      const R = k === 'big' ? 4.6 : 2.6, x0 = k === 'long' ? 14 : 5, turns = k === 'short' ? 0.72 : k === 'overlap' ? 1.4 : 0.98;
+      tube(ring(x0, R, turns)); sx = x0; sy = R; screw.visible = true;
+    }
+    if(sx !== null) screw.position.set(sx, -sy, 0);
+  }
+  let cur = 0;
+  const api = BADM ? { show:function(k){ cur = k; build(k); if(opt.onStep) opt.onStep(k, '<b>'+BAD[k][0]+'</b>：'+BAD[k][1]); K.S.dirty = true; }, cur:function(){ return cur; } }
+    : { step:function(n){ n = Math.max(0, Math.min(STEPS.length-1, n)); cur = n; build(n); if(opt.onStep) opt.onStep(n, STEPS[n]); K.S.dirty = true; }, cur:function(){ return cur; }, steps:STEPS.length };
+  if(BADM) api.show('ok'); else api.step(0);
+  return { labels:[['core', 3, 0, 1], ['ins', -10, 0, 1.6]], api:api, tick:function(){ return false; } };
+  }}, opt); };
+})();

@@ -2724,3 +2724,4 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 - `E3D.room`（7.2 第 1 屏，单位 cm）：带门洞的墙、门框外沿 x=96、开关位置跟 S1 {h, d}，蓝色尺寸线 + canvas 字牌；1.7 m 参照人站门左边。
 - `E3D.building`（8.4 第 1 屏）：3 层×2 户 + 楼道灯 + 电梯；故障 mainAll/main/floor/house；点配电箱＝测进线/出线有没有电（hitMesh），窗户亮灭判范围；页面「接到报修电话」随机出题、揭晓。
 - `E3D.splice`（6.2 第 1 屏）：单股 X 形绞接 6 步（剥线/X 相交/绞 2.5 圈/扳直/左尾贴绕 6 圈/右尾贴绕 6 圈），每步重建 TubeGeometry（helix 函数）；api.step(n)、api.cur()（别用 getter：viewer 用 Object.assign 合并会复制成死值）。
+- `E3D.ring`（6.3 第 1、2 屏）：硬导线接线环（mm）；mode 'steps' 5 步 / 'bad' 合格+四种不合格（short/overlap/long/big）；环绕圆心 (x0,−R) 走＝俯视顺时针（第一版画成逆时针，已改）；螺钉头、垫片半透明。
