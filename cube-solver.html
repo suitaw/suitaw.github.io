@@ -897,7 +897,7 @@
 
   /* ---- 金字塔 / 四阶 / 五阶（cube-puz-pages.js 画进 #pzRoot；跟 App 的 PuzPages 对应）---- */
   .pzChip{flex:none;margin-left:8px;margin-right:auto;padding:5px 10px;min-height:32px;font-size:13px;border-radius:999px;
-    background:var(--panel2);border:1px solid var(--line2);color:var(--accL)}
+    background:rgba(247,209,20,.14);border:1px solid rgba(247,209,20,.5);color:var(--accL);font-weight:700}   /* App 0.0.31：换魔方芯片更醒目 */
   #pzRoot .appBar b{flex:none}
   .pzOpt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin-bottom:8px;padding:8px 12px}
   .pzOpt.on{border-color:rgba(247,209,20,.6)}
@@ -964,6 +964,12 @@
   .pzLesson canvas{width:56px;height:56px;flex:none}
   .pzLesson span{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
   .pzLesson i.dim{color:var(--dim2)}
+  /* App 0.0.31 CardRow：小 3D 图 · 学过打勾 · 右箭头 */
+  .pzLesson{min-height:80px;padding:8px 12px 8px 10px;margin-bottom:10px;border-radius:16px;background:var(--panel)}
+  .pzLesson canvas{width:60px;height:60px}
+  .pzDone{flex:none;width:24px;height:24px;border-radius:50%;background:rgba(61,220,132,.2);color:#3ddc84;
+    font-style:normal;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .pzChev{flex:none;width:18px;height:18px;fill:none;stroke:var(--dim2);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
   .pzStep{margin-left:auto;font-size:13px;color:var(--dim)}
   .pzText{margin-top:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;max-height:28vh;overflow-y:auto}
   .pzText b{font-size:14px}
@@ -6575,7 +6581,7 @@ window.addEventListener('resize', () => {
 /* ---- 版本 ----
    BUILD 那一行由 .git/hooks/pre-commit 每次提交时自动改写，不用手动维护。
    刷新出来的还是旧日期，就是浏览器拿着缓存不放，点「强制刷新」绕过去 */
-const BUILD = '2026-11-27 20:35';
+const BUILD = '2026-11-27 20:37';
 $('verTxt').textContent = BUILD;
 // 注册离线缓存。scope 收窄到本页：仓库根目录还有别的项目，不能让它拦整站。file:// 本地打开时跳过
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))

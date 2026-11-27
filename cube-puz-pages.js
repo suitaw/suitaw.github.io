@@ -4,7 +4,7 @@
  */
 (function () {
 'use strict';
-const { PRACTICE, TUTORIAL, INPUT, VIEW, PLAY_CN, esc, q, hex, CN } = window.PZ_CONST;
+const { PRACTICE, TUTORIAL, INPUT, VIEW, PLAY_CN, esc, q, hex, CN, CAM0, CAM0P, CAM_D, BLANK, LK, LF } = window.PZ_CONST;
 const { Pyra, Big, lessons, patterns, CamPlan, Mx, dot, norm } = window.PUZ;
 const PZ = window.PZ;
 const SVG = {
@@ -290,6 +290,26 @@ function mini(cv, puz, st) {
     g.closePath(); g.fillStyle = hex(st[i] < 0 ? 0x3a3f48 : puz.palette[st[i]]); g.fill(); });
 }
 
+// 课表 / 花色表的小 3D 图（App 0.0.31 PuzMini3D）：拿起手时的视角画整个魔方，focus 以外的压暗
+function mini3d(cv, puz, st, focus) {
+  const g = cv.getContext('2d'), S = Math.min(cv.width, cv.height), f = S * 1.5 * 1.06, inset = puz instanceof Pyra ? 0.80 : 0.86;
+  const cam = puz instanceof Pyra ? CAM0P : CAM0, scr = v => [S / 2 + v[0] * f / (CAM_D - v[2]), S / 2 - v[1] * f / (CAM_D - v[2])];
+  g.clearRect(0, 0, cv.width, cv.height);
+  const poly = pts => { g.beginPath(); pts.forEach(([x, y], j) => j ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill(); };
+  for (let i = 0; i < puz.S; i++) {
+    const cell = puz.poly[i].map(p => Mx.v(cam, p)), nr = Mx.v(cam, puz.nrm[i]);
+    const c = [0, 1, 2].map(k => cell.reduce((s, v) => s + v[k], 0) / cell.length);
+    if (nr[0] * c[0] + nr[1] * c[1] + nr[2] * (c[2] - CAM_D) >= 0) continue;
+    const lit = 0.70 + 0.34 * Math.max(0, dot(nr, LK)) + 0.12 * Math.max(0, dot(nr, LF)), dim = focus && !focus[i];
+    g.fillStyle = hex(0x14181f, lit * (dim ? 0.45 : 0.95)); poly(cell.map(scr));
+    g.fillStyle = hex(st[i] < 0 ? BLANK : puz.palette[st[i]], lit * (dim ? 0.42 : 1));
+    poly(cell.map(v => [0, 1, 2].map(k => c[k] + (v[k] - c[k]) * inset)).map(scr));
+  }
+}
+// 一行卡片：缩略图 · 标题 + 说明 · 学过打勾 · 右箭头
+const cardRow = (i, size, title, note, sub, done) => `<button class="pzLesson" data-i="${i}"><canvas width="${size}" height="${size}"></canvas><span><b>${esc(title)}</b><i>${esc(note)}</i>${sub ? `<i class="dim">${esc(sub)}</i>` : ''}</span>${done ? '<em class="pzDone">✓</em>' : ''}<svg class="pzChev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>`;
+const learned = (puz, i) => { try { return localStorage.getItem('pzl_' + puz.id + '_' + i) === '1'; } catch (e) { return false; } };
+
 /* ======================= 学习页 ======================= */
 function pageLearn(root, tu) {
   const puz = tu.puz, Ls = lessons(puz), nav = PZ.learn[PZ.k] || (PZ.learn[PZ.k] = { lesson: -1, step: 0 });
@@ -297,9 +317,10 @@ function pageLearn(root, tu) {
     root.className = 'page on';
     root.innerHTML = bar('学复原', '') + `<p class="sub1">${puz instanceof Pyra ? '四步：尖角 → 轴心 → 底层棱 → 顶层棱。金字塔只有 933,120 种状态，比三阶简单得多。'
       : '降阶法：先拼中心、再拼棱，' + puz.cn + '就变成一个大号三阶，接着照三阶的做法复原。'}</p>`
-      + Ls.map((L, i) => `<button class="pzLesson" data-i="${i}"><canvas width="112" height="112"></canvas><span><b>${i + 1}. ${esc(L.name)}</b><i>${esc(L.intro)}</i></span></button>`).join('');
+      + Ls.map((L, i) => cardRow(i, 120, (i + 1) + '. ' + L.name, L.intro, '', learned(puz, i))).join('');
     wireChip(root);
-    root.querySelectorAll('.pzLesson').forEach(b => { const i = +b.dataset.i; mini(b.querySelector('canvas'), puz, puz.applyAll(puz.solved(), Ls[i].steps[0].setup));
+    root.querySelectorAll('.pzLesson').forEach(b => { const i = +b.dataset.i, s0 = Ls[i].steps[0];
+      mini3d(b.querySelector('canvas'), puz, puz.applyAll(puz.solved(), s0.setup), s0.focus ? [...Array(puz.S).keys()].map(j => s0.focus(puz, j)) : null);
       b.onclick = () => { nav.lesson = i; nav.step = 0; show(3); }; });
     return;
   }
@@ -312,6 +333,7 @@ function pageLearn(root, tu) {
   stageBind(root, tu);
   const load = () => tu.loadStep(puz.applyAll(puz.solved(), s.setup), s.alg, s.focus ? [...Array(puz.S).keys()].map(i => s.focus(puz, i)) : null);
   root.querySelector('.pzBack').onclick = () => { nav.lesson = -1; show(3); };
+  if (nav.step >= L.steps.length - 1) try { localStorage.setItem('pzl_' + puz.id + '_' + nav.lesson, '1'); } catch (e) {}   // 看到最后一步算学过
   q('tuPrev').onclick = () => { nav.step--; show(3); };
   q('tuAgain').onclick = load;
   if (q('tuNext')) q('tuNext').onclick = () => { nav.step++; show(3); };
@@ -325,10 +347,10 @@ function pagePat(root, view) {
   const puz = view.puz, pats = patterns(puz), nav = PZ.pat[PZ.k] || (PZ.pat[PZ.k] = { pick: -1 });
   if (nav.pick < 0 || nav.pick >= pats.length) {
     root.className = 'page on';
-    root.innerHTML = bar('摆花色', '') + `<p class="sub1">从复原好的${puz.cn}开始，照公式转出这些图案。缩略图是前面那一面。</p>`
-      + pats.map((p, i) => `<button class="pzLesson" data-i="${i}"><canvas width="128" height="128"></canvas><span><b>${esc(p.name)}</b><i>${esc(p.note)}</i><i class="dim">${p.alg.length} 步</i></span></button>`).join('');
+    root.innerHTML = bar('摆花色', '') + `<p class="sub1">从复原好的${puz.cn}开始，照公式转出这些图案。</p>`
+      + pats.map((p, i) => cardRow(i, 128, p.name, p.note, p.alg.length + ' 步', false)).join('');
     wireChip(root);
-    root.querySelectorAll('.pzLesson').forEach(b => { const i = +b.dataset.i; mini(b.querySelector('canvas'), puz, puz.applyAll(puz.solved(), pats[i].alg));
+    root.querySelectorAll('.pzLesson').forEach(b => { const i = +b.dataset.i; mini3d(b.querySelector('canvas'), puz, puz.applyAll(puz.solved(), pats[i].alg), null);
       b.onclick = () => { nav.pick = i; show(4); }; });
     return;
   }

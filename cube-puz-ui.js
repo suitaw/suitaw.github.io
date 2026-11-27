@@ -425,5 +425,5 @@ const PZ = {
   },
 };
 window.PZ = PZ; window.PView = PView;
-window.PZ_CONST = { PRACTICE, TUTORIAL, INPUT, VIEW, PLAY_CN, esc, q, hex, CN };
+window.PZ_CONST = { PRACTICE, TUTORIAL, INPUT, VIEW, PLAY_CN, esc, q, hex, CN, CAM0, CAM0P, CAM_D, BLANK, LK, LF };
 })();
