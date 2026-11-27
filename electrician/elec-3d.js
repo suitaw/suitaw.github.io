@@ -1559,3 +1559,82 @@ E3D.termBox = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
   };
   }}, opt); };
 })();
+
+/* ══════════════ 钳形表（3.7）：一根两芯线（L 红、N 蓝）带一台 2200 W 负载，钳形表钳上去 ══════════════
+   自带状态：jaw 'open'|'closed'|'gap'，which 'L'|'N'|'LN'。读数口径同 c3-7.js：10.0 A；没合严 9.2 A；L+N 一起 0.00。
+   钳口里的蓝点＝磁通（净电流不为零才有）；导线上的橙点＝电流（L 往右去，N 往左回）。opt.onRead({lcd, msg}) */
+(function(){
+'use strict';
+const PARTS = {
+  jaw:   ['钳口（铁芯）', '合上以后是一圈闭合的铁芯 —— 被测导线就是只穿过一次的「一次绕组」。<b>合不严，磁路有缝，读数偏小</b>。', '钳口'],
+  trig:  ['扳机', '按下去钳口张开，松手靠弹簧合上。<b>点它开/合钳口</b>。', '扳机'],
+  body:  ['表身', '里面是二次绕组和测量电路。普通钳形表只能测<b>交流</b>（靠交变磁场感应）。', '表身'],
+  lcd:   ['液晶屏', '', '液晶屏'],
+  wl:    ['火线 L（红）', '电流从电源往负载走。', '火线 L'],
+  wn:    ['零线 N（蓝）', '同样大的电流从负载走回电源，方向跟火线相反。', '零线 N'],
+  flux:  ['磁通（示意）', '导线电流在钳口铁芯里产生的磁场。L、N 一起钳：两股磁场大小相等方向相反，抵消成零。', '磁通']
+};
+const POS = {L:7, N:-7, LN:0}, R = 11;
+E3D.clamp = function(el, opt){ opt = opt||{}; return E3D.viewer(el, {
+  parts:PARTS, center:[0, 0, 0], view:{th:1.05, ph:1.25, r:200},
+  presets:{front:[0, 1, 0, -Math.PI/2, 180], side:[1, 0, 0, Math.PI/2, 200]},
+  build:function(K){
+  const T = K.T, H = K.H, M = K.M, root = K.root, tag = K.tag;
+  /* 导线：沿 x，钳口那一段 L 在 y+7、N 在 y-7 */
+  const red = H.M(0xd42f2f, {roughness:0.5}), blue = H.M(0x1c6dd0, {roughness:0.5});
+  tag(H.wire([[-80, 3, 20], [-40, 3, 20], [-25, 7, 20], [25, 7, 20], [40, 3, 20], [80, 3, 20]], 2.2, red, root), 'wl');
+  tag(H.wire([[-80, -3, 20], [-40, -3, 20], [-25, -7, 20], [25, -7, 20], [40, -3, 20], [80, -3, 20]], 2.2, blue, root), 'wn');
+  const sheath = H.M(0x9aa0a6, {roughness:0.6});
+  [[-80, -48], [48, 80]].forEach(function(a){ const g = new T.CylinderGeometry(6, 6, a[1]-a[0], 16); g.rotateZ(Math.PI/2); const m = new T.Mesh(g, sheath); m.position.set((a[0]+a[1])/2, 0, 20); root.add(m); });
+  const lP = K.dots(10, K.curM, H.poly([[-80, 3, 22.5], [-40, 3, 22.5], [-25, 7, 22.5], [25, 7, 22.5], [40, 3, 22.5], [80, 3, 22.5]]));
+  const nP = K.dots(10, K.curM, H.poly([[80, -3, 22.5], [40, -3, 22.5], [25, -7, 22.5], [-25, -7, 22.5], [-40, -3, 22.5], [-80, -3, 22.5]]));
+  /* 钳形表：整体在 y 方向滑到目标导线下 */
+  const meter = new T.Group(); root.add(meter);
+  const bodyM = H.M(0xd8a31c, {roughness:0.55});
+  tag(H.box(10, 26, 54, 0, 0, -22, bodyM, meter), 'body');
+  tag(H.box(10.4, 20, 34, 0, 0, -30, H.M(0x2d3136, {roughness:0.5}), meter), 'body');
+  const lc = document.createElement('canvas'); lc.width = 260; lc.height = 120; const lg = lc.getContext('2d');
+  const ltex = new T.CanvasTexture(lc); ltex.colorSpace = T.SRGBColorSpace;
+  const lg2 = new T.PlaneGeometry(16, 7.4); lg2.rotateX(Math.PI/2); lg2.rotateZ(Math.PI/2);   /* 朝 +x、字头朝上（+z） */
+  const lcd = tag(new T.Mesh(lg2, new T.MeshBasicMaterial({map:ltex, toneMapped:false})), 'lcd');
+  lcd.position.set(5.3, 0, -20); meter.add(lcd);
+  /* 钳口：下半固定、上半绕铰链（在 y+R 那一侧）转开 */
+  const jm = H.M(0x2b2f34, {roughness:0.45});
+  const lower = new T.TorusGeometry(R, 2.6, 10, 24, Math.PI); lower.rotateX(Math.PI); lower.rotateY(Math.PI/2);
+  meter.add(Object.assign(tag(new T.Mesh(lower, jm), 'jaw'), {}));
+  meter.children[meter.children.length-1].position.z = 20;
+  const hinge = new T.Group(); hinge.position.set(0, -R, 20); meter.add(hinge);
+  const upper = new T.TorusGeometry(R, 2.6, 10, 24, Math.PI); upper.rotateY(Math.PI/2);
+  const up = tag(new T.Mesh(upper, jm), 'jaw'); up.position.set(0, R, 0); hinge.add(up);
+  tag(H.box(6, 6, 10, 0, -R-2, 6, H.M(0x1d1f22), meter), 'trig');
+  /* 磁通点：沿钳口圆周 */
+  const fl = K.dots(12, K.sigM, function(t, out){ const a = t*Math.PI*2; return (out||new T.Vector3()).set(0, Math.cos(a)*R, 20 + Math.sin(a)*R); }, meter);
+  fl.a.forEach(function(m){ tag(m, 'flux'); });
+  const st = {jaw:'closed', which:'L', y:POS.L, open:0, ph:0};
+  function read(){
+    if(st.jaw === 'open') return {lcd:'0.00', msg:'钳口张开着，磁路没闭合，测不出来。'};
+    if(st.which === 'LN') return {lcd:'0.00', msg:'<b>两根一起钳，读 0</b>：火线去 10 A、零线回 10 A，方向相反，磁场抵消。要测哪一根就把它单独分出来钳。'};
+    if(st.jaw === 'gap') return {lcd:'9.2', msg:'<b>钳口没合严</b>（缝隙、铁锈、油污）：磁路漏磁，读数偏小（真值 10.0 A）。'};
+    return {lcd:'10.0', msg:'钳住了 '+(st.which === 'L' ? '火线' : '零线')+'：<b>10.0 A</b>（2200 W ÷ 220 V）。只钳一根，火线零线读数一样。'};
+  }
+  function lcdDraw(r){ lg.fillStyle = '#9fb59a'; lg.fillRect(0, 0, 260, 120); lg.fillStyle = '#1b2219';
+    lg.textAlign = 'right'; lg.textBaseline = 'middle'; lg.font = '700 72px ui-monospace,monospace'; lg.fillText(r.lcd, 245, 66);
+    lg.textAlign = 'left'; lg.font = '600 26px system-ui'; lg.fillText('A~', 10, 24); ltex.needsUpdate = true; }
+  function update(){ const r = read(); lcdDraw(r); if(opt.onRead) opt.onRead(r, st); K.S.dirty = true; }
+  update();
+  return {
+    labels:[['jaw', 0, 0, 34, meter], ['trig', 0, -14, 6, meter], ['body', 0, 0, -40, meter], ['wl', -60, 3, 23], ['wn', -60, -3, 23], ['lcd', 0, 0, -20, meter]],
+    press:function(k){ if(k === 'trig' || k === 'jaw'){ st.jaw = st.jaw === 'open' ? 'closed' : 'open'; update(); return true; } return false; },
+    api:{ st:st, set:function(o){ Object.assign(st, o); update(); } },
+    tick:function(dt, k){
+      st.y += (POS[st.which] - st.y) * Math.min(1, dt*6/k); meter.position.y = st.y;
+      const ot = st.jaw === 'open' ? 1 : st.jaw === 'gap' ? 0.06 : 0;
+      st.open += (ot - st.open) * Math.min(1, dt*8/k); hinge.rotation.x = st.open*0.9;
+      K.flow(lP, true, 0.12/k, dt); K.flow(nP, true, 0.12/k, dt);
+      const net = st.jaw !== 'open' && st.which !== 'LN' && Math.abs(st.y - POS[st.which]) < 0.5;
+      K.flow(fl, net, 0.35/k, dt);
+      return true;
+    }
+  };
+  }}, opt); };
+})();

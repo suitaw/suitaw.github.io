@@ -104,6 +104,26 @@ ELEC.reg({
     <b>切三种钳法看读数。</b>
   </div>
   <div class="card">
+    <div class="h" style="padding:10px 12px 0;font-weight:600">动手钳一钳</div>
+    <div class="k3d-v" id="cl3d"></div>
+    <div class="ctrl">
+      <div class="rowlab">钳口</div>
+      <div class="btns" id="clJaw"><button class="btn sm" data-j="open">张开</button><button class="btn sm on" data-j="closed">钳住合严</button><button class="btn sm" data-j="gap">没合严</button></div>
+      <div class="rowlab">钳哪根</div>
+      <div class="btns" id="clW"><button class="btn sm on" data-w="L">只钳火线 L</button><button class="btn sm" data-w="N">只钳零线 N</button><button class="btn sm" data-w="LN">两根一起钳</button></div>
+    </div>
+    <div class="ctrl" id="cl3c" style="padding-top:0"></div>
+    <div class="k3d-info" id="cl3info"></div>
+  </div>
+  <div class="note" style="margin:10px 0">
+    <div class="st">做个实验</div>
+    橙点是电流：<b>火线往右去、零线往左回</b>。钳口里的蓝点是磁通。<br>
+    ① 只钳火线：蓝点绕着钳口转，读 10.0 A。只钳零线：一样 10.0 A。<br>
+    ② <b>两根一起钳</b>：一去一回，磁场抵消 —— 蓝点没了，读 0。新手拿钳形表去钳整根电缆，读 0 还以为没电，就是这个原因。<br>
+    ③ 点「没合严」：读数偏小。用之前先看钳口接合面干不干净。
+    <span class="sub">点扳机（或钳口）也能开合。拖动转着看，「对着导线看」最清楚。</span>
+  </div>
+  <div class="card">
     <canvas id="cv1"></canvas>
     <div class="ctrl">
       <div class="btns" id="s2k">
@@ -755,6 +775,20 @@ function fitAll(){
 }
 window.addEventListener('resize', fitAll);
 
+/* 3D 钳形表 */
+let CL3 = null;
+function clRead(r, st){
+  document.querySelectorAll('#clJaw .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.j === st.jaw); });
+  document.querySelectorAll('#clW .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.w === st.which); });
+  $('cl3info').innerHTML = '读数 <b>'+r.lcd+' A</b>。'+r.msg;
+}
+if(window.E3D){
+  E3D.clamp($('cl3d'), { onRead:clRead, onInfo:function(p, k){ if(p && k !== 'trig' && k !== 'jaw') $('cl3info').innerHTML = '<b>'+p[0]+'</b>：'+p[1]; } }).then(function(a){ CL3 = a; });
+  $('cl3c').innerHTML = E3D.controlsHTML(null, [['oblique','斜着看'], ['front','对着导线看'], ['side','侧面']]);
+  E3D.bindControls($('cl3c'), function(){ return CL3; });
+  $('clJaw').addEventListener('click', function(e){ const b = e.target.closest('[data-j]'); if(b && CL3) CL3.set({jaw:b.dataset.j}); });
+  $('clW').addEventListener('click', function(e){ const b = e.target.closest('[data-w]'); if(b && CL3) CL3.set({which:b.dataset.w}); });
+}
 ElecNav.init({ch:3, sec:'3.7'});
 ElecUI.bind(document);
 note1(); note2(); note3(); note4();
