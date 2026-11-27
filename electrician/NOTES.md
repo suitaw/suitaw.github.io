@@ -2683,7 +2683,7 @@ CSS 里有 fallback 让 `.tab.on` 的下划线照旧显示。
 他要课文「做到实操版（K3 3D 板）的水准」，先拿 2.2 做样板，看了满意再铺开。
 - `elec-3d.js` 普通 script（薄壳页和 book.html 都没有 importmap）：three 用动态 `import()` 拿 CDN，转镜头自己写（不用 OrbitControls）；CSS 自带。`E3D.contactor(el, {onStep, onInfo})` → Promise<api>（`set/cut/slow/labels/reset/view`）；加载失败给一句话，平面图照常用。
 - 模型按 CJX2 真实结构：E 形叠片静铁芯 + 短路环 + 线圈（A1/A2）+ 衔铁 + 两根反力弹簧；触点架＝下横梁 + 两侧立柱 + 上横梁 + 露头；三对桥式主触点（双断点）+ 13-14 常开 + 21-22 常闭，常开有触点弹簧和 1.5mm 超程，常闭先空走 1mm 再拉开（**常闭先断、常开后合**）。整体平躺（root.rotation.x=-90°），衔铁往下吸，和平面图同向。
-- **11-27 他看真机后改**：转法改成同魔方练习页（模型绕自身中心、绕「垂直于手指方向」的屏幕轴转，四元数左乘，不卡角度；默认姿态用「原镜头朝向取逆」算，node 验过与原视角投影逐点一致）；标注改成左右两列名字牌 + 引线指到零件（SVG 覆盖层），不压模型；加载失败（无 WebGL）给提示。
+- **11-27 他看真机后改**：转法改成同魔方练习页（模型绕自身中心、绕「垂直于手指方向」的屏幕轴转，四元数左乘，不卡角度；默认姿态用「原镜头朝向取逆」算，node 验过与原视角投影逐点一致）；标注改成左右两列名字牌 + 引线指到零件（SVG 覆盖层），不压模型；加载失败（无 WebGL）给提示。两指同魔方：连线角度→绕屏幕法线拧、中点平移→翻、距离→缩放；3D 画布单独 touch-action:none（全站 canvas 是 pan-y）。手势逻辑能在 node 里测（vm 跑 elec-3d.js + 假 EventTarget，见 scratchpad tw.mjs 的做法），不用 GPU。
 - 颜色照站规：橙点＝电流（主电路、线圈回路），蓝点＝磁通；选中＝背面放大 1.08 的蓝描边，不改本色；主线黄绿红、控制线黑。
 - 2.2 第一屏：3D 卡插在原平面图上面，两边按钮共用 `S1.on`。
 - **验证**：容器 SwiftShader 跑不了（Shader VALIDATE_STATUS false），手机没 root 时用 AutoDL：`~/bin/km3d-shot <动作...>`（传 electrician 文件 → `/root/autodl-tmp/webgl/wgl.py` 真显卡跑 c2-2.html → 截图拉回 /sdcard/webdev/shots/）。动作：`wait:ms` `click:sel` `tap:x,y`（画布比例）`eval:js` `shot:名`（3D 卡）`vp:名` `drag:dx,dy`（从画布中心拖）。three 从 `site/three/` 本地供（路由拦截 jsdelivr）；中文字体是传上去的更纱。

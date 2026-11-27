@@ -11,7 +11,7 @@ function loadThree(){ return THREE ? Promise.resolve(THREE) : import(THREE_URL).
 /* ── 样式（自带，宿主页只要引这个 js） ── */
 const css = `
 .k3d-v{position:relative;width:100%;aspect-ratio:1/1.02;border-radius:10px;overflow:hidden;background:var(--canvas);touch-action:none}
-.k3d-v canvas{display:block;width:100%;height:100%}
+.k3d-v canvas{display:block;width:100%;height:100%;touch-action:none}   /* 全站 canvas 是 pan-y，这里两指手势要全归页面 */
 .k3d-v .k3d-ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:.85rem}
 .k3d-ln{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .k3d-lb{position:absolute;left:0;top:0;pointer-events:none;font-size:11px;line-height:1;padding:3px 6px;border-radius:9px;white-space:nowrap;
@@ -84,16 +84,23 @@ function envMap(T, renderer){
    哪个角度都能到、不会卡住。两指捏合 / 滚轮缩放；拖动超过 6px 不算点击 */
 function trackball(T, cam, el, pivot, onChange){
   const st = {r:265, r0:265, q0:new T.Quaternion()}, pts = new Map(), q = new T.Quaternion(), ax = new T.Vector3();
-  let pinch0 = 0, rp = 0, moved = 0;
+  let two = null, moved = 0;
   function apply(){ cam.position.set(0, 0, st.r); cam.lookAt(0, 0, 0); onChange(); }
+  /* 两指（同魔方练习页）：连线转了多少角度 → 绕屏幕法线拧；中点挪了多少 → 跟单指一样翻；两指距离 → 缩放 */
+  function twoInfo(){ const a = [...pts.values()]; return {a:Math.atan2(a[1].y-a[0].y, a[1].x-a[0].x), cx:(a[0].x+a[1].x)/2, cy:(a[0].y+a[1].y)/2, d:Math.hypot(a[1].x-a[0].x, a[1].y-a[0].y)}; }
+  function turn(dx, dy){ const L = Math.hypot(dx, dy); if(!L) return; ax.set(dy/L, dx/L, 0); q.setFromAxisAngle(ax, L*0.008); pivot.quaternion.premultiply(q); }
   el.addEventListener('pointerdown', function(e){ el.setPointerCapture(e.pointerId); pts.set(e.pointerId, {x:e.clientX, y:e.clientY}); moved = 0;
-    if(pts.size===2){ const a = [...pts.values()]; pinch0 = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y); rp = st.r; } });
+    two = pts.size===2 ? twoInfo() : null; });
   el.addEventListener('pointermove', function(e){ const p = pts.get(e.pointerId); if(!p) return;
     const dx = e.clientX-p.x, dy = e.clientY-p.y; p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx)+Math.abs(dy);
-    if(pts.size===1){ const L = Math.hypot(dx, dy); if(!L) return;
-      ax.set(dy/L, dx/L, 0); q.setFromAxisAngle(ax, L*0.008); pivot.quaternion.premultiply(q); onChange(); }
-    else if(pts.size===2){ const a = [...pts.values()], d = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y); st.r = Math.min(520, Math.max(110, rp*pinch0/d)); apply(); } });
-  function up(e){ pts.delete(e.pointerId); }
+    if(pts.size===1){ turn(dx, dy); onChange(); }
+    else if(pts.size===2 && two){ const n = twoInfo(); let dA = n.a - two.a;
+      while(dA > Math.PI) dA -= 2*Math.PI; while(dA < -Math.PI) dA += 2*Math.PI;
+      ax.set(0, 0, 1); q.setFromAxisAngle(ax, -dA); pivot.quaternion.premultiply(q);       /* 屏幕 y 朝下，手指顺时针拧＝绕朝外的 z 轴负转 */
+      turn(n.cx-two.cx, n.cy-two.cy);
+      if(two.d > 0) st.r = Math.min(520, Math.max(110, st.r*two.d/n.d));
+      two = n; apply(); } });
+  function up(e){ pts.delete(e.pointerId); two = pts.size===2 ? twoInfo() : null; }
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   el.addEventListener('wheel', function(e){ e.preventDefault(); st.r = Math.min(520, Math.max(110, st.r*(1+e.deltaY*0.001))); apply(); }, {passive:false});
   return {apply:apply, moved:function(){ return moved; }, st:st,
@@ -427,7 +434,8 @@ E3D._finish = function(C){
     cut:function(b){ setCut(b); }, slow:function(b){ st.slow = !!b; },
     labels:function(b){ st.labels = !!b; S.dirty = true; }, reset:function(){ orb.reset(); select(null); },
     state:st,
-    view:function(th, ph, r){ orb.setView(th, ph, r); }   /* 调试/截图用 */
+    view:function(th, ph, r){ orb.setView(th, ph, r); },
+    pose:function(){ return C.pivot.quaternion.toArray().map(function(v){ return +v.toFixed(4); }).concat(+orb.st.r.toFixed(1)); }   /* 测试用 */   /* 调试/截图用 */
   };
 };
 })();
