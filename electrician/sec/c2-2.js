@@ -172,7 +172,7 @@ ELEC.reg({
     <canvas id="cv2"></canvas>
     <div class="ctrl">
       <div class="btns">
-        <button class="btn big" id="s3cut">⚡ 来一次停电</button>
+        <button class="btn big" id="s3cut">来一次停电</button>
       </div>
       <div class="btns">
         <button class="btn" id="s3start">按 SB1 起动</button>
@@ -750,7 +750,7 @@ function note3(){
         '左边：闸刀合着，直通。<br>'+
         '右边：按过 SB1 之后线圈得电，自锁触点 KM-1 闭合，替 SB1 把这条路保持住 —— '+
         '所以你早就松手了，它还在转。<br>'+
-        '<span class="sub">现在点「⚡ 来一次停电」。</span>';
+        '<span class="sub">现在点「来一次停电」。</span>';
   }else{
     S3.msg = '';
     h = '<div class="st">右边停着，等人按起动</div>'+
