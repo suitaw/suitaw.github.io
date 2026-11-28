@@ -111,39 +111,39 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
    灯泡、日光灯经右上角「灯具端子排」接：从上往下 1 日光灯 N（蓝）、2 日光灯 L（红）、3 灯泡 N（蓝）、4 灯泡 L（红，最下面）——
    便签写了「灯泡＝最下面红线」「日光灯＝往下数第 2 个红线」，两根蓝线位置是我按「红蓝成对」补的。
    电源进线端子排「第 3 孔＝零线」是便签原话；第 1 孔 L、第 2 孔 PE 是推测。 */
-const KM_W = 200, KM_H = 150, BOARD_H = 800;   /* 11-27 进线端子和试车台并排放最下面，板子缩短 */
+const KM_W = 200, KM_H = 150, BOARD_H = 860;   /* 11-28 竖长重排 */   /* 11-27 进线端子和试车台并排放最下面，板子缩短 */
 const FR_PINS = [];
 
 /* 11-27 照他拍的考场照明盘重排（/sdcard/DCIM/Camera/IMG_20261127_110954.jpg）：上排电能表、日光灯、灯具端子排；
    中间导轨 QF1、QF2（带漏电模块）、QF3 + 白炽灯；下排电源进线端子、插座、双控①②、单控；上下两条横线槽。
    照片上接地排在左下角，这里放到导轨左边（放下面会被电源进线的外部线压住）。只有 3 个空开要自己装 */
 const DEVICES = [
-  {id:'mt', tag:'电能表', kind:'meter', x:30, y:20, w:150, h:186,
+  {id:'mt', tag:'电能表', kind:'meter', x:40, y:146, w:150, h:186,
    terminals:[{id:'mt-1',label:'1',x:27,y:170},{id:'mt-2',label:'2',x:59,y:170},{id:'mt-3',label:'3',x:91,y:170},{id:'mt-4',label:'4',x:123,y:170}]},
   /* 11-27 他说：电能表右边那条端子排是电能表进出线过一下。上排跟电能表出厂接好，盘内线接下排 */
-  {id:'mb', tag:'电能表接线排', kind:'mbt', x:206, y:150, w:132, h:56,
+  {id:'mb', tag:'电能表接线排', kind:'mbt', x:200, y:276, w:132, h:56,
    terminals:[1,2,3,4].map(function(i){ return {id:'mb-'+i, label:'', x:18+32*(i-1), y:42}; })},
-  {id:'src', tag:'电源进线', kind:'src', x:36, y:452,   /* 11-27 他说照板子放左下角、接地排上面 */ w:112, h:56,
+  {id:'src', tag:'电源进线', kind:'src', x:34, y:386,   /* 11-27 他说照板子放左下角、接地排上面 */ w:112, h:56,
    terminals:[{id:'src-l',label:'L',x:20,y:15},{id:'src-pe',label:'PE',x:56,y:15},{id:'src-n',label:'N',x:92,y:15}]},
-  {id:'tube', tag:'日光灯', kind:'tube', x:200, y:12, w:250, h:112, terminals:[]},
-  {id:'lt', tag:'灯具端子排', kind:'lterm', x:456, y:92, w:100, h:118,   /* 11-27 加宽：中间写清每一位接哪盏灯 */
+  {id:'tube', tag:'日光灯', kind:'tube', x:40, y:14, w:250, h:112, terminals:[]},
+  {id:'lt', tag:'灯具端子排', kind:'lterm', x:350, y:40, w:100, h:118,   /* 11-27 加宽：中间写清每一位接哪盏灯 */
    terminals:[1,2,3,4].map(function(i){ return {id:'lt-'+i, label:String(i), x:22, y:17+28*(i-1)}; })},
-  {id:'el', tag:'白炽灯', kind:'lamp', x:428, y:262, w:94, h:130, terminals:[]},
-  {id:'qf1', tag:'QF1 总开关', kind:'mcb2', x:124, y:266, w:76, h:136,
+  {id:'el', tag:'白炽灯', kind:'lamp', x:356, y:186, w:94, h:130, terminals:[]},
+  {id:'qf1', tag:'QF1 总开关', kind:'mcb2', x:164, y:384, w:76, h:136,
    terminals:[{id:'qf1-ni',label:'N',x:20,y:14},{id:'qf1-li',label:'L',x:56,y:14},{id:'qf1-no',label:'N',x:20,y:122},{id:'qf1-lo',label:'L',x:56,y:122}]},
-  {id:'qf2', tag:'QF2 插座（漏保）', kind:'mcb2', rcd:true, x:208, y:266, w:112, h:136,
+  {id:'qf2', tag:'QF2 插座（漏保）', kind:'mcb2', rcd:true, x:248, y:384, w:112, h:136,
    terminals:[{id:'qf2-ni',label:'N',x:20,y:14},{id:'qf2-li',label:'L',x:56,y:14},{id:'qf2-no',label:'N',x:20,y:122},{id:'qf2-lo',label:'L',x:56,y:122}]},
-  {id:'qf3', tag:'QF3 照明', kind:'mcb2', x:328, y:266, w:76, h:136,
+  {id:'qf3', tag:'QF3 照明', kind:'mcb2', x:368, y:384, w:76, h:136,
    terminals:[{id:'qf3-ni',label:'N',x:20,y:14},{id:'qf3-li',label:'L',x:56,y:14},{id:'qf3-no',label:'N',x:20,y:122},{id:'qf3-lo',label:'L',x:56,y:122}]},
-  {id:'pe', tag:'接地排', kind:'pebar', x:40, y:530, w:92, h:30,
+  {id:'pe', tag:'接地排', kind:'pebar', x:40, y:466, w:92, h:30,
    terminals:[{id:'pe-1',label:'',x:16,y:15},{id:'pe-2',label:'',x:46,y:15},{id:'pe-3',label:'',x:76,y:15}]},
-  {id:'xs', tag:'五孔插座', kind:'socket', x:156, y:454, s:0.95, w:100, h:130,
+  {id:'xs', tag:'五孔插座', kind:'socket', x:50, y:572, s:0.95, w:100, h:130,
    terminals:[{id:'xs-n',label:'N',x:22,y:16},{id:'xs-pe',label:'PE',x:50,y:16},{id:'xs-l',label:'L',x:78,y:16}]},
-  {id:'s1', tag:'双控① S1', kind:'sw', two:true, x:258, y:454, s:0.95, w:100, h:130,
+  {id:'s1', tag:'双控① S1', kind:'sw', two:true, x:157, y:572, s:0.95, w:100, h:130,
    terminals:[{id:'s1-l1',label:'L1',x:22,y:16},{id:'s1-l',label:'L',x:50,y:16},{id:'s1-l2',label:'L2',x:78,y:16}]},
-  {id:'s2', tag:'双控② S2', kind:'sw', two:true, x:360, y:454, s:0.95, w:100, h:130,
+  {id:'s2', tag:'双控② S2', kind:'sw', two:true, x:259, y:572, s:0.95, w:100, h:130,
    terminals:[{id:'s2-l1',label:'L1',x:22,y:16},{id:'s2-l',label:'L',x:50,y:16},{id:'s2-l2',label:'L2',x:78,y:16}]},
-  {id:'s3', tag:'单控 S3', kind:'sw', x:462, y:454, s:0.95, w:100, h:130,
+  {id:'s3', tag:'单控 S3', kind:'sw', x:361, y:572, s:0.95, w:100, h:130,
    terminals:[{id:'s3-l1',label:'L1',x:34,y:16},{id:'s3-l',label:'L',x:66,y:16}]}
 ];
 const TPOS = {};
@@ -507,7 +507,7 @@ function dev(id){ return DEVICES.filter(function(d){ return d.id===id; })[0]; }
 
 /* 安装板 + 导轨（导轨贴图按长度重复） */
 const BOARD = add(new THREE.Mesh(new THREE.BoxGeometry((BW+40)*5, (BH+20)*4, 12), MAT.board));   /* 底板做得比屏幕大得多：缩放、全屏都铺满，不露背景 */ BOARD.position.copy(V(BW/2, BH/2, -6)); BOARD.userData.bg = true;
-[[124,334,296]].forEach(function(r){
+[[164,452,280]].forEach(function(r){
   const t = RAIL_TEX.clone(); t.repeat.set((r[2]+16)/44, 1); t.needsUpdate = true;
   const m = M(0xffffff, {map:t, metalness:0.9, roughness:0.35});
   box(r[0]-8, r[1]-9, r[2]+16, 18, 0, 3.5, m);
@@ -676,7 +676,7 @@ DEVICES.forEach(function(d){
       label(MN[i], tx, y+28, 16.4, 10, i<2 ? '#b8282a' : '#1c5fb8', null, false, true);
       const mp = TPOS['mt-'+(i+1)], lx = x-8-3*i, ly = mt.y+mt.H+8+3*i;
       tube(path3([[mp.x, mp.y],[mp.x, ly],[lx, ly],[lx, y+14],[tx, y+14]], 22.6, 18.6, 30+i*2, null, null), 1.6, M(0x22262b, {roughness:0.5}), 5).castShadow = false; });
-    label(d.tag, x+w+44, y+h/2, 0.4, 13, '#1f2328');
+    label(d.tag, x+w/2, y-10, 0.4, 13, '#1f2328');   /* 11-28 竖排后右边是灯具端子排下来的线，名字挪到上面空处 */
   }
   if(d.kind==='src'){                                                   /* 电源进线端子排：上排接盘里，下排接试车台来的电源线 */
     rbox(x, y, w, h, 0, 16, MAT.cream, 2);
@@ -858,8 +858,8 @@ const MAINS = [], MOT_SEG = 0, MAIN_RUN = {};
 /* 19 根线：相线红、零线蓝、地线黄绿 */
 /* ══ 线槽 ══ 照片：导轨上下两条横槽，两头竖槽连起来。槽宽 24、深 22，上面敞口，两壁是一排梳齿（线从齿缝里进出） */
 const DUCTS = {
-  H:[{y:236, x0:20, x1:548}, {y:430, x0:20, x1:548}],
-  V:[{x:20, y0:236, y1:560}, {x:548, y0:236, y1:430}]
+  H:[{y:360, x0:18, x1:458}, {y:548, x0:18, x1:458}],   /* 11-28 竖长重排：上排（灯、电能表）↓ 槽 ↓ 进线+空开 ↓ 槽 ↓ 插座开关 */
+  V:[{x:18, y0:360, y1:548}]
 };
 const DUCT_D = 22;
 (function(){
@@ -972,7 +972,7 @@ const EXG = new THREE.Group(); root.add(EXG);      /* 试车台一直摆着；�
 const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP：考场里能点的位置 id → {pos, mark, pick, name} */
 (function(){
   PARENT = EXG;
-  const BX = 340, BY = 640;   /* 11-27 上移，填掉开关下面的空白 */
+  const BX = 250, BY = 736;   /* 11-27 上移，填掉开关下面的空白 */
   rbox(BX, BY, 206, 96, 0, 40, M(0x5d6b7a, {roughness:0.5, metalness:0.3}), 4);              /* 试车台（喷塑钢壳） */
   rbox(BX+4, BY+4, 198, 88, 39, 1.5, M(0x66768a, {roughness:0.45, metalness:0.3}), 3);
   for(const s of [[BX+8,BY+8],[BX+198,BY+8],[BX+8,BY+88],[BX+198,BY+88]]) screw(s[0], s[1], 40.5, 3);
@@ -1010,7 +1010,7 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
     (XT[id] = XT[id] || {name:name, meshes:[]}).meshes.push(m);
   }
   [0,1,2].forEach(function(i){
-    const ly = 514+3*i, gx = 146+3*i, dy = 604+4*i;   /* 进线排在左下：从进线排和接地排中间横出、插座左边的缝下去、再到试车台 */
+    const ly = 452+3*i, gx = 148+3*i, dy = 722+4*i;   /* 进线排在左下：从进线排和接地排中间横出、插座左边的缝下去、再到试车台 */
     wire(cid[i]+'P', cn[i]+'一头 → 盘上电源进线端子', JC[i], [[SXs[i],SY],[SXs[i],ly],[gx,ly],[gx,dy],[jx[i],dy],[jx[i],BY+2]], SZ, null, 60+i*4);
     wire(cid[i]+'S', cn[i]+'另一头 → 试车台插孔', JC[i], [[jx[i],BY+2],[jx[i],BY+12],[jx[i],JY]], null, 45, 60+i*4);
   });
@@ -1036,7 +1036,7 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
   PARENT = root;
 })();
 /* ── 考场桌面道具（11-26 他要「能交互就交互」）：试车台下面一块绿胶垫，放线缆、验电笔、螺丝刀、绝缘手套。只在通电试车阶段出现 ── */
-const TOOLG = new THREE.Group(); TOOLG.visible = false; root.add(TOOLG);
+const TOOLG = new THREE.Group(); TOOLG.visible = false; root.add(TOOLG); TOOLG.position.set(-90, -96, 0);   /* 11-28 试车台挪了 (-90,+96)，桌面道具整组跟着 */
 const TOOL = {};
 function makePen(){                         /* 沿 +X 摆，x=0 是笔尖 */
   const g = new THREE.Group();
@@ -2293,7 +2293,7 @@ function fitD(w, h, exact){
 }
 const VIEWS = {
   front:function(){ const c = (BENCH ? CONTENT : CONTENT_B) || {x:280, y:BH/2, w:600, h:BH+20}; return {t:V(c.x, c.y, 20), d:[0,0,1], D:fitD(c.w, c.h, true)}; },
-  desk:function(){ return {t:V(320,478,30), d:[0,-0.45,1], D:fitD(490,300)}; },   /* 桌垫贴近底栏 */
+  desk:function(){ return {t:V(230,574,30), d:[0,-0.45,1], D:fitD(490,300)}; },   /* 桌垫贴近底栏 */
   km:function(){ return {t:V(237,415,40), d:[0.18,-0.5,1], D:fitD(450,300)}; },
   tb:function(){ return {t:V(480,300,30), d:[-0.5,-0.12,1], D:fitD(300,600)}; }
 };
