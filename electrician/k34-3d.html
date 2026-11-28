@@ -61,17 +61,18 @@ ol.steps li.bad{color:#c0392b}
 #tray .tl{font-size:13px;color:var(--mut);margin-right:2px}#tray button{font-size:14px;padding:6px 8px}
 #menu .shelf button{display:inline-block;width:auto;margin:6px 6px 0 0;padding:8px 10px;font-size:14px}#menu .sh{margin-top:10px;font-weight:700;font-size:14px}
 #menu button.go{background:var(--blue);color:#fff;border-color:var(--blue);text-align:center;margin-top:14px}#einst{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#einst.rec{background:#c0392b;border-color:#c0392b;color:#fff}
+.top #reset{padding:5px 9px;font-size:13px}
 #fold{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;margin:-6px 0 2px;padding:2px 0 4px;border:0;background:none;color:var(--mut);font-size:12px}
 #fold svg{transition:transform .2s}.bot.min #fold svg{transform:rotate(180deg)}
 .bot.min #info{min-height:0;max-height:1.5em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:6px}
 .mlcd{display:inline-block;font:700 17px/1.3 ui-monospace,Menlo,monospace;background:#c8d2b4;color:#1b2216;border:1px solid #8f9a7c;border-radius:4px;padding:0 8px;margin-right:8px;min-width:84px;text-align:right}
-#rowW button{padding:7px 7px}
+#rowW button{padding:7px 5px}
 </style>
 </head>
 <body>
 <canvas id="gl"></canvas>
 <div class="top">
-  <a class="blink" id="back" href="k3-3d.html">‹ 返回</a><span class="sp"></span>
+  <a class="blink" id="back" href="k3-3d.html">‹ 返回</a><button id="reset" hidden>重来</button><span class="sp"></span>
   <span class="views">
     <button id="home" hidden>复原</button><button id="rot">3D 看</button><button id="fs">全屏</button><button id="snd" aria-label="声音"><svg viewBox="0 0 24 24" width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.2em" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
   </span>
@@ -82,7 +83,7 @@ ol.steps li.bad{color:#c0392b}
   <div id="info"></div>
   <div class="row" id="rowM">
     <span class="grp" id="rowV"><button id="prev">◀</button><button id="cnt"></button><button id="next">▶</button><button id="rev">对照</button></span>
-    <span class="grp" id="rowW" hidden><button id="hint">提示</button><button id="del">撤销</button><button id="reset">重来</button><button id="chk" hidden>检查</button><button id="meter">万用表</button></span>
+    <span class="grp" id="rowW" hidden><button id="hint">提示</button><button id="del">撤销</button><button id="chk" hidden>检查</button><button id="meter">万用表</button></span>
     <span class="grp" id="rowE0" hidden><button id="eppe">进入考位</button><button id="eshelf">货架</button><button id="einst0">开始安装</button><button id="emnt">跳过：直接装好</button></span><span class="grp" id="rowE1" hidden><button id="edel">撤销</button><button id="eclr">全拆</button><button id="esplice">接头</button><button id="einst">报告</button><button id="edone">跳过</button></span>
     <span class="grp" id="rowE2" hidden><button id="ehand">右手</button><button id="etool">指认</button><button id="epen">验电笔</button><button id="eglove">摘手套</button><button id="erep">报告</button><button id="esub">交卷</button></span>
     <span class="sp"></span>
@@ -1517,7 +1518,7 @@ function setMode(wire){
   setActive(wire ? (UI.free ? FW.concat(preW()) : WIRES.filter(function(w){ return DONE[w.id] || !inScope(w); })) : WIRES);
   if(UI.meter) meterOn(false);
   document.getElementById('chk').hidden = !(wire && UI.free);
-  document.getElementById('del').hidden = !!(wire && UI.free);   /* 自由接：点线就能拆，撤销按钮省掉，底栏一行放得下 */
+  document.getElementById('reset').hidden = !wire;   /* 11-28 重来挪到顶栏，底栏放回撤销 */
   exRows();
   const mb = document.getElementById('mode'); mb.textContent = wire ? '看答案' : '自己接'; mb.classList.toggle('on', wire);
 }
@@ -2650,10 +2651,13 @@ document.getElementById('del').onclick = function(){   /* 撤销：拆掉最后�
   if(!id){ const ks = Object.keys(DONE).map(Number); if(!ks.length) return; id = Math.max.apply(null, ks); }
   delete DONE[id]; UI.msg='撤销了第 '+id+' 根'; UI.sel=0; applyDone();
 };
+/* 11-28 他要：重来可以只拆线、元件留着（「重来」挪到顶栏，底栏放回「撤销」） */
 document.getElementById('reset').onclick = function(){
-  if((!doneN() && !FW.length && !Object.keys(UI.mount).length) || !confirm('把接好的线全部拆掉、元件也卸下来，重新来？')) return;
-  simQF(false, performance.now()); fwReset(); for(const k in DONE) delete DONE[k]; UI.err=0; UI.sel=0; UI.pend=null; UI.hint=0; UI.msg=''; applyDone();
-  UI.mount = {}; UI.part = null; UI.hintSlot = null; try{ localStorage.removeItem(LSM); }catch(e){}
+  const nW = UI.free ? FW.length : doneN(), nM = Object.keys(UI.mount).length;
+  if(!nW && !nM){ UI.msg = '还没接线、也没装元件'; return; }
+  const wipe = function(){ simQF(false, performance.now()); fwReset(); for(const k in DONE) delete DONE[k]; UI.err=0; UI.sel=0; UI.pend=null; UI.hint=0; applyDone(); };
+  menu('重来', (nW ? [['只拆线（'+nW+' 根），元件留着', function(){ wipe(); UI.msg = '线全拆了，元件还装着：接着接线'; }]] : [])
+    .concat(nM ? [['全部重来：线拆掉，元件也卸下来', function(){ wipe(); UI.mount = {}; UI.part = null; UI.hintSlot = null; try{ localStorage.removeItem(LSM); }catch(e){} UI.msg = ''; }]] : []));
 };
 document.getElementById('snd').onclick = function(){ sndOn = !sndOn; this.innerHTML = sndOn ? IC.son : IC.soff; if(!sndOn) hum(false); else if(SIM.motor) hum(true); };
 /* 屏幕尺寸变了（全屏、转屏）：没手动放大过就按新尺寸重新摆全景 */
