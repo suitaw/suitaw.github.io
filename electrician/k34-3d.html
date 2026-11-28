@@ -64,9 +64,11 @@ ol.steps li.bad{color:#c0392b}
 #menu button.go{background:var(--blue);color:#fff;border-color:var(--blue);text-align:center;margin-top:14px}#einst{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#einst.rec{background:#c0392b;border-color:#c0392b;color:#fff}
 .top #reset{padding:5px 9px;font-size:13px}
 #tray button.th{padding:3px 4px 2px;display:inline-flex;flex-direction:column;align-items:center;line-height:1.1}#tray button.th img{width:40px;height:40px;display:block}#tray button.th small{font-size:11.5px;color:var(--mut)}#tray button.th.on{background:#dbe8fb;border-color:var(--blue);box-shadow:0 0 0 2px var(--blue) inset}
+#menu .shelf button.th{display:inline-flex;flex-direction:column;align-items:center;width:auto;padding:4px;margin:6px 6px 0 0;line-height:1.1;text-align:center}#menu .shelf button.th img{width:54px;height:54px;display:block}#menu .shelf button.th small{font-size:12px;color:var(--mut)}#menu .shelf button.th.on{background:#dbe8fb;border-color:var(--blue);box-shadow:0 0 0 2px var(--blue) inset;color:inherit}
 #fold{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;margin:-6px 0 2px;padding:2px 0 4px;border:0;background:none;color:var(--mut);font-size:12px}
 #fold svg{transition:transform .2s}.bot.min #fold svg{transform:rotate(180deg)}
-.bot.min #info{min-height:0;max-height:1.5em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:6px}
+.bot.min #info{display:none}   /* 11-28 他要说明能完全收起 */
+#tray button.wkb{padding:2px;position:relative}#tray button.wkb img{width:30px;height:30px}#tray button.wkb small{position:absolute;right:1px;bottom:0;font-size:10px;line-height:1.2;background:rgba(255,255,255,.85);border-radius:3px;padding:0 2px;color:var(--ink)}
 .mlcd{display:inline-block;font:700 17px/1.3 ui-monospace,Menlo,monospace;background:#c8d2b4;color:#1b2216;border:1px solid #8f9a7c;border-radius:4px;padding:0 8px;margin-right:8px;min-width:84px;text-align:right}
 #rowW button{padding:7px 5px}
 </style>
@@ -2033,7 +2035,7 @@ function exShelf(){
     menuEl.innerHTML = '<h3>货架 · 选要用的（再点一下取消）</h3><div class="shelf">'+['t','p'].map(function(g){
       return '<div class="sh">'+(g==='t' ? '工器具' : '元器件（照电路图选）')+'</div>'+SHELF.filter(function(s){ return s[2]===g; }).map(function(s){
         const got = EX.desk[s[0]];
-        return '<button data-sh="'+s[0]+'" class="'+(sel[s[0]] ? 'on' : '')+'"'+(got ? ' disabled' : '')+'>'+s[1]+(got ? '（已在桌上）' : '')+'</button>'; }).join(''); }).join('')+
+        return shBtn(s, sel[s[0]], got); }).join(''); }).join('')+
       '</div><button data-go="1" class="go">放到工作桌面</button><button data-x="1" class="c">取消</button>';
     ov.classList.add('show'); menuT = performance.now();
   }
@@ -2092,9 +2094,9 @@ function exTidy(){ EX.tidied = true; EX.cab = 'tidy'; exLog('tidy', {}); click(9
 function trayHTML(){
   if(!EX.on) return null;
   const B = function(attr, val, text, on, dis){ return '<button data-'+attr+'="'+val+'" class="'+(on ? 'on' : '')+'"'+(dis ? ' disabled' : '')+'>'+text+'</button>'; };
-  if(EX.phase==='ppe') return '<span class="tl">穿戴</span>'+PPE.map(function(p){ return B('ppe', p[0], (EX.ppe[p[0]] ? '✓ ' : '')+p[1], EX.ppe[p[0]]); }).join('');
+  if(EX.phase==='ppe') return '<span class="tl">穿戴</span>'+PPE.map(function(p){ return thBtn('ppe', p[0], ppeThumb(p[0]), p[1], EX.ppe[p[0]] ? '✓' : '', EX.ppe[p[0]]); }).join('');
   if(EX.phase==='prep'){ const ks = SHELF.filter(function(s){ return EX.desk[s[0]] && s[2]==='p'; });
-    return '<span class="tl">桌面元器件</span>'+(ks.length ? ks.map(function(s){ return B('test', s[0], s[1].split(' ')[0]+(EX.tested[s[0]] ? ' ✓测过' : ' · 测'), EX.tested[s[0]]); }).join('') : '<span class="tl">（还没拿）</span>'); }
+    return '<span class="tl">桌面元器件</span>'+(ks.length ? ks.map(function(s){ return thBtn('test', s[0], shelfThumb(s[0]), s[1], EX.tested[s[0]] ? '✓测过' : '测', EX.tested[s[0]]); }).join('') : '<span class="tl">（还没拿）</span>'); }
   if(EX.phase==='mount'){ const ks = Object.keys(XPARTS).filter(function(k){ return EX.desk[k] && (XPARTS[k].bad || XPARTS[k].fits.some(function(s){ return !EX.mount[s]; })); });
     return '<span class="tl">零件盒</span>'+(ks.length ? ks.map(function(k){ return xpBtn(k, UI.part===k); }).join('') : '<span class="tl">（桌上没元件了，去货架拿）</span>'); }
   if(EX.phase==='wire' || (EX.phase==='trial' && powerOff() && !exStripReady() && EX.onSinceEdit!==undefined && EX.everOnX))
@@ -2464,8 +2466,8 @@ function thBtn(attr, val, img, name, sub, on){
 function partBtn(attr, k, fit, name, n, on){ return thBtn(attr, k, fit ? devThumb(fit) : '', name, n>1 ? '×'+n : '', on); }
 /* 同色有几种线径（配电箱 4.0 / 2.5 / 1.5）才在线卷下面写线径，不然光看颜色就够了 */
 function wkBtn(k, on){ const K = WK[k], same = Object.keys(WK).filter(function(j){ return WK[j][1]===K[1]; }).length > 1;
-  return thBtn('wk', k, wireThumb(k), K[0], same ? K[0].replace(/^\S+\s*/, '') : '', on); }
-function xpBtn(k, on){ const p = XPARTS[k]; return partBtn('xp', k, p.fits && p.fits[0], p.name, 0, on); }
+  return thBtn('wk', k, wireThumb(k), K[0], same ? K[0].replace(/^\S+\s*/, '') : '', on).replace('class="th', 'class="th wkb'); }   /* 11-28 他嫌选线那排太占地方：小线卷、线径贴角上 */
+function xpBtn(k, on){ const p = XPARTS[k], fi = p.fits && p.fits[0]; return fi ? partBtn('xp', k, fi, p.name, 0, on) : thBtn('xp', k, shelfThumb(k), p.name, shelfSub(k, (SHN[k]||[])[1]||''), on); }
 /* 自己接（练习）：底栏上面一排线卷，点哪卷之后接的线都用哪卷（记住上次选的） */
 const FWK = Object.keys(WK).filter(function(k){ return WIRES.some(function(w){ return w.wk ? w.wk===k : w.color===WK[k][1]; }); });
 UI.fwk = FWK[0];
@@ -2480,6 +2482,133 @@ function fwBuildK(w){   /* 自己选了线卷的线：颜色、粗细照选的 *
 }
 function fwColorBad(){ return FW.filter(function(w){ return w.wk && WK[w.wk] && wkWant(w.from, w.to).indexOf(w.wk)<0; }); }
 
+/* ══ 货架、穿戴的模型小图（11-28 他要：能用模型的都用模型）══ 工具、穿戴是新做的简单模型，只用来拍按钮图；
+   元器件优先用板上那个元件的模型；故意摆着的错型号（线圈 220V、漏电 300mA）跟对的长一样，用同一个模型、图下标出区别 */
+function shelfMesh(geo, mat, x, y, z, rx, ry, rz, g){ const m = new THREE.Mesh(geo, mat); m.position.set(x||0, y||0, z||0); m.rotation.set(rx||0, ry||0, rz||0); (g||this).add(m); return m; }
+const SHM = (function(){
+  const steel = M(0xb9bec4, {metalness:1, roughness:0.32}), dark = M(0x2a2e33, {roughness:0.6});
+  const RB = function(w, h, d, r){ return new RoundedBoxGeometry(w, h, d, 2, Math.min(r||2, w/2-0.01, h/2-0.01, d/2-0.01)); };
+  const add = function(g, geo, mat, x, y, z, rz){ return shelfMesh(geo, mat, x, y, z, 0, 0, rz, g); };
+  function handles(g, c1, c2, spread){   /* 钳子两条胶柄，从钳头往下张开 */
+    [[-1, c1], [1, c2]].forEach(function(a){ const h = add(g, RB(9, 58, 7, 3.5), PL(a[1], 0.45), a[0]*(spread||7), -36, 0, a[0]*0.13); }); }
+  const B = {
+    sd:function(cross){ const g = new THREE.Group();
+      add(g, new THREE.CylinderGeometry(6.5, 5.5, 34, 20), PL(0xd23c2a, 0.35), 0, -22, 0);
+      add(g, new THREE.CylinderGeometry(6.8, 6.8, 7, 20), PL(0xf2c12e, 0.35), 0, -9, 0);
+      add(g, new THREE.CylinderGeometry(1.8, 1.8, 44, 12), steel, 0, 18, 0);
+      if(cross){ add(g, new THREE.ConeGeometry(2.4, 7, 4), steel, 0, 43, 0); }
+      else add(g, new THREE.BoxGeometry(5.5, 6, 1), steel, 0, 43, 0);
+      g.rotation.z = -0.6; return g; },
+    strip:function(){ const g = new THREE.Group(); handles(g, 0xd23c2a, 0x2a5caa);
+      add(g, RB(22, 26, 7, 2), steel, 0, 6, 0); [-6, 0, 6].forEach(function(x){ add(g, new THREE.CylinderGeometry(1.4, 1.4, 8, 10).rotateX(Math.PI/2), dark, x, 12, 0.5); });
+      add(g, new THREE.CylinderGeometry(3, 3, 8, 14).rotateX(Math.PI/2), steel, 0, -4, 1); g.rotation.z = 0.5; return g; },
+    plier:function(){ const g = new THREE.Group(); handles(g, 0xf2c12e, 0xf2c12e, 6);
+      add(g, RB(14, 12, 7, 2), steel, 0, -2, 0);
+      add(g, new THREE.ConeGeometry(5.5, 34, 4), steel, 0, 21, 0, Math.PI/4*0); g.rotation.z = 0.5; return g; },
+    crimp:function(){ const g = new THREE.Group(); handles(g, 0xd23c2a, 0xd23c2a, 9);
+      add(g, RB(30, 26, 8, 3), steel, 0, 8, 0);
+      [[0xd23c2a, -9], [0x2a5caa, 0], [0xf2c12e, 9]].forEach(function(a){ add(g, new THREE.CylinderGeometry(2.6, 2.6, 9, 12).rotateX(Math.PI/2), PL(a[0], 0.4), a[1], 14, 0.5); });
+      g.rotation.z = 0.5; return g; },
+    wrench:function(){ const g = new THREE.Group();
+      add(g, RB(11, 70, 5, 2.5), steel, 0, -16, 0);
+      add(g, RB(26, 18, 6, 3), steel, -3, 26, 0); add(g, RB(8, 16, 6, 2), steel, 7, 41, 0); add(g, RB(8, 10, 6, 2), steel, -9, 38, 0);
+      add(g, new THREE.CylinderGeometry(3.4, 3.4, 10, 14), dark, -6, 20, 3, Math.PI/2);
+      add(g, new THREE.CylinderGeometry(3, 3, 1, 14).rotateX(Math.PI/2), dark, 0, -46, 2.6); g.rotation.z = -0.55; return g; },
+    meter:function(){ const g = new THREE.Group();
+      add(g, RB(40, 66, 10, 4), PL(0xf2c12e, 0.5), 0, 0, 0);
+      add(g, new THREE.BoxGeometry(30, 15, 1), M(0x8fa58a, {roughness:0.3}), 0, 18, 5.2);
+      add(g, new THREE.CylinderGeometry(9, 9, 4, 24).rotateX(Math.PI/2), dark, 0, -6, 6);
+      add(g, new THREE.BoxGeometry(2, 8, 1), M(0xffffff), 0, -2, 8.4);
+      [[-9, 0xd23c2a], [9, 0x22262b]].forEach(function(a){ add(g, new THREE.CylinderGeometry(2.4, 2.4, 3, 12).rotateX(Math.PI/2), PL(a[1], 0.4), a[0], -26, 6);
+        add(g, new THREE.CylinderGeometry(1.6, 1.6, 34, 10), PL(a[1], 0.4), a[0]*2.6, -46, 4, a[0]*0.02); });
+      return g; },
+    pen:function(){ const g = typeof makePen==='function' ? makePen() : new THREE.Group(); g.rotation.z = 0.7; return g; },
+    tape:function(){ const g = new THREE.Group();
+      add(g, new THREE.TorusGeometry(16, 7, 16, 40), M(0x1e2124, {roughness:0.35}), 0, 0, 0);
+      add(g, new THREE.CylinderGeometry(10, 10, 12, 30, 1, true).rotateX(Math.PI/2), M(0xd9cdb4, {side:THREE.DoubleSide}), 0, 0, 0); return g; },
+    iron:function(){ const g = new THREE.Group();
+      add(g, new THREE.CylinderGeometry(6, 5, 34, 18), PL(0x2a5caa, 0.4), 0, -26, 0);
+      add(g, new THREE.CylinderGeometry(3.2, 3.2, 30, 14), steel, 0, 5, 0);
+      add(g, new THREE.ConeGeometry(2.4, 12, 12), M(0x8a6a3a, {metalness:1, roughness:0.4}), 0, 26, 0);
+      add(g, new THREE.CylinderGeometry(1.8, 1.8, 30, 8), dark, 4, -50, -1, 0.4);
+      g.rotation.z = -0.6; return g; },
+    saw:function(){ const g = new THREE.Group(), fr = M(0x3d6fb0, {metalness:0.6, roughness:0.4});
+      add(g, new THREE.BoxGeometry(84, 4, 4), fr, 0, 14, 0); add(g, new THREE.BoxGeometry(4, 18, 4), fr, -40, 5, 0); add(g, new THREE.BoxGeometry(4, 18, 4), fr, 40, 5, 0);
+      add(g, new THREE.BoxGeometry(82, 5, 0.8), steel, 0, -3, 0);
+      add(g, RB(12, 28, 9, 4), PL(0x2a2e33, 0.5), 50, -6, 0, -0.35); g.rotation.z = 0.25; return g; },
+    hat:function(){ const g = new THREE.Group(), y = PL(0xf2c12e, 0.35, {clearcoat:0.6});
+      const dome = add(g, new THREE.SphereGeometry(24, 32, 16, 0, Math.PI*2, 0, Math.PI/2), y, 0, 0, 0); dome.scale.set(1, 0.85, 1.1);
+      const brim = add(g, new THREE.CylinderGeometry(29, 29, 2, 32), y, 0, 0, 3); brim.scale.set(1, 1, 1.25);
+      add(g, new THREE.BoxGeometry(4, 22, 24), y, 0, 10, 0);
+      g.rotation.x = 0.5; return g; },
+    cloth:function(){ const g = new THREE.Group(), b = PL(0x2d4d7a, 0.75);
+      add(g, RB(40, 52, 9, 4), b, 0, 0, 0);
+      add(g, RB(12, 38, 8, 4), b, -24, 8, 0, 0.45); add(g, RB(12, 38, 8, 4), b, 24, 8, 0, -0.45);
+      add(g, new THREE.BoxGeometry(14, 6, 1), PL(0xf2c12e, 0.5), 0, -6, 4.8);   /* 反光条 */
+      add(g, new THREE.BoxGeometry(40, 3, 1), PL(0xd9dde2, 0.4), 0, -14, 4.8);
+      add(g, new THREE.ConeGeometry(7, 9, 3), PL(0xe8ecef, 0.6), 0, 23, 3, Math.PI);
+      return g; },
+    shoe:function(){ const g = new THREE.Group(), u = PL(0x22262b, 0.55);
+      add(g, RB(64, 7, 24, 3), PL(0x3a8a4a, 0.7), 0, -14, 0);   /* 绝缘胶底（绿） */
+      add(g, RB(44, 22, 22, 8), u, -9, -2, 0); add(g, RB(22, 30, 20, 7), u, -20, 6, 0);
+      const toe = add(g, new THREE.SphereGeometry(12, 20, 12), u, 18, -6, 0); toe.scale.set(1.3, 0.8, 0.9);
+      g.rotation.y = 0.5; return g; },
+    glove:function(){ return typeof makeGlove==='function' ? makeGlove(1) : new THREE.Group(); },
+    goggle:function(){ const g = new THREE.Group(), lens = new THREE.MeshPhysicalMaterial({color:0xcfe8f5, roughness:0.05, transmission:0.5, transparent:true, opacity:0.6});
+      [-15, 15].forEach(function(x){ add(g, new THREE.CylinderGeometry(13, 13, 6, 30).rotateX(Math.PI/2), lens, x, 0, 0);
+        add(g, new THREE.TorusGeometry(13, 2.2, 10, 30), PL(0x2a2e33, 0.5), x, 0, 3); });
+      add(g, new THREE.BoxGeometry(8, 4, 4), PL(0x2a2e33, 0.5), 0, 2, 2);
+      add(g, new THREE.BoxGeometry(80, 6, 1.5), PL(0x2d4d7a, 0.7), 0, 0, -5);
+      return g; },
+    breaker:function(poles, rcd){ const g = new THREE.Group(), W = 18*poles + (rcd ? 18 : 0);
+      add(g, RB(W, 82, 30, 2.5), MAT.white, 0, 0, 0);
+      for(let i=0;i<poles;i++){ const x = -W/2 + 9 + 18*i;
+        add(g, RB(12, 9, 14, 2), MAT.blue, x, 6, 18);
+        [-34, 34].forEach(function(y){ add(g, new THREE.CylinderGeometry(3.2, 3.2, 1, 14).rotateX(Math.PI/2), steel, x, y, 15.2); }); }
+      if(rcd){ add(g, new THREE.BoxGeometry(13, 34, 1), PL(0x30343a, 0.5), W/2-9, 0, 15.2); add(g, new THREE.CylinderGeometry(3.6, 3.6, 3, 16).rotateX(Math.PI/2), PL(0xf2c12e, 0.35), W/2-9, 8, 16.5); }
+      return g; },
+    km:function(){ const g = new THREE.Group();
+      add(g, RB(66, 62, 34, 3), MAT.grey, 0, 0, 0); add(g, RB(60, 30, 14, 4), MAT.white, 0, 0, 22);
+      add(g, RB(24, 16, 6, 2), KM_CARRIER, 0, 0, 30);
+      [-22, -8, 6, 20].forEach(function(x){ [-24, 24].forEach(function(y){ add(g, new THREE.CylinderGeometry(2.6, 2.6, 1, 12).rotateX(Math.PI/2), steel, x, y, 17.4); }); });
+      return g; },
+    fuse:function(){ const g = new THREE.Group();
+      add(g, RB(20, 80, 30, 2.5), MAT.cream, 0, 0, 0); add(g, RB(16, 44, 22, 3), MAT.cream, 0, 0, 12);
+      add(g, new THREE.CylinderGeometry(2, 2, 1, 14).rotateX(Math.PI/2), MAT.red, 0, 2, 23.4); return g; }
+  };
+  return B;
+})();
+const SH_ALIAS = {km220:'km', rcd300:'rcd'};                  /* 错型号：外观跟对的一样，用对的那个的图 */
+const SH_SUB = {sd1:'十字', sd2:'一字', km220:'220V', rcd300:'300mA', meter:'', tape:''};
+function shelfSub(k, name){
+  if(SH_SUB[k]!==undefined) return SH_SUB[k];
+  if(SH_ALIAS[Object.keys(SH_ALIAS).filter(function(a){ return SH_ALIAS[a]===k; })[0]]) return /380V/.test(name) ? '380V' : /30mA/.test(name) ? '30mA' : '';
+  const n = /（(\d+) 只/.exec(name) || /（[^）]*?(\d+) 只）/.exec(name); return n ? '×'+n[1] : '';
+}
+function shelfThumb(k){
+  const ka = SH_ALIAS[k] || k, xp = typeof XPARTS!=='undefined' && XPARTS[ka], fit = xp && xp.fits && xp.fits[0];
+  if(fit && dev(fit)) return devThumb(fit);
+  if(THUMB['s:'+k]!==undefined) return THUMB['s:'+k];
+  const s = typeof SHN!=='undefined' && SHN[k], name = s ? s[1] : '';
+  let g = null;
+  if(/^sd1?$/.test(k)) g = SHM.sd(true); else if(k==='sd2') g = SHM.sd(false);
+  else if(SHM[k] && !/^(breaker|km|fuse)$/.test(k)) g = SHM[k]();
+  else if(/接触器/.test(name)) g = dev('km') ? null : SHM.km();
+  else if(/熔断器/.test(name)) g = SHM.fuse();
+  else if(/三极/.test(name)) g = SHM.breaker(3);
+  else if(/漏电/.test(name)) g = SHM.breaker(2, true);
+  else if(/单极/.test(name)) g = SHM.breaker(1);
+  else if(/两极/.test(name)) g = SHM.breaker(2);
+  if(!g && /接触器/.test(name)) return devThumb(dev('km') ? 'km' : 'km1');
+  return g ? thumbShot('s:'+k, g) : '';
+}
+function ppeThumb(k){ return THUMB['p:'+k]!==undefined ? THUMB['p:'+k] : SHM[k] ? thumbShot('p:'+k, SHM[k]()) : ''; }
+function shBtn(s, on, got){   /* 货架按钮：模型图 + 必要的小字（型号区别、数量） */
+  const img = shelfThumb(s[0]);
+  if(!img) return '<button data-sh="'+s[0]+'" class="'+(on ? 'on' : '')+'"'+(got ? ' disabled' : '')+'>'+s[1]+(got ? '（已在桌上）' : '')+'</button>';
+  const sub = got ? '已拿' : shelfSub(s[0], s[1]);
+  return '<button data-sh="'+s[0]+'" class="th'+(on ? ' on' : '')+'" title="'+s[1]+'" aria-label="'+s[1]+'"'+(got ? ' disabled' : '')+'><img src="'+img+'" alt="">'+(sub ? '<small>'+sub+'</small>' : '')+'</button>';
+}
 /* ══ 声音 / 震动 ══ */
 let AC=null, sndOn=true, humNode=null;
 function ac(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AC && AC.state==='suspended') AC.resume(); return AC; }
