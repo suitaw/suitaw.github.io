@@ -117,7 +117,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
    便签写了「灯泡＝最下面红线」「日光灯＝往下数第 2 个红线」，两根蓝线位置是我按「红蓝成对」补的。
    电源进线端子排「第 3 孔＝零线」是便签原话；第 1 孔 L、第 2 孔 PE 是推测。
    11-28 他发了电路图截图（/sdcard/webdev/k3101/d_Screenshot_20261128_143751.jpg），说「一律按电路图来」：图上从上到下 L、N、PE，
-   所以进线端子、试车台插孔从左到右 L、N、PE（当晚他又说进线端子改回左零右火、中间接地：N、PE、L，电能表不动）；两极空开相线极在左、零线极在右（图上相线极画在上面；便签的「第 1 孔＝零」不再照搬）。 */
+   所以进线端子、试车台插孔从左到右 L、N、PE（当晚他又说整块照明盘改回左零右火：进线端子 N、PE、L，三只空开左 N 右 L，电能表 1~4 不动）；两极空开相线极在左、零线极在右（图上相线极画在上面；便签的「第 1 孔＝零」不再照搬）。 */
 const KM_W = 200, KM_H = 150, BOARD_H = 860;   /* 11-28 竖长重排 */   /* 11-27 进线端子和试车台并排放最下面，板子缩短 */
 const FR_PINS = [];
 
@@ -137,11 +137,11 @@ const DEVICES = [
    terminals:[1,2,3,4].map(function(i){ return {id:'lt-'+i, label:String(i), x:22, y:17+28*(i-1)}; })},
   {id:'el', tag:'白炽灯', kind:'lamp', x:356, y:186, w:94, h:130, terminals:[]},
   {id:'qf1', tag:'QF1 总开关', kind:'mcb2', x:164, y:384, w:76, h:136,
-   terminals:[{id:'qf1-li',label:'L',x:20,y:14},{id:'qf1-ni',label:'N',x:56,y:14},{id:'qf1-lo',label:'L',x:20,y:122},{id:'qf1-no',label:'N',x:56,y:122}]},
+   terminals:[{id:'qf1-ni',label:'N',x:20,y:14},{id:'qf1-li',label:'L',x:56,y:14},{id:'qf1-no',label:'N',x:20,y:122},{id:'qf1-lo',label:'L',x:56,y:122}]},
   {id:'qf2', tag:'QF2 插座（漏保）', kind:'mcb2', rcd:true, x:248, y:384, w:112, h:136,
-   terminals:[{id:'qf2-li',label:'L',x:20,y:14},{id:'qf2-ni',label:'N',x:56,y:14},{id:'qf2-lo',label:'L',x:20,y:122},{id:'qf2-no',label:'N',x:56,y:122}]},
+   terminals:[{id:'qf2-ni',label:'N',x:20,y:14},{id:'qf2-li',label:'L',x:56,y:14},{id:'qf2-no',label:'N',x:20,y:122},{id:'qf2-lo',label:'L',x:56,y:122}]},
   {id:'qf3', tag:'QF3 照明', kind:'mcb2', x:368, y:384, w:76, h:136,
-   terminals:[{id:'qf3-li',label:'L',x:20,y:14},{id:'qf3-ni',label:'N',x:56,y:14},{id:'qf3-lo',label:'L',x:20,y:122},{id:'qf3-no',label:'N',x:56,y:122}]},
+   terminals:[{id:'qf3-ni',label:'N',x:20,y:14},{id:'qf3-li',label:'L',x:56,y:14},{id:'qf3-no',label:'N',x:20,y:122},{id:'qf3-lo',label:'L',x:56,y:122}]},
   {id:'pe', tag:'接地排', kind:'pebar', x:40, y:466, w:92, h:30,
    terminals:[{id:'pe-1',label:'',x:16,y:15},{id:'pe-2',label:'',x:46,y:15},{id:'pe-3',label:'',x:76,y:15}]},
   {id:'xs', tag:'五孔插座', kind:'socket', x:50, y:572, s:0.95, w:100, h:130,
@@ -162,7 +162,7 @@ const TLABEL = {
   'mb-1':'电能表接线排 1（进火）','mb-2':'电能表接线排 2（出火）','mb-3':'电能表接线排 3（进零）','mb-4':'电能表接线排 4（出零）',
   'mt-1':'电能表 1（火线1·进）','mt-2':'电能表 2（火线2·出）','mt-3':'电能表 3（零线1·进）','mt-4':'电能表 4（零线2·出）',
   'src-l':'电源进线 L（右）','src-pe':'电源进线 PE（中）','src-n':'电源进线 N（左）',
-  'qf1-ni':'空开① 上方 N（右）','qf1-li':'空开① 上方 L（左）','qf1-no':'空开① 下方 N','qf1-lo':'空开① 下方 L',
+  'qf1-ni':'空开① 上方 N（左）','qf1-li':'空开① 上方 L（右）','qf1-no':'空开① 下方 N','qf1-lo':'空开① 下方 L',
   'qf2-ni':'空开② 上方 N','qf2-li':'空开② 上方 L','qf2-no':'空开② 下方 N','qf2-lo':'空开② 下方 L',
   'qf3-ni':'空开③ 上方 N','qf3-li':'空开③ 上方 L','qf3-no':'空开③ 下方 N','qf3-lo':'空开③ 下方 L',
   'lt-1':'灯具端子排 1（日光灯 N·蓝）','lt-2':'灯具端子排 2（日光灯 L·红）','lt-3':'灯具端子排 3（灯泡 N·蓝）','lt-4':'灯具端子排 4（灯泡 L·红·最下面）',
