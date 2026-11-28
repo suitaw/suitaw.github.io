@@ -63,6 +63,8 @@ ol.steps li.bad{color:#c0392b}
 #fold{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;margin:-6px 0 2px;padding:2px 0 4px;border:0;background:none;color:var(--mut);font-size:12px}
 #fold svg{transition:transform .2s}.bot.min #fold svg{transform:rotate(180deg)}
 .bot.min #info{min-height:0;max-height:1.5em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:6px}
+.mlcd{display:inline-block;font:700 17px/1.3 ui-monospace,Menlo,monospace;background:#c8d2b4;color:#1b2216;border:1px solid #8f9a7c;border-radius:4px;padding:0 8px;margin-right:8px;min-width:84px;text-align:right}
+#rowW button{padding:7px 7px}
 </style>
 </head>
 <body>
@@ -79,7 +81,7 @@ ol.steps li.bad{color:#c0392b}
   <div id="info"></div>
   <div class="row" id="rowM">
     <span class="grp" id="rowV"><button id="prev">◀</button><span id="cnt"></span><button id="next">▶</button><button id="rev">对照</button></span>
-    <span class="grp" id="rowW" hidden><button id="hint">提示</button><button id="del">撤销</button><button id="reset">重来</button><button id="chk" hidden>检查</button></span>
+    <span class="grp" id="rowW" hidden><button id="hint">提示</button><button id="del">撤销</button><button id="reset">重来</button><button id="chk" hidden>检查</button><button id="meter">万用表</button></span>
     <span class="grp" id="rowE0" hidden><button id="eppe">进入考位</button><button id="eshelf">货架</button><button id="einst0">开始安装</button><button id="emnt">跳过：直接装好</button></span><span class="grp" id="rowE1" hidden><button id="edel">撤销</button><button id="eclr">全拆</button><button id="esplice">接头</button><button id="einst">报告</button><button id="edone">跳过</button></span>
     <span class="grp" id="rowE2" hidden><button id="ehand">右手</button><button id="etool">指认</button><button id="epen">验电笔</button><button id="eglove">摘手套</button><button id="erep">报告</button><button id="esub">交卷</button></span>
     <span class="sp"></span>
@@ -1184,9 +1186,75 @@ function fwShow(on){
 function fwAdd(a, b){ const w = {id:fwNext++, from:a, to:b}; FW.push(w); fwBuild(w); fwSave(); UI.mark = null; applyDone(); }
 function fwDel(id){ FW = FW.filter(function(w){ return w.id!==id; }); fwShow(true); fwSave(); UI.mark = null; applyDone(); }
 function fwReset(){ FW = []; fwShow(UI.wire && UI.free); fwSave(); UI.mark = null; }
+/* 11-28 他要：①只练主回路或只练控制回路（另一部分预先接好，不算进度）②接完不通电，拿万用表电阻档查线 */
+UI.scope = 'all';
+const MAINRE = /^主电路|互感器|电流表/;
+const HAS_SCOPE = Object.keys(GROUPS).some(function(k){ return MAINRE.test(GROUPS[k][0]); });
+function inScope(w){ if(UI.scope==='all' || !w.group) return true; const m = MAINRE.test((GROUPS[w.group]||[''])[0]); return UI.scope==='main' ? m : !m; }
+function preW(){ return UI.scope==='all' ? [] : WIRES.filter(function(w){ return !inScope(w); }); }
+function scopeW(){ return WIRES.filter(inScope); }
+function doneS(){ return scopeW().filter(function(w){ return DONE[w.id]; }).length; }
+function scopeName(){ return {main:'只接主回路（控制回路预先接好了）', ctl:'只接控制回路（主回路预先接好了）'}[UI.scope] || ''; }
+/* 万用表：电源断开，只看导体和元件。0 Ω 的边（线、此刻闭合的触点/开关/熔断器）先并成一个点，再按负载电阻解节点方程 */
+UI.meter = false; UI.mp = {r:null, b:null};
+const MOTOR = true;
+function meterLoads(){
+  const L = [];
+  if(MOTOR){
+    SPEC.coils.forEach(function(c){ L.push({a:c.a, b:c.b, r:1500, name:c.name+' 线圈'}); });
+    if(!SIM.noMotor) ['x-U','x-V','x-W'].forEach(function(t){ L.push({a:t, b:'_motN', r:12, name:'电动机一相绕组'}); });
+    [1,2,3].forEach(function(i){ if(TPOS['ta'+i+'-s1']){ L.push({a:'ta'+i+'-s1', b:'ta'+i+'-s2', r:0.4, name:'互感器二次绕组'}); L.push({a:'mj'+i+'-1', b:'mj'+i+'-2', r:0.05, name:'电流表'}); } });
+  } else { L.push({a:'lt-4', b:'lt-3', r:100, name:'白炽灯（冷态）'}); L.push({a:'mt-1', b:'mt-3', r:1200, name:'电能表电压线圈'}); }
+  return L;
+}
+function meterZero(){
+  const Z = ACTIVE.map(function(w){ return [w.from, w.to]; });
+  SPEC.contacts.forEach(function(c){ if(contactClosed(c)) Z.push([c.a, c.b]); });
+  if(MOTOR) MAIN_INT.forEach(function(e){ const k = e[2], on = k==='' ? true : k==='qf' ? SIM.qf : /^km/.test(k) ? !!(SIM.km[k] && (SIM.km[k].on || SIM.km[k].man)) : SIM.fu[k]!==false; if(on) Z.push([e[0], e[1]]); });
+  if(typeof FIXW!=='undefined') FIXW.forEach(function(w){ Z.push([w.from, w.to]); });
+  const pes = Object.keys(TPOS).filter(function(k){ return /^pe-\d+$/.test(k); }); for(let i=1;i<pes.length;i++) Z.push([pes[0], pes[i]]);
+  return Z;
+}
+function meterR(a, b){
+  if(a===b) return 0;
+  const P = {}; function fd(x){ if(P[x]===undefined) P[x]=x; while(P[x]!==x){ P[x]=P[P[x]]; x=P[x]; } return x; }
+  meterZero().forEach(function(e){ P[fd(e[0])] = fd(e[1]); });
+  const ra = fd(a), rb = fd(b); if(ra===rb) return 0;
+  const E = meterLoads().map(function(l){ return {a:fd(l.a), b:fd(l.b), g:1/l.r}; }).filter(function(e){ return e.a!==e.b; });
+  const adj = {}; E.forEach(function(e){ (adj[e.a]=adj[e.a]||[]).push(e.b); (adj[e.b]=adj[e.b]||[]).push(e.a); });
+  const seen = {}; seen[ra] = 1; const q = [ra]; while(q.length){ const u = q.shift(); (adj[u]||[]).forEach(function(v){ if(!seen[v]){ seen[v] = 1; q.push(v); } }); }
+  if(!seen[rb]) return Infinity;
+  const ns = Object.keys(seen).filter(function(n){ return n!==rb; }), ix = {}; ns.forEach(function(n, i){ ix[n] = i; });
+  const N = ns.length, A = ns.map(function(){ return new Array(N).fill(0); }), B = new Array(N).fill(0); B[ix[ra]] = 1;
+  E.forEach(function(e){ if(!seen[e.a]) return; const i = ix[e.a], j = ix[e.b];
+    if(i!==undefined){ A[i][i] += e.g; if(j!==undefined) A[i][j] -= e.g; } if(j!==undefined){ A[j][j] += e.g; if(i!==undefined) A[j][i] -= e.g; } });
+  for(let c=0;c<N;c++){ let pv = c; for(let r=c+1;r<N;r++) if(Math.abs(A[r][c])>Math.abs(A[pv][c])) pv = r;
+    [A[c], A[pv]] = [A[pv], A[c]]; [B[c], B[pv]] = [B[pv], B[c]]; if(Math.abs(A[c][c])<1e-15) continue;
+    for(let r=0;r<N;r++){ if(r===c) continue; const k = A[r][c]/A[c][c]; if(!k) continue; for(let m=c;m<N;m++) A[r][m] -= k*A[c][m]; B[r] -= k*B[c]; } }
+  return B[ix[ra]]/A[ix[ra]][ix[ra]];
+}
+function fmtR(R){ return R<10 ? R.toFixed(2)+' Ω' : R<1000 ? R.toFixed(1)+' Ω' : (R/1000).toFixed(R<1e4 ? 3 : 2)+' kΩ'; }
+function meterSig(){ return JSON.stringify([SIM.tog, SIM.qf, SIM.fu, SIM.frTrip, SIM.km, Object.keys(SIM.btn||{}).map(function(k){ return SIM.btn[k].pressed; }), ACTIVE.length]); }
+function meterTap(id){ if(!UI.mp.r || UI.mp.b) UI.mp = {r:id, b:null}; else UI.mp.b = id; click(2600, 0.02, 0.2); }
+function meterOn(on){
+  UI.meter = on; UI.mp = {r:null, b:null}; UI.pend = null; UI.hint = 0; UI.sel = 0;
+  if(MOTOR){ if(!EX.on){ SIM.sup = !on; simAdvance(performance.now()); } } else if(on && SIM.qf) simQF(false, performance.now());
+  document.getElementById('meter').classList.toggle('on', on);
+}
+function meterInfo(){
+  const p = UI.mp, R = p.r && p.b ? meterR(p.r, p.b) : null, ol = R!==null && (!isFinite(R) || R>2e7);
+  let h = '<span class="mlcd">'+(R===null ? '- - -' : ol ? 'OL' : fmtR(R))+'</span>'+(p.r ? '红笔 <b>'+tname(p.r)+'</b>'+(p.b ? '，黑笔 <b>'+tname(p.b)+'</b>' : '，再点一个端子放<b>黑笔</b>') : '万用表电阻档（电源已断开）：点一个端子放<b>红笔</b>');
+  if(R!==null){ let why = '';
+    if(ol) why = '两点之间<b>断开</b>（OL）';
+    else if(R<0.5) why = '两点之间<b>通</b>的（接近 0 Ω，蜂鸣档会响）';
+    else { const hit = meterLoads().concat(MOTOR && !SIM.noMotor ? [{r:24, name:'电动机两相绕组（星形，两相串联）'}] : []).filter(function(l){ return Math.abs(R-l.r)/l.r < 0.02; })[0];
+      why = hit ? '读数＝<b>'+hit.name+'</b>的电阻：两点之间隔着它' : '两点之间隔着几个负载（串、并联的合值）'; }
+    h += '<br>'+why; }
+  return h+'<div class="st">'+('读数跟着状态变：<b>按住</b>按钮、<b>按住</b>接触器（手压触点架）、扳 QF、点熔断器盒、按热继的测试钮/复位钮。负载是示意值：线圈按 1.5 kΩ、电机每相 12 Ω'+'，实际看型号。<br>注意：手压接触器时<b>主触点也合上</b>，控制电源两端会把电动机两相绕组并进来，读数掉到约 24 Ω——这是对的，不是接错；想单看线圈和自锁，就量线圈 A1、A2 两头')+'</div>';
+}
 function fwCheck(){
   if(!FW.length){ UI.msg = '还没接线：点两个端子接一根'; return; }
-  const g = gradeWires(FW), bad = {}, miss = {};
+  const g = gradeWires(FW.concat(preW())), bad = {}, miss = {};
   g.extra.forEach(function(w){ bad[w.id] = 1; }); g.miss.forEach(function(w){ miss[w.id] = 1; });
   UI.mark = {bad:bad, miss:miss, nMiss:g.miss.length, nExtra:g.extra.length, note:''}; UI.pend = null; UI.hint = 0;
   const ok = g.checks.filter(function(c){ return c.ok===true; }).length, all = !g.extra.length && !g.miss.length;
@@ -1195,7 +1263,7 @@ function fwCheck(){
   let h = g.bad==='short' ? '<p class="bad"><b>有短路</b>：相线和零线被直接连上了，一送电就跳闸。橙线里找</p>' : '';
   h += '<div class="sec">按考场顺序通电试（过了 '+ok+' / '+g.checks.length+' 条）</div><ol class="std">'+g.checks.map(function(c){
     return '<li>'+mk(c.ok)+c.n+(c.ok===false ? '<span class="why">'+c.h+'</span>' : c.ok===null ? '<span class="why" style="color:var(--mut)">前一步没成，这条试不了</span>' : '')+'</li>'; }).join('')+'</ol>';
-  h += '<div class="sec">跟标准接法比</div><ul><li>接对 '+(NW-g.miss.length)+' / '+NW+' 根</li>'+
+  h += '<div class="sec">跟标准接法比</div><ul><li>接对 '+(scopeW().length-g.miss.length)+' / '+scopeW().length+' 根</li>'+
     (g.extra.length ? '<li class="bad">接错或多接 '+g.extra.length+' 根（板上橙色）：'+L(g.extra)+'</li>' : '')+
     (g.miss.length ? '<li>漏接 '+g.miss.length+' 根（板上影子）：'+L(g.miss)+'</li>' : '')+'</ul>';
   if(g.pass && !all) h += '<p>通电每条都对：电上没毛病，只是走法跟标准不一样。考场照图接，评分按图来。</p>';
@@ -1207,7 +1275,7 @@ try{ (JSON.parse(localStorage.getItem(LS)||'[]')||[]).forEach(function(i){ if(i>
 UI.srcAs = {}; try{ UI.srcAs = JSON.parse(localStorage.getItem(LS+'_as')||'{}') || {}; }catch(e){}
 function doneN(){ return Object.keys(DONE).length; }
 function applyDone(){
-  if(UI.wire) setActive(UI.free ? FW.slice() : WIRES.filter(function(w){ return DONE[w.id]; }));
+  if(UI.wire) setActive(UI.free ? FW.concat(preW()) : WIRES.filter(function(w){ return DONE[w.id] || !inScope(w); }));
   try{ localStorage.setItem(LS, JSON.stringify(Object.keys(DONE).map(Number))); }catch(e){}
 }
 /* ══ 摆元件（11-27 新规：元件自己装到导轨上）══ 位置固定：导轨上有空位，点零件盒里的零件、再点空位装上去；装错位置装不上，记一次错。
@@ -1292,12 +1360,14 @@ function nfd(x){ if(NETP[x]===undefined) NETP[x]=x; while(NETP[x]!==x){ NETP[x]=
 WIRES.forEach(function(w){ NETP[nfd(w.from)] = nfd(w.to); });
 SPEC.coils.forEach(function(c){ NETP[nfd(c.id+'-a2t')] = nfd(c.id+'-a2'); });   /* 上方 A2 ＝ 下方 A2 */
 function termTap(id){
+  if(UI.meter){ meterTap(id); return; }
   if(SIM.qf){ UI.msg='⚠ <b>带电不能接线</b>：先点断路器 QF 分闸'; buzz([60,40,60]); return; }
   UI.hint=0; UI.sel=0;
   if(!UI.pend){ UI.pend=id; UI.msg='起点：<b>'+tname(id)+'</b>。再点这根线的另一头'; click(2600, 0.02, 0.2); return; }
   if(UI.pend===id){ UI.pend=null; UI.msg=''; return; }
   const a=UI.pend; UI.pend=null;
   if(UI.free){
+    if(preW().some(function(w){ return wkey(w.from, w.to)===wkey(a, id); })){ UI.msg = '这根是预先接好的（'+scopeName()+'）'; return; }
     if(FW.some(function(w){ return wkey(w.from, w.to)===wkey(a, id); })){ UI.msg = '这两个端子之间已经有线了'; return; }
     fwAdd(a, id); click(1500, 0.05, 0.5); buzz(18); UI.msg = '接上了：'+tname(a)+' → '+tname(id); return;
   }
@@ -1312,10 +1382,11 @@ function termTap(id){
         UI.msg = '✗ <b>'+tname(hx)+'</b> 已经接了一根进线：一个孔只进一相，三相要分开三个孔'; return; }
       w = wg; swp = hx!==g;
       if(!DONE[wg.id]){ UI.srcAs[g] = hx; try{ localStorage.setItem(LS+'_as', JSON.stringify(UI.srcAs)); }catch(e){} } } }
+  if(w && !inScope(w)){ UI.msg = '这根是预先接好的（'+scopeName()+'）'; return; }
   if(w && DONE[w.id]){ UI.msg='这根已经接过了'; return; }
   if(w){
     DONE[w.id]=1; DORD.push(w.id); applyDone(); click(1500, 0.05, 0.5); buzz(18);
-    UI.msg = doneN()===NW ? IC.ok+' <b>'+NW+' 根全部接对</b>，接错 '+UI.err+' 次。点断路器 QF 合闸试车'
+    UI.msg = doneS()===scopeW().length ? IC.ok+' <b>'+scopeW().length+' 根全部接对</b>，接错 '+UI.err+' 次。点断路器 QF 合闸试车'
       : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）· '+w.tier+'：'+tname(w.from)+' → '+tname(w.to)+(swp ? '（接线排进电源那三位换着用也行，<b>试车台的电源线要跟着接对应的孔</b>，不然相序变了电动机会反转；图上还画在标准那个孔）' : [w.from, w.to].indexOf(a)<0 || [w.from, w.to].indexOf(id)<0 ? '（接地排哪个孔都行，图上画在标准那个孔）' : '');
     return;
   }
@@ -1328,7 +1399,8 @@ function setMode(wire){
   simQF(false, performance.now());
   fwShow(wire && UI.free); UI.mark = null;
   UI.wire=wire; UI.sel=0; UI.step=false; UI.pend=null; UI.hint=0; UI.msg='';
-  setActive(wire ? (UI.free ? FW.slice() : WIRES.filter(function(w){ return DONE[w.id]; })) : WIRES);
+  setActive(wire ? (UI.free ? FW.concat(preW()) : WIRES.filter(function(w){ return DONE[w.id] || !inScope(w); })) : WIRES);
+  if(UI.meter) meterOn(false);
   document.getElementById('chk').hidden = !(wire && UI.free);
   exRows();
   const mb = document.getElementById('mode'); mb.textContent = wire ? '看答案' : '自己接'; mb.classList.toggle('on', wire);
@@ -1362,7 +1434,7 @@ function refresh(){
   benchSync(); exVis(); mountVis();
   const r = SIM.last || {pot:{}, cur:{}};
   CW.concat(XW).forEach(function(c){
-    const id=c.w.id, key='w'+id, hidden = EX.on ? !c.x : c.free ? !(UI.wire && UI.free) : UI.wire ? (UI.free || !DONE[id]) : (UI.step && id>UI.sel), isSel = UI.sel===id;
+    const id=c.w.id, key='w'+id, hidden = EX.on ? !c.x : c.free ? !(UI.wire && UI.free) : UI.wire ? (inScope(c.w) && (UI.free || !DONE[id])) : (UI.step && id>UI.sel), isSel = UI.sel===id;
     c.mesh.visible = !hidden; c.pick.userData.off = hidden;
     /* 学 Falstad 两层显示：带电＝黑线外面罩一层青色光（11-26 他说淡红淡黄跟主电路红黄相线分不清，改成青光），
        亮点＝有电流。所以「按钮上口带电但没电流」能一眼看出来 */
@@ -1392,10 +1464,11 @@ function refresh(){
   const run = SIM.motor ? MAIN_RUN.km : [];
   MAINS.forEach(function(m, i){ m.mat.emissiveIntensity = run.indexOf(i)>=0 ? 0.55 : 0; });
   const s = UI.sel && wrec(UI.sel), hw = UI.hint && WIRES[UI.hint-1];
-  const rp = UI.pend ? [TERMS[UI.pend].pos] : hw ? [TERMS[hw.from].pos, TERMS[hw.to].pos] : s ? s.ends : [];
+  const rp = UI.meter ? [UI.mp.r, UI.mp.b].filter(Boolean).map(function(t){ return TERMS[t].pos; }) : UI.pend ? [TERMS[UI.pend].pos] : hw ? [TERMS[hw.from].pos, TERMS[hw.to].pos] : s ? s.ends : [];
   const rc = UI.pend ? 0x1c6fd6 : hw ? hw.color : s ? s.base : 0x1c6fd6;      /* 11-27 他要：选中圈跟线同色（黑线用深灰，不然看不出来） */
   rings.forEach(function(g, i){ g.visible = !!rp[i]; if(rp[i]){ g.position.copy(rp[i]); g.position.z += 2; g.material.color.setHex(rc===0x22262b ? 0x5a616b : (rc===undefined ? 0x1c6fd6 : rc)); } });
-  const ids = UI.pend ? [UI.pend] : hw ? [hw.from, hw.to] : s ? [s.w.from, s.w.to] : [];
+  if(UI.meter) rings.forEach(function(g, i){ if(g.visible) g.material.color.setHex(i===0 ? 0xd42f2f : 0x30343a); });   /* 红笔红圈、黑笔深灰圈 */
+  const ids = UI.meter ? [UI.mp.r, UI.mp.b].filter(Boolean) : UI.pend ? [UI.pend] : hw ? [hw.from, hw.to] : s ? [s.w.from, s.w.to] : [];
   for(const k in TAGS) TAGS[k].visible = false;
   ids.forEach(function(id, i){
     const sp = tagOf(id), up = TPOS[ids[1-i]] ? TPOS[id].y <= TPOS[ids[1-i]].y : true;     /* 两头一上一下错开，别互相压着 */
@@ -1429,7 +1502,8 @@ function refresh(){
   const st = '<div class="st">QF '+(SIM.qf?'合':'分')+' · KM '+(SIM.km.km.on?'吸合':'释放')+
     ' · 电动机'+(SIM.motor?'运转':'停')+'</div>'+
     (powered() ? '<div class="st">亮点＝有电流的线</div>' : '');
-  if(UI.rev && !EX.on){ info.innerHTML = revInfo(); }
+  if(UI.meter && UI.wire && !EX.on){ info.innerHTML = meterInfo(); }
+  else if(UI.rev && !EX.on){ info.innerHTML = revInfo(); }
   else if(EX.on){
     const st2 = '<div class="st">'+(EX.phase==='ppe' ? '进考位 · 穿戴' : EX.phase==='prep' ? '准备 · 桌上 '+Object.keys(EX.desk).length+' 件 · 测过 '+Object.keys(EX.tested).length+' 件' : EX.phase==='mount' ? '装元件 · 已装 '+MOUNTABLE.filter(function(k){ return EX.mount[k]; }).length+' / '+MOUNTABLE.length+' 个' : EX.phase==='wire' ? '盘内接线 · 已接 '+EX.wires.length+' 根' :
       (EX.mode==='practice' ? '练习 · ' : '考试 · ')+hn()+' · '+({point:'指认', pen:'拿着验电笔'}[EX.tool] || '空手')+(CFG.meterTool ? '' : ' · 手套'+(EX.glove ? '戴着' : '摘了'))+' · 总开关'+(EX.main ? '合' : '分')+' · QF '+(SIM.qf ? '合' : '分')+' · 电动机'+(SIM.motor?'运转':'停'))+'</div>';
@@ -1440,15 +1514,15 @@ function refresh(){
   }
   else if(UI.wire && UI.free && !s && !inMount()){
     const R = UI.mark;
-    info.innerHTML = (SIM.qf ? simExplain() : R ? '<b>检查结果</b>：接对 <b>'+(NW-R.nMiss)+'</b> / '+NW+' 根 · <span style="color:#e06a00">橙线＝接错/多接 '+R.nExtra+'</span> · <span style="color:#7d8590">影子＝漏接 '+R.nMiss+'</span>'+
+    info.innerHTML = (SIM.qf ? simExplain() : R ? '<b>检查结果</b>：接对 <b>'+(scopeW().length-R.nMiss)+'</b> / '+scopeW().length+' 根 · <span style="color:#e06a00">橙线＝接错/多接 '+R.nExtra+'</span> · <span style="color:#7d8590">影子＝漏接 '+R.nMiss+'</span>'+
         '<div class="st">'+(R.note || '点线看是哪根；再点「检查」看通电逐条试的结果')+'</div>'
       : (UI.msg || '<b>自由接</b>：想往哪接就往哪接，接的时候不判对错。接完点<b>检查</b>：按考场顺序通电逐条试，再跟标准接法比，告诉你哪根错、漏了哪根。也可以直接合 <b>QF</b> 试车，看接触器吸不吸、电动机转不转、亮点（电流）怎么走'))+
-      '<div class="st">已接 '+FW.length+' 根（标准 '+NW+' 根）'+(SIM.qf ? ' · '+ld() : '')+'</div>';
+      '<div class="st">'+(scopeName() ? scopeName()+' · ' : '')+'已接 '+FW.length+' 根（标准 '+scopeW().length+' 根）'+(SIM.qf ? ' · '+ld() : '')+'</div>';
   }
   else if(UI.wire && !s){
     const intro = inMount() ? '先<b>装元件</b>：点下面<b>零件盒</b>里的零件，再点导轨上它的位置（虚线框）。'+MOUNTABLE.length+' 个都装好再接线'
       : '点一个<b>蓝圈端子</b>，再点另一个，接一根线（端子小就双指放大，点「复原」或双击空白处回到原样）。顺序：主电路（电源进线 → QF → FU1 → KM → 热继 → 出线）→ 控制电源 → 线圈与自锁 → 热继电器 → 端子排跳线';
-    info.innerHTML = (SIM.qf ? simExplain() : (UI.msg || intro))+'<div class="st">'+(inMount() ? '已装 '+MOUNTABLE.filter(function(k){ return UI.mount[k]; }).length+' / '+MOUNTABLE.length+' 个元件 · ' : '')+'已接 '+doneN()+' / '+NW+' 根 · 接错 '+UI.err+' 次'+(SIM.qf ? ' · 电动机'+(SIM.motor?'运转':'停') : '')+(inMount() ? '' : '<br>'+WIRE_SUM)+'</div>';
+    info.innerHTML = (SIM.qf ? simExplain() : (UI.msg || intro))+'<div class="st">'+(inMount() ? '已装 '+MOUNTABLE.filter(function(k){ return UI.mount[k]; }).length+' / '+MOUNTABLE.length+' 个元件 · ' : '')+(scopeName() ? scopeName()+' · ' : '')+'已接 '+doneS()+' / '+scopeW().length+' 根 · 接错 '+UI.err+' 次'+(SIM.qf ? ' · 电动机'+(SIM.motor?'运转':'停') : '')+(inMount() ? '' : '<br>'+WIRE_SUM)+'</div>';
   }
   else if(s){ const g=GROUPS[s.w.group];
     info.innerHTML = '<b>第 '+s.w.id+' 根</b>（'+g[0]+'）· <b>'+s.w.tier+'</b>：'+tname(s.w.from)+' → '+tname(s.w.to)+'<div class="st">'+g[1]+'<br>'+TIER_TIP+'</div>'; }
@@ -1457,7 +1531,7 @@ function refresh(){
 /* 一闪而过的提示（转旋钮、按复位这种），3 秒后消失 */
 function note(h){ UI.note = h; UI.noteT = performance.now(); }
 function noteOn(){ return UI.note && performance.now()-UI.noteT < 3000; }
-function sig(){ const b=SIM.btn; return [FW.length, UI.free, !!UI.mark, UI.mark && UI.mark.note, SIM.qf,SIM.frTrip,SIM.blown,SIM.motor,SIM.km.km.on,b.sb1.pressed,b.sb2.pressed,b.sb3.pressed,
+function sig(){ if(UI.meter) return [UI.mp.r, UI.mp.b, meterSig(), FW.length, UI.wire, UI.sel].join('|')+'|M'; const b=SIM.btn; return [FW.length, UI.free, !!UI.mark, UI.mark && UI.mark.note, SIM.qf,SIM.frTrip,SIM.blown,SIM.motor,SIM.km.km.on,b.sb1.pressed,b.sb2.pressed,b.sb3.pressed,
   JSON.stringify(SIM.last && SIM.last.cur), UI.sel, UI.step, UI.wire, UI.pend, UI.hint, UI.msg, UI.err, Object.keys(DONE).join(),
   EX.on, EX.phase, EX.on && EX.wires.length, noteOn() && UI.note, JSON.stringify(SIM.fu), SIM.frSet, SIM.km.km.man, SIM.phaseLoss, EX.on && EX.ev.length, EX.pen, EX.glove, EX.sign, EX.main, EX.msg, EX.guide, EX.seq, SIM.sup, SIM.noMotor, EX.tool, EX.hand, EX.cab, EX.mode, EX.probeN, SRS.on, JSON.stringify(mountState()), UI.part, UI.hintSlot, EX.phase, EX.on && JSON.stringify([EX.ppe, EX.desk, EX.tested, EX.wk, EX.splice, EX.debug, EX.tidied, EX.wires.length])].join('|'); }
 
@@ -2427,16 +2501,21 @@ try{ if(localStorage.getItem('elec_k3_fold')) botEl.classList.add('min'), foldB.
 info.onclick = function(){ if(botEl.classList.contains('min')) return setFold(false); if(EX.on) exStepMenu(); };   /* 点说明栏：看全部步骤（里面能开关提示） */
 ov.onclick = function(e){ if(e.target===ov && !menuFresh()) closeMenu(); };
 document.getElementById('mode').onclick = function(){ revExit(); if(UI.wire) return setMode(false);
-  menu('自己接：选一种接法', [['边接边判：接错当场告诉你', function(){ UI.free = false; setMode(true); }],
-    ['自由接：想往哪接就往哪接，接完点「检查」再告诉你哪里错；能直接送电看通不通', function(){ UI.free = true; setMode(true); }]]); };
+  const go = function(free){ UI.free = free; if(!HAS_SCOPE){ UI.scope = 'all'; return setMode(true); }
+    menu('接哪一部分？', [['全部都接', function(){ UI.scope = 'all'; setMode(true); }],
+      ['只接主回路（控制回路预先接好）', function(){ UI.scope = 'main'; setMode(true); }],
+      ['只接控制回路（主回路预先接好）', function(){ UI.scope = 'ctl'; setMode(true); }]]); };
+  menu('自己接：选一种接法', [['边接边判：接错当场告诉你', function(){ go(false); }],
+    ['自由接：想往哪接就往哪接，接完点「检查」再告诉你哪里错；能直接送电看通不通', function(){ go(true); }]]); };
 document.getElementById('chk').onclick = fwCheck;
+document.getElementById('meter').onclick = function(){ meterOn(!UI.meter); };
 document.getElementById('rev').onclick = function(){ if(UI.rev) revExit(); else revEnter(); };
 document.getElementById('hint').onclick = function(){
   if(inMount()){ const p = PARTS.filter(function(x){ return x.k===UI.part && partLeft(x); })[0] || PARTS.filter(partLeft)[0];
     UI.part = p.k; UI.hintSlot = p.fits.filter(function(k){ return !UI.mount[k]; })[0]; UI.msg = '提示：<b>'+p.name+'</b> 装在橙色那个位置'; return; }
-  const w = WIRES.filter(function(w){ return UI.free ? !FW.some(function(f){ return wkey(f.from, f.to)===wkey(w.from, w.to); }) : !DONE[w.id]; })[0];
+  const w = WIRES.filter(function(w){ return inScope(w) && (UI.free ? !FW.some(function(f){ return wkey(f.from, f.to)===wkey(w.from, w.to); }) : !DONE[w.id]); })[0];
   UI.pend=null; UI.sel=0; UI.mark=null;
-  if(!w){ UI.msg=NW+' 根都接完了，点断路器 QF 合闸试车'; return; }
+  if(!w){ UI.msg=scopeW().length+' 根都接完了，点断路器 QF 合闸试车'; return; }
   UI.hint=w.id; UI.msg='提示 · <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）：'+tname(w.from)+' → '+tname(w.to)+'<div class="st">'+GROUPS[w.group][1]+'</div>';
 };
 document.getElementById('del').onclick = function(){   /* 撤销：拆掉最后接对的那根 */
