@@ -288,7 +288,24 @@ const MAIN_INT = [['qf-1','qf-2','qf'],['qf-3','qf-4','qf'],['qf-5','qf-6','qf']
   ['fu4-in','fu4-out','fu4-0'],['fu5-in','fu5-out','fu5-0'],
   ['km-1','km-2','km'],['km-3','km-4','km'],['km-5','km-6','km'],
   ['fr-1','fr-2',''],['fr-3','fr-4',''],['fr-5','fr-6','']];
+/* 11-28 他说：盘上进电源那几个孔不是死的——接线排 L1 L2 L3 换着接也行，试车台的电源线跟着接对应的孔就是了。
+   判线、仿真前先看每个进线孔接到了断路器哪个上口，按这个把孔重新对应成 L1 L2 L3 再算（相序不变）。接得乱（一个孔接两个上口）就不对应，照原样算 */
+const SRCH = (function(){ const holes = ['x-L1','x-L2','x-L3'], p = {};
+  holes.forEach(function(h){ const w = WIRES.filter(function(w){ return w.from===h || w.to===h; })[0]; if(w) p[h] = w.from===h ? w.to : w.from; });
+  return {holes:holes, p:p}; })();
+function srcFix(ws){
+  const map = {}, inv = {};
+  for(const w of ws) for(const e of [[w.from, w.to], [w.to, w.from]]){
+    if(SRCH.p[e[0]]===undefined) continue;
+    const g = SRCH.holes.filter(function(h){ return SRCH.p[h]===e[1]; })[0]; if(!g) continue;
+    if((map[e[0]]!==undefined && map[e[0]]!==g) || (inv[g]!==undefined && inv[g]!==e[0])) return ws;
+    map[e[0]] = g; inv[g] = e[0]; }
+  if(!Object.keys(map).some(function(h){ return map[h]!==h; })) return ws;
+  const left = SRCH.holes.filter(function(g){ return inv[g]===undefined; });
+  SRCH.holes.forEach(function(h){ if(map[h]===undefined) map[h] = left.shift(); });
+  return ws.map(function(w){ return Object.assign({}, w, {from:map[w.from] || w.from, to:map[w.to] || w.to}); }); }
 function mainSolve(ws, st){
+  ws = srcFix(ws);
   st = st || {qf:SIM.qf, sup:SIM.sup, km:!!(SIM.km.km && (SIM.km.km.on || SIM.km.km.man)), fu:SIM.fu};
   const P = {}; function fd(x){ if(P[x]===undefined) P[x]=x; while(P[x]!==x){ P[x]=P[P[x]]; x=P[x]; } return x; }
   ws.forEach(function(w){ P[fd(w.from)] = fd(w.to); });
@@ -380,6 +397,7 @@ const CHECKS = [
 ];
 /* 判一套线：通电检查 + 跟标准接法的端子差别 */
 function gradeWires(ws){
+  ws = srcFix(ws);
   const T = makeTester(ws), res = {checks:[], bad:'', miss:[], extra:[]};
   CHECKS.forEach(function(c){ T.reset(); const r = c.f(T); res.checks.push({n:c.n, ok:r, h:c.h}); });
   res.bad = T.bad;
@@ -1186,6 +1204,7 @@ function fwCheck(){
                  /* 自己接：接对的先后顺序（撤销用） */
 const LS = 'elec_k31_3d_done2';   /* 11-27 改成 27 根（主电路也自己接），换个键，旧进度不串 */
 try{ (JSON.parse(localStorage.getItem(LS)||'[]')||[]).forEach(function(i){ if(i>=1 && i<=NW) DONE[i]=1; }); }catch(e){}
+UI.srcAs = {}; try{ UI.srcAs = JSON.parse(localStorage.getItem(LS+'_as')||'{}') || {}; }catch(e){}
 function doneN(){ return Object.keys(DONE).length; }
 function applyDone(){
   if(UI.wire) setActive(UI.free ? FW.slice() : WIRES.filter(function(w){ return DONE[w.id]; }));
@@ -1282,12 +1301,22 @@ function termTap(id){
     if(FW.some(function(w){ return wkey(w.from, w.to)===wkey(a, id); })){ UI.msg = '这两个端子之间已经有线了'; return; }
     fwAdd(a, id); click(1500, 0.05, 0.5); buzz(18); UI.msg = '接上了：'+tname(a)+' → '+tname(id); return;
   }
-  const w = WIRES.filter(function(w){ return wkey(w.from, w.to)===wkey(a, id); })[0];
+  let w = WIRES.filter(function(w){ return wkey(w.from, w.to)===wkey(a, id); })[0], swp = false;
+  const hx = SRCH.p[a]!==undefined ? a : SRCH.p[id]!==undefined ? id : null;
+  if(hx){ const o = hx===a ? id : a, g = SRCH.holes.filter(function(h){ return SRCH.p[h]===o; })[0];
+    const wg = g && WIRES.filter(function(x){ return wkey(x.from, x.to)===wkey(g, o); })[0];
+    if(wg){
+      for(const k in UI.srcAs){ const kw = WIRES.filter(function(x){ return wkey(x.from, x.to)===wkey(k, SRCH.p[k]); })[0]; if(!kw || !DONE[kw.id]) delete UI.srcAs[k]; }
+      const usedBy = Object.keys(UI.srcAs).filter(function(k){ return k!==g && UI.srcAs[k]===hx; })[0];
+      if(usedBy && !DONE[wg.id]){ UI.err++; buzz([40,40,40]); click(400, 0.12, 0.6);
+        UI.msg = '✗ <b>'+tname(hx)+'</b> 已经接了一根进线：一个孔只进一相，三相要分开三个孔'; return; }
+      w = wg; swp = hx!==g;
+      if(!DONE[wg.id]){ UI.srcAs[g] = hx; try{ localStorage.setItem(LS+'_as', JSON.stringify(UI.srcAs)); }catch(e){} } } }
   if(w && DONE[w.id]){ UI.msg='这根已经接过了'; return; }
   if(w){
     DONE[w.id]=1; DORD.push(w.id); applyDone(); click(1500, 0.05, 0.5); buzz(18);
     UI.msg = doneN()===NW ? IC.ok+' <b>'+NW+' 根全部接对</b>，接错 '+UI.err+' 次。点断路器 QF 合闸试车'
-      : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）· '+w.tier+'：'+tname(w.from)+' → '+tname(w.to)+([w.from, w.to].indexOf(a)<0 || [w.from, w.to].indexOf(id)<0 ? '（接地排哪个孔都行，图上画在标准那个孔）' : '');
+      : '✓ <b>第 '+w.id+' 根</b>（'+GROUPS[w.group][0]+'）· '+w.tier+'：'+tname(w.from)+' → '+tname(w.to)+(swp ? '（接线排进电源那三位换着用也行，<b>试车台的电源线要跟着接对应的孔</b>，不然相序变了电动机会反转；图上还画在标准那个孔）' : [w.from, w.to].indexOf(a)<0 || [w.from, w.to].indexOf(id)<0 ? '（接地排哪个孔都行，图上画在标准那个孔）' : '');
     return;
   }
   UI.err++; buzz([40,40,40]); click(400, 0.12, 0.6);
@@ -1325,8 +1354,12 @@ function drawDots(now){
   DOTS.count = n; DOTS.instanceMatrix.needsUpdate = true;
 }
 function tname(id){ return TLABEL[id] || id; }
+/* 11-28 他说左下大片留白：电动机盘练习时送电靠盘上 QF，试车台只在考场里用 → 考场外收起，板子放大 */
+function benchWant(){ return !!EX.on; }
+function benchSync(){ const b = benchWant(); if(b===BENCH || !CONTENT_B) return;
+  const keep = CAM==='front' && !zoomedIn() && !rotOn; BENCH = b; EXG.visible = b; stretchBoard(); if(keep) view('front'); }
 function refresh(){
-  exVis(); mountVis();
+  benchSync(); exVis(); mountVis();
   const r = SIM.last || {pot:{}, cur:{}};
   CW.concat(XW).forEach(function(c){
     const id=c.w.id, key='w'+id, hidden = EX.on ? !c.x : c.free ? !(UI.wire && UI.free) : UI.wire ? (UI.free || !DONE[id]) : (UI.step && id>UI.sel), isSel = UI.sel===id;
@@ -2199,7 +2232,7 @@ function fitD(w, h, exact){
   return Math.max(h/(2*t*f), w*H/(2*t*W))*(exact ? 1 : 1.05);
 }
 const VIEWS = {
-  front:function(){ const c = CONTENT || {x:280, y:BH/2, w:600, h:BH+20}; return {t:V(c.x, c.y, 20), d:[0,0,1], D:fitD(c.w, c.h, true)}; },
+  front:function(){ const c = (BENCH ? CONTENT : CONTENT_B) || {x:280, y:BH/2, w:600, h:BH+20}; return {t:V(c.x, c.y, 20), d:[0,0,1], D:fitD(c.w, c.h, true)}; },
   desk:function(){ return {t:V(320,644,30), d:[0,-0.45,1], D:fitD(490,300)}; },   /* 桌垫贴近底栏 */
   km:function(){ return {t:V(200,330,40), d:[0.18,-0.5,1], D:fitD(450,300)}; },
   tb:function(){ return {t:V(452,440,30), d:[-0.5,-0.12,1], D:fitD(300,600)}; }
@@ -2458,7 +2491,7 @@ function frame(now){
 }
 flushScrews();
 /* 全景按「实际有东西的范围」装满屏幕（11-26 他嫌板子四周空地占地方）：看得见的零件外框 + 一点边；考场才出现的外部电源线不算 */
-let CONTENT = null;
+let CONTENT = null, CONTENT_B = null, BENCH = true;   /* CONTENT_B：不算试车台（考场外收起试车台，板子放大） */
 (function(){
   /* 只按元件外框 + 电动机 + 试车台算；伸到板边的进线、按钮盒出厂线不算（裁掉一点点不影响看） */
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
@@ -2466,6 +2499,7 @@ let CONTENT = null;
   DEVICES.forEach(function(d){ add(d.x, d.y, d.x+d.W, d.y+d.H); });
   DUCTS.H.forEach(function(h){ add(h.x0-13, h.y-13, h.x1+13, h.y+13); }); DUCTS.V.forEach(function(v){ add(v.x-13, v.y0-13, v.x+13, v.y1+13); });   /* 线槽也算进取景：左右留白才对称 */
   if(MOT.y > 0) add(MOT.x-60, MOT.y-60, MOT.x+100, MOT.y+56);
+  CONTENT_B = {x:(x0+x1)/2, y:(y0+y1)/2, w:x1-x0+28, h:y1-y0+28};
   const bb = new THREE.Box3(), tmp = new THREE.Box3(); EXG.updateMatrixWorld(true);
   EXG.traverse(function(o){ if(!o.isMesh || !o.visible || (o.material && o.material.opacity===0)) return;
     for(let p=o; p && p!==EXG; p=p.parent) if(!p.visible) return; tmp.setFromObject(o); if(isFinite(tmp.min.x)) bb.union(tmp); });
