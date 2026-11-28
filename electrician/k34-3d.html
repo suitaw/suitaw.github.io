@@ -33,6 +33,7 @@ button.on{background:var(--blue);border-color:var(--blue);color:#fff}
 .row .sp{flex:1}
 #cnt{min-width:58px;text-align:center;font-variant-numeric:tabular-nums}
 #cnt{border:1px solid var(--line);border-radius:8px;padding:7px 4px;background:var(--card)}
+.bot{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}   /* 11-28 Chrome「点按搜索」：点普通文字会弹 Google 搜索面板 */
 #ov{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;background:rgba(20,24,30,.35);z-index:5}
 #ov.show{display:flex}
 #menu{width:100%;max-width:520px;background:#fff;border-radius:14px 14px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));max-height:86vh;overflow:auto}
@@ -80,7 +81,7 @@ ol.steps li.bad{color:#c0392b}
   <button id="fold"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span>收起说明</span></button>
   <div id="info"></div>
   <div class="row" id="rowM">
-    <span class="grp" id="rowV"><button id="prev">◀</button><span id="cnt"></span><button id="next">▶</button><button id="rev">对照</button></span>
+    <span class="grp" id="rowV"><button id="prev">◀</button><button id="cnt"></button><button id="next">▶</button><button id="rev">对照</button></span>
     <span class="grp" id="rowW" hidden><button id="hint">提示</button><button id="del">撤销</button><button id="reset">重来</button><button id="chk" hidden>检查</button><button id="meter">万用表</button></span>
     <span class="grp" id="rowE0" hidden><button id="eppe">进入考位</button><button id="eshelf">货架</button><button id="einst0">开始安装</button><button id="emnt">跳过：直接装好</button></span><span class="grp" id="rowE1" hidden><button id="edel">撤销</button><button id="eclr">全拆</button><button id="esplice">接头</button><button id="einst">报告</button><button id="edone">跳过</button></span>
     <span class="grp" id="rowE2" hidden><button id="ehand">右手</button><button id="etool">指认</button><button id="epen">验电笔</button><button id="eglove">摘手套</button><button id="erep">报告</button><button id="esub">交卷</button></span>
