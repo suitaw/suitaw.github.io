@@ -113,6 +113,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
    线径：进线 4.0；QF1 出线到 QF3 为止 2.5；QF3 → QF4、QF4 → QF5 两段 1.5（图上 BV-1.5 两根引线指的就是这两段）。
    照片上 ③④ 带漏电模块（黄色试验钮），电路图上 QF2、QF3 只画了过载 I>：以电路图为准，做成普通两极空开。
    零排 → QF2 的 N 是经 SPD 的 N 串过去的（图上零线从零排出来先到 SPD N 的节点再到 QF2）；QF3 的 N 单独一根从零排来。
+   11-28 他要所有板「左零右火」：进线端子 N、L、PE，两极空开、电涌保护器都是左 N 右 L（电路图上 1/2 相线极画在上面，跟左右无关）。
    支路下口去负载的线电路图没画，这里不接；仿真时在每路下口挂一个看不见的负载（单极的零线回零排 4、5 号孔），用来判「这一路通没通」 */
 const KM_W = 200, KM_H = 150, BOARD_H = 540;
 const FR_PINS = [];
@@ -120,15 +121,15 @@ const FR_PINS = [];
 /* 配电箱：上面进线端子，中间一条导轨 6 个模块（跟照片一样从左到右 QF1、SPD、QF2~QF5），上下两条横线槽；下面地排（左）、零排（右），左下角箱体接地螺栓 */
 const DEVICES = [
   {id:'src', tag:'电源进线', kind:'src', x:30, y:20, w:112, h:56,
-   terminals:[{id:'src-l',label:'L',x:20,y:15},{id:'src-n',label:'N',x:56,y:15},{id:'src-pe',label:'PE',x:92,y:15}]},
+   terminals:[{id:'src-n',label:'N',x:20,y:15},{id:'src-l',label:'L',x:56,y:15},{id:'src-pe',label:'PE',x:92,y:15}]},
   {id:'qf1', tag:'QF1 总开关', kind:'mcb2', rcd:true, face:'总开关', x:52, y:132, w:112, h:136,
-   terminals:[{id:'qf1-1',label:'1',x:20,y:14},{id:'qf1-3',label:'3',x:56,y:14},{id:'qf1-2',label:'2',x:20,y:122},{id:'qf1-4',label:'4',x:56,y:122}]},
+   terminals:[{id:'qf1-3',label:'N',x:20,y:14},{id:'qf1-1',label:'L',x:56,y:14},{id:'qf1-4',label:'N',x:20,y:122},{id:'qf1-2',label:'L',x:56,y:122}]},
   {id:'spd', tag:'SPD 电涌保护器', kind:'spd', x:168, y:132, w:76, h:136,
-   terminals:[{id:'spd-l',label:'L',x:20,y:14},{id:'spd-n',label:'N',x:56,y:14},{id:'spd-pe',label:'⏚',x:38,y:122}]},
+   terminals:[{id:'spd-n',label:'N',x:20,y:14},{id:'spd-l',label:'L',x:56,y:14},{id:'spd-pe',label:'⏚',x:38,y:122}]},
   {id:'qf2', tag:'QF2 厨卫插座', kind:'mcb2', face:'厨卫插座', x:248, y:132, w:76, h:136,
-   terminals:[{id:'qf2-li',label:'L',x:20,y:14},{id:'qf2-ni',label:'N',x:56,y:14},{id:'qf2-lo',label:'L',x:20,y:122},{id:'qf2-no',label:'N',x:56,y:122}]},
+   terminals:[{id:'qf2-ni',label:'N',x:20,y:14},{id:'qf2-li',label:'L',x:56,y:14},{id:'qf2-no',label:'N',x:20,y:122},{id:'qf2-lo',label:'L',x:56,y:122}]},
   {id:'qf3', tag:'QF3 房间插座', kind:'mcb2', face:'房间插座', x:328, y:132, w:76, h:136,
-   terminals:[{id:'qf3-li',label:'L',x:20,y:14},{id:'qf3-ni',label:'N',x:56,y:14},{id:'qf3-lo',label:'L',x:20,y:122},{id:'qf3-no',label:'N',x:56,y:122}]},
+   terminals:[{id:'qf3-ni',label:'N',x:20,y:14},{id:'qf3-li',label:'L',x:56,y:14},{id:'qf3-no',label:'N',x:20,y:122},{id:'qf3-lo',label:'L',x:56,y:122}]},
   {id:'qf4', tag:'QF4 照明1', kind:'mcb1', face:'照明1', x:408, y:132, w:40, h:136,
    terminals:[{id:'qf4-li',label:'L',x:20,y:14},{id:'qf4-lo',label:'L',x:20,y:122}]},
   {id:'qf5', tag:'QF5 照明2', kind:'mcb1', face:'照明2', x:452, y:132, w:40, h:136,
@@ -146,7 +147,7 @@ function tk(id){ return /^pe-\d+$/.test(id) ? 'pe' : /^nb-\d+$/.test(id) ? 'nb' 
 function wkey(a, b){ return [tk(a), tk(b)].sort().join('|'); }
 const TLABEL = {
   'src-l':'电源进线 L','src-n':'电源进线 N','src-pe':'电源进线 PE',
-  'qf1-1':'QF1 总开关 1（上口·相线进）','qf1-3':'QF1 总开关 3（上口·零线进）','qf1-2':'QF1 总开关 2（下口·相线出）','qf1-4':'QF1 总开关 4（下口·零线出）',
+  'qf1-1':'QF1 总开关 1（上口右·相线进）','qf1-3':'QF1 总开关 3（上口左·零线进）','qf1-2':'QF1 总开关 2（下口右·相线出）','qf1-4':'QF1 总开关 4（下口左·零线出）',
   'spd-l':'电涌保护器 L','spd-n':'电涌保护器 N','spd-pe':'电涌保护器 接地端（下）',
   'qf2-li':'QF2 厨卫插座 上口 L','qf2-ni':'QF2 厨卫插座 上口 N','qf2-lo':'QF2 厨卫插座 下口 L','qf2-no':'QF2 厨卫插座 下口 N',
   'qf3-li':'QF3 房间插座 上口 L','qf3-ni':'QF3 房间插座 上口 N','qf3-lo':'QF3 房间插座 下口 L','qf3-no':'QF3 房间插座 下口 N',
@@ -155,8 +156,8 @@ const TLABEL = {
 };
 [1,2,3,4,5].forEach(function(i){ TLABEL['pe-'+i] = '接地排'; TLABEL['nb-'+i] = '零线排'; });
 const GROUPS = {
-  1:['进线 → 总开关','电源进线 L → QF1 的 1（上口左），N → QF1 的 3（上口右）。进线用 BV-4.0：相线红、零线蓝'],
-  2:['相线：总开关 → 电涌保护器 → 各支路','QF1 的 2（下口左）→ 电涌保护器 L；再从电涌保护器 L 依次跳到 QF2、QF3、QF4、QF5 的上口 L。到 QF3 为止 BV-2.5，QF3 → QF4、QF4 → QF5 两段 BV-1.5（照明回路）'],
+  1:['进线 → 总开关','电源进线 N → QF1 的 3（上口左），L → QF1 的 1（上口右）。板上一律左零右火。进线用 BV-4.0：相线红、零线蓝'],
+  2:['相线：总开关 → 电涌保护器 → 各支路','QF1 的 2（下口右）→ 电涌保护器 L；再从电涌保护器 L 依次跳到 QF2、QF3、QF4、QF5 的上口 L。到 QF3 为止 BV-2.5，QF3 → QF4、QF4 → QF5 两段 BV-1.5（照明回路）'],
   3:['零线：总开关 → 零排 → 电涌保护器、插座回路','QF1 的 4 → 零线排；零线排 → 电涌保护器 N → QF2 上口 N；零线排 → QF3 上口 N。QF4、QF5 是单极，零线不进开关（照明回路的零线直接从零线排走）。BV-2.5 蓝'],
   4:['地线（黄绿软线）','电源进线 PE → 接地排；电涌保护器下面的接地端 → 接地排；接地排 → 箱体接地点（软线压 OT 端子，螺母紧固）。零线排、接地排分开，蓝线只上零排、黄绿只上地排']
 };
@@ -1012,12 +1013,12 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
   [f1, f2, bk].forEach(function(m){ EXG.remove(m); sg.add(m); });
   f1.position.set(0, 22.5, 2.8); f2.position.set(0, 9, 2.8); bk.position.set(0, 16, 2.8);
   ANIM.sign = {g:sg, front:[f1, f2], back:bk};
-  /* 插孔 L N PE（单相） */
+  /* 插孔 N L PE（单相，左零右火） */
   [BX+110, BX+140, BX+170].forEach(function(x, i){ const JY = BY+34;
     cyl(x, JY, 40, 9.5, 2, MAT.steel, 24);
-    cyl(x, JY, 41, 8, 6, PL([0xd42f2f, 0x1c6dd0, 0x8fbf2f][i], 0.35, {clearcoat:0.6, bumpScale:0}), 32);
+    cyl(x, JY, 41, 8, 6, PL([0x1c6dd0, 0xd42f2f, 0x8fbf2f][i], 0.35, {clearcoat:0.6, bumpScale:0}), 32);
     cyl(x, JY, 46.6, 4.4, 0.6, MAT.brass, 24); cyl(x, JY, 46.8, 2.4, 0.6, MAT.hole, 16);
-    label(['L','N','PE'][i], x, JY+20, 41.4, 11, '#fff', '#26303c'); });
+    label(['N','L','PE'][i], x, JY+20, 41.4, 11, '#fff', '#26303c'); });
   PARENT = root;
 })();
 /* ── 考场桌面道具（11-26 他要「能交互就交互」）：试车台下面一块绿胶垫，放线缆、验电笔、螺丝刀、绝缘手套。只在通电试车阶段出现 ── */

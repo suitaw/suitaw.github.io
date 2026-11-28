@@ -1525,7 +1525,7 @@ function refresh(){
     info.innerHTML = (SIM.qf ? simExplain() : R ? '<b>检查结果</b>：接对 <b>'+(scopeW().length-R.nMiss)+'</b> / '+scopeW().length+' 根 · <span style="color:#e06a00">橙线＝接错/多接 '+R.nExtra+'</span> · <span style="color:#7d8590">影子＝漏接 '+R.nMiss+'</span>'+
         '<div class="st">'+(R.note || '点线看是哪根；再点「检查」看通电逐条试的结果')+'</div>'
       : (UI.msg || '<b>自由接</b>：想往哪接就往哪接，接的时候不判对错。接完点<b>检查</b>：按考场顺序通电逐条试，再跟标准接法比，告诉你哪根错、漏了哪根。也可以直接合 <b>QF</b> 试车，看接触器吸不吸、电动机转不转、亮点（电流）怎么走'))+
-      '<div class="st">'+(scopeName() ? scopeName()+' · ' : '')+'已接 '+FW.length+' 根（标准 '+scopeW().length+' 根）'+(SIM.qf ? ' · '+ld() : '')+'</div>';
+      '<div class="st">'+(scopeName() ? scopeName()+' · ' : '')+'已接 '+FW.length+' 根（标准 '+scopeW().length+' 根）'+'</div>';   /* 11-28 修：电动机盘没有 ld()（照明盘才有），送电就报错 */
   }
   else if(UI.wire && !s){
     const intro = inMount() ? '先<b>装元件</b>：点下面<b>零件盒</b>里的零件，再点导轨上它的位置（虚线框）。'+MOUNTABLE.length+' 个都装好再接线'
