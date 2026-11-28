@@ -115,7 +115,8 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
    + 新讲义第 37 页配电箱照片（导轨一排 6 个：①总开关带漏电 ②电涌保护器 ③④ 两极 ⑤⑥ 单极；下面地排、零排）。
    电路图：QF1 两极带漏电（1/3 进、2/4 出，BV-4.0 进线）；SPD L、N 两只，下端并起来接地排；QF2 厨卫插座、QF3 房间插座 两极；QF4 照明1、QF5 照明2 单极。
    线径：进线 4.0；QF1 出线到 QF3 为止 2.5；QF3 → QF4、QF4 → QF5 两段 1.5（图上 BV-1.5 两根引线指的就是这两段）。
-   照片上 ③④ 带漏电模块（黄色试验钮），电路图上 QF2、QF3 只画了过载 I>：以电路图为准，做成普通两极空开。
+   11-28 他发了张「(新大纲) K3-1」接线示意图，说跟着它改：QF2、QF3 带漏电模块（讲义照片 ③④ 也带），电涌保护器左 N 右 L。
+   带漏电的模块宽，一排放不下：导轨上 6 个元件整体缩到 0.92 倍（s:0.92）。
    零排 → QF2 的 N 是经 SPD 的 N 串过去的（图上零线从零排出来先到 SPD N 的节点再到 QF2）；QF3 的 N 单独一根从零排来。
    11-28 他要所有板「左零右火」：后来他说「一律按电路图来」：进线端子、试车台插孔 L、N、PE（图上从上到下的顺序），两极空开、电涌保护器相线极在左（图上 1/2 相线极画在上面）。
    支路下口去负载的线电路图没画，这里不接；仿真时在每路下口挂一个看不见的负载（单极的零线回零排 4、5 号孔），用来判「这一路通没通」 */
@@ -126,17 +127,17 @@ const FR_PINS = [];
 const DEVICES = [
   {id:'src', tag:'电源进线', kind:'src', x:30, y:20, w:112, h:56,
    terminals:[{id:'src-l',label:'L',x:20,y:15},{id:'src-n',label:'N',x:56,y:15},{id:'src-pe',label:'PE',x:92,y:15}]},   /* 11-28 照电路图：L、N、PE */
-  {id:'qf1', tag:'QF1 总开关', kind:'mcb2', rcd:true, face:'总开关', x:52, y:132, w:112, h:136,
+  {id:'qf1', tag:'QF1 总开关', kind:'mcb2', rcd:true, face:'总开关', x:40, y:132, s:0.92, w:112, h:136,
    terminals:[{id:'qf1-1',label:'1',x:20,y:14},{id:'qf1-3',label:'3',x:56,y:14},{id:'qf1-2',label:'2',x:20,y:122},{id:'qf1-4',label:'4',x:56,y:122}]},
-  {id:'spd', tag:'SPD 电涌保护器', kind:'spd', x:168, y:132, w:76, h:136,
-   terminals:[{id:'spd-l',label:'L',x:20,y:14},{id:'spd-n',label:'N',x:56,y:14},{id:'spd-pe',label:'⏚',x:38,y:122}]},
-  {id:'qf2', tag:'QF2 厨卫插座', kind:'mcb2', face:'厨卫插座', x:248, y:132, w:76, h:136,
+  {id:'spd', tag:'SPD 电涌保护器', kind:'spd', x:147, y:132, s:0.92, w:76, h:136,
+   terminals:[{id:'spd-n',label:'N',x:20,y:14},{id:'spd-l',label:'L',x:56,y:14},{id:'spd-pe',label:'⏚',x:38,y:122}]},
+  {id:'qf2', tag:'QF2 厨卫插座', kind:'mcb2', rcd:true, face:'厨卫插座', x:221, y:132, s:0.92, w:112, h:136,
    terminals:[{id:'qf2-li',label:'L',x:20,y:14},{id:'qf2-ni',label:'N',x:56,y:14},{id:'qf2-lo',label:'L',x:20,y:122},{id:'qf2-no',label:'N',x:56,y:122}]},
-  {id:'qf3', tag:'QF3 房间插座', kind:'mcb2', face:'房间插座', x:328, y:132, w:76, h:136,
+  {id:'qf3', tag:'QF3 房间插座', kind:'mcb2', rcd:true, face:'房间插座', x:328, y:132, s:0.92, w:112, h:136,
    terminals:[{id:'qf3-li',label:'L',x:20,y:14},{id:'qf3-ni',label:'N',x:56,y:14},{id:'qf3-lo',label:'L',x:20,y:122},{id:'qf3-no',label:'N',x:56,y:122}]},
-  {id:'qf4', tag:'QF4 照明1', kind:'mcb1', face:'照明1', x:408, y:132, w:40, h:136,
+  {id:'qf4', tag:'QF4 照明1', kind:'mcb1', face:'照明1', x:435, y:132, s:0.92, w:40, h:136,
    terminals:[{id:'qf4-li',label:'L',x:20,y:14},{id:'qf4-lo',label:'L',x:20,y:122}]},
-  {id:'qf5', tag:'QF5 照明2', kind:'mcb1', face:'照明2', x:452, y:132, w:40, h:136,
+  {id:'qf5', tag:'QF5 照明2', kind:'mcb1', face:'照明2', x:476, y:132, s:0.92, w:40, h:136,
    terminals:[{id:'qf5-li',label:'L',x:20,y:14},{id:'qf5-lo',label:'L',x:20,y:122}]},
   {id:'pe', tag:'接地排', kind:'pebar', x:64, y:340, w:136, h:30,
    terminals:[1,2,3,4,5].map(function(i){ return {id:'pe-'+i, label:'', x:16+26*(i-1), y:15}; })},
@@ -152,7 +153,7 @@ function wkey(a, b){ return [tk(a), tk(b)].sort().join('|'); }
 const TLABEL = {
   'src-l':'电源进线 L','src-n':'电源进线 N','src-pe':'电源进线 PE',
   'qf1-1':'QF1 总开关 1（上口左·相线进）','qf1-3':'QF1 总开关 3（上口右·零线进）','qf1-2':'QF1 总开关 2（下口左·相线出）','qf1-4':'QF1 总开关 4（下口右·零线出）',
-  'spd-l':'电涌保护器 L（上口左）','spd-n':'电涌保护器 N（上口右）','spd-pe':'电涌保护器 接地端（下口）',
+  'spd-l':'电涌保护器 L（上口右）','spd-n':'电涌保护器 N（上口左）','spd-pe':'电涌保护器 接地端（下口）',
   'qf2-li':'QF2 厨卫插座 上口 L','qf2-ni':'QF2 厨卫插座 上口 N','qf2-lo':'QF2 厨卫插座 下口 L','qf2-no':'QF2 厨卫插座 下口 N',
   'qf3-li':'QF3 房间插座 上口 L','qf3-ni':'QF3 房间插座 上口 N','qf3-lo':'QF3 房间插座 下口 L','qf3-no':'QF3 房间插座 下口 N',
   'qf4-li':'QF4 照明1 上口','qf4-lo':'QF4 照明1 下口','qf5-li':'QF5 照明2 上口','qf5-lo':'QF5 照明2 下口',
@@ -488,7 +489,7 @@ function dev(id){ return DEVICES.filter(function(d){ return d.id===id; })[0]; }
 
 /* 安装板 + 导轨（导轨贴图按长度重复） */
 const BOARD = add(new THREE.Mesh(new THREE.BoxGeometry((BW+40)*5, (BH+20)*4, 12), MAT.board));   /* 底板做得比屏幕大得多：缩放、全屏都铺满，不露背景 */ BOARD.position.copy(V(BW/2, BH/2, -6)); BOARD.userData.bg = true;
-[[52,200,440]].forEach(function(r){
+[[40,195,473]].forEach(function(r){
   const t = RAIL_TEX.clone(); t.repeat.set((r[2]+16)/44, 1); t.needsUpdate = true;
   const m = M(0xffffff, {map:t, metalness:0.9, roughness:0.35});
   box(r[0]-8, r[1]-9, r[2]+16, 18, 0, 3.5, m);
@@ -728,7 +729,7 @@ DEVICES.forEach(function(d){
     if(d.rcd){
       rbox(x+80, y+40, 26, 56, 63, 2, PL(0x30343a, 0.5), 3);
       const tb = cyl(x+93, y+56, 64, 7, 5, PL(0xf2c230, 0.35, {clearcoat:0.6}), 24);
-      ANIM.rcd = {mesh:tb, z0:tb.position.z, v:0};
+      (ANIM.rcds = ANIM.rcds || {})[d.id] = {mesh:tb, z0:tb.position.z, v:0};   /* 11-28 三只带漏电：试验钮各管各的 */
       hitPad(new THREE.SphereGeometry(13), V(x+93, y+56, 74), {type:'rcd', id:d.id});
       label('试验 T', x+93, y+72, 65.4, 6, '#dfe3e8', null, true);
       label('漏电保护', x+93, y+86, 65.4, 6, '#dfe3e8', null, true);
@@ -1264,7 +1265,7 @@ function applyDone(){
 /* ══ 摆元件（11-27 新规：只有空开自己装）══ 位置固定：导轨上有空位，点零件盒里的零件、再点空位装上去；装错位置装不上，记一次错。
    QF1、QF3 是两只一样的两极空开，两个空位随便放；QF2 是带漏电模块的那只 */
 const MOUNTABLE = ['qf1','spd','qf2','qf3','qf4','qf5'];   /* 讲义第 7 步：断路器、漏电保护器、电涌保护器都自己装 */
-const PARTS = [{k:'rcd2', name:'两极漏电断路器', fits:['qf1']}, {k:'spd', name:'电涌保护器', fits:['spd']}, {k:'qf2p', name:'两极断路器', fits:['qf2','qf3']}, {k:'qf1p', name:'单极断路器', fits:['qf4','qf5']}];
+const PARTS = [{k:'rcd2', name:'两极漏电断路器', fits:['qf1','qf2','qf3']}, {k:'spd', name:'电涌保护器', fits:['spd']}, {k:'qf1p', name:'单极断路器', fits:['qf4','qf5']}];
 const DEVN = {qf1:'QF1 总开关（漏电）', spd:'SPD 电涌保护器', qf2:'QF2 厨卫插座', qf3:'QF3 房间插座', qf4:'QF4 照明1', qf5:'QF5 照明2'};
 const LSM = 'elec_k30_3d_mount';
 UI.mount = {}; UI.part = null;
@@ -1641,10 +1642,11 @@ const PPE = [['hat','安全帽',1],['cloth','工作服',1],['shoe','绝缘鞋',1
 const SHELF = [
   ['sd','螺丝刀','t',1],['strip','剥线钳','t',1],['crimp','压接钳（压 OT 端子）','t',1],['plier','尖嘴钳','t',1],['wrench','扳手','t',1],['meter','万用表','t',1],
   ['pen','验电笔','t',0],['iron','电烙铁','t',0],['saw','钢锯','t',0],
-  ['rcd2','两极漏电断路器（总开关）','p',1],['spd','电涌保护器（L+N）','p',1],['qf2p','两极断路器（2 只）','p',1],['qf1p','单极断路器（2 只）','p',1],
+  ['rcd2','两极漏电断路器（3 只）','p',1],['spd','电涌保护器（L+N）','p',1],['qf1p','单极断路器（2 只）','p',1],['qf2p','两极断路器（不带漏电）','p',0,'总开关和两路插座都要带漏电保护的'],
   ['qf3p','三极断路器','p',0,'单相配电箱用不上三极的'],['km','接触器 CJX2s-0911','p',0,'配电箱电路图上没有接触器'],['fuse','熔断器 RT18','p',0,'配电箱电路图上没有熔断器']];
 const SHN = {}; SHELF.forEach(function(s){ SHN[s[0]] = s; });
-const XPARTS = {rcd2:{name:'两极漏电断路器', fits:['qf1']}, spd:{name:'电涌保护器', fits:['spd']}, qf2p:{name:'两极断路器（2 只）', fits:['qf2','qf3']}, qf1p:{name:'单极断路器（2 只）', fits:['qf4','qf5']},
+const XPARTS = {rcd2:{name:'两极漏电断路器（3 只）', fits:['qf1','qf2','qf3']}, spd:{name:'电涌保护器', fits:['spd']}, qf1p:{name:'单极断路器（2 只）', fits:['qf4','qf5']},
+  qf2p:{name:'两极断路器（不带漏电）', fits:[], bad:SHN.qf2p[4]},
   qf3p:{name:'三极断路器', fits:[], bad:SHN.qf3p[4]}, km:{name:'接触器', fits:[], bad:SHN.km[4]}, fuse:{name:'熔断器', fits:[], bad:SHN.fuse[4]}};
 const TEST_TXT = {rcd2:'合闸两极都通、分闸都断；漏电模块试验钮正常', spd:'L、N 对接地端不通（OL），外观、状态窗正常', qf2p:'合闸两极都通、分闸都断', qf1p:'合闸通、分闸断'};
 /* 标准那 14 根各有规定线色线径（电路图）；标准外的线按端子猜：地线黄绿、零线蓝、其余红 2.5 */
@@ -2348,8 +2350,8 @@ function up(e){
   if(!a) a = snapTerm(e);
   if(!a){ if(now - lastBlank < 350){ lastBlank = 0; view('front'); return; } lastBlank = now; }   /* 空白处双击：复原 */
   if(a && a.type==='tog'){ if(EX.on) exTapTog(a.id); else { UI.pend=null; UI.msg=''; simTog(a.id); } }
-  else if(a && a.type==='rcd'){ ANIM.rcd.v = 1; click(1200, 0.04, 0.5);
-    if(SIM.tog.qf1 && powered()){ simTog('qf1', 0); note('按了 QF1 的<b>试验钮</b>：总开关跳闸，说明漏电保护是好的。再合上就恢复'); } else note('QF1 没合或者没送电，试验钮按了没反应'+(EX.on ? '（这道题考场上不送电）' : '')); }
+  else if(a && a.type==='rcd'){ const id = a.id, nm = DEVN[id].split('（')[0]; ANIM.rcds[id].v = 1; click(1200, 0.04, 0.5);
+    if(SIM.tog[id] && powered() && (id==='qf1' || SIM.tog.qf1)){ simTog(id, 0); note('按了 '+nm+' 的<b>试验钮</b>：它跳闸了，说明漏电保护是好的。再合上就恢复'); } else note(nm+' 没合或者没送电，试验钮按了没反应'+(EX.on ? '（这道题考场上不送电）' : '')); }
   else if(a && a.type==='main' && !EX.on){ if(UI.meter){ note('拿着万用表（电阻档）不能送电：先点「万用表」收起'); } else { simQF(!SIM.qf); UI.pend=null; } }
   else if(a && a.type==='term'){ if(EX.on) exTermTap(a.id); else termTap(a.id); }
   else if(a && a.type==='sign' && !EX.on) menu('标识牌是「考场」模式里用的', [['进入考场模式', exPick]]);
@@ -2526,7 +2528,7 @@ function frame(now){
   simAdvance(now); drainEvents(); mountFrame(now);
   for(const id in ANIM.tog){ const o = ANIM.tog[id]; o.v += ((SIM.tog[id] ? 1 : 0) - o.v)*Math.min(1, dt*18);
     if(o.rocker) o.piv.rotation.x = (o.v-0.5)*0.32; else o.piv.rotation.x = 0.5 - o.v; }
-  if(ANIM.rcd){ ANIM.rcd.v = Math.max(0, ANIM.rcd.v - dt*5); ANIM.rcd.mesh.position.z = ANIM.rcd.z0 - ANIM.rcd.v*3; }
+  for(const k in ANIM.rcds||{}){ const r = ANIM.rcds[k]; r.v = Math.max(0, r.v - dt*5); r.mesh.position.z = r.z0 - r.v*3; }
   for(const k in ANIM.led){ const l = ANIM.led[k]; l.m.material.color.setHex(SIM.km[l.load].on ? 0xff3b30 : 0x552222); }
   { const ma = (EX.on ? EX.main : SIM.qf) ? -0.5 : 0.5;   /* 平时模式：手柄跟着送电状态（11-26 他发现扳了不动） */ ANIM.main.rotation.x += (ma-ANIM.main.rotation.x)*Math.min(1, dt*20);
     const sa = signUp() ? 1.0 : 0; ANIM.sign.g.rotation.x += (sa-ANIM.sign.g.rotation.x)*Math.min(1, dt*14); }
