@@ -1651,7 +1651,7 @@ function refresh(){
   if(UI.meter && UI.wire && !EX.on){ info.innerHTML = meterInfo(); }
   else if(UI.rev && !EX.on){ info.innerHTML = revInfo(); }
   else if(EX.on){
-    const st2 = '<div class="st">'+(EX.phase==='ppe' ? '进考位 · 穿戴' : EX.phase==='prep' ? '准备 · 桌上 '+Object.keys(EX.desk).length+' 件 · 测过 '+Object.keys(EX.tested).length+' 件' : EX.phase==='mount' ? '装元件 · 已装 '+MOUNTABLE.filter(function(k){ return EX.mount[k]; }).length+' / '+MOUNTABLE.length+' 个' : EX.phase==='wire' ? '盘内接线 · 已接 '+EX.wires.length+' 根' :
+    const st2 = '<div class="st">'+(EX.phase==='ppe' ? '进考位 · 穿戴' : EX.phase==='prep' ? '准备 · 桌上 '+Object.keys(EX.desk).length+' 件 · 测过 '+Object.keys(EX.tested).length+' 件' : EX.phase==='mount' ? '装元件 · 已装 '+MOUNTABLE.filter(function(k){ return EX.mount[k]; }).length+' / '+MOUNTABLE.length+' 个' : EX.phase==='wire' ? '盘内接线 · 已接 '+EX.wires.length+' 根' : EX.phase==='hold' ? '安装完毕 · 可以交卷' :
       (EX.mode==='practice' ? '练习 · ' : '考试 · ')+hn()+' · '+({point:'指认', pen:'拿着验电笔'}[EX.tool] || '空手')+(CFG.meterTool ? '' : ' · 手套'+(EX.glove ? '戴着' : '摘了'))+' · 总开关'+(EX.main ? '合' : '分')+' · QF '+(SIM.qf ? '合' : '分')+' · 电动机'+(SIM.motor?'运转':'停'))+'</div>';
     const body = s ? '你接的线：'+tname(s.w.from)+' → '+tname(s.w.to)+'（点它可以拆掉）' : (SIM.blown ? '⚠ '+SIM.blown+'。分闸后重新合闸才恢复' : EX.msg);
     const nxt = !EX.guide && PH_TXT[EX.phase] ? (body ? '' : PH_TXT[EX.phase]) : EX.guide ? '<span style="color:var(--mut)">下一步：</span>'+exNext() :
@@ -1841,7 +1841,7 @@ function exRows(){
   const g = function(id){ return document.getElementById(id); };
   g('rowV').hidden = EX.on || UI.wire; g('rowW').hidden = EX.on || !UI.wire;
   g('rowE0').hidden = !(EX.on && /ppe|prep|mount/.test(EX.phase));
-  [['eppe','ppe'],['eshelf','prep|mount'],['einst0','prep'],['emnt','mount']].forEach(function(a){ g(a[0]).style.display = EX.on && new RegExp(a[1]).test(EX.phase) ? '' : 'none'; }); g('rowE1').hidden = !(EX.on && EX.phase==='wire'); g('rowE2').hidden = !(EX.on && EX.phase==='trial');
+  [['eppe','ppe'],['eshelf','prep|mount'],['einst0','prep'],['emnt','mount']].forEach(function(a){ g(a[0]).style.display = EX.on && new RegExp(a[1]).test(EX.phase) ? '' : 'none'; }); g('rowE1').hidden = !(EX.on && EX.phase==='wire'); g('rowE2').hidden = !(EX.on && /trial|hold/.test(EX.phase)); ['ehand','etool','epen','eglove','erep'].forEach(function(id){ g(id).style.display = EX.phase==='hold' ? 'none' : ''; });
   g('mode').hidden = EX.on; g('mode').style.display = EX.on ? 'none' : '';
   g('exam').style.display = EX.on ? 'none' : '';
   g('back').textContent = EX.on ? '‹ 退出考场' : '‹ 返回';
@@ -2637,7 +2637,13 @@ function exWatch(e){
 { const base = exLog; exLog = function(k, d){ const e = base(k, Object.assign({allow:!!EX.allow}, d || {})); if(EX.on) exWatch(e); return e; }; }
 { const base = exEnter; exEnter = function(m){ base(m); Object.assign(EX, {allow:false, say:'', stopped:false, failN:0, timeout:false, warn5:false, tUp:false, tInst:0, clk:''});
     examinerSay('请按规范穿戴安全帽、工作服、绝缘鞋，进入考位。'); }; }
-if(typeof exTrial==='function'){ const base = exTrial; exTrial = function(){ base(); examinerSay('电盘已挂上通电台。开始操作。'); }; }
+/* 11-28 他说：先把通电试车步骤删了，他重新讲（电源控制台留着）。报告安装完毕后不再挂通电台，停在 hold，只能交卷；
+   试车阶段的验电、挂牌、外部接线等函数先留着不接入口，新流程多半还要用 */
+if(typeof exTrial==='function'){ exTrial = function(){ EX.grade = gradeWires(EX.wires); exSave(); EX.phase = 'hold'; EX.delMode = false; UI.sel = 0; UI.pend = null; UI.part = null;
+  exLog('hold', {}); exRows(); examinerSay('安装完毕。'); }; }
+{ const base = exStd; exStd = function(F){ const S = base(F).slice(0, 3); if(EX.phase==='hold' && S[2][1]===0) S[2][1] = 1; return S; }; }   /* 成绩单只对照到第 3 步（安装、报告安装完毕） */
+{ const base = exGrade; exGrade = function(){ const R = base(); R.undone = R.undone.filter(function(t){ return !/送电|试车|开关还合着|外部线|拆完|清理场地/.test(t); }); return R; }; }
+{ const base = exNext; exNext = function(){ return EX.phase==='hold' ? hl(BTN('esub'), '安装完毕。通电试车部分在重做，点「交卷」看成绩单') : base(); }; }
 if(typeof exStartInstall==='function'){ const base = exStartInstall; exStartInstall = function(){ base(); examinerSay('倒计时开始，'+EXMIN+' 分钟。'); }; }
 if(typeof exCheck==='function'){ const base = exCheck; exCheck = function(){ base(); examinerSay('倒计时停止。停止安装，我来核查配电箱。'); }; }
 { const base = exGrade; exGrade = function(){ const R = base(); if(EX.timeout){ const t = '超时：'+EXMIN+' 分钟内没做完，考评员叫停'; if(R.fail) R.fail.push(t); else R.wrong.unshift(t); } return R; }; }
@@ -2653,7 +2659,7 @@ function exWiredReply(){
 const clockEl = document.getElementById('clock');
 function exClock(now){
   if(!EX.on || !EX.tInst){ if(!clockEl.hidden) clockEl.hidden = true; return; }
-  if(EX.result || EX.stopped) return;
+  if(EX.result || EX.stopped || EX.phase==='hold') return;
   const left = EXMIN*60000 - (now - EX.tInst), s = Math.ceil(Math.abs(left)/1000);
   const txt = (left < 0 ? '超时 ' : '')+Math.floor(s/60)+':'+String(s%60).padStart(2, '0');
   if(txt!==EX.clk){ EX.clk = txt; clockEl.hidden = false; clockEl.textContent = txt; clockEl.classList.toggle('late', left < 300000); }
