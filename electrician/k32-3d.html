@@ -1197,7 +1197,8 @@ UI.free = false; UI.mark = null;
 let FW = [], fwNext = 500;
 try{ FW = (JSON.parse(localStorage.getItem(LSF)||'[]')||[]).filter(function(p){ return TPOS[p[0]] && TPOS[p[1]]; }).map(function(p){ return {id:fwNext++, from:p[0], to:p[1]}; }); }catch(e){}
 function fwSave(){ try{ localStorage.setItem(LSF, JSON.stringify(FW.map(function(w){ return [w.from, w.to]; }))); }catch(e){} }
-function fwStd(w){ return WIRES.filter(function(x){ return wkey(x.from, x.to)===wkey(w.from, w.to); })[0]; }
+function fwStd(w){ const k = function(v){ return WIRES.filter(function(x){ return wkey(x.from, x.to)===wkey(v.from, v.to); })[0]; };
+  return k(w) || k(srcFix([w])[0]); }   /* 11-28 他问进火接第 3 孔为啥画成蓝线：换孔接的线，按还原后的那根标准线配色 */
 function fwBuild(w){
   const sd = fwStd(w), col = sd ? sd.color : WK[wkWant(w.from, w.to)[0]][1];
   const pts = wirePts(w.from, w.to, w.id, TZ[w.from]+4, TZ[w.to]+4);
@@ -1434,6 +1435,7 @@ function setMode(wire){
   setActive(wire ? (UI.free ? FW.concat(preW()) : WIRES.filter(function(w){ return DONE[w.id] || !inScope(w); })) : WIRES);
   if(UI.meter) meterOn(false);
   document.getElementById('chk').hidden = !(wire && UI.free);
+  document.getElementById('del').hidden = !!(wire && UI.free);   /* 自由接：点线就能拆，撤销按钮省掉，底栏一行放得下 */
   exRows();
   const mb = document.getElementById('mode'); mb.textContent = wire ? '看答案' : '自己接'; mb.classList.toggle('on', wire);
 }
