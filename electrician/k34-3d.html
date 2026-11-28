@@ -60,6 +60,9 @@ ol.steps li.bad{color:#c0392b}
 #tray .tl{font-size:13px;color:var(--mut);margin-right:2px}#tray button{font-size:14px;padding:6px 8px}
 #menu .shelf button{display:inline-block;width:auto;margin:6px 6px 0 0;padding:8px 10px;font-size:14px}#menu .sh{margin-top:10px;font-weight:700;font-size:14px}
 #menu button.go{background:var(--blue);color:#fff;border-color:var(--blue);text-align:center;margin-top:14px}#einst{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#einst.rec{background:#c0392b;border-color:#c0392b;color:#fff}
+#fold{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;margin:-6px 0 2px;padding:2px 0 4px;border:0;background:none;color:var(--mut);font-size:12px}
+#fold svg{transition:transform .2s}.bot.min #fold svg{transform:rotate(180deg)}
+.bot.min #info{min-height:0;max-height:1.5em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -72,6 +75,7 @@ ol.steps li.bad{color:#c0392b}
 </div>
 <div class="bot">
   <div id="tray" hidden></div>
+  <button id="fold"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span>收起说明</span></button>
   <div id="info"></div>
   <div class="row" id="rowM">
     <span class="grp" id="rowV"><button id="prev">◀</button><span id="cnt"></span><button id="next">▶</button><button id="rev">对照</button></span>
@@ -2437,7 +2441,12 @@ document.getElementById('einst0').onclick = exStartInstall;
 document.getElementById('esplice').onclick = exSplice;
 document.getElementById('emnt').onclick = function(){ MOUNTABLE.forEach(function(k){ EX.mount[k] = 1; }); EX.skipMount = true; exMountDone(); };
 document.getElementById('esub').onclick = function(){ menu('交卷？', [['交卷，看成绩单', exSheet]]); };
-info.onclick = function(){ if(EX.on) exStepMenu(); };   /* 点说明栏：看全部步骤（里面能开关提示） */
+/* 11-28 他要说明栏能收起，给板面腾地方：收起只留第一行（最新提示），点那一行或把手再展开；记住选择 */
+const botEl = document.querySelector('.bot'), foldB = document.getElementById('fold');
+function setFold(m){ botEl.classList.toggle('min', m); foldB.lastChild.textContent = m ? '展开说明' : '收起说明'; try{ localStorage.setItem('elec_k3_fold', m ? '1' : ''); }catch(e){} refit(); }
+foldB.onclick = function(){ setFold(!botEl.classList.contains('min')); };
+try{ if(localStorage.getItem('elec_k3_fold')) botEl.classList.add('min'), foldB.lastChild.textContent = '展开说明'; }catch(e){}
+info.onclick = function(){ if(botEl.classList.contains('min')) return setFold(false); if(EX.on) exStepMenu(); };   /* 点说明栏：看全部步骤（里面能开关提示） */
 ov.onclick = function(e){ if(e.target===ov && !menuFresh()) closeMenu(); };
 document.getElementById('mode').onclick = function(){ revExit(); setMode(!UI.wire); };
 document.getElementById('rev').onclick = function(){ if(UI.rev) revExit(); else revEnter(); };
