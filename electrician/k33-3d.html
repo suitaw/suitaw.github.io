@@ -117,7 +117,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
    便签写了「灯泡＝最下面红线」「日光灯＝往下数第 2 个红线」，两根蓝线位置是我按「红蓝成对」补的。
    电源进线端子排「第 3 孔＝零线」是便签原话；第 1 孔 L、第 2 孔 PE 是推测。
    11-28 他发了电路图截图（/sdcard/webdev/k3101/d_Screenshot_20261128_143751.jpg），说「一律按电路图来」：图上从上到下 L、N、PE，
-   所以进线端子、试车台插孔从左到右 L、N、PE；两极空开相线极在左、零线极在右（图上相线极画在上面；便签的「第 1 孔＝零」不再照搬）。 */
+   所以进线端子、试车台插孔从左到右 L、N、PE（当晚他又说进线端子改回左零右火、中间接地：N、PE、L，电能表不动）；两极空开相线极在左、零线极在右（图上相线极画在上面；便签的「第 1 孔＝零」不再照搬）。 */
 const KM_W = 200, KM_H = 150, BOARD_H = 860;   /* 11-28 竖长重排 */   /* 11-27 进线端子和试车台并排放最下面，板子缩短 */
 const FR_PINS = [];
 
@@ -131,7 +131,7 @@ const DEVICES = [
   {id:'mb', tag:'电能表接线排', kind:'mbt', x:200, y:276, w:132, h:56,
    terminals:[1,2,3,4].map(function(i){ return {id:'mb-'+i, label:'', x:18+32*(i-1), y:42}; })},
   {id:'src', tag:'电源进线', kind:'src', x:34, y:386,   /* 11-27 他说照板子放左下角、接地排上面 */ w:112, h:56,
-   terminals:[{id:'src-l',label:'L',x:20,y:15},{id:'src-n',label:'N',x:56,y:15},{id:'src-pe',label:'PE',x:92,y:15}]},   /* 11-28 照电路图：L、N、PE */
+   terminals:[{id:'src-n',label:'N',x:20,y:15},{id:'src-pe',label:'PE',x:56,y:15},{id:'src-l',label:'L',x:92,y:15}]},   /* 11-28 晚他说进线端子改回左零右火、中间接地（电能表不动） */
   {id:'tube', tag:'日光灯', kind:'tube', x:40, y:14, w:250, h:112, terminals:[]},
   {id:'lt', tag:'灯具端子排', kind:'lterm', x:350, y:40, w:100, h:118,   /* 11-27 加宽：中间写清每一位接哪盏灯 */
    terminals:[1,2,3,4].map(function(i){ return {id:'lt-'+i, label:String(i), x:22, y:17+28*(i-1)}; })},
@@ -161,7 +161,7 @@ function wkey(a, b){ return [tk(a), tk(b)].sort().join('|'); }
 const TLABEL = {
   'mb-1':'电能表接线排 1（进火）','mb-2':'电能表接线排 2（出火）','mb-3':'电能表接线排 3（进零）','mb-4':'电能表接线排 4（出零）',
   'mt-1':'电能表 1（火线1·进）','mt-2':'电能表 2（火线2·出）','mt-3':'电能表 3（零线1·进）','mt-4':'电能表 4（零线2·出）',
-  'src-l':'电源进线 L（左）','src-n':'电源进线 N（中）','src-pe':'电源进线 PE（右）',
+  'src-l':'电源进线 L（右）','src-pe':'电源进线 PE（中）','src-n':'电源进线 N（左）',
   'qf1-ni':'空开① 上方 N（右）','qf1-li':'空开① 上方 L（左）','qf1-no':'空开① 下方 N','qf1-lo':'空开① 下方 L',
   'qf2-ni':'空开② 上方 N','qf2-li':'空开② 上方 L','qf2-no':'空开② 下方 N','qf2-lo':'空开② 下方 L',
   'qf3-ni':'空开③ 上方 N','qf3-li':'空开③ 上方 L','qf3-no':'空开③ 下方 N','qf3-lo':'空开③ 下方 L',
@@ -1003,21 +1003,21 @@ const XT = {}, XP = {};        /* XT：外部接线 id → {name, meshes}；XP�
   spad.position.set(0, 16, 12); spad.userData.act = {type:'sign'}; sg.add(spad); picks.push(spad); XP._sign = {pick:spad};
   ANIM.sign = {g:sg, front:[f1, f2], back:bk};
   /* 插孔 L N PE（单相） */
-  const JX = [BX+110, BX+140, BX+170], JY = BY+34, JC = [0xd42f2f, 0x1c6dd0, 0x8fbf2f], JN = ['L','N','PE'];
+  const JX = [BX+170, BX+110, BX+140], JY = BY+34, JC = [0xd42f2f, 0x1c6dd0, 0x8fbf2f], JN = ['L','N','PE'];
   JX.forEach(function(x, i){
     cyl(x, JY, 40, 9.5, 2, MAT.steel, 24);
     cyl(x, JY, 41, 8, 6, PL(JC[i], 0.35, {clearcoat:0.6, bumpScale:0}), 32);
     cyl(x, JY, 46.6, 4.4, 0.6, MAT.brass, 24); cyl(x, JY, 46.8, 2.4, 0.6, MAT.hole, 16);
     label(JN[i], x, JY+20, 41.4, 11, '#fff', '#26303c'); });
   /* 电源线：盘上进线端子排下排 ↔ 试车台插孔。每根两头分开接（先盘上、再电源箱），所以分两段画 */
-  const sd = dev('src'), SXs = [sd.x+20, sd.x+56, sd.x+92], SY = sd.y+42, SZ = 16+2.6;   /* 盘上 l、n、g 的位置（11-28 照电路图：L 左、N 中、PE 右） */
+  const sd = dev('src'), SXs = [sd.x+92, sd.x+20, sd.x+56], SY = sd.y+42, SZ = 16+2.6;   /* 盘上 l、n、g 的位置（11-28 晚改回：N 左、PE 中、L 右） */
   const cid = ['l','n','g'], cn = ['相线（红）','零线（蓝）','地线（黄绿）'], jx = [JX[0], JX[1], JX[2]];
   function wire(id, name, color, pts2, za, zb, lane, r){
     const m = tube(path3(pts2, za, zb, lane, null, null), r||2.8, M(color, {roughness:0.5})); m.visible = false;
     (XT[id] = XT[id] || {name:name, meshes:[]}).meshes.push(m);
   }
   [0,1,2].forEach(function(i){
-    const r = i, ly = 458-3*r, gx = 148+3*r, dy = 730-4*r;   /* r：从左往右第几根（L、N、PE）；最左那根走最外圈，三根不交叉 */   /* 进线排在左下：从进线排和接地排中间横出、插座左边的缝下去、再到试车台 */
+    const r = [2,0,1][i], ly = 458-3*r, gx = 148+3*r, dy = 730-4*r;   /* r：从左往右第几根（N、PE、L）；最左那根走最外圈，三根不交叉 */   /* 进线排在左下：从进线排和接地排中间横出、插座左边的缝下去、再到试车台 */
     wire(cid[i]+'P', cn[i]+'一头 → 盘上电源进线端子', JC[i], [[SXs[i],SY],[SXs[i],ly],[gx,ly],[gx,dy],[jx[i],dy],[jx[i],BY+2]], SZ, null, 60+i*4);
     wire(cid[i]+'S', cn[i]+'另一头 → 试车台插孔', JC[i], [[jx[i],BY+2],[jx[i],BY+12],[jx[i],JY]], null, 45, 60+i*4);
   });
