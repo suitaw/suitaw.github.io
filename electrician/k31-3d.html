@@ -22,7 +22,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 .grp[hidden]{display:none}
 button{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 9px;white-space:nowrap}
 button:disabled{opacity:.4}
-button:active{background:#e8eef7}
+button{transition:transform .08s ease-out,background-color .08s}
+button:active{background:#d3e0f2;transform:scale(.93)}   /* 11-28 他说按了没反馈：按下缩一下、颜色深一点 */
 button.on{background:var(--blue);border-color:var(--blue);color:#fff}
 .bot{position:fixed;left:0;right:0;bottom:0;padding:8px 10px calc(8px + env(safe-area-inset-bottom));
   background:var(--card);border-top:1px solid var(--line);backdrop-filter:blur(6px)}
@@ -779,7 +780,7 @@ DEVICES.forEach(function(d){
       g.children.forEach(function(m){ m.userData.act = {type:'btn', id:b.id}; picks.push(m); });
       const pad = new THREE.Mesh(new THREE.SphereGeometry(27), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
       pad.position.copy(V(cx, cy, 80)); pad.userData.act = {type:'btn', id:b.id}; PARENT.add(pad); picks.push(pad);
-      ANIM.btn[b.id] = {mesh:g, z0:g.position.z, v:0};
+      const cm0 = g.children[0].material; ANIM.btn[b.id] = {mesh:g, z0:g.position.z, v:0, mats:[cm0], base:cm0.color.clone(), hold:0};   /* 11-28 按下帽子变暗，快点也至少显示 0.2 秒 */
       box(x+8, cy-9, 30, 18, 66, 1, MAT.white);                         /* 铭牌 */
       label(b.name, x+23, cy, 67.4, 12, '#1f2328');
     });
@@ -2385,7 +2386,7 @@ function buzz(p){ if(navigator.vibrate) try{ navigator.vibrate(p); }catch(e){} }
 let lastMotor=0;
 function drainEvents(){
   SIM.ev.splice(0).forEach(function(e){
-    if(e.type==='btn'){ click(3000, 0.03, 0.25); buzz(12); }
+    if(e.type==='btn'){ click(3000, 0.03, 0.25); buzz(25); }
     if(e.type==='qf'){ click(1800, 0.05, 0.5); buzz(20); }
     if(e.type==='km'){ click(SIM.km[e.id].on ? 900 : 1300, 0.07, 0.7); buzz(25); }
     if(e.type==='bang'){ click(300, 0.25, 1); buzz([80,40,120]); if(EX.on && !EX.shortSeen){ EX.shortSeen = true; exLog('short', {msg:SIM.blown}); } }
@@ -2422,6 +2423,17 @@ function resize(){
   camera.setViewOffset(W, H, 0, (botH-topH)/2, W, H); camera.updateProjectionMatrix();
 }
 
+/* 11-28 他说按了没反馈：点到板上任何能点的东西，那里冒一圈很快散开的光圈（按钮正对镜头往里按，正面看不出动） */
+const RIPS = [], HITP = new THREE.Vector3(); let hitOK = false;
+function ripple(p){
+  let r = RIPS.filter(function(x){ return !x.on; })[0];
+  if(!r){ const m = new THREE.Mesh(new THREE.TorusGeometry(10, 1.6, 8, 40), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0, depthTest:false, depthWrite:false, toneMapped:false}));
+    m.renderOrder = 40; root.add(m); r = {m:m}; RIPS.push(r); }
+  r.on = true; r.t0 = performance.now(); r.m.position.copy(p); r.m.position.z += 6; r.m.visible = true;
+}
+function rippleFrame(now){ RIPS.forEach(function(r){ if(!r.on) return; const k = (now-r.t0)/380;
+  if(k>=1){ r.on = false; r.m.visible = false; return; }
+  const e = 1-(1-k)*(1-k); r.m.scale.setScalar(0.5+1.4*e); r.m.material.opacity = 0.85*(1-k); r.m.material.color.setHex(k<0.35 ? 0xffffff : 0x9cc8ff); }); }
 /* ══ 点击 ══ 我的监听要先于 OrbitControls 注册：按住按钮时先把转镜头关掉 */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function shown(o){ for(let p=o.parent; p; p=p.parent) if(!p.visible) return false; return true; }   /* 没装上的元件（藏着）上的按钮、开关点不到 */
@@ -2436,14 +2448,17 @@ function hit(e){
   ndc.set(e.clientX/W*2-1, -(e.clientY/H*2-1)); ray.setFromCamera(ndc, camera);
   const hs = ray.intersectObjects(picks, false).filter(function(h){ return !h.object.userData.off && shown(h.object); });
   const nt = nearTerm(e);
-  if(nt && !(hs.length && hs[0].object.userData.act.type==='btn')) return nt;
+  hitOK = false;
+  if(nt && !(hs.length && hs[0].object.userData.act.type==='btn')){ const T = nt.id && TERMS[nt.id]; if(T){ HITP.copy(T.pos); hitOK = true; } return nt; }
   if(!hs.length) return null;
   const hard = hs.filter(function(h){ return h.object.userData.act.type!=='wire'; });   /* 按钮/开关优先于线 */
-  return (hard[0] && hard[0].distance < hs[0].distance+60 ? hard[0] : hs[0]).object.userData.act;
+  const hh = hard[0] && hard[0].distance < hs[0].distance+60 ? hard[0] : hs[0]; HITP.copy(hh.point); root.worldToLocal(HITP); hitOK = true;
+  return hh.object.userData.act;
 }
 let down = null, held = null;
 canvas.addEventListener('pointerdown', function(e){
   ac(); down = {x:e.clientX, y:e.clientY, t:performance.now(), act:hit(e)};
+  if(down.act && hitOK) ripple(HITP);
   if(down.act && down.act.type==='btn'){
     held = {id:down.act.id, pid:e.pointerId}; controls.enabled = false;
     try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
@@ -2642,7 +2657,8 @@ function ease(o, target, dt){ o.v += (target-o.v)*Math.min(1, dt*22); }
 function frame(now){
   const dt = Math.min(0.1, (now-tPrev)/1000); tPrev = now;
   simAdvance(now); drainEvents(); mountFrame(now);
-  for(const id in ANIM.btn){ const o=ANIM.btn[id]; ease(o, SIM.btn[id].pressed ? 1 : 0, dt); o.mesh.position.z = o.z0 - o.v*7; }
+  for(const id in ANIM.btn){ const o=ANIM.btn[id], pr = SIM.btn[id].pressed; if(pr) o.hold = now+200; ease(o, pr || now<o.hold ? 1 : 0, dt); o.mesh.position.z = o.z0 - o.v*7;
+    o.mats.forEach(function(m){ m.color.copy(o.base).multiplyScalar(1-0.42*o.v); }); }
   for(const id in ANIM.km){ const o=ANIM.km[id]; ease(o, (SIM.km[id].on||SIM.km[id].man) ? 1 : 0, dt); o.mesh.position.z = o.z0 - o.v*8; }
   ease(ANIM.fr, SIM.frTrip ? 1 : 0, dt); ANIM.fr.press = Math.max(0, (ANIM.fr.press||0) - dt*5);
   ANIM.fr.mesh.position.z = ANIM.fr.z0 + ANIM.fr.v*6 - ANIM.fr.press*4;      /* 按下去一下；脱扣后红钮弹出来 */
@@ -2659,7 +2675,7 @@ function frame(now){
   const near = H/(2*camera.position.distanceTo(controls.target)*Math.tan(camera.fov/2*Math.PI/180)) > 0.66;   /* 每个板面单位占多少像素 */
   if(near!==UI.near){ UI.near = near; SMALL.forEach(function(m){ m.visible = near; }); }
   const s = sig()+(UI.rev ? '|rev'+UI.rev.k : ''); if(s!==UI.sig){ UI.sig = s; refresh(); hlApply(); }
-  hlFrame(now);
+  hlFrame(now); rippleFrame(now);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
