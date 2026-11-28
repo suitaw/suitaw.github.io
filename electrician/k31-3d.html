@@ -1194,6 +1194,9 @@ function inScope(w){ if(UI.scope==='all' || !w.group) return true; const m = MAI
 function preW(){ return UI.scope==='all' ? [] : WIRES.filter(function(w){ return !inScope(w); }); }
 function scopeW(){ return WIRES.filter(inScope); }
 function doneS(){ return scopeW().filter(function(w){ return DONE[w.id]; }).length; }
+try{ const s = localStorage.getItem(LSF+'_scope'); if(HAS_SCOPE && (s==='main' || s==='ctl')) UI.scope = s; }catch(e){}
+function scopeIds(){ return scopeW().map(function(w){ return w.id; }); }
+function scopeLabel(){ return {main:'主回路', ctl:'控制回路'}[UI.scope] || '全部'; }
 function scopeName(){ return {main:'只接主回路（控制回路预先接好了）', ctl:'只接控制回路（主回路预先接好了）'}[UI.scope] || ''; }
 /* 万用表：电源断开，只看导体和元件。0 Ω 的边（线、此刻闭合的触点/开关/熔断器）先并成一个点，再按负载电阻解节点方程 */
 UI.meter = false; UI.mp = {r:null, b:null};
@@ -1434,7 +1437,7 @@ function refresh(){
   benchSync(); exVis(); mountVis();
   const r = SIM.last || {pot:{}, cur:{}};
   CW.concat(XW).forEach(function(c){
-    const id=c.w.id, key='w'+id, hidden = EX.on ? !c.x : c.free ? !(UI.wire && UI.free) : UI.wire ? (inScope(c.w) && (UI.free || !DONE[id])) : (UI.step && id>UI.sel), isSel = UI.sel===id;
+    const id=c.w.id, key='w'+id, hidden = EX.on ? !c.x : c.free ? !(UI.wire && UI.free) : UI.wire ? (inScope(c.w) && (UI.free || !DONE[id])) : (UI.step && inScope(c.w) && id>UI.sel), isSel = UI.sel===id;
     c.mesh.visible = !hidden; c.pick.userData.off = hidden;
     /* 学 Falstad 两层显示：带电＝黑线外面罩一层青色光（11-26 他说淡红淡黄跟主电路红黄相线分不清，改成青光），
        亮点＝有电流。所以「按钮上口带电但没电流」能一眼看出来 */
@@ -1451,6 +1454,7 @@ function refresh(){
     c.flow = (r.cur[key] && !hidden && !(UI.sel && !isSel)) ? ((va!==undefined && vb!==undefined && vb>va) ? -1 : 1) : 0;
     const dim = UI.sel && !isSel;
     c.mat.opacity = UI.sel && !isSel ? 0.16 : dim ? 0.22 : 1; c.mat.depthWrite = !dim;
+    if(!UI.wire && !EX.on && !UI.rev && !UI.sel && !inScope(c.w)){ c.mat.opacity = 0.22; c.mat.depthWrite = false; }   /* 只看主回路/控制回路：另一部分变淡 */
     /* 三档（11-26 他说红光太多不突出）：有电流＝粗红光＋亮点；带电没电流＝细淡红边（验电会亮的地方）；不带电＝变浅（浅色半透明，别像阴影） */
     if(UI.rev && !EX.on){ const got = !!UI.rev.has[id]; c.mesh.visible = true; c.pick.userData.off = false; c.flow = 0;
       c.mat.color.setHex(got ? (c.base!==undefined ? c.base : 0x22262b) : 0xc8ccd2); c.mat.emissive.setHex(0);
@@ -1498,7 +1502,7 @@ function refresh(){
   }
   for(const k in dirLb) dirLb[k].visible = String(SIM.motor)===k;
   document.getElementById('rev').textContent = UI.rev ? '退出对照' : '对照';
-  cnt.textContent = UI.sel && UI.sel<100 ? UI.sel+' / '+NW : '全部';
+  cnt.textContent = UI.sel && UI.sel<100 ? (scopeIds().indexOf(UI.sel)+1)+' / '+scopeIds().length : scopeLabel();
   const st = '<div class="st">QF '+(SIM.qf?'合':'分')+' · KM '+(SIM.km.km.on?'吸合':'释放')+
     ' · 电动机'+(SIM.motor?'运转':'停')+'</div>'+
     (powered() ? '<div class="st">亮点＝有电流的线</div>' : '');
@@ -2444,10 +2448,12 @@ document.getElementById('home').onclick = function(){ view('front'); };
 })();
 
 document.querySelectorAll('.views button[data-v]').forEach(function(b){ b.onclick = function(){ view(b.dataset.v); }; });
-function stepTo(n){ UI.sel = Math.max(1, Math.min(NW, n)); UI.step = true; }
-document.getElementById('prev').onclick = function(){ stepTo(UI.sel ? UI.sel-1 : NW); };
-document.getElementById('next').onclick = function(){ stepTo(UI.sel+1); };
-cnt.onclick = function(){ UI.sel = 0; UI.step = false; };
+function stepTo(n){ const S = scopeIds(); UI.sel = Math.max(S[0], Math.min(S[S.length-1], n)); while(S.indexOf(UI.sel)<0 && UI.sel<S[S.length-1]) UI.sel++; UI.step = true; }
+document.getElementById('prev').onclick = function(){ const S = scopeIds(), i = S.indexOf(UI.sel); stepTo(UI.sel && i>0 ? S[i-1] : UI.sel ? S[0] : S[S.length-1]); };
+document.getElementById('next').onclick = function(){ const S = scopeIds(), i = S.indexOf(UI.sel); stepTo(i<0 ? S[0] : S[Math.min(S.length-1, i+1)]); };
+cnt.onclick = function(){ if(UI.sel){ UI.sel = 0; UI.step = false; return; } if(!HAS_SCOPE) return;
+  UI.scope = {all:'main', main:'ctl', ctl:'all'}[UI.scope]; try{ localStorage.setItem(LSF+'_scope', UI.scope); }catch(e){} click(2600, 0.02, 0.2);
+  note(UI.scope==='all' ? '看全部线' : '只看<b>'+scopeLabel()+'</b>（别的变淡）；点「自己接」就只接这一部分，另一部分预先接好'); };
 function exPick(){ menu('进考场', [['考试：没有提示，全靠自己（交卷后逐条对照）', function(){ exEnter('exam'); }], ['练习：有下一步提示和橙色光环', function(){ exEnter('practice'); }]]); }
 document.getElementById('exam').onclick = function(){ if(EX.on) exExit(); else exPick(); };
 document.getElementById('back').onclick = function(e){ if(EX.on){ e.preventDefault(); menu('退出考场？', [['退出（这次不算）', exExit]]); } };
@@ -2500,13 +2506,7 @@ foldB.onclick = function(){ setFold(!botEl.classList.contains('min')); };
 try{ if(localStorage.getItem('elec_k3_fold')) botEl.classList.add('min'), foldB.lastChild.textContent = '展开说明'; }catch(e){}
 info.onclick = function(){ if(botEl.classList.contains('min')) return setFold(false); if(EX.on) exStepMenu(); };   /* 点说明栏：看全部步骤（里面能开关提示） */
 ov.onclick = function(e){ if(e.target===ov && !menuFresh()) closeMenu(); };
-document.getElementById('mode').onclick = function(){ revExit(); if(UI.wire) return setMode(false);
-  const go = function(free){ UI.free = free; if(!HAS_SCOPE){ UI.scope = 'all'; return setMode(true); }
-    menu('接哪一部分？', [['全部都接', function(){ UI.scope = 'all'; setMode(true); }],
-      ['只接主回路（控制回路预先接好）', function(){ UI.scope = 'main'; setMode(true); }],
-      ['只接控制回路（主回路预先接好）', function(){ UI.scope = 'ctl'; setMode(true); }]]); };
-  menu('自己接：选一种接法', [['边接边判：接错当场告诉你', function(){ go(false); }],
-    ['自由接：想往哪接就往哪接，接完点「检查」再告诉你哪里错；能直接送电看通不通', function(){ go(true); }]]); };
+document.getElementById('mode').onclick = function(){ revExit(); if(UI.wire) return setMode(false); UI.free = true; setMode(true); };   /* 11-28 他说边接边判取消：自己接一律自由接，接完点「检查」 */
 document.getElementById('chk').onclick = fwCheck;
 document.getElementById('meter').onclick = function(){ meterOn(!UI.meter); };
 document.getElementById('rev').onclick = function(){ if(UI.rev) revExit(); else revEnter(); };
